@@ -1,0 +1,30 @@
+# Docker Compose — PostgreSQL + PostGIS pour le développement local.
+#
+# Optionnel. Son absence n'empêche pas lint, typecheck, test ou build.
+# Utilisé pour les tests d'intégration PostgreSQL à partir du Lot 3.
+#
+# Usage :
+#   docker compose up -d
+#   docker compose down
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: uttily-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: uttily
+      POSTGRES_PASSWORD: uttily
+      POSTGRES_DB: uttily
+    ports:
+      - '5432:5432'
+    volumes:
+      - uttily-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U uttily -d uttily']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  uttily-postgres-data:

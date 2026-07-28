@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+.next/
+out/
+coverage/
+pnpm-lock.yaml
+drizzle/
+docs/
+# Auto-généré par Next.js, ne pas formater
+**/next-env.d.ts
