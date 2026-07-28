@@ -1,5 +1,5 @@
 import postgres from 'postgres';
-import { runMigrations } from '@uttily/database';
+import { runMigrations, assertLocalhost } from '@uttily/database';
 
 /**
  * Setup des tests d'intégration PostgreSQL.
@@ -11,9 +11,10 @@ import { runMigrations } from '@uttily/database';
  * Comportement selon l'environnement :
  * - En CI (CI=1) : DATABASE_URL est obligatoire et la base doit être joignable.
  *   Si ce n'est pas le cas, les tests d'intégration ÉCHOURENT (pas de skip silencieux).
- * - En local : si DATABASE_URL n'est pas définie ou si la base n'est pas joignable,
- *   les tests d'intégration sont skippés (l'absence de base ne doit pas empêcher
- *   lint, typecheck, test unitaire ou build).
+ * - En local : si DATABASE_URL n'est pas définie, les tests d'intégration sont
+ *   skippés (retour null — l'absence de base ne doit pas empêcher lint, typecheck,
+ *   test unitaire ou build). En revanche, si DATABASE_URL est définie mais la base
+ *   est injoignable, la fonction lève une erreur explicite (pas de faux vert).
  */
 
 const DEFAULT_TEST_DB_NAME = 'uttily_test';
@@ -25,6 +26,19 @@ export interface IntegrationTestContext {
 
 function isCi(): boolean {
   return process.env.CI === '1' || process.env.CI === 'true';
+}
+
+/**
+ * Détermine si les tests d'intégration PostgreSQL doivent être skippés.
+ * En CI, retourne toujours false (les tests doivent tourner).
+ * En local, retourne true si DATABASE_URL est absente OU si SKIP_INTEGRATION_TESTS=1.
+ */
+export function shouldSkipIntegrationTests(): boolean {
+  const ci = isCi();
+  if (ci) return false;
+  if (!process.env.DATABASE_URL) return true;
+  if (process.env.SKIP_INTEGRATION_TESTS === '1') return true;
+  return false;
 }
 
 async function checkConnectivity(url: string): Promise<boolean> {
@@ -79,8 +93,16 @@ export async function setupIntegrationTestDb(
           "Les tests d'intégration ne peuvent pas être skippés en CI.",
       );
     }
-    return null;
+    // DATABASE_URL défini mais base injoignable en local : échec explicite,
+    // pas de faux vert (retour null silencieux).
+    throw new Error(
+      'DATABASE_URL est définie mais la base PostgreSQL est injoignable. ' +
+        'Démarrez la base (docker compose up -d postgres) ou unset DATABASE_URL pour skipper.',
+    );
   }
+
+  // Valide que l'hôte est localhost avant toute opération destructrice.
+  assertLocalhost(url);
 
   const testDbName = suffix ? `${DEFAULT_TEST_DB_NAME}_${suffix}` : DEFAULT_TEST_DB_NAME;
 
@@ -94,8 +116,10 @@ export async function setupIntegrationTestDb(
     await adminSql.end();
   }
 
-  // Construit l'URL de la base de test.
-  const testUrl = url.replace(/\/[^/]+$/, `/${testDbName}`);
+  // Construit l'URL de la base de test de manière sûre via new URL().
+  const testUrlObj = new URL(url);
+  testUrlObj.pathname = `/${testDbName}`;
+  const testUrl = testUrlObj.toString();
 
   // Applique les migrations.
   await runMigrations(testUrl);

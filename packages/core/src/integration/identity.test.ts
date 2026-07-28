@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { setupIntegrationTestDb, type IntegrationTestContext } from './setup';
+import {
+  setupIntegrationTestDb,
+  shouldSkipIntegrationTests,
+  type IntegrationTestContext,
+} from './setup';
 import { createDatabase } from '@uttily/database';
 import {
   createOrganizationForUser,
@@ -46,6 +50,10 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  // Garde de sécurité : ne devrait plus être atteint car describe.skipIf
+  // (shouldSkipIntegrationTests) skipe toute la suite quand la base est absente
+  // ou SKIP_INTEGRATION_TESTS=1, et setupIntegrationTestDb throw si la base est
+  // injoignable. Conservé par défense en profondeur.
   if (!ctx || !db) return;
   // Nettoie les tables entre les tests (ordre inverse des dépendances).
   const { sql } = await import('drizzle-orm');
@@ -83,7 +91,7 @@ async function createUser(
 
 // En CI, les tests d'intégration s'exécutent toujours (base PostgreSQL fournie).
 // En local, ils sont skippés si DATABASE_URL n'est pas définie ou base injoignable.
-describe.skipIf(!isCi && !process.env.DATABASE_URL)('Identity integration — multi-tenant', () => {
+describe.skipIf(shouldSkipIntegrationTests())('Identity integration — multi-tenant', () => {
   it('crée une organisation et une membership OWNER atomiquement', async () => {
     if (!ctx || !db) return;
     const user = await createUser(db, 'owner-a@example.com');

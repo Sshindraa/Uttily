@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import postgres from 'postgres';
-import { createDatabase, runMigrations, organizationMemberships } from '@uttily/database';
+import {
+  createDatabase,
+  runMigrations,
+  organizationMemberships,
+  assertLocalhost,
+} from '@uttily/database';
 import type { DatabaseClient } from '@uttily/database';
 import {
   createOrganizationForUser,
@@ -73,6 +78,18 @@ const { createInventoryItemAction, transferInventoryItemAction, retireInventoryI
 const isCi = process.env.CI === '1' || process.env.CI === 'true';
 const TEST_DB_NAME = 'uttily_test_actions';
 
+/**
+ * Détermine si les tests d'intégration PostgreSQL doivent être skippés.
+ * En CI, retourne toujours false (les tests doivent tourner).
+ * En local, retourne true si DATABASE_URL est absente OU si SKIP_INTEGRATION_TESTS=1.
+ */
+function shouldSkipIntegrationTests(): boolean {
+  if (isCi) return false;
+  if (!process.env.DATABASE_URL) return true;
+  if (process.env.SKIP_INTEGRATION_TESTS === '1') return true;
+  return false;
+}
+
 let adminUrl: string | null = null;
 let testUrl: string | null = null;
 let adminSql: ReturnType<typeof postgres> | null = null;
@@ -89,19 +106,35 @@ beforeAll(async () => {
   try {
     await adminSql`SELECT 1`;
   } catch {
-    if (isCi) throw new Error('CI: base PostgreSQL non joignable.');
     await adminSql.end();
     adminSql = null;
-    return;
+    if (isCi) throw new Error('CI: base PostgreSQL non joignable.');
+    // DATABASE_URL défini mais base injoignable en local : échec explicite,
+    // pas de faux vert (skip silencieux).
+    throw new Error(
+      'DATABASE_URL est définie mais la base PostgreSQL est injoignable. ' +
+        'Démarrez la base (docker compose up -d postgres) ou unset DATABASE_URL pour skipper.',
+    );
   }
+
+  // Valide que l'hôte est localhost avant toute opération destructrice.
+  assertLocalhost(url);
 
   adminUrl = url;
 
   // Crée la base de test.
-  await adminSql.unsafe(`DROP DATABASE IF EXISTS ${TEST_DB_NAME};`);
-  await adminSql.unsafe(`CREATE DATABASE ${TEST_DB_NAME};`);
+  try {
+    await adminSql.unsafe(`DROP DATABASE IF EXISTS ${TEST_DB_NAME};`);
+    await adminSql.unsafe(`CREATE DATABASE ${TEST_DB_NAME};`);
+  } finally {
+    await adminSql.end();
+    adminSql = null;
+  }
 
-  testUrl = url.replace(/\/[^/]+$/, `/${TEST_DB_NAME}`);
+  // Construit l'URL de la base de test de manière sûre via new URL().
+  const testUrlObj = new URL(url);
+  testUrlObj.pathname = `/${TEST_DB_NAME}`;
+  testUrl = testUrlObj.toString();
   await runMigrations(testUrl);
 
   testDb = createDatabase(testUrl);
@@ -112,16 +145,24 @@ afterAll(async () => {
     await testDb.$client.end();
     testDb = null;
   }
-  if (adminSql && adminUrl) {
-    await adminSql.unsafe(
-      `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${TEST_DB_NAME}' AND pid <> pg_backend_pid();`,
-    );
-    await adminSql.unsafe(`DROP DATABASE IF EXISTS ${TEST_DB_NAME};`);
-    await adminSql.end();
+  if (adminUrl) {
+    const cleanupSql = postgres(adminUrl, { max: 1 });
+    try {
+      await cleanupSql.unsafe(
+        `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${TEST_DB_NAME}' AND pid <> pg_backend_pid();`,
+      );
+      await cleanupSql.unsafe(`DROP DATABASE IF EXISTS ${TEST_DB_NAME};`);
+    } finally {
+      await cleanupSql.end();
+    }
   }
 });
 
 beforeEach(async () => {
+  // Garde de sécurité : ne devrait plus être atteint car describe.skipIf
+  // (shouldSkipIntegrationTests) skipe toute la suite quand la base est absente
+  // ou SKIP_INTEGRATION_TESTS=1, et le setup throw si la base est injoignable.
+  // Conservé par défense en profondeur.
   if (!testDb) return;
   vi.mocked(currentUser).mockReset();
   // TRUNCATE réinitialise les tables (RESTART IDENTITY). Les catégories
@@ -217,7 +258,7 @@ const EMPTY_PREV = { ok: true as const, data: null as never };
 // Tests de frontière — createProductAction.
 // ---------------------------------------------------------------------------
 
-describe.skipIf(!isCi && !process.env.DATABASE_URL)('Server Actions — frontière catalogue', () => {
+describe.skipIf(shouldSkipIntegrationTests())('Server Actions — frontière catalogue', () => {
   it('utilisateur non authentifié → UNAUTHENTICATED', async () => {
     if (!testDb) return;
     mockClerkUser(null);

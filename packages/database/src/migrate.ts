@@ -1,45 +1,33 @@
-import { readdir, readFile } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
+import * as schema from './schema';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const MIGRATIONS_DIR = join(__dirname, '..', 'drizzle');
+const MIGRATIONS_FOLDER = join(__dirname, '..', 'drizzle');
 
 /**
- * Applique les migrations SQL explicites du Lot 1.
+ * Applique les migrations SQL via le migrateur officiel Drizzle.
  *
- * Les migrations sont des fichiers .sql versionnés dans packages/database/drizzle.
- * Elles sont appliquées dans l'ordre lexicographique (préfixe 0001, 0002, ...).
+ * Les migrations sont des fichiers .sql versionnés dans packages/database/drizzle,
+ * générés par `drizzle-kit generate` et suivis via la table `__drizzle_migrations`
+ * (historique Drizzle Kit). C'est l'unique mécanisme de migration pour les
+ * environnements locaux, CI, staging et production (cf. ADR-004).
  *
- * Un suivi minimal est assuré via la table `__migrations` : une migration déjà
- * appliquée n'est pas rejouée. Pour le Lot 1, ce runner est volontairement
- * simple et explicite ; drizzle-kit migrate peut aussi être utilisé.
+ * La table `__migrations` maison (Lot 1) est retirée au profit de l'autorité
+ * Drizzle Kit unique.
+ *
+ * Le client postgres utilise `max: 1` conformément à la recommandation Drizzle
+ * pour les migrations (DDL sérialisé, pas de concurrence sur le schéma).
  */
 export async function runMigrations(databaseUrl: string): Promise<void> {
-  const sql = postgres(databaseUrl, { max: 1 });
-
+  const migrationClient = postgres(databaseUrl, { max: 1 });
+  const db = drizzle(migrationClient, { schema });
   try {
-    await sql`CREATE TABLE IF NOT EXISTS "__migrations" (
-      "id" serial PRIMARY KEY,
-      "filename" text NOT NULL UNIQUE,
-      "applied_at" timestamp with time zone NOT NULL DEFAULT now()
-    )`;
-
-    const files = (await readdir(MIGRATIONS_DIR)).filter(
-      (f) => f.endsWith('.sql') && !f.includes('meta'),
-    );
-    files.sort();
-
-    for (const file of files) {
-      const already = await sql`SELECT 1 FROM "__migrations" WHERE "filename" = ${file}`;
-      if (already.length > 0) continue;
-
-      const content = await readFile(join(MIGRATIONS_DIR, file), 'utf8');
-      await sql.unsafe(content);
-      await sql`INSERT INTO "__migrations" ("filename") VALUES (${file})`;
-    }
+    await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER });
   } finally {
-    await sql.end();
+    await migrationClient.end();
   }
 }

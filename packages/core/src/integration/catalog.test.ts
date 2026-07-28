@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { setupIntegrationTestDb, type IntegrationTestContext } from './setup';
+import {
+  setupIntegrationTestDb,
+  shouldSkipIntegrationTests,
+  type IntegrationTestContext,
+} from './setup';
 import { createDatabase } from '@uttily/database';
 import {
   createOrganizationForUser,
@@ -58,6 +62,10 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  // Garde de sécurité : ne devrait plus être atteint car describe.skipIf
+  // (shouldSkipIntegrationTests) skipe toute la suite quand la base est absente
+  // ou SKIP_INTEGRATION_TESTS=1, et setupIntegrationTestDb throw si la base est
+  // injoignable. Conservé par défense en profondeur.
   if (!ctx || !db) return;
   // TRUNCATE ... CASCADE ne déclenche pas les triggers ligne par ligne
   // (contrairement à DELETE), ce qui évite le garde-fou "dernière variante"
@@ -133,7 +141,7 @@ async function createProductForOrg(
   return { product, variantId: variants[0]!.id };
 }
 
-describe.skipIf(!isCi && !process.env.DATABASE_URL)('Catalog integration — multi-tenant', () => {
+describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-tenant', () => {
   it('seed catégories : au moins 9 catégories racines actives après migration', async () => {
     if (!ctx || !db) return;
     const cats = await listActiveCategories(db);
