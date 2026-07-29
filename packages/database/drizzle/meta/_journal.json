@@ -120,6 +120,13 @@
       "when": 1764528000016,
       "tag": "0017_create_inventory_blocks",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1764528000017,
+      "tag": "0018_lot4_booking_drafts",
+      "breakpoints": true
     }
   ]
 }

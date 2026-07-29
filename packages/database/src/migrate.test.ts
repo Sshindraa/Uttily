@@ -96,7 +96,7 @@ afterAll(async () => {
 });
 
 describe.skipIf(shouldSkipIntegrationTests())('runMigrations — base vierge via Drizzle Kit', () => {
-  it('applique les migrations et crée __drizzle_migrations (17 entrées)', async () => {
+  it('applique les migrations et crée __drizzle_migrations (18 entrées)', async () => {
     if (!testUrl) {
       // Garde de sécurité : ne devrait plus être atteint car describe.skipIf
       // (shouldSkipIntegrationTests) skipe toute la suite quand la base est absente
@@ -109,7 +109,7 @@ describe.skipIf(shouldSkipIntegrationTests())('runMigrations — base vierge via
     // Vérifie la table de suivi Drizzle (et non l'ancienne __migrations).
     // Drizzle Kit crée __drizzle_migrations dans le schéma "drizzle".
     const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-    expect(rows.length).toBe(17);
+    expect(rows.length).toBe(18);
 
     // Vérifie le seed de catégories.
     const cats = await sql`SELECT count(*)::int as n FROM categories`;
@@ -140,6 +140,37 @@ describe.skipIf(shouldSkipIntegrationTests())('runMigrations — base vierge via
     `;
     expect(constraints.length).toBe(1);
 
+    // Vérifie les tables Lot 4.
+    const lot4Tables = await sql`
+      SELECT tablename FROM pg_tables
+      WHERE schemaname = 'public' AND tablename IN ('booking_drafts', 'booking_draft_lines', 'allocations', 'idempotency_records')
+      ORDER BY tablename
+    `;
+    expect(lot4Tables.length).toBe(4);
+
+    // Vérifie la colonne prix sur product_variants.
+    const priceCol = await sql`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'product_variants' AND column_name = 'daily_price_amount_minor'
+    `;
+    expect(priceCol.length).toBe(1);
+
+    // Vérifie la politique d'annulation sur organizations.
+    const policyCol = await sql`
+      SELECT column_name, column_default FROM information_schema.columns
+      WHERE table_name = 'organizations' AND column_name = 'default_cancellation_policy_code'
+    `;
+    expect(policyCol.length).toBe(1);
+    expect(policyCol[0]!.column_default).toContain('FLEXIBLE');
+
+    // Vérifie les marges sur locations.
+    const bufferCols = await sql`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'locations' AND column_name IN ('prep_buffer_minutes', 'cleanup_buffer_minutes')
+      ORDER BY column_name
+    `;
+    expect(bufferCols.length).toBe(2);
+
     // Vérifie qu'aucune table __migrations maison n'a été créée par le code.
     const legacyTables = await sql`
       SELECT tablename FROM pg_tables
@@ -159,7 +190,7 @@ describe.skipIf(shouldSkipIntegrationTests())('runMigrations — base vierge via
     await runMigrations(testUrl);
     const sql = postgres(testUrl, { max: 1 });
     const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-    expect(rows.length).toBe(17);
+    expect(rows.length).toBe(18);
     await sql.end();
   });
 });

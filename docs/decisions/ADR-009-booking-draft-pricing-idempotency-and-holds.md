@@ -409,11 +409,12 @@ Toute création réussie effectue dans une **seule transaction PostgreSQL** :
 4. Calcul du prix (jours civils, prix unitaires, total).
 5. Sélection des exemplaires éligibles (`condition IN ('NEW','GOOD','FAIR')`, `status = 'ACTIVE'`, rattachés au lieu, sans bloc incompatible sur `blocked_period`).
 6. Verrouillage des exemplaires (`SELECT ... FOR UPDATE SKIP LOCKED` sur `inventory_items` ou via la contrainte d'exclusion).
-7. Création du brouillon et des lignes.
-8. Création des allocations.
-9. Création des `inventory_blocks` de type `HOLD` (statut `ACTIVE`, `expires_at = draft_expires_at` où `draft_expires_at` est calculé une fois au début de la transaction via `transaction_timestamp() + interval '10 minutes'`). Cette même valeur est copiée dans `booking_drafts.expires_at`.
-10. Persistance du snapshot (prix, politique, marges, timezone).
-11. Résultat idempotent (retour du brouillon persisté).
+7. Création du brouillon `HELD` avec l'échéance commune (`expires_at = draft_expires_at` où `draft_expires_at` est calculé une fois au début de la transaction via `transaction_timestamp() + interval '10 minutes'`).
+8. Création des lignes.
+9. Création des `inventory_blocks` de type `HOLD` (statut `ACTIVE`, `expires_at = draft_expires_at`, `source_id = draft_id`).
+10. Création des allocations (référence les lignes et les blocs créés aux étapes 8 et 9).
+11. Persistance du snapshot (prix, politique, marges, timezone).
+12. Résultat idempotent (retour du brouillon persisté).
 
 **En cas d'inventaire insuffisant** : la transaction est annulée (ROLLBACK). Aucune création partielle ne subsiste. Le client reçoit une erreur explicite.
 
