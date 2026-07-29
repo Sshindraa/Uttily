@@ -7,6 +7,18 @@ import * as schema from './schema';
 export type DatabaseClient = ReturnType<typeof createDatabase>;
 
 /**
+ * Transaction PostgreSQL active (Drizzle). Utilisé par les fonctions de domaine
+ * qui doivent s'exécuter exclusivement à l'intérieur d'une transaction explicite
+ * (ex : lockKey, completeKey, failKey du module idempotency).
+ */
+export type DatabaseTransaction = PgTransaction<
+  PostgresJsQueryResultHKT,
+  typeof schema,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  any
+>;
+
+/**
  * Type d'exécuteur acceptant soit un client base de données, soit une
  * transaction PostgreSQL active. Utilisé par les fonctions de domaine
  * qui peuvent être appelées à l'intérieur d'une transaction (ex : garde-fou

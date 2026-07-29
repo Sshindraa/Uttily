@@ -25,3 +25,6 @@ export * from './availability/index';
 
 // Lot 4 — Prix et calcul des jours civils.
 export * from './pricing/index';
+
+// Lot 4 — Idempotence persistée.
+export * from './idempotency/index';
