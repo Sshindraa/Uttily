@@ -8,7 +8,7 @@ Ces sujets ne doivent pas être tranchés implicitement dans le code.
 | ORM et stratégie de migrations | Lot 0 | Technique | Résolu — ADR-004 (Drizzle ORM + Drizzle Kit) |
 | Prestataire d'hébergement MVP | Lot 0 | Technique | Résolu — ADR-005 (Vercel + Neon, région européenne) |
 | Mode Stripe Connect et responsabilité juridique | Lot 5 | Direction / juridique | Ouvert — commission du brouillon = UNDETERMINED, valeur obligatoire avant snapshot de réservation confirmée |
-| Politique d'annulation par défaut | Lot 4 | Produit / juridique | Décision produit rendue — validation juridique en attente |
+| Politique d'annulation par défaut | Lot 5 / production | Produit / juridique | Décision produit rendue — validation juridique requise avant Lot 5 / activation en production (ne bloque pas le Lot 4 technique) |
 | Stratégie de caution par catégorie | Lot 5 | Produit / juridique | Ouvert |
 | Taxes, facturation et rôle légal d'Uttily | Lot 5 | Finance / juridique | Ouvert — nécessaire avant confirmation et paiements du Lot 5 ; le Lot 4 ne calcule aucune taxe (`tax_status = UNDETERMINED`) |
 | Compensation des paiements confirmés tardivement | Lot 5 | Produit / paiement / juridique | Ouvert — un paiement confirmé après libération du hold déclenche une compensation idempotente ; la mécanique exacte du remboursement reste à définir |

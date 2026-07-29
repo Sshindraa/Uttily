@@ -32,6 +32,8 @@ Les principes de transparence des prix, de politiques prédéfinies et de fuseau
 
 **Décision** : Uttily propose trois politiques prédéfinies. La politique **Flexible** est la valeur par défaut du MVP.
 
+**Source** : La politique applicable est choisie au niveau de l'organisation (`organizations.default_cancellation_policy_code`), pas par variante. Valeur par défaut : `FLEXIBLE`. Choix parmi `FLEXIBLE | MODERATE | FIRM`. Les définitions des politiques (bornes, pourcentages, version) sont versionnées côté domaine. Au moment du brouillon, le snapshot copie `policy_code`, `policy_version` et le fuseau IANA du lieu (`timezone`). Aucune politique par variante au MVP.
+
 **Flexible** (par défaut) :
 
 - Annulation au moins 24 heures avant `customer_start_at` : 100 % remboursé.

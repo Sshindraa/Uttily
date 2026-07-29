@@ -1,9 +1,9 @@
 # ADR-009 — Brouillon de réservation, prix, idempotence et holds
 
-- **Statut** : Proposé
+- **Statut** : Accepté (périmètre Lot 4 technique)
 - **Date** : 2026-07-28
 - **Décisions produit** : approuvées par délégation du porteur produit (voir `docs/product/lot4-arbitrage.md`)
-- **Validations juridique/finance** : en attente pour les sujets concernés
+- **Validations juridique/finance** : la validation juridique des politiques d'annulation est reportée au Lot 5 / activation en production (voir section « Périmètre d'acceptation »)
 
 ## 1. Contexte
 
@@ -12,6 +12,37 @@ Le Lot 4 prépare une réservation fiable avant paiement. Il s'appuie sur l'ADR-
 Le brouillon de réservation (`booking_drafts`) est l'entité centrale du Lot 4 : il capture la période client, les marges opérationnelles, le prix calculé, la politique d'annulation, et déclenche l'allocation atomique des exemplaires avec création de holds. L'idempotence garantit qu'une requête répétée ne crée jamais un doublon. Un worker expire les holds abandonnés.
 
 Ce lot ne couvre pas la confirmation de réservation, le paiement, ni la caution (Lot 5).
+
+## 1b. Périmètre d'acceptation
+
+L'acceptation de cet ADR couvre **uniquement le Lot 4 technique** : création du modèle de données, calcul du prix et des jours civils, idempotence persistée, création atomique brouillon + lignes + allocations + holds, et expiration par batch.
+
+**Ce que l'acceptation n'autorise pas** :
+
+- Aucune échéance de remboursement n'est exécutée au Lot 4.
+- Aucune base remboursable n'est calculée.
+- Aucune API d'annulation ou de remboursement.
+- Aucune politique d'annulation n'est présentée comme juridiquement validée.
+- La confirmation de réservation reste impossible puisque taxes et commission sont encore indéterminées.
+
+**Garde-fous au Lot 4** :
+
+- `cancellation_policy_snapshot` conserve seulement `policy_code`, `policy_version` et `timezone`.
+- Aucun calcul de remboursement, aucune base remboursable.
+- Aucune API d'annulation ou de remboursement.
+- Aucune politique présentée comme juridiquement validée.
+- La confirmation reste impossible (taxes et commission indéterminées).
+
+**Verrou juridique déplacé** :
+
+La validation juridique des politiques d'annulation (voir `docs/product/lot4-legal-validation.md`) ne bloque plus l'implémentation technique du Lot 4. Elle bloque désormais :
+
+- l'activation des politiques d'annulation en production ;
+- tout calcul de remboursement ;
+- la confirmation et le paiement du Lot 5 ;
+- le passage public du MVP.
+
+C'est cohérent avec le Lot 4 : il crée un prix, un brouillon, des allocations et des holds, mais n'annule ni ne rembourse aucune réservation.
 
 ## 2. Décisions produit applicables
 
@@ -89,6 +120,8 @@ booking_drafts
 **Enum `tax_status`** : `UNDETERMINED`, `NOT_APPLICABLE`, `APPLIED`.
 
 **Snapshot de politique d'annulation** (`jsonb`) : `policy_code`, `policy_version`, `timezone`. Les échéances absolues calculées, `confirmed_at` et la fenêtre commerciale sont ajoutées au snapshot de réservation confirmée (Lot 5).
+
+**Source de la politique d'annulation** : `organizations.default_cancellation_policy_code` (niveau organisation, pas variante). Valeur par défaut : `FLEXIBLE`. Choix parmi `FLEXIBLE | MODERATE | FIRM`. Les définitions des politiques (bornes, pourcentages, version) sont versionnées côté domaine. Au moment du brouillon, le snapshot copie `policy_code`, `policy_version` et le fuseau IANA du lieu (`timezone`). Aucune politique par variante au MVP.
 
 **Contraintes** :
 
@@ -623,6 +656,11 @@ ALTER TABLE locations
 ALTER TABLE locations
   ADD CONSTRAINT locations_cleanup_buffer_nonneg
     CHECK (cleanup_buffer_minutes >= 0);
+
+-- Politique d'annulation par défaut au niveau organisation
+ALTER TABLE organizations
+  ADD CONSTRAINT organizations_default_cancellation_policy_valid
+  CHECK (default_cancellation_policy_code IN ('FLEXIBLE', 'MODERATE', 'FIRM'));
 ```
 
 ## 21. Plan de tests
@@ -672,7 +710,8 @@ Les tests suivants supposent un modèle de paiement qui n'existera pas au Lot 4.
 ## 23. Conséquences
 
 - Quatre nouvelles tables : `booking_drafts`, `booking_draft_lines`, `allocations`, `idempotency_records`.
-- Trois nouveaux enums : `booking_draft_status`, `tax_status`, `allocation_status`.
+- Quatre nouveaux enums : `booking_draft_status`, `tax_status`, `allocation_status`, `cancellation_policy_code` (`FLEXIBLE`, `MODERATE`, `FIRM`).
+- Une colonne `default_cancellation_policy_code` sur `organizations` (enum `cancellation_policy_code`, défaut `FLEXIBLE`).
 - Un endpoint Cron : `/api/cron/expire-holds`.
 - Une constante : `HOLD_DURATION_MINUTES = 10`.
 - Des champs de marges sur `locations` : `prep_buffer_minutes`, `cleanup_buffer_minutes` (défaut 30).
@@ -682,18 +721,16 @@ Les tests suivants supposent un modèle de paiement qui n'existera pas au Lot 4.
 - La confirmation de réservation est reportée au Lot 5.
 - La compensation des paiements tardifs est reportée au Lot 5 (mécanique exacte).
 
-## 24. Questions empêchant l'acceptation
+## 24. Questions et périmètre d'acceptation
 
-Avant de passer l'ADR-009 de « Proposé » à « Accepté », les questions suivantes doivent être distinguées :
+### Résolues par le déplacement du verrou juridique
 
-### Blocages empêchant l'acceptation
+1. **Validation juridique des politiques d'annulation** : cette validation ne bloque plus l'acceptation de l'ADR-009 pour le Lot 4 technique. Elle est déplacée vers « avant Lot 5 / activation en production » (voir section 1b). Le Lot 4 n'exécute aucune règle d'annulation financière : `cancellation_policy_snapshot` fige uniquement `policy_code`, `policy_version` et `timezone`, sans calculer d'échéances de remboursement.
 
-1. **Validation juridique des politiques d'annulation** : conformité des trois politiques prédéfinies et définition de la base remboursable (open-questions.md : validation juridique en attente). L'ADR-009 ne peut PAS passer à Accepté tant que cette validation n'est pas rendue. Requise avant le Lot 4.
+### Réserves Lot 5 n'empêchant pas le Lot 4
 
-### Réserves Lot 5 n'empêchant pas la conception du Lot 4
+2. **Taxes, facturation et rôle légal d'Uttily** : nécessaire avant la confirmation du Lot 5, mais n'empêche pas le Lot 4 car `tax_status = UNDETERMINED` (open-questions.md : OUVERT, Lot 5).
+3. **Mode Stripe Connect et responsabilité juridique** : nécessaire pour la commission au Lot 5, mais n'empêche pas le Lot 4 car `commission_amount_minor = null` (open-questions.md : OUVERT, Lot 5).
+4. **Compensation des paiements confirmés tardivement** : n'empêche pas le Lot 4 car la compensation est reportée au Lot 5 (open-questions.md : OUVERT, Lot 5).
 
-2. **Taxes, facturation et rôle légal d'Uttily** : nécessaire avant la confirmation du Lot 5, mais n'empêche pas l'acceptation au Lot 4 car `tax_status = UNDETERMINED` (open-questions.md : OUVERT, Lot 5).
-3. **Mode Stripe Connect et responsabilité juridique** : nécessaire pour la commission au Lot 5, mais n'empêche pas l'acceptation au Lot 4 car `commission_amount_minor = null` (open-questions.md : OUVERT, Lot 5).
-4. **Compensation des paiements confirmés tardivement** : n'empêche pas l'acceptation au Lot 4 car la compensation est reportée au Lot 5 (open-questions.md : OUVERT, Lot 5).
-
-**Conclusion** : L'ADR-009 ne peut pas passer à Accepté tant que la validation juridique des politiques d'annulation n'est pas rendue. Les réserves Lot 5 (taxes, commission, compensation) n'empêchent pas l'acceptation au Lot 4 car elles sont reportées et modélisées comme nullable/UNDETERMINED.
+**Conclusion** : L'ADR-009 est acceptée pour le périmètre du Lot 4 technique. Les réserves Lot 5 (validation juridique des politiques d'annulation, taxes, commission, compensation) restent des blocages pour le Lot 5 et l'activation en production.
