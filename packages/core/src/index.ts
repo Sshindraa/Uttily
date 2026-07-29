@@ -22,3 +22,6 @@ export * from './catalog/index';
 
 // Lot 3 — Disponibilité et blocages (InventoryBlock).
 export * from './availability/index';
+
+// Lot 4 — Prix et calcul des jours civils.
+export * from './pricing/index';
