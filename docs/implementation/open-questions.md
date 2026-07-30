@@ -7,11 +7,11 @@ Ces sujets ne doivent pas être tranchés implicitement dans le code.
 | Fournisseur d'identité OIDC | Lot 1 | Produit / technique | Résolu — ADR-006 (Clerk) |
 | ORM et stratégie de migrations | Lot 0 | Technique | Résolu — ADR-004 (Drizzle ORM + Drizzle Kit) |
 | Prestataire d'hébergement MVP | Lot 0 | Technique | Résolu — ADR-005 (Vercel + Neon, région européenne) |
-| Mode Stripe Connect et responsabilité juridique | Lot 5 | Direction / juridique | Ouvert — commission du brouillon = UNDETERMINED, valeur obligatoire avant snapshot de réservation confirmée |
-| Politique d'annulation par défaut | Lot 5 / production | Produit / juridique | Décision produit rendue — validation juridique requise avant Lot 5 / activation en production (ne bloque pas le Lot 4 technique) |
-| Stratégie de caution par catégorie | Lot 5 | Produit / juridique | Ouvert |
-| Taxes, facturation et rôle légal d'Uttily | Lot 5 | Finance / juridique | Ouvert — nécessaire avant confirmation et paiements du Lot 5 ; le Lot 4 ne calcule aucune taxe (`tax_status = UNDETERMINED`) |
-| Compensation des paiements confirmés tardivement | Lot 5 | Produit / paiement / juridique | Ouvert — un paiement confirmé après libération du hold déclenche une compensation idempotente ; la mécanique exacte du remboursement reste à définir |
+| Mode Stripe Connect et responsabilité juridique | Stripe LIVE | Direction / juridique / finance | Décision technique acceptée — destination charges mono-loueur + `application_fee_amount`, controller properties sans type legacy (ADR-010). Restent à valider : settlement merchant, `on_behalf_of`, frais, soldes négatifs, remboursements et litiges. Commission obligatoire avant initiation. |
+| Politique d'annulation par défaut | Stripe LIVE / production | Produit / juridique | Décision produit rendue — validation juridique requise avant activation en production ; ne bloque pas l'implémentation technique Stripe TEST du Lot 5. |
+| Stratégie de caution par catégorie | ADR caution séparé / Stripe LIVE | Produit / juridique | Ouvert — explicitement séparée du paiement de location dans l'ADR-010 ; ne bloque pas les tests Stripe du paiement de location, mais doit être décidée avant usage réel si le pilote exige une caution. |
+| Taxes, facturation et rôle légal d'Uttily | Lot 5 / Stripe LIVE | Finance / juridique | Ouvert — nécessaire avant toute initiation réelle ; le résolveur Lot 5 doit produire `APPLIED` ou `NOT_APPLICABLE`, jamais conserver `UNDETERMINED` (ADR-010). |
+| Compensation des paiements confirmés tardivement | Stripe LIVE | Produit / paiement / juridique | Décision technique acceptée — remboursement intégral idempotent, inversion du transfert et restitution de la commission, sans réallocation. Restent à valider : délai/message client, frais Stripe et notifications (ADR-010). |
 | Catégories globales vs par organisation | Lot 2 | Produit / technique | Résolu — catégories globales (taxonomie partagée gérée par l'admin Uttily) |
 | Destination et partenaires pilotes confirmés | Lot 7 avant publication publique | Direction / commercial | Ouvert |
 | Livraison ou retrait uniquement au pilote | Lot 1 | Produit | Résolu — retrait en établissement uniquement au MVP |

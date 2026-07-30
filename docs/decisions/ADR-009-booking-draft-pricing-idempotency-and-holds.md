@@ -3,7 +3,7 @@
 - **Statut** : Accepté (périmètre Lot 4 technique)
 - **Date** : 2026-07-28
 - **Décisions produit** : approuvées par délégation du porteur produit (voir `docs/product/lot4-arbitrage.md`)
-- **Validations juridique/finance** : la validation juridique des politiques d'annulation est reportée au Lot 5 / activation en production (voir section « Périmètre d'acceptation »)
+- **Validations juridique/finance** : la validation juridique des politiques d'annulation est reportée à Stripe LIVE / activation en production ; l'ADR-010 autorise le Lot 5 technique en Stripe TEST
 
 ## 1. Contexte
 
@@ -39,7 +39,7 @@ La validation juridique des politiques d'annulation (voir `docs/product/lot4-leg
 
 - l'activation des politiques d'annulation en production ;
 - tout calcul de remboursement ;
-- la confirmation et le paiement du Lot 5 ;
+- la confirmation et le paiement réels en Stripe LIVE ;
 - le passage public du MVP.
 
 C'est cohérent avec le Lot 4 : il crée un prix, un brouillon, des allocations et des holds, mais n'annule ni ne rembourse aucune réservation.
@@ -726,12 +726,12 @@ Les tests suivants supposent un modèle de paiement qui n'existera pas au Lot 4.
 
 ### Résolues par le déplacement du verrou juridique
 
-1. **Validation juridique des politiques d'annulation** : cette validation ne bloque plus l'acceptation de l'ADR-009 pour le Lot 4 technique. Elle est déplacée vers « avant Lot 5 / activation en production » (voir section 1b). Le Lot 4 n'exécute aucune règle d'annulation financière : `cancellation_policy_snapshot` fige uniquement `policy_code`, `policy_version` et `timezone`, sans calculer d'échéances de remboursement.
+1. **Validation juridique des politiques d'annulation** : cette validation ne bloque plus l'acceptation de l'ADR-009 pour le Lot 4 technique. Elle est déplacée vers « avant Stripe LIVE / activation en production » (voir section 1b et ADR-010). Le Lot 4 n'exécute aucune règle d'annulation financière : `cancellation_policy_snapshot` fige uniquement `policy_code`, `policy_version` et `timezone`, sans calculer d'échéances de remboursement.
 
 ### Réserves Lot 5 n'empêchant pas le Lot 4
 
-2. **Taxes, facturation et rôle légal d'Uttily** : nécessaire avant la confirmation du Lot 5, mais n'empêche pas le Lot 4 car `tax_status = UNDETERMINED` (open-questions.md : OUVERT, Lot 5).
+2. **Taxes, facturation et rôle légal d'Uttily** : nécessaire avant la confirmation réelle en Stripe LIVE, mais n'empêche ni le Lot 4 ni l'implémentation Stripe TEST encadrée par l'ADR-010 ; le brouillon conserve `tax_status = UNDETERMINED`.
 3. **Mode Stripe Connect et responsabilité juridique** : nécessaire pour la commission au Lot 5, mais n'empêche pas le Lot 4 car `commission_amount_minor = null` (open-questions.md : OUVERT, Lot 5).
 4. **Compensation des paiements confirmés tardivement** : n'empêche pas le Lot 4 car la compensation est reportée au Lot 5 (open-questions.md : OUVERT, Lot 5).
 
-**Conclusion** : L'ADR-009 est acceptée pour le périmètre du Lot 4 technique. Les réserves Lot 5 (validation juridique des politiques d'annulation, taxes, commission, compensation) restent des blocages pour le Lot 5 et l'activation en production.
+**Conclusion** : L'ADR-009 est acceptée pour le périmètre du Lot 4 technique. L'ADR-010 accepte ensuite le Lot 5 technique en Stripe TEST. Les réserves juridique/finance (politiques d'annulation, taxes, commission et responsabilités) restent des blocages stricts pour Stripe LIVE et l'activation en production.

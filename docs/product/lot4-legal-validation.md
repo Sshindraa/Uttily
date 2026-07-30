@@ -1,10 +1,10 @@
 # Lot 4 — Fiche de validation juridique des politiques d'annulation
 
-- **Statut** : en attente de validation juridique (requise avant Lot 5 / activation en production)
+- **Statut** : en attente de validation juridique (requise avant Stripe LIVE / activation en production)
 - **Date** : 2026-07-28
 - **Émetteur** : produit (par délégation du porteur produit)
 - **Destinataire** : validateur juridique (interne ou externe)
-- **Blocage** : l'activation des politiques d'annulation en production et le Lot 5 (remboursement, confirmation) ne peuvent pas avoir lieu tant que cette validation n'est pas rendue. L'implémentation technique du Lot 4 n'est plus bloquée (ADR-009 acceptée pour le périmètre Lot 4 technique).
+- **Blocage** : les paiements réels, la confirmation réelle et l'activation des politiques d'annulation en production ne peuvent pas avoir lieu tant que cette validation n'est pas rendue. L'implémentation technique Stripe TEST du Lot 5 reste autorisée par l'ADR-010 ; elle ne constitue pas une activation commerciale.
 - **Périmètre** : politiques d'annulation produit du Lot 4. Les sujets fiscaux, Stripe Connect et la compensation des paiements tardifs sont hors périmètre (Lot 5).
 
 ## Contexte produit
@@ -100,4 +100,4 @@ Le validateur juridique doit rendre une décision écrite couvrant :
 5. Règles d'affichage et de consentement.
 6. Cas particuliers à traiter.
 
-À réception de cette décision, les politiques d'annulation pourront être activées en production et le Lot 5 pourra intégrer le calcul de remboursement. L'ADR-009 est déjà acceptée pour le périmètre du Lot 4 technique.
+À réception de cette décision, les politiques d'annulation et le paiement pourront être activés en production, sous réserve des autres verrous finance/juridique de l'ADR-010. L'implémentation technique Stripe TEST du Lot 5 peut avancer sans cette activation.
