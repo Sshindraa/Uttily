@@ -396,5 +396,131 @@ describe.skipIf(shouldSkipIntegrationTests())(
         testDb = originalDb;
       }
     });
+
+    // 7. Fail-closed — CRON_SECRET absent de l'environnement
+    it('7. retourne 401 quand CRON_SECRET est absent (fail-closed)', async () => {
+      if (!testDb) return;
+      const savedSecret = process.env.CRON_SECRET;
+      delete process.env.CRON_SECRET;
+      try {
+        // Envoyer un header ressemblant à un secret valide : le handler doit
+        // quand même refuser car le secret de référence est absent.
+        const response = await GET(makeRequest(CRON_SECRET));
+        expect(response.status).toBe(401);
+        const body = await response.json();
+        expect(body.error).toBe('Unauthorized');
+      } finally {
+        process.env.CRON_SECRET = savedSecret;
+      }
+    });
+
+    // 8. Logs structurés — vérifie le format JSON et les métriques ADR-009
+    it('8. logue des événements structurés avec durationMs et expiredHoldCount', async () => {
+      if (!testDb || !rawSql) return;
+      const ids = await seedBaseData();
+      await createExpiredDraft(ids, 'logging');
+
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        const response = await GET(makeRequest(CRON_SECRET));
+        expect(response.status).toBe(200);
+
+        // Log de succès présent.
+        expect(logSpy).toHaveBeenCalledTimes(1);
+        const logCall = JSON.parse(logSpy.mock.calls[0]![0] as string);
+        expect(logCall.event).toBe('cron.expire-holds');
+        expect(logCall.durationMs).toBeGreaterThanOrEqual(0);
+        expect(logCall.expiredDraftCount).toBe(1);
+        expect(logCall.expiredHoldCount).toBeGreaterThanOrEqual(1);
+        expect(logCall.processedCount).toBe(1);
+        expect(logCall.anomalyCount).toBe(0);
+        expect(logCall.batchLimit).toBe(10);
+
+        // Pas de warn d'anomalie ni d'erreur.
+        expect(warnSpy).not.toHaveBeenCalled();
+        expect(errorSpy).not.toHaveBeenCalled();
+      } finally {
+        logSpy.mockRestore();
+        warnSpy.mockRestore();
+        errorSpy.mockRestore();
+      }
+    });
+
+    // 9. Log d'anomalie — warn quand anomalyCount > 0
+    it('9. logue un warn structuré quand anomalyCount > 0', async () => {
+      if (!testDb || !rawSql) return;
+      const ids = await seedBaseData();
+      const { blockIds } = await createExpiredDraft(ids, 'anomaly-log');
+
+      // Corrompre un bloc pour provoquer une anomalie.
+      await rawSql`UPDATE "inventory_blocks" SET "status" = 'RELEASED' WHERE "id" = ${blockIds[0]!}`;
+
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        const response = await GET(makeRequest(CRON_SECRET));
+        expect(response.status).toBe(200);
+
+        // Log de succès présent.
+        expect(logSpy).toHaveBeenCalledTimes(1);
+        const logCall = JSON.parse(logSpy.mock.calls[0]![0] as string);
+        expect(logCall.event).toBe('cron.expire-holds');
+        expect(logCall.anomalyCount).toBe(1);
+        expect(logCall.expiredDraftCount).toBe(0);
+        expect(logCall.expiredHoldCount).toBe(0);
+
+        // Warn d'anomalie présent.
+        expect(warnSpy).toHaveBeenCalledTimes(1);
+        const warnCall = JSON.parse(warnSpy.mock.calls[0]![0] as string);
+        expect(warnCall.event).toBe('cron.expire-holds.anomalies');
+        expect(warnCall.anomalyCount).toBe(1);
+        expect(warnCall.reasons).toEqual(['BLOCK_NOT_ACTIVE']);
+        expect(warnCall.durationMs).toBeGreaterThanOrEqual(0);
+
+        // Pas d'erreur.
+        expect(errorSpy).not.toHaveBeenCalled();
+      } finally {
+        logSpy.mockRestore();
+        warnSpy.mockRestore();
+        errorSpy.mockRestore();
+      }
+    });
+
+    // 10. Log d'erreur — error quand le batch échoue
+    it("10. logue une erreur structurée en cas d'échec technique", async () => {
+      if (!testDb) return;
+      const originalDb = testDb;
+      testDb = null as unknown as DatabaseClient;
+
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        const response = await GET(makeRequest(CRON_SECRET));
+        expect(response.status).toBe(500);
+
+        // Error log présent.
+        expect(errorSpy).toHaveBeenCalledTimes(1);
+        const errorCall = JSON.parse(errorSpy.mock.calls[0]![0] as string);
+        expect(errorCall.event).toBe('cron.expire-holds.error');
+        expect(errorCall.durationMs).toBeGreaterThanOrEqual(0);
+        expect(typeof errorCall.error).toBe('string');
+
+        // Pas de log de succès ni de warn.
+        expect(logSpy).not.toHaveBeenCalled();
+        expect(warnSpy).not.toHaveBeenCalled();
+      } finally {
+        testDb = originalDb;
+        logSpy.mockRestore();
+        warnSpy.mockRestore();
+        errorSpy.mockRestore();
+      }
+    });
   },
 );

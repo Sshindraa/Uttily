@@ -64,16 +64,21 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   // 2. Exécuter le batch.
+  const startTime = Date.now();
   try {
     const db = getDb();
     const result = await expireBookingDraftsBatch(db, 10);
 
     // 3. Log structuré.
+    const durationMs = Date.now() - startTime;
+    const expiredHoldCount = result.expired.reduce((sum, e) => sum + e.blockIds.length, 0);
     console.log(
       JSON.stringify({
         event: 'cron.expire-holds',
+        durationMs,
         processedCount: result.processedCount,
-        expiredCount: result.expiredCount,
+        expiredDraftCount: result.expiredCount,
+        expiredHoldCount,
         anomalyCount: result.anomalyCount,
         batchLimit: result.batchLimit,
       }),
@@ -84,6 +89,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       console.warn(
         JSON.stringify({
           event: 'cron.expire-holds.anomalies',
+          durationMs,
           anomalyCount: result.anomalyCount,
           reasons: result.anomalies.map((a) => a.reason),
         }),
@@ -100,9 +106,11 @@ export async function GET(request: Request): Promise<NextResponse> {
     });
   } catch (error) {
     // 5. Erreur technique : log et 500.
+    const durationMs = Date.now() - startTime;
     console.error(
       JSON.stringify({
         event: 'cron.expire-holds.error',
+        durationMs,
         error: error instanceof Error ? error.message : String(error),
       }),
     );

@@ -44,7 +44,7 @@ documentées au fur et à mesure de leur introduction dans les lots concernés.
 ## Vercel Cron — expiration des holds (ADR-009 §18-19)
 
 L'endpoint `/api/cron/expire-holds` est déclenché par Vercel Cron chaque
-minute (`* * * * *`, voir `vercel.json`). Il authentifie la requête via le
+minute (`* * * * *`, voir `apps/web/vercel.json`). Il authentifie la requête via le
 header `Authorization: Bearer ${CRON_SECRET}` et appelle
 `expireBookingDraftsBatch(db, 10)`.
 
@@ -62,7 +62,8 @@ header `Authorization: Bearer ${CRON_SECRET}` et appelle
    - Ne jamais committer la valeur réelle.
 
 3. **Vercel — Cron Jobs** :
-   - Le fichier `vercel.json` à la racine du projet déclare le cron :
+   - Le fichier `apps/web/vercel.json` (Root Directory Vercel = `apps/web`)
+     déclare le cron :
      ```json
      {
        "crons": [
@@ -73,6 +74,9 @@ header `Authorization: Bearer ${CRON_SECRET}` et appelle
    - Vercel détecte automatiquement cette configuration au déploiement.
    - L'exécution chaque minute nécessite un plan Vercel Pro ou
      Enterprise (le plan Hobby est limité à une exécution quotidienne).
+   - Les Cron Jobs ne s'exécutent que sur les déploiements Production.
+     Configurer `CRON_SECRET` en Preview peut servir aux tests manuels,
+     mais ce n'est pas requis par le Cron.
 
 4. **Local** :
    - Ajouter `CRON_SECRET=dev-cron-secret-local` dans `.env.local`.
@@ -93,10 +97,10 @@ header `Authorization: Bearer ${CRON_SECRET}` et appelle
 ### Observabilité
 
 - Log structuré JSON à chaque invocation :
-  `{"event":"cron.expire-holds","processedCount":N,"expiredCount":N,"anomalyCount":N,"batchLimit":10}`.
+  `{"event":"cron.expire-holds","durationMs":N,"processedCount":N,"expiredDraftCount":N,"expiredHoldCount":N,"anomalyCount":N,"batchLimit":10}`.
 - Alerte si `anomalyCount > 0` :
-  `{"event":"cron.expire-holds.anomalies","anomalyCount":N,"reasons":[...]}`.
+  `{"event":"cron.expire-holds.anomalies","durationMs":N,"anomalyCount":N,"reasons":[...]}`.
 - Log d'erreur technique :
-  `{"event":"cron.expire-holds.error","error":"..."}`.
+  `{"event":"cron.expire-holds.error","durationMs":N,"error":"..."}`.
 - Surveiller `anomalyCount` répété > 0 (risque de starvation, voir
   étape 5).
