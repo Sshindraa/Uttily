@@ -31,3 +31,6 @@ export * from './idempotency/index';
 
 // Lot 4 — Création atomique de brouillon de réservation.
 export * from './booking-drafts/index';
+
+// Lot 5 — Résolution des termes financiers (ADR-010).
+export * from './financial-terms/index';
