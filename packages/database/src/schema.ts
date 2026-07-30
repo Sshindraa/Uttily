@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   customType,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -282,6 +283,91 @@ export const bookingDraftStatus = pgEnum('booking_draft_status', [
 export const taxStatus = pgEnum('tax_status', ['UNDETERMINED', 'NOT_APPLICABLE', 'APPLIED']);
 
 export const allocationStatus = pgEnum('allocation_status', ['ALLOCATED', 'RELEASED', 'CONVERTED']);
+
+// Lot 5 — Paiement Stripe Connect, confirmation et réconciliation (ADR-010).
+export const paymentProvider = pgEnum('payment_provider', ['STRIPE']);
+
+export const paymentEnvironment = pgEnum('payment_environment', ['TEST', 'LIVE']);
+
+export const accountApiGeneration = pgEnum('account_api_generation', [
+  'ACCOUNTS_V2',
+  'ACCOUNTS_V1_CONTROLLER_PROPERTIES',
+]);
+
+export const onboardingStatus = pgEnum('onboarding_status', [
+  'PENDING',
+  'SUBMITTED',
+  'ENABLED',
+  'DISABLED',
+  'REJECTED',
+]);
+
+export const capabilityStatus = pgEnum('capability_status', [
+  'ACTIVE',
+  'INACTIVE',
+  'PENDING',
+  'UNREQUESTED',
+]);
+
+export const settlementMerchantMode = pgEnum('settlement_merchant_mode', [
+  'PLATFORM',
+  'CONNECTED_ACCOUNT',
+]);
+
+export const chargeModel = pgEnum('charge_model', ['DESTINATION']);
+
+export const paymentStatus = pgEnum('payment_status', [
+  'PENDING_PROVIDER',
+  'REQUIRES_PAYMENT_METHOD',
+  'REQUIRES_ACTION',
+  'PROCESSING',
+  'SUCCEEDED',
+  'FAILED',
+  'CANCELLED',
+]);
+
+export const paymentAttemptStatus = pgEnum('payment_attempt_status', [
+  'PENDING_PROVIDER',
+  'REQUIRES_PAYMENT_METHOD',
+  'REQUIRES_ACTION',
+  'PROCESSING',
+  'SUCCEEDED',
+  'FAILED',
+  'CANCELLED',
+]);
+
+export const webhookEventStatus = pgEnum('webhook_event_status', [
+  'RECEIVED',
+  'PROCESSED',
+  'IGNORED',
+  'FAILED',
+]);
+
+export const bookingStatus = pgEnum('booking_status', [
+  'CONFIRMED',
+  'READY_FOR_PICKUP',
+  'ACTIVE',
+  'RETURNED',
+  'CLOSED',
+  'CANCELLED',
+  'REFUNDED',
+]);
+
+export const outboxEventStatus = pgEnum('outbox_event_status', [
+  'PENDING',
+  'PROCESSING',
+  'PROCESSED',
+  'FAILED',
+]);
+
+export const refundReason = pgEnum('refund_reason', ['LATE_PAYMENT_NO_BOOKING']);
+
+export const refundStatus = pgEnum('refund_status', [
+  'PENDING',
+  'SUBMITTED',
+  'SUCCEEDED',
+  'FAILED',
+]);
 
 export const categories = pgTable(
   'categories',
@@ -646,6 +732,408 @@ export const idempotencyRecords = pgTable(
   ],
 );
 
+// ---------------------------------------------------------------------------
+// Lot 5 — Paiement Stripe Connect, confirmation et réconciliation (ADR-010).
+// ---------------------------------------------------------------------------
+// Note : les triggers de cohérence multi-tenant (before_check_payment_org_consistency,
+// before_check_payment_attempt_org_consistency, before_check_booking_org_consistency,
+// before_check_booking_line_org_consistency, before_check_booking_item_consistency,
+// before_check_refund_org_consistency) sont définis en SQL dans la migration 0019
+// (ADR-010). Drizzle ne les représente pas dans le schéma TypeScript, mais ils sont
+// actifs en base.
+
+export const organizationPaymentAccounts = pgTable(
+  'organization_payment_accounts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    provider: paymentProvider('provider').notNull().default('STRIPE'),
+    environment: paymentEnvironment('environment').notNull(),
+    providerAccountId: text('provider_account_id').notNull(),
+    accountApiGeneration: accountApiGeneration('account_api_generation').notNull(),
+    onboardingStatus: onboardingStatus('onboarding_status').notNull(),
+    chargesEnabled: boolean('charges_enabled').notNull().default(false),
+    payoutsEnabled: boolean('payouts_enabled').notNull().default(false),
+    transfersCapabilityStatus: capabilityStatus('transfers_capability_status').notNull(),
+    settlementMerchantMode: settlementMerchantMode('settlement_merchant_mode').notNull(),
+    controllerConfigurationSnapshot: jsonb('controller_configuration_snapshot').notNull(),
+    requirementsSnapshot: jsonb('requirements_snapshot').notNull(),
+    lastProviderEventAt: timestamp('last_provider_event_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('organization_payment_accounts_org_provider_env_unique').on(
+      t.organizationId,
+      t.provider,
+      t.environment,
+    ),
+    unique('organization_payment_accounts_provider_env_account_unique').on(
+      t.provider,
+      t.environment,
+      t.providerAccountId,
+    ),
+    check('organization_payment_accounts_provider_stripe', sql`${t.provider} = 'STRIPE'`),
+    index('organization_payment_accounts_organization_id_environment_index').on(
+      t.organizationId,
+      t.environment,
+    ),
+  ],
+);
+
+export const payments = pgTable(
+  'payments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    draftId: uuid('draft_id')
+      .notNull()
+      .unique()
+      .references(() => bookingDrafts.id),
+    customerUserId: uuid('customer_user_id')
+      .notNull()
+      .references(() => users.id),
+    status: paymentStatus('status').notNull(),
+    amountMinor: bigint('amount_minor', { mode: 'number' }).notNull(),
+    currency: text('currency').notNull().default('EUR'),
+    taxStatus: taxStatus('tax_status').notNull(),
+    taxAmountMinor: bigint('tax_amount_minor', { mode: 'number' }),
+    taxRateBps: integer('tax_rate_bps'),
+    taxRuleSnapshot: jsonb('tax_rule_snapshot'),
+    commissionAmountMinor: bigint('commission_amount_minor', { mode: 'number' }).notNull(),
+    commissionRuleSnapshot: jsonb('commission_rule_snapshot'),
+    financialTermsVersion: text('financial_terms_version').notNull(),
+    legalTermsVersion: text('legal_terms_version').notNull(),
+    termsAcceptanceSnapshot: jsonb('terms_acceptance_snapshot').notNull(),
+    connectedAccountId: text('connected_account_id').notNull(),
+    onBehalfOfAccountId: text('on_behalf_of_account_id'),
+    chargeModel: chargeModel('charge_model').notNull().default('DESTINATION'),
+    settlementMerchantMode: settlementMerchantMode('settlement_merchant_mode').notNull(),
+    processingStartedAt: timestamp('processing_started_at', { withTimezone: true }),
+    processingDeadlineAt: timestamp('processing_deadline_at', { withTimezone: true }),
+    succeededAt: timestamp('succeeded_at', { withTimezone: true }),
+    failedAt: timestamp('failed_at', { withTimezone: true }),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('payments_currency_eur', sql`${t.currency} = 'EUR'`),
+    check('payments_amount_nonneg', sql`${t.amountMinor} >= 0`),
+    check('payments_amount_max_safe', sql`${t.amountMinor} <= 9007199254740991`),
+    check('payments_commission_nonneg', sql`${t.commissionAmountMinor} >= 0`),
+    check('payments_commission_max_safe', sql`${t.commissionAmountMinor} <= 9007199254740991`),
+    check('payments_commission_lte_amount', sql`${t.commissionAmountMinor} <= ${t.amountMinor}`),
+    check('payments_tax_not_undetermined', sql`${t.taxStatus} <> 'UNDETERMINED'`),
+    check(
+      'payments_tax_not_applicable_zero',
+      sql`${t.taxStatus} <> 'NOT_APPLICABLE' OR ${t.taxAmountMinor} = 0`,
+    ),
+    check(
+      'payments_tax_applied_not_null',
+      sql`${t.taxStatus} <> 'APPLIED' OR ${t.taxAmountMinor} IS NOT NULL`,
+    ),
+    check('payments_tax_nonneg', sql`${t.taxAmountMinor} IS NULL OR ${t.taxAmountMinor} >= 0`),
+    check(
+      'payments_tax_max_safe',
+      sql`${t.taxAmountMinor} IS NULL OR ${t.taxAmountMinor} <= 9007199254740991`,
+    ),
+    check('payments_charge_model_destination', sql`${t.chargeModel} = 'DESTINATION'`),
+    check(
+      'payments_succeeded_has_timestamp',
+      sql`${t.status} <> 'SUCCEEDED' OR ${t.succeededAt} IS NOT NULL`,
+    ),
+    index('payments_organization_id_status_index').on(t.organizationId, t.status),
+    index('payments_non_terminal_processing_deadline_index')
+      .on(t.status, t.processingDeadlineAt)
+      .where(
+        sql`${t.status} IN ('PENDING_PROVIDER', 'REQUIRES_PAYMENT_METHOD', 'REQUIRES_ACTION', 'PROCESSING')`,
+      ),
+  ],
+);
+
+export const paymentAttempts = pgTable(
+  'payment_attempts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    paymentId: uuid('payment_id')
+      .notNull()
+      .references(() => payments.id),
+    attemptNumber: integer('attempt_number').notNull(),
+    status: paymentAttemptStatus('status').notNull(),
+    providerPaymentIntentId: text('provider_payment_intent_id').unique(),
+    providerLatestChargeId: text('provider_latest_charge_id'),
+    providerIdempotencyKey: text('provider_idempotency_key').notNull().unique(),
+    providerStatus: text('provider_status').notNull(),
+    lastProviderErrorCode: text('last_provider_error_code'),
+    reconcileAfter: timestamp('reconcile_after', { withTimezone: true }),
+    reconcileLeaseUntil: timestamp('reconcile_lease_until', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('payment_attempts_payment_attempt_number_unique').on(t.paymentId, t.attemptNumber),
+    check('payment_attempts_attempt_number_positive', sql`${t.attemptNumber} > 0`),
+    check(
+      'payment_attempts_idempotency_key_nonempty',
+      sql`length(btrim(${t.providerIdempotencyKey})) > 0`,
+    ),
+    index('payment_attempts_payment_id_status_index').on(t.paymentId, t.status),
+    index('payment_attempts_reconcile_index')
+      .on(t.status, t.reconcileAfter, t.reconcileLeaseUntil)
+      .where(sql`${t.status} IN ('PENDING_PROVIDER', 'REQUIRES_ACTION', 'PROCESSING')`),
+  ],
+);
+
+export const paymentWebhookEvents = pgTable(
+  'payment_webhook_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    provider: paymentProvider('provider').notNull().default('STRIPE'),
+    environment: paymentEnvironment('environment').notNull(),
+    providerEventId: text('provider_event_id').notNull(),
+    providerEventCreatedAt: bigint('provider_event_created_at', { mode: 'number' }).notNull(),
+    eventType: text('event_type').notNull(),
+    providerObjectId: text('provider_object_id').notNull(),
+    providerAccountId: text('provider_account_id'),
+    apiVersion: text('api_version').notNull(),
+    payloadSha256: text('payload_sha256').notNull(),
+    normalizedPayload: jsonb('normalized_payload').notNull(),
+    status: webhookEventStatus('status').notNull().default('RECEIVED'),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+    failureCode: text('failure_code'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('payment_webhook_events_provider_env_event_unique').on(
+      t.provider,
+      t.environment,
+      t.providerEventId,
+    ),
+    check('payment_webhook_events_provider_stripe', sql`${t.provider} = 'STRIPE'`),
+    check('payment_webhook_events_payload_sha256_hex', sql`${t.payloadSha256} ~ '^[0-9a-f]{64}$'`),
+    index('payment_webhook_events_status_created_at_index').on(t.status, t.createdAt),
+  ],
+);
+
+export const bookings = pgTable(
+  'bookings',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    locationId: uuid('location_id')
+      .notNull()
+      .references(() => locations.id),
+    customerUserId: uuid('customer_user_id')
+      .notNull()
+      .references(() => users.id),
+    draftId: uuid('draft_id')
+      .notNull()
+      .unique()
+      .references(() => bookingDrafts.id),
+    paymentId: uuid('payment_id')
+      .notNull()
+      .unique()
+      .references(() => payments.id),
+    status: bookingStatus('status').notNull().default('CONFIRMED'),
+    customerStartAt: timestamp('customer_start_at', { withTimezone: true }).notNull(),
+    customerEndAt: timestamp('customer_end_at', { withTimezone: true }).notNull(),
+    blockedStartAt: timestamp('blocked_start_at', { withTimezone: true }).notNull(),
+    blockedEndAt: timestamp('blocked_end_at', { withTimezone: true }).notNull(),
+    prepBufferMinutes: integer('prep_buffer_minutes').notNull(),
+    cleanupBufferMinutes: integer('cleanup_buffer_minutes').notNull(),
+    currency: text('currency').notNull().default('EUR'),
+    subtotalAmountMinor: bigint('subtotal_amount_minor', { mode: 'number' }).notNull(),
+    mandatoryFeesAmountMinor: bigint('mandatory_fees_amount_minor', { mode: 'number' })
+      .notNull()
+      .default(0),
+    taxStatus: taxStatus('tax_status').notNull(),
+    taxAmountMinor: bigint('tax_amount_minor', { mode: 'number' }),
+    taxRateBps: integer('tax_rate_bps'),
+    taxRuleSnapshot: jsonb('tax_rule_snapshot'),
+    commissionAmountMinor: bigint('commission_amount_minor', { mode: 'number' }).notNull(),
+    commissionRuleSnapshot: jsonb('commission_rule_snapshot'),
+    totalAmountMinor: bigint('total_amount_minor', { mode: 'number' }).notNull(),
+    cancellationPolicySnapshot: jsonb('cancellation_policy_snapshot').notNull(),
+    termsAcceptanceSnapshot: jsonb('terms_acceptance_snapshot').notNull(),
+    confirmedAt: timestamp('confirmed_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('bookings_currency_eur', sql`${t.currency} = 'EUR'`),
+    check('bookings_customer_period_valid', sql`${t.customerEndAt} > ${t.customerStartAt}`),
+    check('bookings_total_nonneg', sql`${t.totalAmountMinor} >= 0`),
+    check('bookings_total_max_safe', sql`${t.totalAmountMinor} <= 9007199254740991`),
+    check('bookings_subtotal_nonneg', sql`${t.subtotalAmountMinor} >= 0`),
+    check('bookings_mandatory_fees_nonneg', sql`${t.mandatoryFeesAmountMinor} >= 0`),
+    check('bookings_tax_not_undetermined', sql`${t.taxStatus} <> 'UNDETERMINED'`),
+    check(
+      'bookings_tax_not_applicable_zero',
+      sql`${t.taxStatus} <> 'NOT_APPLICABLE' OR ${t.taxAmountMinor} = 0`,
+    ),
+    check(
+      'bookings_tax_applied_not_null',
+      sql`${t.taxStatus} <> 'APPLIED' OR ${t.taxAmountMinor} IS NOT NULL`,
+    ),
+    check(
+      'bookings_total_equals_subtotal_plus_fees',
+      sql`${t.totalAmountMinor} = ${t.subtotalAmountMinor} + ${t.mandatoryFeesAmountMinor}`,
+    ),
+    check('bookings_commission_nonneg', sql`${t.commissionAmountMinor} >= 0`),
+    check(
+      'bookings_commission_lte_total',
+      sql`${t.commissionAmountMinor} <= ${t.totalAmountMinor}`,
+    ),
+    index('bookings_organization_id_status_customer_start_at_index').on(
+      t.organizationId,
+      t.status,
+      t.customerStartAt,
+    ),
+  ],
+);
+
+export const bookingLines = pgTable(
+  'booking_lines',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    bookingId: uuid('booking_id')
+      .notNull()
+      .references(() => bookings.id),
+    variantId: uuid('variant_id')
+      .notNull()
+      .references(() => productVariants.id),
+    quantity: integer('quantity').notNull(),
+    unitPriceAmountMinor: bigint('unit_price_amount_minor', { mode: 'number' }).notNull(),
+    billableUnitCount: integer('billable_unit_count').notNull(),
+    lineTotalAmountMinor: bigint('line_total_amount_minor', { mode: 'number' }).notNull(),
+    currency: text('currency').notNull().default('EUR'),
+    variantSnapshot: jsonb('variant_snapshot').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('booking_lines_booking_variant_unique').on(t.bookingId, t.variantId),
+    check('booking_lines_quantity_positive', sql`${t.quantity} > 0`),
+    check('booking_lines_billable_count_positive', sql`${t.billableUnitCount} > 0`),
+    check('booking_lines_unit_price_nonneg', sql`${t.unitPriceAmountMinor} >= 0`),
+    check('booking_lines_line_total_nonneg', sql`${t.lineTotalAmountMinor} >= 0`),
+    check('booking_lines_line_total_max_safe', sql`${t.lineTotalAmountMinor} <= 9007199254740991`),
+    check('booking_lines_unit_price_max_safe', sql`${t.unitPriceAmountMinor} <= 9007199254740991`),
+    check('booking_lines_currency_eur', sql`${t.currency} = 'EUR'`),
+  ],
+);
+
+export const bookingItems = pgTable(
+  'booking_items',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    bookingId: uuid('booking_id')
+      .notNull()
+      .references(() => bookings.id),
+    bookingLineId: uuid('booking_line_id')
+      .notNull()
+      .references(() => bookingLines.id),
+    inventoryItemId: uuid('inventory_item_id')
+      .notNull()
+      .references(() => inventoryItems.id),
+    sourceHoldBlockId: uuid('source_hold_block_id').references(() => inventoryBlocks.id),
+    bookingBlockId: uuid('booking_block_id')
+      .notNull()
+      .references(() => inventoryBlocks.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('booking_items_booking_inventory_item_unique').on(t.bookingId, t.inventoryItemId),
+    uniqueIndex('booking_items_source_hold_block_unique')
+      .on(t.sourceHoldBlockId)
+      .where(sql`${t.sourceHoldBlockId} IS NOT NULL`),
+    unique('booking_items_booking_block_unique').on(t.bookingBlockId),
+  ],
+);
+
+export const outboxEvents = pgTable(
+  'outbox_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    aggregateType: text('aggregate_type').notNull(),
+    aggregateId: uuid('aggregate_id').notNull(),
+    eventType: text('event_type').notNull(),
+    eventVersion: text('event_version').notNull(),
+    payload: jsonb('payload').notNull(),
+    status: outboxEventStatus('status').notNull().default('PENDING'),
+    attemptCount: integer('attempt_count').notNull().default(0),
+    availableAt: timestamp('available_at', { withTimezone: true }).notNull(),
+    processedAt: timestamp('processed_at', { withTimezone: true }),
+    idempotencyKey: text('idempotency_key').notNull().unique(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('outbox_events_attempt_count_nonneg', sql`${t.attemptCount} >= 0`),
+    check('outbox_events_idempotency_key_nonempty', sql`length(btrim(${t.idempotencyKey})) > 0`),
+    index('outbox_events_status_available_at_created_at_index')
+      .on(t.status, t.availableAt, t.createdAt)
+      .where(sql`${t.status} IN ('PENDING', 'PROCESSING')`),
+  ],
+);
+
+export const refunds = pgTable(
+  'refunds',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    paymentId: uuid('payment_id')
+      .notNull()
+      .references(() => payments.id),
+    reason: refundReason('reason').notNull(),
+    status: refundStatus('status').notNull().default('PENDING'),
+    amountMinor: bigint('amount_minor', { mode: 'number' }).notNull(),
+    currency: text('currency').notNull().default('EUR'),
+    providerRefundId: text('provider_refund_id').unique(),
+    providerIdempotencyKey: text('provider_idempotency_key').notNull().unique(),
+    reverseTransfer: boolean('reverse_transfer').notNull().default(true),
+    refundApplicationFee: boolean('refund_application_fee').notNull().default(true),
+    requestedAt: timestamp('requested_at', { withTimezone: true }).notNull(),
+    submittedAt: timestamp('submitted_at', { withTimezone: true }),
+    succeededAt: timestamp('succeeded_at', { withTimezone: true }),
+    failedAt: timestamp('failed_at', { withTimezone: true }),
+    failureCode: text('failure_code'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('refunds_payment_reason_unique').on(t.paymentId, t.reason),
+    check('refunds_currency_eur', sql`${t.currency} = 'EUR'`),
+    check('refunds_amount_nonneg', sql`${t.amountMinor} >= 0`),
+    check('refunds_amount_max_safe', sql`${t.amountMinor} <= 9007199254740991`),
+    check(
+      'refunds_late_payment_reverse_transfer',
+      sql`${t.reason} <> 'LATE_PAYMENT_NO_BOOKING' OR ${t.reverseTransfer} = true`,
+    ),
+    check(
+      'refunds_late_payment_refund_application_fee',
+      sql`${t.reason} <> 'LATE_PAYMENT_NO_BOOKING' OR ${t.refundApplicationFee} = true`,
+    ),
+    index('refunds_status_requested_at_index').on(t.status, t.requestedAt),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Organization = typeof organizations.$inferSelect;
@@ -680,3 +1168,21 @@ export type Allocation = typeof allocations.$inferSelect;
 export type NewAllocation = typeof allocations.$inferInsert;
 export type IdempotencyRecord = typeof idempotencyRecords.$inferSelect;
 export type NewIdempotencyRecord = typeof idempotencyRecords.$inferInsert;
+export type OrganizationPaymentAccount = typeof organizationPaymentAccounts.$inferSelect;
+export type NewOrganizationPaymentAccount = typeof organizationPaymentAccounts.$inferInsert;
+export type Payment = typeof payments.$inferSelect;
+export type NewPayment = typeof payments.$inferInsert;
+export type PaymentAttempt = typeof paymentAttempts.$inferSelect;
+export type NewPaymentAttempt = typeof paymentAttempts.$inferInsert;
+export type PaymentWebhookEvent = typeof paymentWebhookEvents.$inferSelect;
+export type NewPaymentWebhookEvent = typeof paymentWebhookEvents.$inferInsert;
+export type Booking = typeof bookings.$inferSelect;
+export type NewBooking = typeof bookings.$inferInsert;
+export type BookingLine = typeof bookingLines.$inferSelect;
+export type NewBookingLine = typeof bookingLines.$inferInsert;
+export type BookingItem = typeof bookingItems.$inferSelect;
+export type NewBookingItem = typeof bookingItems.$inferInsert;
+export type OutboxEvent = typeof outboxEvents.$inferSelect;
+export type NewOutboxEvent = typeof outboxEvents.$inferInsert;
+export type Refund = typeof refunds.$inferSelect;
+export type NewRefund = typeof refunds.$inferInsert;

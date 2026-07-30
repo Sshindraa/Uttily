@@ -127,6 +127,13 @@
       "when": 1764528000017,
       "tag": "0018_lot4_booking_drafts",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1764528000018,
+      "tag": "0019_lot5_payments_bookings",
+      "breakpoints": true
     }
   ]
 }
