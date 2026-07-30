@@ -188,6 +188,7 @@ export async function expireBookingDraftsBatch(
  * - Toutes les allocations sont `ALLOCATED`.
  * - Le nombre d'allocations est égal à la somme des quantités des lignes.
  * - Chaque bloc possède exactement une allocation.
+ * - Chaque ligne possède exactement `quantity` allocations.
  * - L'échéance de chaque bloc est identique à `booking_drafts.expires_at`.
  * - Aucun bloc n'est `PAYMENT_PROCESSING`, `CONVERTED`, `RELEASED` ou `EXPIRED`.
  *
@@ -329,6 +330,26 @@ async function validateInvariants(
         actualAllocations: allocs.length,
       },
     };
+  }
+
+  // Vérifier la cohérence par ligne : chaque ligne doit avoir exactement
+  // `quantity` allocations. Ce contrôle détecte les distributions incohérentes
+  // où les comptes globaux sont corrects mais une ligne a trop d'allocations
+  // et une autre n'en a pas assez.
+  for (const line of lines) {
+    const lineAllocationCount = allocs.filter((a) => a.draftLineId === line.id).length;
+    if (lineAllocationCount !== line.quantity) {
+      return {
+        draftId,
+        reason: 'LINE_ALLOCATION_COUNT_MISMATCH',
+        details: {
+          draftId,
+          lineId: line.id,
+          expectedAllocations: line.quantity,
+          actualAllocations: lineAllocationCount,
+        },
+      };
+    }
   }
 
   // Chaque bloc doit posséder exactement une allocation.

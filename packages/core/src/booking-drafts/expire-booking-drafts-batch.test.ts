@@ -510,15 +510,17 @@ describe.skipIf(shouldSkipIntegrationTests())(
         created.push(info.draftId);
       }
 
-      // Trigger qui bloque worker A en acquérant un verrou advisory de session.
-      // pg_advisory_lock (session-level) peut être libéré depuis une autre
-      // connexion via pg_advisory_unlock, contrairement à pg_advisory_xact_lock.
+      // Trigger qui bloque worker A en acquérant un verrou advisory
+      // TRANSACTIONNEL (pg_advisory_xact_lock). Contrairement à
+      // pg_advisory_lock (session-level), pg_advisory_xact_lock est
+      // automatiquement libéré au COMMIT/ROLLBACK de la transaction du worker,
+      // ce qui évite la contamination de la connexion remise au pool.
       const advisoryKey = Math.floor(Math.random() * 2000000000) + 1;
       await rawSql!.unsafe(`
         CREATE OR REPLACE FUNCTION test_concurrent_barrier()
         RETURNS trigger AS $$
         BEGIN
-          PERFORM pg_advisory_lock(${advisoryKey});
+          PERFORM pg_advisory_xact_lock(${advisoryKey});
           RETURN NEW;
         END;
         $$ LANGUAGE plpgsql
@@ -532,12 +534,15 @@ describe.skipIf(shouldSkipIntegrationTests())(
       `);
 
       const db2 = createDatabase(ctx!.databaseUrl);
-      const barrierRaw = postgres(ctx!.databaseUrl, { max: 5 });
+      // Connexion dédiée (max: 1) pour le propriétaire de la barrière.
+      // Garantit que pg_advisory_lock et pg_advisory_unlock s'exécutent sur
+      // la même session PostgreSQL.
+      const barrierConn = postgres(ctx!.databaseUrl, { max: 1 });
       try {
-        // Acquérir le verrou advisory depuis barrierRaw AVANT de lancer worker A.
-        // Ainsi, lorsque le trigger de worker A appellera pg_advisory_lock, il
-        // bloquera en attendant que barrierRaw libère le verrou.
-        await barrierRaw`SELECT pg_advisory_lock(${advisoryKey})`;
+        // Acquérir le verrou advisory de session depuis la connexion dédiée.
+        // Le trigger du worker A appellera pg_advisory_xact_lock avec la même
+        // clé et bloquera jusqu'à ce que barrierConn libère le verrou.
+        await barrierConn`SELECT pg_advisory_lock(${advisoryKey})`;
 
         // Lancer worker A. Il sélectionne les 5 brouillons (FOR UPDATE SKIP
         // LOCKED), les verrouille, puis bloque sur le trigger advisory lock
@@ -548,7 +553,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
         // interrogeant pg_locks pour un advisory lock en attente (granted=false).
         let isBlocked = false;
         for (let attempt = 0; attempt < 50; attempt++) {
-          const locks = await barrierRaw`
+          const locks = await barrierConn`
             SELECT count(*)::int AS n FROM pg_locks
             WHERE locktype = 'advisory'
               AND objid = ${advisoryKey}
@@ -570,7 +575,11 @@ describe.skipIf(shouldSkipIntegrationTests())(
         expect(resultB.processedCount).toBe(0);
 
         // Libérer le verrou advisory pour débloquer worker A.
-        await barrierRaw`SELECT pg_advisory_unlock(${advisoryKey})`;
+        // Vérifier que pg_advisory_unlock retourne true (le verrou était bien
+        // détenu par cette session).
+        const unlockResult =
+          await barrierConn`SELECT pg_advisory_unlock(${advisoryKey}) AS unlocked`;
+        expect(unlockResult[0]!.unlocked).toBe(true);
 
         // Worker A peut maintenant terminer.
         const resultA = await workerAPromise;
@@ -583,8 +592,10 @@ describe.skipIf(shouldSkipIntegrationTests())(
           expect(drafts[0]!.status).toBe('EXPIRED');
         }
       } finally {
+        // Garantir la libération du verrou même en cas d'erreur.
+        await barrierConn`SELECT pg_advisory_unlock(${advisoryKey})`.catch(() => {});
         await db2.$client.end();
-        await barrierRaw.end();
+        await barrierConn.end();
         await rawSql`DROP TRIGGER IF EXISTS test_concurrent_barrier_trigger ON inventory_blocks`;
         await rawSql`DROP FUNCTION IF EXISTS test_concurrent_barrier()`;
       }
@@ -858,6 +869,103 @@ describe.skipIf(shouldSkipIntegrationTests())(
       expect(batchResult.anomalies[0]!.reason).toBe('ALLOCATION_COUNT_MISMATCH');
 
       // Le brouillon n'a pas été muté
+      const drafts = await rawSql`SELECT "status" FROM "booking_drafts" WHERE "id" = ${draftId}`;
+      expect(drafts[0]!.status).toBe('HELD');
+    });
+
+    // 18. Anomalie: brouillon sans lignes
+    it('18. enregistre une anomalie si le brouillon n’a aucune ligne', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const { draftId } = await createExpiredDraft(ids, 'anomaly-no-lines');
+
+      // Supprimer les allocations puis les lignes (FK draft_line_id).
+      await rawSql`DELETE FROM "allocations" WHERE "draft_line_id" IN (SELECT "id" FROM "booking_draft_lines" WHERE "draft_id" = ${draftId})`;
+      await rawSql`DELETE FROM "booking_draft_lines" WHERE "draft_id" = ${draftId}`;
+
+      const result = await expireBookingDraftsBatch(db);
+      expect(result.expiredCount).toBe(0);
+      expect(result.anomalyCount).toBe(1);
+      expect(result.processedCount).toBe(1);
+      expect(result.anomalies[0]!.draftId).toBe(draftId);
+      expect(result.anomalies[0]!.reason).toBe('NO_LINES');
+
+      // Le brouillon n'a pas été muté.
+      const drafts = await rawSql`SELECT "status" FROM "booking_drafts" WHERE "id" = ${draftId}`;
+      expect(drafts[0]!.status).toBe('HELD');
+    });
+
+    // 19. Anomalie: distribution d'allocations incohérente par ligne
+    it('19. détecte une distribution 3/0 pour des quantités attendues 2/1 (LINE_ALLOCATION_COUNT_MISMATCH)', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      // Créer un brouillon avec quantity 3 (1 ligne, 3 blocs, 3 allocations).
+      // createBookingDraftWithHold agrège les lignes de même variante, donc on
+      // obtient une seule ligne avec quantity 3 et 3 allocations.
+      const result = await createBookingDraftWithHold(
+        db,
+        makeInput(ids, {
+          idempotencyKey: 'line-mismatch-' + SUFFIX(),
+          lines: [{ variantId: ids.variantId, quantity: 3 }],
+        }),
+      );
+      if (result.kind !== 'SUCCESS') throw new Error('Draft creation failed');
+      const draftId = result.body.draftId;
+
+      // Set expires_at to past
+      await rawSql`
+        WITH shared_ts AS (SELECT now() - interval '1 minute' AS ts)
+        UPDATE booking_drafts SET expires_at = (SELECT ts FROM shared_ts) WHERE id = ${draftId}
+      `;
+      await rawSql`
+        WITH shared_ts AS (SELECT "expires_at" FROM "booking_drafts" WHERE "id" = ${draftId})
+        UPDATE inventory_blocks SET expires_at = (SELECT "expires_at" FROM shared_ts) WHERE source_id = ${draftId}
+      `;
+
+      // La ligne originale a quantity 3 et 3 allocations. On la scinde en
+      // deux lignes : ligne A (quantity 2) et ligne B (quantity 1), sans
+      // déplacer d'allocations. Résultat : ligne A a 3 allocations (au lieu
+      // de 2), ligne B a 0 (au lieu de 1). Total global inchangé : 3 blocs,
+      // 3 allocations, chaque bloc couvert. Les contrôles globaux passent,
+      // mais la distribution par ligne est incohérente.
+      const originalLines =
+        await rawSql`SELECT * FROM "booking_draft_lines" WHERE "draft_id" = ${draftId}`;
+      expect(originalLines).toHaveLength(1);
+      const originalLine = originalLines[0]!;
+      const lineAId = originalLine.id;
+
+      // Réduire la quantité de la ligne A à 2.
+      await rawSql`UPDATE "booking_draft_lines" SET "quantity" = 2 WHERE "id" = ${lineAId}`;
+
+      // Insérer une nouvelle ligne B avec quantity 1 (même variante, mêmes
+      // champs NOT NULL copiés depuis la ligne originale).
+      await rawSql`
+        INSERT INTO "booking_draft_lines" (
+          "draft_id", "variant_id", "quantity",
+          "unit_price_amount_minor", "billable_unit_count",
+          "line_total_amount_minor", "currency", "variant_snapshot"
+        )
+        VALUES (
+          ${draftId}, ${originalLine.variant_id}, 1,
+          ${originalLine.unit_price_amount_minor}, ${originalLine.billable_unit_count},
+          ${originalLine.line_total_amount_minor}, ${originalLine.currency},
+          ${originalLine.variant_snapshot}
+        )
+      `;
+
+      // Vérifier l'état initial : ligne A a 3 allocations, ligne B en a 0.
+      const allocsA =
+        await rawSql`SELECT "id" FROM "allocations" WHERE "draft_line_id" = ${lineAId}`;
+      expect(allocsA).toHaveLength(3);
+
+      const batchResult = await expireBookingDraftsBatch(db);
+      expect(batchResult.expiredCount).toBe(0);
+      expect(batchResult.anomalyCount).toBe(1);
+      expect(batchResult.processedCount).toBe(1);
+      expect(batchResult.anomalies[0]!.draftId).toBe(draftId);
+      expect(batchResult.anomalies[0]!.reason).toBe('LINE_ALLOCATION_COUNT_MISMATCH');
+
+      // Le brouillon n'a pas été muté.
       const drafts = await rawSql`SELECT "status" FROM "booking_drafts" WHERE "id" = ${draftId}`;
       expect(drafts[0]!.status).toBe('HELD');
     });
