@@ -9,3 +9,4 @@
 export * from './types';
 export * from './errors';
 export * from './create-booking-draft';
+export * from './expire-booking-drafts-batch';

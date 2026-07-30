@@ -108,3 +108,32 @@ export interface CreateBookingDraftFailure {
 
 /** Résultat discriminé de `createBookingDraftWithHold`. */
 export type CreateBookingDraftResult = CreateBookingDraftSuccess | CreateBookingDraftFailure;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Lot 4, étape 5 — Expiration batch des brouillons (ADR-009 §15)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Anomalie d'invariant détectée pendant l'expiration batch. */
+export interface BatchExpirationAnomaly {
+  draftId: string;
+  reason: string;
+  details: Record<string, unknown>;
+}
+
+/** Brouillon expiré avec succès. */
+export interface BatchExpirationExpired {
+  draftId: string;
+  expiredAt: string; // ISO 8601
+  blockIds: string[];
+  allocationIds: string[];
+}
+
+/** Résultat de l'expiration batch. */
+export interface ExpireBookingDraftsBatchResult {
+  expired: BatchExpirationExpired[];
+  anomalies: BatchExpirationAnomaly[];
+  processedCount: number;
+  expiredCount: number;
+  anomalyCount: number;
+  batchLimit: number;
+}
