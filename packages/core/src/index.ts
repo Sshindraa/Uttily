@@ -28,3 +28,6 @@ export * from './pricing/index';
 
 // Lot 4 — Idempotence persistée.
 export * from './idempotency/index';
+
+// Lot 4 — Création atomique de brouillon de réservation.
+export * from './booking-drafts/index';
