@@ -57,8 +57,8 @@ header `Authorization: Bearer ${CRON_SECRET}` et appelle
 
 2. **Vercel — variables d'environnement** :
    - Project Settings → Environment Variables.
-   - Ajouter `CRON_SECRET` avec la valeur générée pour chaque
-     environnement (Preview et Production).
+   - Ajouter `CRON_SECRET` pour l'environnement Production (requis par
+     le Cron). Preview est facultatif (tests manuels uniquement).
    - Ne jamais committer la valeur réelle.
 
 3. **Vercel — Cron Jobs** :
