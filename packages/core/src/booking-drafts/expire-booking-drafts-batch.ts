@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import {
   allocations,
+  bookingDraftLines,
   bookingDrafts,
   inventoryBlocks,
   type DatabaseClient,
@@ -26,7 +27,7 @@ import type {
  * Caractéristiques :
  * - Transaction unique pour l'ensemble du batch.
  * - `FOR UPDATE OF bd SKIP LOCKED` pour la sélection concurrente.
- * - Batch borné (défaut 10, max 100).
+ * - Batch borné (défaut 10, max 10).
  * - Exclusion des brouillons dont un bloc est `PAYMENT_PROCESSING`.
  * - Validation d'invariants après verrouillage, avant toute mutation.
  * - Une anomalie sur un brouillon n'interrompt pas le batch : le brouillon
@@ -35,7 +36,7 @@ import type {
  */
 
 /** Limite maximale absolue du batch. */
-const MAX_BATCH_LIMIT = 100;
+const MAX_BATCH_LIMIT = 10;
 
 /** Limite par défaut du batch. */
 const DEFAULT_BATCH_LIMIT = 10;
@@ -46,7 +47,7 @@ const DEFAULT_BATCH_LIMIT = 10;
  * transitions dans une seule transaction PostgreSQL.
  *
  * @param db client base de données (DatabaseClient)
- * @param batchLimit nombre maximum de brouillons à traiter (défaut 10, max 100)
+ * @param batchLimit nombre maximum de brouillons à traiter (défaut 10, max 10)
  * @returns résultat structuré : brouillons expirés, anomalies, compteurs
  */
 export async function expireBookingDraftsBatch(
@@ -95,13 +96,16 @@ export async function expireBookingDraftsBatch(
       const draftExpiresAt = candidate.expires_at;
 
       // a. Verrouiller tous les blocs du brouillon.
+      //    ORDER BY id pour un ordre stable partagé avec le paiement (ADR-009).
       const lockedBlocks = await tx
         .select()
         .from(inventoryBlocks)
         .where(and(eq(inventoryBlocks.sourceId, draftId), isNull(inventoryBlocks.deletedAt)))
+        .orderBy(inventoryBlocks.id)
         .for('update');
 
       // b. Verrouiller toutes les allocations associées aux blocs.
+      //    ORDER BY id pour un ordre stable partagé avec le paiement (ADR-009).
       const blockIds = lockedBlocks.map((b) => b.id);
       let lockedAllocations: Array<typeof allocations.$inferSelect> = [];
       if (blockIds.length > 0) {
@@ -109,6 +113,7 @@ export async function expireBookingDraftsBatch(
           .select()
           .from(allocations)
           .where(inArray(allocations.inventoryBlockId, blockIds))
+          .orderBy(allocations.id)
           .for('update');
       }
 
@@ -177,8 +182,12 @@ export async function expireBookingDraftsBatch(
  *
  * Invariants (ADR-009 §15) :
  * - Le brouillon est `HELD`.
+ * - Le brouillon possède au moins une ligne.
+ * - Le nombre de blocs (non soft-deletés) est égal à la somme des quantités des lignes.
  * - Tous les holds attendus sont présents et `ACTIVE` (type `HOLD`, statut `ACTIVE`).
  * - Toutes les allocations sont `ALLOCATED`.
+ * - Le nombre d'allocations est égal à la somme des quantités des lignes.
+ * - Chaque bloc possède exactement une allocation.
  * - L'échéance de chaque bloc est identique à `booking_drafts.expires_at`.
  * - Aucun bloc n'est `PAYMENT_PROCESSING`, `CONVERTED`, `RELEASED` ou `EXPIRED`.
  *
@@ -215,12 +224,41 @@ async function validateInvariants(
     };
   }
 
+  // Charger les lignes du brouillon pour vérifier le compte attendu.
+  const lines = await tx
+    .select({ id: bookingDraftLines.id, quantity: bookingDraftLines.quantity })
+    .from(bookingDraftLines)
+    .where(eq(bookingDraftLines.draftId, draftId));
+
+  if (lines.length === 0) {
+    return {
+      draftId,
+      reason: 'NO_LINES',
+      details: { draftId },
+    };
+  }
+
+  const expectedAllocationCount = lines.reduce((sum, line) => sum + line.quantity, 0);
+
   // Vérifier qu'il y a au moins un bloc.
   if (blocks.length === 0) {
     return {
       draftId,
       reason: 'NO_BLOCKS',
       details: { draftId },
+    };
+  }
+
+  // Le nombre de blocs doit correspondre à la somme des quantités des lignes.
+  if (blocks.length !== expectedAllocationCount) {
+    return {
+      draftId,
+      reason: 'BLOCK_COUNT_MISMATCH',
+      details: {
+        draftId,
+        expectedBlocks: expectedAllocationCount,
+        actualBlocks: blocks.length,
+      },
     };
   }
 
@@ -276,6 +314,31 @@ async function validateInvariants(
         draftId,
         reason: 'ALLOCATION_NOT_ALLOCATED',
         details: { draftId, allocationId: alloc.id, actualStatus: alloc.status },
+      };
+    }
+  }
+
+  // Le nombre d'allocations doit correspondre à la somme des quantités des lignes.
+  if (allocs.length !== expectedAllocationCount) {
+    return {
+      draftId,
+      reason: 'ALLOCATION_COUNT_MISMATCH',
+      details: {
+        draftId,
+        expectedAllocations: expectedAllocationCount,
+        actualAllocations: allocs.length,
+      },
+    };
+  }
+
+  // Chaque bloc doit posséder exactement une allocation.
+  const blockIdsWithAlloc = new Set(allocs.map((a) => a.inventoryBlockId));
+  for (const block of blocks) {
+    if (!blockIdsWithAlloc.has(block.id)) {
+      return {
+        draftId,
+        reason: 'BLOCK_WITHOUT_ALLOCATION',
+        details: { draftId, blockId: block.id },
       };
     }
   }

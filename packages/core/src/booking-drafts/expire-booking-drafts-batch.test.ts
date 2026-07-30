@@ -500,8 +500,8 @@ describe.skipIf(shouldSkipIntegrationTests())(
       }
     });
 
-    // 10. Concurrence: deux workers simultanés
-    it('10. deux workers simultanés n’expirent pas les mêmes brouillons (SKIP LOCKED)', async () => {
+    // 10. Concurrence: deux workers avec barrière déterministe
+    it('10. deux workers simultanés ne traitent pas les mêmes brouillons (SKIP LOCKED déterministe)', async () => {
       if (!db || !rawSql) return;
       const ids = await seedBaseData();
       const created: string[] = [];
@@ -510,25 +510,83 @@ describe.skipIf(shouldSkipIntegrationTests())(
         created.push(info.draftId);
       }
 
-      // Lancer deux batches simultanément avec deux clients séparés.
+      // Trigger qui bloque worker A en acquérant un verrou advisory de session.
+      // pg_advisory_lock (session-level) peut être libéré depuis une autre
+      // connexion via pg_advisory_unlock, contrairement à pg_advisory_xact_lock.
+      const advisoryKey = Math.floor(Math.random() * 2000000000) + 1;
+      await rawSql!.unsafe(`
+        CREATE OR REPLACE FUNCTION test_concurrent_barrier()
+        RETURNS trigger AS $$
+        BEGIN
+          PERFORM pg_advisory_lock(${advisoryKey});
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
+      `);
+      await rawSql!.unsafe(`
+        CREATE TRIGGER test_concurrent_barrier_trigger
+        BEFORE UPDATE OF status ON inventory_blocks
+        FOR EACH ROW
+        WHEN (NEW.status = 'EXPIRED' AND NEW.source_id = '${created[0]!}'::uuid)
+        EXECUTE FUNCTION test_concurrent_barrier()
+      `);
+
       const db2 = createDatabase(ctx!.databaseUrl);
+      const barrierRaw = postgres(ctx!.databaseUrl, { max: 5 });
       try {
-        const [result1, result2] = await Promise.all([
-          expireBookingDraftsBatch(db),
-          expireBookingDraftsBatch(db2),
-        ]);
+        // Acquérir le verrou advisory depuis barrierRaw AVANT de lancer worker A.
+        // Ainsi, lorsque le trigger de worker A appellera pg_advisory_lock, il
+        // bloquera en attendant que barrierRaw libère le verrou.
+        await barrierRaw`SELECT pg_advisory_lock(${advisoryKey})`;
 
-        const totalExpired = result1.expiredCount + result2.expiredCount;
-        expect(totalExpired).toBe(5);
+        // Lancer worker A. Il sélectionne les 5 brouillons (FOR UPDATE SKIP
+        // LOCKED), les verrouille, puis bloque sur le trigger advisory lock
+        // lors de la mise à jour du premier bloc du premier brouillon.
+        const workerAPromise = expireBookingDraftsBatch(db);
 
-        // Aucun chevauchement.
-        const ids1 = new Set(result1.expired.map((e) => e.draftId));
-        const ids2 = new Set(result2.expired.map((e) => e.draftId));
-        for (const id of ids1) {
-          expect(ids2.has(id)).toBe(false);
+        // Attendre que worker A soit bloqué sur le verrou advisory en
+        // interrogeant pg_locks pour un advisory lock en attente (granted=false).
+        let isBlocked = false;
+        for (let attempt = 0; attempt < 50; attempt++) {
+          const locks = await barrierRaw`
+            SELECT count(*)::int AS n FROM pg_locks
+            WHERE locktype = 'advisory'
+              AND objid = ${advisoryKey}
+              AND granted = false
+          `;
+          if (locks[0]!.n > 0) {
+            isBlocked = true;
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        expect(isBlocked).toBe(true);
+
+        // Worker A est bloqué et détient les verrous FOR UPDATE sur les 5
+        // brouillons. Lancer worker B : SKIP LOCKED doit ignorer tous les
+        // brouillons verrouillés par A.
+        const resultB = await expireBookingDraftsBatch(db2);
+        expect(resultB.expiredCount).toBe(0);
+        expect(resultB.processedCount).toBe(0);
+
+        // Libérer le verrou advisory pour débloquer worker A.
+        await barrierRaw`SELECT pg_advisory_unlock(${advisoryKey})`;
+
+        // Worker A peut maintenant terminer.
+        const resultA = await workerAPromise;
+        expect(resultA.expiredCount).toBe(5);
+        expect(resultA.anomalyCount).toBe(0);
+
+        // Vérifier que tous les brouillons sont expirés.
+        for (const id of created) {
+          const drafts = await rawSql`SELECT "status" FROM "booking_drafts" WHERE "id" = ${id}`;
+          expect(drafts[0]!.status).toBe('EXPIRED');
         }
       } finally {
         await db2.$client.end();
+        await barrierRaw.end();
+        await rawSql`DROP TRIGGER IF EXISTS test_concurrent_barrier_trigger ON inventory_blocks`;
+        await rawSql`DROP FUNCTION IF EXISTS test_concurrent_barrier()`;
       }
     });
 
@@ -598,11 +656,11 @@ describe.skipIf(shouldSkipIntegrationTests())(
     });
 
     // 13. Validation batchLimit
-    it('13. rejette un batchLimit invalide (0, négatif, > 100, non-entier)', async () => {
+    it('13. rejette un batchLimit invalide (0, négatif, > 10, non-entier)', async () => {
       if (!db) return;
       await expect(expireBookingDraftsBatch(db, 0)).rejects.toThrow(BookingDraftError);
       await expect(expireBookingDraftsBatch(db, -1)).rejects.toThrow(BookingDraftError);
-      await expect(expireBookingDraftsBatch(db, 101)).rejects.toThrow(BookingDraftError);
+      await expect(expireBookingDraftsBatch(db, 11)).rejects.toThrow(BookingDraftError);
       await expect(expireBookingDraftsBatch(db, 1.5)).rejects.toThrow(BookingDraftError);
     });
 
@@ -678,5 +736,138 @@ describe.skipIf(shouldSkipIntegrationTests())(
       const drafts = await rawSql`SELECT status FROM booking_drafts WHERE id = ${draftId}`;
       expect(drafts[0]!.status).toBe('EXPIRED');
     });
+
+    // 15. Brouillon multi-exemplaires avec un bloc PAYMENT_PROCESSING → exclu
+    it('15. exclut un brouillon multi-exemplaires si un bloc est PAYMENT_PROCESSING', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      // Créer un brouillon avec quantity 3
+      const result = await createBookingDraftWithHold(
+        db,
+        makeInput(ids, {
+          idempotencyKey: 'pp-multi-' + SUFFIX(),
+          lines: [{ variantId: ids.variantId, quantity: 3 }],
+        }),
+      );
+      if (result.kind !== 'SUCCESS') throw new Error('Draft creation failed');
+      const draftId = result.body.draftId;
+
+      // Set expires_at to past
+      await rawSql`
+        WITH shared_ts AS (SELECT now() - interval '1 minute' AS ts)
+        UPDATE booking_drafts SET expires_at = (SELECT ts FROM shared_ts) WHERE id = ${draftId}
+      `;
+      await rawSql`
+        WITH shared_ts AS (SELECT "expires_at" FROM "booking_drafts" WHERE "id" = ${draftId})
+        UPDATE inventory_blocks SET expires_at = (SELECT "expires_at" FROM shared_ts) WHERE source_id = ${draftId}
+      `;
+
+      // Mettre un seul bloc en PAYMENT_PROCESSING
+      const blocks =
+        await rawSql`SELECT "id" FROM "inventory_blocks" WHERE "source_id" = ${draftId} LIMIT 1`;
+      await rawSql`UPDATE "inventory_blocks" SET "status" = 'PAYMENT_PROCESSING' WHERE "id" = ${blocks[0]!.id}`;
+
+      const batchResult = await expireBookingDraftsBatch(db);
+      expect(batchResult.expiredCount).toBe(0);
+      expect(batchResult.processedCount).toBe(0); // Excluded by WHERE clause
+      expect(batchResult.anomalyCount).toBe(0);
+
+      // Le brouillon est encore HELD
+      const drafts = await rawSql`SELECT "status" FROM "booking_drafts" WHERE "id" = ${draftId}`;
+      expect(drafts[0]!.status).toBe('HELD');
+    });
+
+    // 16. Un bloc soft-deleted parmi plusieurs → anomalie de compte
+    it('16. un bloc soft-deleted parmi plusieurs provoque une anomalie BLOCK_COUNT_MISMATCH', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      // Créer un brouillon avec quantity 3 (3 blocs, 3 allocations)
+      const result = await createBookingDraftWithHold(
+        db,
+        makeInput(ids, {
+          idempotencyKey: 'soft-del-multi-' + SUFFIX(),
+          lines: [{ variantId: ids.variantId, quantity: 3 }],
+        }),
+      );
+      if (result.kind !== 'SUCCESS') throw new Error('Draft creation failed');
+      const draftId = result.body.draftId;
+
+      // Set expires_at to past
+      await rawSql`
+        WITH shared_ts AS (SELECT now() - interval '1 minute' AS ts)
+        UPDATE booking_drafts SET expires_at = (SELECT ts FROM shared_ts) WHERE id = ${draftId}
+      `;
+      await rawSql`
+        WITH shared_ts AS (SELECT "expires_at" FROM "booking_drafts" WHERE "id" = ${draftId})
+        UPDATE inventory_blocks SET expires_at = (SELECT "expires_at" FROM shared_ts) WHERE source_id = ${draftId}
+      `;
+
+      // Soft-delete un seul bloc parmi les 3
+      const blocks =
+        await rawSql`SELECT "id" FROM "inventory_blocks" WHERE "source_id" = ${draftId} ORDER BY "id" LIMIT 1`;
+      await rawSql`UPDATE "inventory_blocks" SET "deleted_at" = now() WHERE "id" = ${blocks[0]!.id}`;
+
+      const batchResult = await expireBookingDraftsBatch(db);
+      expect(batchResult.expiredCount).toBe(0);
+      expect(batchResult.anomalyCount).toBe(1);
+      expect(batchResult.processedCount).toBe(1);
+      expect(batchResult.anomalies[0]!.draftId).toBe(draftId);
+      expect(batchResult.anomalies[0]!.reason).toBe('BLOCK_COUNT_MISMATCH');
+
+      // Le brouillon n'a pas été muté
+      const drafts = await rawSql`SELECT "status" FROM "booking_drafts" WHERE "id" = ${draftId}`;
+      expect(drafts[0]!.status).toBe('HELD');
+    });
+
+    // 17. Une allocation manquante parmi plusieurs → anomalie ALLOCATION_COUNT_MISMATCH
+    it('17. une allocation manquante parmi plusieurs provoque une anomalie ALLOCATION_COUNT_MISMATCH', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      // Créer un brouillon avec quantity 3 (3 blocs, 3 allocations)
+      const result = await createBookingDraftWithHold(
+        db,
+        makeInput(ids, {
+          idempotencyKey: 'missing-alloc-' + SUFFIX(),
+          lines: [{ variantId: ids.variantId, quantity: 3 }],
+        }),
+      );
+      if (result.kind !== 'SUCCESS') throw new Error('Draft creation failed');
+      const draftId = result.body.draftId;
+
+      // Set expires_at to past
+      await rawSql`
+        WITH shared_ts AS (SELECT now() - interval '1 minute' AS ts)
+        UPDATE booking_drafts SET expires_at = (SELECT ts FROM shared_ts) WHERE id = ${draftId}
+      `;
+      await rawSql`
+        WITH shared_ts AS (SELECT "expires_at" FROM "booking_drafts" WHERE "id" = ${draftId})
+        UPDATE inventory_blocks SET expires_at = (SELECT "expires_at" FROM shared_ts) WHERE source_id = ${draftId}
+      `;
+
+      // Supprimer une allocation (delete hard — la FK est sur inventory_blocks,
+      // pas de cascade, donc on peut supprimer l'allocation directement).
+      const allocs =
+        await rawSql`SELECT "id" FROM "allocations" WHERE "inventory_block_id" IN (SELECT "id" FROM "inventory_blocks" WHERE "source_id" = ${draftId}) ORDER BY "id" LIMIT 1`;
+      await rawSql`DELETE FROM "allocations" WHERE "id" = ${allocs[0]!.id}`;
+
+      const batchResult = await expireBookingDraftsBatch(db);
+      expect(batchResult.expiredCount).toBe(0);
+      expect(batchResult.anomalyCount).toBe(1);
+      expect(batchResult.processedCount).toBe(1);
+      expect(batchResult.anomalies[0]!.draftId).toBe(draftId);
+      expect(batchResult.anomalies[0]!.reason).toBe('ALLOCATION_COUNT_MISMATCH');
+
+      // Le brouillon n'a pas été muté
+      const drafts = await rawSql`SELECT "status" FROM "booking_drafts" WHERE "id" = ${draftId}`;
+      expect(drafts[0]!.status).toBe('HELD');
+    });
+
+    // Note opérationnelle : une anomalie persistante sur un brouillon ne
+    // l'empêche pas d'être re-sélectionné à chaque batch (il reste HELD et
+    // expiré). Le brouillon anomalie sera re-sélectionné à chaque invocation
+    // jusqu'à résolution manuelle. Un volume élevé d'anomalies peut masquer
+    // silencieusement des brouillons valides plus récents si le batch est
+    // systématiquement saturé par des anomalies (starvation). Mitigation :
+    // surveiller anomalyCount et alerter si > 0 de façon répétée.
   },
 );
