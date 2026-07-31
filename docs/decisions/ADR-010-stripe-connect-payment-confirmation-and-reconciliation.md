@@ -64,11 +64,25 @@ ne doit pas être ajoutée au PaymentIntent de la location.
 2. **Controller properties, pas de type legacy.** La configuration d'un compte
    connecté est exprimée avec les responsabilités granulaires Stripe
    (`fees_collector`, `losses_collector`, collecte des exigences et accès au
-   Dashboard), pas avec une étiquette `Express` ou `Custom`. L'implémentation
-   privilégie Accounts v2 lorsque cette ressource est disponible pour la
-   plateforme ; le fallback Accounts v1 utilise les controller properties
-   équivalentes et conserve le même contrat local. La génération d'API réellement
-   utilisée est persistée et la version Stripe est épinglée.
+   Dashboard), pas avec une étiquette `Express` ou `Custom`. La génération d'API
+   réellement utilisée est persistée et la version Stripe est épinglée.
+
+   **Amendement Lot 5 (2026) : Accounts v1 pour le MVP.** L'implémentation
+   utilise exclusivement l'API Accounts v1 (`/v1/accounts`) avec les controller
+   properties équivalentes (`controller.fees.payer`,
+   `controller.losses.payments`, `controller.stripe_dashboard.type`,
+   `controller.requirement_collection`). Bien que `stripe@22.3.2` expose
+   `stripe.v2.core.accounts`, le modèle d'objet V2 est fondamentalement
+   différent : il ne contient pas `charges_enabled`, `payouts_enabled`,
+   `capabilities` ni `controller` au sens v1, et remplace `details_submitted`
+   par un système de requirements structuré différemment. Une implémentation V2
+   nécessiterait une couche de mapping distincte et une révision du contrat
+   `ConnectedAccountResult`. Pour le MVP, v1 avec controller properties est
+   suffisant et éprouvé. La migration vers V2 sera évaluée dans un lot
+   ultérieur, après validation finance/juridique des responsabilités (verrou
+   §4). Le contrat local `ConnectedAccountControllerConfig` utilise une
+   sémantique provider-agnostique (`PLATFORM` / `CONNECTED_ACCOUNT` / `STRIPE`)
+   qui sera mappée explicitement vers v1 ou v2 lors de cette migration.
 3. **Stripe-hosted onboarding au MVP.** Uttily ne construit pas de formulaire
    KYC maison. L'état du compte connecté est répliqué localement par webhook.
 4. **Payment Intents + Payment Element.** Le paiement est intégré au parcours

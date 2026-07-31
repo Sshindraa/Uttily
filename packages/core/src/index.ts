@@ -34,3 +34,6 @@ export * from './booking-drafts/index';
 
 // Lot 5 — Résolution des termes financiers (ADR-010).
 export * from './financial-terms/index';
+
+// Lot 5 — Adapter Stripe et provider de paiement (ADR-010).
+export * from './payments/index';

@@ -13,11 +13,12 @@
   "dependencies": {
     "@uttily/contracts": "workspace:*",
     "@uttily/database": "workspace:*",
-    "drizzle-orm": "^0.36.0"
+    "drizzle-orm": "^0.36.0",
+    "stripe": "22.3.2"
   },
   "devDependencies": {
-    "@uttily/config": "workspace:*",
     "@types/node": "^22.0.0",
+    "@uttily/config": "workspace:*",
     "postgres": "^3.4.0",
     "typescript": "^5.6.0",
     "vitest": "^2.0.0"
