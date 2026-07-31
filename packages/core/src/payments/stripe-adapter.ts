@@ -49,6 +49,20 @@ export const PINNED_STRIPE_API_VERSION = '2026-06-24.dahlia' as const;
 const WEBHOOK_TOLERANCE_SECONDS = 300;
 
 /**
+ * Extrait un identifiant de chaîne depuis une valeur Stripe qui peut être
+ * soit un ID (string) soit un objet expansé (Account, etc.).
+ */
+function extractId(value: string | { id: string } | null | undefined): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  return value.id;
+}
+
+/**
  * Configuration injectable de l'adapter Stripe.
  * Les secrets sont passés via config, jamais codés en dur.
  */
@@ -581,6 +595,10 @@ export class StripeAdapter implements PaymentProviderAdapter {
             : (intent.latest_charge?.id ?? null),
         amountMinor: intent.amount,
         currency: intent.currency.toUpperCase(),
+        environment: this.config.environment,
+        connectedAccountId: extractId(intent.transfer_data?.destination),
+        applicationFeeAmountMinor: intent.application_fee_amount ?? null,
+        onBehalfOfAccountId: extractId(intent.on_behalf_of),
       };
     } catch (error) {
       throw mapStripeError(error);
@@ -601,6 +619,10 @@ export class StripeAdapter implements PaymentProviderAdapter {
             : (intent.latest_charge?.id ?? null),
         amountMinor: intent.amount,
         currency: intent.currency.toUpperCase(),
+        environment: this.config.environment,
+        connectedAccountId: extractId(intent.transfer_data?.destination),
+        applicationFeeAmountMinor: intent.application_fee_amount ?? null,
+        onBehalfOfAccountId: extractId(intent.on_behalf_of),
       };
     } catch (error) {
       throw mapStripeError(error);
@@ -633,6 +655,10 @@ export class StripeAdapter implements PaymentProviderAdapter {
             : (intent.latest_charge?.id ?? null),
         amountMinor: intent.amount,
         currency: intent.currency.toUpperCase(),
+        environment: this.config.environment,
+        connectedAccountId: extractId(intent.transfer_data?.destination),
+        applicationFeeAmountMinor: intent.application_fee_amount ?? null,
+        onBehalfOfAccountId: extractId(intent.on_behalf_of),
       };
     } catch (error) {
       throw mapStripeError(error);

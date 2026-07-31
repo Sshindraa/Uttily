@@ -37,6 +37,14 @@ export interface PaymentIntentResult {
   latestChargeId: string | null;
   amountMinor: number;
   currency: string;
+  /** Environnement Stripe (TEST/LIVE) — pour validation Transaction B. */
+  environment: StripeEnvironment;
+  /** Identifiant du compte connecté (destination) — pour validation. Null si non disponible (ex: retrieve sans transfer_data). */
+  connectedAccountId: string | null;
+  /** Commission en unités mineures (null si non applicable). */
+  applicationFeeAmountMinor: number | null;
+  /** Compte on_behalf_of (null si non requis). */
+  onBehalfOfAccountId: string | null;
 }
 
 /**

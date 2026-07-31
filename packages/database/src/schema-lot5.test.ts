@@ -306,7 +306,7 @@ interface AttemptPayload {
   attempt_number: number;
   status: string;
   provider_idempotency_key: string;
-  provider_status: string;
+  provider_status: string | null;
   provider_payment_intent_id?: string | null;
 }
 
@@ -471,7 +471,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
   // -------------------------------------------------------------------------
   // 1. Migration from scratch — toutes les tables Lot 5 existent
   // -------------------------------------------------------------------------
-  it('crée les 9 tables Lot 5 et __drizzle_migrations a 19 entrées', async () => {
+  it('crée les 9 tables Lot 5 et __drizzle_migrations a 20 entrées', async () => {
     if (!testUrl) return;
     const sql = postgres(testUrl, { max: 1 });
     try {
@@ -487,7 +487,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
       expect(lot5Tables.length).toBe(9);
 
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(19);
+      expect(rows.length).toBe(20);
     } finally {
       await sql.end();
     }
@@ -502,7 +502,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
     const sql = postgres(testUrl, { max: 1 });
     try {
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(19);
+      expect(rows.length).toBe(20);
     } finally {
       await sql.end();
     }
@@ -2619,6 +2619,119 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
         RETURNING "id"
       `.then((r) => r[0]!);
       expect(refund).toBeDefined();
+    } finally {
+      await sql.end();
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // 27. provider_status nullable avant l'appel fournisseur (migration 0020)
+  // -------------------------------------------------------------------------
+  it('accepte une tentative avec provider_status = NULL et provider_payment_intent_id = NULL', async () => {
+    if (!testUrl) return;
+    const sql = postgres(testUrl, { max: 1 });
+    try {
+      const ids = await seedBaseData(sql);
+      const { draftId } = await seedHeldDraftWithLine(sql, ids);
+      const payment = await insertPayment(sql, ids, draftId, validPaymentPayload()).then(
+        (r) => r[0]!,
+      );
+      const attempt = await insertAttempt(
+        sql,
+        ids,
+        payment.id,
+        validAttemptPayload({ provider_status: null, provider_payment_intent_id: null }),
+      ).then((r) => r[0]!);
+      expect(attempt).toBeDefined();
+    } finally {
+      await sql.end();
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // 28. provider_status requis quand provider_payment_intent_id est renseigné
+  // -------------------------------------------------------------------------
+  it('rejette une tentative avec provider_payment_intent_id renseigné mais provider_status = NULL', async () => {
+    if (!testUrl) return;
+    const sql = postgres(testUrl, { max: 1 });
+    try {
+      const ids = await seedBaseData(sql);
+      const { draftId } = await seedHeldDraftWithLine(sql, ids);
+      const payment = await insertPayment(sql, ids, draftId, validPaymentPayload()).then(
+        (r) => r[0]!,
+      );
+      await expect(
+        insertAttempt(
+          sql,
+          ids,
+          payment.id,
+          validAttemptPayload({
+            provider_payment_intent_id: 'pi_test_null_status',
+            provider_status: null,
+          }),
+        ),
+      ).rejects.toThrow();
+    } finally {
+      await sql.end();
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // 29. Une seule tentative non terminale par paiement (index unique partiel)
+  // -------------------------------------------------------------------------
+  it('rejette deux tentatives non terminales pour le même payment_id', async () => {
+    if (!testUrl) return;
+    const sql = postgres(testUrl, { max: 1 });
+    try {
+      const ids = await seedBaseData(sql);
+      const { draftId } = await seedHeldDraftWithLine(sql, ids);
+      const payment = await insertPayment(sql, ids, draftId, validPaymentPayload()).then(
+        (r) => r[0]!,
+      );
+      await insertAttempt(
+        sql,
+        ids,
+        payment.id,
+        validAttemptPayload({ attempt_number: 1, status: 'PENDING_PROVIDER' }),
+      );
+      await expect(
+        insertAttempt(
+          sql,
+          ids,
+          payment.id,
+          validAttemptPayload({ attempt_number: 2, status: 'REQUIRES_ACTION' }),
+        ),
+      ).rejects.toThrow();
+    } finally {
+      await sql.end();
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // 30. Tentative terminale autorisée à côté d'une tentative non terminale
+  // -------------------------------------------------------------------------
+  it("accepte une tentative SUCCEEDED à côté d'une tentative PENDING_PROVIDER pour le même payment_id", async () => {
+    if (!testUrl) return;
+    const sql = postgres(testUrl, { max: 1 });
+    try {
+      const ids = await seedBaseData(sql);
+      const { draftId } = await seedHeldDraftWithLine(sql, ids);
+      const payment = await insertPayment(sql, ids, draftId, validPaymentPayload()).then(
+        (r) => r[0]!,
+      );
+      await insertAttempt(
+        sql,
+        ids,
+        payment.id,
+        validAttemptPayload({ attempt_number: 1, status: 'SUCCEEDED' }),
+      );
+      const second = await insertAttempt(
+        sql,
+        ids,
+        payment.id,
+        validAttemptPayload({ attempt_number: 2, status: 'PENDING_PROVIDER' }),
+      ).then((r) => r[0]!);
+      expect(second).toBeDefined();
     } finally {
       await sql.end();
     }

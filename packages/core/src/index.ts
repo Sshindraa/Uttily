@@ -37,3 +37,6 @@ export * from './financial-terms/index';
 
 // Lot 5 — Adapter Stripe et provider de paiement (ADR-010).
 export * from './payments/index';
+
+// Lot 5 — Initiation de paiement (ADR-010 §7).
+export * from './payment-initiation/index';

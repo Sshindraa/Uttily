@@ -134,6 +134,13 @@
       "when": 1764528000018,
       "tag": "0019_lot5_payments_bookings",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1764528000019,
+      "tag": "0020_payment_attempts_single_non_terminal_and_nullable_provider_status",
+      "breakpoints": true
     }
   ]
 }

@@ -18,6 +18,9 @@ interface MockPaymentIntent {
   amount: number;
   currency: string;
   metadata: Record<string, string>;
+  application_fee_amount?: number | null;
+  on_behalf_of?: string | null;
+  transfer_data?: { destination: string } | null;
 }
 
 interface MockRefund {
@@ -317,6 +320,9 @@ function makeMockPaymentIntent(overrides: Partial<MockPaymentIntent> = {}): Mock
     amount: 10000,
     currency: 'eur',
     metadata: {},
+    application_fee_amount: null,
+    on_behalf_of: null,
+    transfer_data: { destination: 'acct_connected_123' },
     ...overrides,
   };
 }
@@ -406,6 +412,11 @@ describe('StripeAdapter', () => {
       expect(result.amountMinor).toBe(10000);
       expect(result.currency).toBe('EUR');
       expect(result.latestChargeId).toBeNull();
+      // Nouveaux champs PaymentIntentResult (ADR-010 §5).
+      expect(result.environment).toBe('TEST');
+      expect(result.connectedAccountId).toBe('acct_connected_123');
+      expect(result.applicationFeeAmountMinor).toBeNull();
+      expect(result.onBehalfOfAccountId).toBeNull();
 
       // Vérifier les paramètres passés à Stripe.
       expect(mockPaymentIntentsCreate).toHaveBeenCalledTimes(1);
@@ -699,6 +710,11 @@ describe('StripeAdapter', () => {
       expect(result.id).toBe('pi_fake_123');
       expect(result.status).toBe('succeeded');
       expect(result.latestChargeId).toBe('ch_123');
+      // Nouveaux champs PaymentIntentResult (ADR-010 §5).
+      expect(result.environment).toBe('TEST');
+      expect(result.connectedAccountId).toBe('acct_connected_123');
+      expect(result.applicationFeeAmountMinor).toBeNull();
+      expect(result.onBehalfOfAccountId).toBeNull();
 
       expect(mockPaymentIntentsRetrieve).toHaveBeenCalledTimes(1);
       const [id] = mockPaymentIntentsRetrieve.mock.calls[0]!;
@@ -715,6 +731,21 @@ describe('StripeAdapter', () => {
       await expect(adapter.retrievePaymentIntent('pi_missing')).rejects.toThrow(
         PaymentProviderError,
       );
+    });
+
+    it('renvoie connectedAccountId null lorsque transfer_data est absent', async () => {
+      const mockIntent = makeMockPaymentIntent({
+        status: 'succeeded',
+        transfer_data: null,
+      });
+      mockPaymentIntentsRetrieve.mockResolvedValue(mockIntent);
+
+      const result = await adapter.retrievePaymentIntent('pi_123');
+
+      expect(result.connectedAccountId).toBeNull();
+      expect(result.environment).toBe('TEST');
+      expect(result.applicationFeeAmountMinor).toBeNull();
+      expect(result.onBehalfOfAccountId).toBeNull();
     });
   });
 

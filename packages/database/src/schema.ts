@@ -871,7 +871,7 @@ export const paymentAttempts = pgTable(
     providerPaymentIntentId: text('provider_payment_intent_id').unique(),
     providerLatestChargeId: text('provider_latest_charge_id'),
     providerIdempotencyKey: text('provider_idempotency_key').notNull().unique(),
-    providerStatus: text('provider_status').notNull(),
+    providerStatus: text('provider_status'),
     lastProviderErrorCode: text('last_provider_error_code'),
     reconcileAfter: timestamp('reconcile_after', { withTimezone: true }),
     reconcileLeaseUntil: timestamp('reconcile_lease_until', { withTimezone: true }),
@@ -889,6 +889,15 @@ export const paymentAttempts = pgTable(
     index('payment_attempts_reconcile_index')
       .on(t.status, t.reconcileAfter, t.reconcileLeaseUntil)
       .where(sql`${t.status} IN ('PENDING_PROVIDER', 'REQUIRES_ACTION', 'PROCESSING')`),
+    check(
+      'payment_attempts_provider_status_with_intent',
+      sql`${t.providerPaymentIntentId} IS NULL OR ${t.providerStatus} IS NOT NULL`,
+    ),
+    uniqueIndex('payment_attempts_single_non_terminal_attempt')
+      .on(t.paymentId)
+      .where(
+        sql`${t.status} IN ('PENDING_PROVIDER', 'REQUIRES_PAYMENT_METHOD', 'REQUIRES_ACTION', 'PROCESSING')`,
+      ),
   ],
 );
 

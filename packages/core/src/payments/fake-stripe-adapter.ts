@@ -49,6 +49,7 @@ interface FakePaymentIntent {
   connectedAccountId: string;
   applicationFeeAmountMinor: number | null;
   onBehalfOfAccountId: string | null;
+  environment: StripeEnvironment;
   metadata: PaymentMetadata;
   /** Clé d'idempotence qui a créé cet intent (pour le replay). */
   idempotencyKey: string;
@@ -379,6 +380,10 @@ export class FakeStripeAdapter implements PaymentProviderAdapter {
       latestChargeId: intent.latestChargeId,
       amountMinor: intent.amountMinor,
       currency: intent.currency,
+      environment: intent.environment,
+      connectedAccountId: intent.connectedAccountId,
+      applicationFeeAmountMinor: intent.applicationFeeAmountMinor,
+      onBehalfOfAccountId: intent.onBehalfOfAccountId,
     };
   }
 
@@ -452,6 +457,7 @@ export class FakeStripeAdapter implements PaymentProviderAdapter {
       connectedAccountId: params.connectedAccountId,
       applicationFeeAmountMinor: params.applicationFeeAmountMinor,
       onBehalfOfAccountId: params.onBehalfOfAccountId,
+      environment: this.environment,
       metadata: { ...params.metadata },
       idempotencyKey: params.idempotencyKey,
     };
