@@ -362,6 +362,98 @@ function normalizeEventData(event: Stripe.Event): Record<string, unknown> {
     }
     allowed.metadata = filteredMetadata;
   }
+  // transfer_data.destination (connected account ID) — nécessaire pour le recoupement.
+  const transferData = obj?.transfer_data as Record<string, unknown> | undefined;
+  if (transferData !== null && typeof transferData === 'object') {
+    const dest = transferData.destination;
+    if (typeof dest === 'string') {
+      allowed.transfer_data = { destination: dest };
+    }
+  }
+  // application_fee_amount (commission) — nécessaire pour le recoupement.
+  if (obj?.application_fee_amount === null || typeof obj?.application_fee_amount === 'number') {
+    allowed.application_fee_amount = obj.application_fee_amount;
+  }
+  // on_behalf_of (compte connecté) — nécessaire pour le recoupement.
+  if (obj?.on_behalf_of === null || typeof obj?.on_behalf_of === 'string') {
+    allowed.on_behalf_of = obj.on_behalf_of;
+  }
+  // payment_intent (pour les événements charge.refunded / refund.*).
+  if (typeof obj?.payment_intent === 'string') {
+    allowed.payment_intent = obj.payment_intent;
+  }
+  // refunds (pour charge.refunded — ApiList<Refund> avec data = Refund[]).
+  // P2-2 : Ne copier que les champs métier nécessaires de chaque refund.
+  // P1-3 : Ne pas filtrer les éléments non-objets — la validation se fait dans
+  // le savepoint de projectRefundStatus pour garantir l'atomicité « tout ou
+  // rien ». Un élément non-objet déclenchera REFUND_OBJECT_INVALID.
+  if (obj?.refunds !== undefined && typeof obj?.refunds === 'object' && obj.refunds !== null) {
+    const refundsList = obj.refunds as Record<string, unknown>;
+    const rawData = refundsList.data;
+    if (Array.isArray(rawData)) {
+      const filteredData = rawData.map((r) => {
+        if (r === null || typeof r !== 'object') {
+          return r; // Garder tels quels — validés dans le savepoint (P1-3)
+        }
+        const refund = r as Record<string, unknown>;
+        return {
+          id: refund.id,
+          status: refund.status,
+          amount: refund.amount,
+          payment_intent: refund.payment_intent,
+          currency: refund.currency,
+        };
+      });
+      allowed.refunds = { object: 'list', data: filteredData };
+    }
+  }
+  // Champs account.updated (projection organization_payment_accounts).
+  if (typeof obj?.charges_enabled === 'boolean') {
+    allowed.charges_enabled = obj.charges_enabled;
+  }
+  if (typeof obj?.payouts_enabled === 'boolean') {
+    allowed.payouts_enabled = obj.payouts_enabled;
+  }
+  // capabilities (objet avec transfers, card_payments, etc.) — P1-6.
+  // P2-2 : Ne copier que le champ transfers.
+  if (obj?.capabilities !== undefined && typeof obj?.capabilities === 'object') {
+    const rawCapabilities = obj.capabilities as Record<string, unknown>;
+    const filteredCapabilities: Record<string, unknown> = {};
+    if (typeof rawCapabilities.transfers === 'string') {
+      filteredCapabilities.transfers = rawCapabilities.transfers;
+    }
+    if (Object.keys(filteredCapabilities).length > 0) {
+      allowed.capabilities = filteredCapabilities;
+    }
+  }
+  // P2-2 : requirements — ne copier que currently_due et past_due.
+  if (obj?.requirements !== undefined && typeof obj?.requirements === 'object') {
+    const rawRequirements = obj.requirements as Record<string, unknown>;
+    const filteredRequirements: Record<string, unknown> = {};
+    if (Array.isArray(rawRequirements.currently_due)) {
+      filteredRequirements.currently_due = rawRequirements.currently_due;
+    }
+    if (Array.isArray(rawRequirements.past_due)) {
+      filteredRequirements.past_due = rawRequirements.past_due;
+    }
+    if (Object.keys(filteredRequirements).length > 0) {
+      allowed.requirements = filteredRequirements;
+    }
+  }
+  // P2-2 : controller — ne copier que fees_collector et is_controller.
+  if (obj?.controller !== undefined && typeof obj?.controller === 'object') {
+    const rawController = obj.controller as Record<string, unknown>;
+    const filteredController: Record<string, unknown> = {};
+    if (typeof rawController.fees_collector === 'string') {
+      filteredController.fees_collector = rawController.fees_collector;
+    }
+    if (typeof rawController.is_controller === 'boolean') {
+      filteredController.is_controller = rawController.is_controller;
+    }
+    if (Object.keys(filteredController).length > 0) {
+      allowed.controller = filteredController;
+    }
+  }
   return allowed;
 }
 

@@ -1067,6 +1067,63 @@ describe('StripeAdapter', () => {
         expect(result.reason).toBe('INVALID_PAYLOAD');
       }
     });
+
+    // P1-3 : Le vrai adapter ne doit pas filtrer les éléments
+    // non-objets de refunds.data. Un payload contenant [refundValide, null]
+    // doit conserver l'élément null pour que projectRefundStatus lève
+    // REFUND_OBJECT_INVALID dans le savepoint. Ce test contractuel empêche
+    // une régression divergence avec le fake adapter.
+    it('préserve les éléments null dans refunds.data (ne filtre pas — P1-3)', async () => {
+      const mockEvent = {
+        id: 'evt_refund_null_element',
+        object: 'event' as const,
+        type: 'charge.refunded',
+        created: Math.floor(Date.now() / 1000),
+        api_version: '2026-06-24.dahlia',
+        data: {
+          object: {
+            id: 'ch_test_null_element',
+            object: 'charge',
+            payment_intent: 'pi_123',
+            amount_refunded: 5000,
+            refunds: {
+              object: 'list',
+              data: [
+                {
+                  id: 're_valid',
+                  object: 'refund',
+                  status: 'succeeded',
+                  amount: 5000,
+                  payment_intent: 'pi_123',
+                  currency: 'eur',
+                },
+                null, // Élément mal formé — ne doit pas être filtré
+              ],
+              has_more: false,
+            },
+          },
+        },
+      };
+      mockConstructEvent.mockReturnValue(mockEvent);
+
+      const result = await adapter.verifyWebhook({
+        rawBody: '{"id":"evt_refund_null_element"}',
+        signature: 't=123,v1=fake',
+        endpoint: 'platform',
+        environment: 'TEST',
+      });
+
+      expect(result.valid).toBe(true);
+      if (result.valid) {
+        const data = result.event.data as Record<string, unknown>;
+        const refunds = data.refunds as Record<string, unknown>;
+        const refundList = refunds.data as unknown[];
+        // L'élément null doit être conservé (pas filtré).
+        expect(refundList).toHaveLength(2);
+        expect(refundList[0]).not.toBeNull();
+        expect(refundList[1]).toBeNull();
+      }
+    });
   });
 
   describe('createConnectedAccount', () => {

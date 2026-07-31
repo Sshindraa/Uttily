@@ -471,7 +471,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
   // -------------------------------------------------------------------------
   // 1. Migration from scratch — toutes les tables Lot 5 existent
   // -------------------------------------------------------------------------
-  it('crée les 9 tables Lot 5 et __drizzle_migrations a 20 entrées', async () => {
+  it('crée les 9 tables Lot 5 et __drizzle_migrations a 23 entrées', async () => {
     if (!testUrl) return;
     const sql = postgres(testUrl, { max: 1 });
     try {
@@ -487,7 +487,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
       expect(lot5Tables.length).toBe(9);
 
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(20);
+      expect(rows.length).toBe(23);
     } finally {
       await sql.end();
     }
@@ -502,7 +502,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
     const sql = postgres(testUrl, { max: 1 });
     try {
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(20);
+      expect(rows.length).toBe(23);
     } finally {
       await sql.end();
     }
@@ -1704,6 +1704,51 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
     }
   });
 
+  // P1-5 : L'index unique partiel (payment_id, reason) WHERE reason = 'LATE_PAYMENT_NO_BOOKING'
+  // permet plusieurs refunds EXTERNAL_REFUND pour le même paiement.
+  it('accepte deux remboursements EXTERNAL_REFUND pour le même payment_id (index unique partiel)', async () => {
+    if (!testUrl) return;
+    const sql = postgres(testUrl, { max: 1 });
+    try {
+      const ids = await seedBaseData(sql);
+      const { draftId } = await seedHeldDraftWithLine(sql, ids);
+      const payment = await insertPayment(
+        sql,
+        ids,
+        draftId,
+        validPaymentPayload({
+          status: 'SUCCEEDED',
+          amount_minor: 10000,
+          succeeded_at: '2026-01-01 12:00:00+00',
+        }),
+      ).then((r) => r[0]!);
+      const insertExternalRefund = (key: string, refundId: string) => sql`
+        INSERT INTO "refunds" (
+          "organization_id", "payment_id", "reason", "amount_minor", "currency",
+          "provider_refund_id", "provider_idempotency_key", "requested_at"
+        )
+        VALUES (
+          ${ids.orgId}, ${payment.id}, 'EXTERNAL_REFUND', 5000, 'EUR',
+          ${refundId}, ${key}, now()
+        )
+        RETURNING "id"
+      `;
+      const r1 = await insertExternalRefund(
+        'ext-refund-1-' + Math.random().toString(36).slice(2, 12),
+        're_ext_1_' + Math.random().toString(36).slice(2, 8),
+      );
+      expect(r1.length).toBe(1);
+      // Le second EXTERNAL_REFUND pour le même paiement doit réussir (pas de violation unique).
+      const r2 = await insertExternalRefund(
+        'ext-refund-2-' + Math.random().toString(36).slice(2, 12),
+        're_ext_2_' + Math.random().toString(36).slice(2, 8),
+      );
+      expect(r2.length).toBe(1);
+    } finally {
+      await sql.end();
+    }
+  });
+
   it('rejette deux remboursements avec le même provider_refund_id', async () => {
     if (!testUrl) return;
     const sql = postgres(testUrl, { max: 1 });
@@ -2620,6 +2665,139 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
       `.then((r) => r[0]!);
       expect(refund).toBeDefined();
     } finally {
+      await sql.end();
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // 26b. Refund amount = 0 rejeté (migration 0023, refunds_amount_positive > 0)
+  //
+  // La migration 0023 est fail-closed pour les refunds à montant 0 existants :
+  // si une base conforme à 0022 contient déjà un refund à 0, le DROP/ADD
+  // CONSTRAINT échouera intentionnellement (AGENTS.md). Ces lignes doivent être
+  // auditées manuellement avant migration (SELECT * FROM refunds WHERE amount_minor = 0).
+  // Ce test vérifie que la contrainte `refunds_amount_positive` est bien `> 0`
+  // après migration (rejet d'un refund à montant 0).
+  // -------------------------------------------------------------------------
+  it('rejette un remboursement de montant 0', async () => {
+    if (!testUrl) return;
+    const sql = postgres(testUrl, { max: 1 });
+    try {
+      const ids = await seedBaseData(sql);
+      const { draftId } = await seedHeldDraftWithLine(sql, ids);
+      const payment = await insertPayment(
+        sql,
+        ids,
+        draftId,
+        validPaymentPayload({
+          status: 'SUCCEEDED',
+          amount_minor: 10000,
+          succeeded_at: '2026-01-01 12:00:00+00',
+        }),
+      ).then((r) => r[0]!);
+      await expect(
+        sql`
+          INSERT INTO "refunds" (
+            "organization_id", "payment_id", "reason", "amount_minor", "currency",
+            "provider_idempotency_key", "requested_at"
+          )
+          VALUES (
+            ${ids.orgId}, ${payment.id}, 'LATE_PAYMENT_NO_BOOKING', 0, 'EUR',
+            ${'refund-zero-' + Math.random().toString(36).slice(2, 12)}, now()
+          )
+        `,
+      ).rejects.toThrow();
+    } finally {
+      await sql.end();
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // 26c. Migration 0023 fail-closed : base 0022 avec refund à 0 → échec
+  //
+  // La migration 0023 resserre la contrainte `refunds_amount_nonneg` (>= 0) en
+  // `refunds_amount_positive` (> 0). Le migrateur Drizzle applique les
+  // migrations dans une transaction. Ce test prouve l'atomicité :
+  // 1. état 0022 avec `refunds_amount_nonneg` et une ligne à zéro ;
+  // 2. transaction `DROP ancienne + ADD nouvelle` ;
+  // 3. échec du ADD → rollback de toute la transaction ;
+  // 4. l'ancienne contrainte `refunds_amount_nonneg` est restaurée ;
+  // 5. la ligne financière à zéro est toujours présente.
+  // Le nettoyage (restauration de la contrainte 0023 + suppression de la ligne)
+  // est dans `finally` pour garantir la cohérence même en cas d'erreur.
+  // -------------------------------------------------------------------------
+  it('migration 0023 échoue si un refund à montant 0 existe (fail-closed, transactionnel)', async () => {
+    if (!testUrl) return;
+    const sql = postgres(testUrl, { max: 1 });
+    try {
+      // 1. Simuler l'état 0022 : DROP la contrainte 0023 et re-ADD l'ancienne (>= 0).
+      await sql`ALTER TABLE "refunds" DROP CONSTRAINT "refunds_amount_positive"`;
+      await sql`ALTER TABLE "refunds" ADD CONSTRAINT "refunds_amount_nonneg" CHECK ("refunds"."amount_minor" >= 0)`;
+
+      // 2. Insérer un refund à montant 0 (possible avec l'ancienne contrainte).
+      const ids = await seedBaseData(sql);
+      const { draftId } = await seedHeldDraftWithLine(sql, ids);
+      const payment = await insertPayment(
+        sql,
+        ids,
+        draftId,
+        validPaymentPayload({
+          status: 'SUCCEEDED',
+          amount_minor: 10000,
+          succeeded_at: '2026-01-01 12:00:00+00',
+        }),
+      ).then((r) => r[0]!);
+      const zeroRefundKey = 'upgrade-test-' + Math.random().toString(36).slice(2, 12);
+      await sql`
+        INSERT INTO "refunds" (
+          "organization_id", "payment_id", "reason", "amount_minor", "currency",
+          "provider_idempotency_key", "requested_at"
+        )
+        VALUES (
+          ${ids.orgId}, ${payment.id}, 'LATE_PAYMENT_NO_BOOKING', 0, 'EUR',
+          ${zeroRefundKey}, now()
+        )
+      `;
+
+      // 3. Tenter d'appliquer 0023 dans une transaction (comme le migrateur
+      //    Drizzle) : DROP ancienne + ADD nouvelle. Le ADD doit échouer car la
+      //    ligne à 0 viole la contrainte > 0. Le rollback doit restaurer
+      //    l'ancienne contrainte `refunds_amount_nonneg`.
+      await expect(
+        sql.begin(async (tx) => {
+          await tx`ALTER TABLE "refunds" DROP CONSTRAINT "refunds_amount_nonneg"`;
+          await tx`ALTER TABLE "refunds" ADD CONSTRAINT "refunds_amount_positive" CHECK ("refunds"."amount_minor" > 0)`;
+        }),
+      ).rejects.toThrow();
+
+      // 4. Vérifier que le rollback a restauré l'ancienne contrainte
+      //    `refunds_amount_nonneg` (la transaction a été annulée).
+      const constraints = await sql`
+        SELECT conname FROM pg_constraint
+        WHERE conrelid = '"refunds"'::regclass AND conname = 'refunds_amount_nonneg'
+      `;
+      expect(constraints.length).toBe(1);
+
+      // 5. Vérifier que la ligne financière à 0 est toujours présente
+      //    (le rollback de la transaction DDL n'a pas affecté les données).
+      const zeroRefunds = await sql`
+        SELECT provider_idempotency_key FROM "refunds" WHERE amount_minor = 0
+      `;
+      expect(zeroRefunds.length).toBe(1);
+      expect(zeroRefunds[0]!.provider_idempotency_key).toBe(zeroRefundKey);
+    } finally {
+      // Nettoyage garanti : supprimer le refund à 0 et restaurer la contrainte 0023.
+      try {
+        await sql`DELETE FROM "refunds" WHERE "amount_minor" = 0`;
+      } catch {
+        // Ignore si la suppression échoue (ligne déjà absente).
+      }
+      try {
+        await sql`ALTER TABLE "refunds" DROP CONSTRAINT IF EXISTS "refunds_amount_nonneg"`;
+        await sql`ALTER TABLE "refunds" ADD CONSTRAINT "refunds_amount_positive" CHECK ("refunds"."amount_minor" > 0)`;
+      } catch {
+        // Ignore si la contrainte 0023 existe déjà.
+      }
       await sql.end();
     }
   });

@@ -1,0 +1,1702 @@
+/**
+ * @uttily/core — Use case principal de traitement des webhooks Stripe (Lot 5, ADR-010 §9, §10, §11, §13, §14).
+ *
+ * Orchestration : verify → extract PaymentIntentEventData → ingest (transaction 1, courte)
+ * → dispatch par type → confirm/compensate/non-success (transaction 2, métier)
+ * → log. Aucun appel Stripe dans une transaction.
+ *
+ * Contraintes critiques (ADR-010 §1, §14) :
+ * - La vérification de signature se fait HORS transaction, avant toute écriture.
+ * - Aucun appel Stripe à l'intérieur d'une transaction PostgreSQL ou sous un
+ *   verrou FOR UPDATE.
+ * - Le corps brut et les données de carte ne sont JAMAIS persistés.
+ * - Le `client_secret` n'est JAMAIS persisté, loggé ou inclus dans une réponse.
+ * - Fail-closed : signature absente/invalide → 4xx, aucune écriture métier.
+ * - Erreur technique récupérable → 5xx (Stripe retry).
+ * - Anomalie métier irréconciliable → persistance + observabilité, pas de boucle aveugle.
+ *
+ * Ordre de verrouillage global (ADR-010 §10) :
+ * booking_draft → inventory_blocks (id) → allocations (id) → payment → payment_attempt → webhook_event
+ * Le verrou sur payment_webhook_events est pris EN DERNIER dans la transaction métier,
+ * après tous les autres verrous. La transaction 1 (ingestion) ne prend aucun verrou FOR UPDATE.
+ */
+
+import { and, eq, sql } from 'drizzle-orm';
+import {
+  bookings,
+  organizationPaymentAccounts,
+  paymentAttempts,
+  paymentWebhookEvents,
+  payments,
+  refunds,
+  type DatabaseClient,
+  type DatabaseTransaction,
+} from '@uttily/database';
+import type { VerifiedWebhookEvent } from '../payments/types';
+import type {
+  WebhookHandlerDeps,
+  WebhookHandlerInput,
+  WebhookHandlerResult,
+  HandledEventType,
+} from './types';
+import { WebhookHandlerError, normalizeWebhookError, isIrreconcilable } from './errors';
+import { extractPaymentIntentEventData } from './extract-event';
+import { resolveAttempt } from './resolve-attempt';
+import { ingestEvent, resolveOrgFromConnectedAccount } from './dedupe-event';
+import {
+  confirmBooking,
+  isDraftTerminalForConversion,
+  type ConfirmBookingResult,
+} from './confirm-booking';
+import { handlePaymentFailed, handleCanceled, handleProcessing } from './handle-non-success';
+import { compensateLatePayment } from './compensate-late';
+
+/** Types d'événements de refund (journalisés et projetés, pas de worker en Phase 6). */
+const REFUND_EVENT_TYPES = new Set<string>([
+  'charge.refunded',
+  'refund.updated',
+  'refund.created',
+  'refund.failed',
+]);
+
+/**
+ * Codes d'échec fermés pour la projection des refunds (P2-1).
+ * Une faute de frappe dans un code serait détectée à la compilation.
+ */
+export type RefundProjectionFailureCode =
+  | 'REFUND_PI_MISSING'
+  | 'REFUND_PI_MISMATCH'
+  | 'REFUND_INVALID_AMOUNT'
+  | 'REFUND_AMOUNT_MISMATCH'
+  | 'REFUND_CURRENCY_MISSING'
+  | 'REFUND_CURRENCY_MISMATCH'
+  | 'REFUND_ORG_MISMATCH'
+  | 'REFUND_TERMINAL_STATE_CONFLICT'
+  | 'REFUND_INVARIANT_BROKEN'
+  | 'REFUND_OBJECTS_MISSING'
+  | 'REFUND_OBJECT_INVALID'
+  | 'REFUND_ID_MISSING'
+  | 'REFUND_STATUS_MISSING'
+  | 'REFUND_PROVIDER_STATE_UNSUPPORTED';
+
+/**
+ * Erreur de projection de refund (P1-1). Levée à l'intérieur d'un savepoint
+ * pour déclencher un ROLLBACK TO SAVEPOINT (annule toutes les projections
+ * partielles) puis être capturée par la transaction extérieure qui marque
+ * l'événement FAILED avec le code fermé.
+ */
+class RefundProjectionError extends Error {
+  constructor(readonly code: RefundProjectionFailureCode) {
+    super(`Refund projection failed: ${code}`);
+    this.name = 'RefundProjectionError';
+  }
+}
+
+/**
+ * Use case principal : traite un webhook Stripe signé de manière idempotente
+ * et transactionnelle.
+ *
+ * @param deps Dépendances (db + provider).
+ * @param input Entrée (rawBody, signature, endpoint, environment).
+ * @returns WebhookHandlerResult (SUCCESS 200 ou FAILURE avec statusCode).
+ */
+export async function handleWebhook(
+  deps: WebhookHandlerDeps,
+  input: WebhookHandlerInput,
+): Promise<WebhookHandlerResult> {
+  const startTime = Date.now();
+  const { db, provider } = deps;
+  const { rawBody, signature, endpoint, environment } = input;
+
+  // ── 1. Vérification de signature (HORS transaction, avant toute écriture) ──
+  const verification = await provider.verifyWebhook({
+    rawBody,
+    signature,
+    endpoint,
+    environment,
+  });
+
+  if (!verification.valid) {
+    const code =
+      verification.reason === 'INVALID_SIGNATURE'
+        ? 'WEBHOOK_SIGNATURE_INVALID'
+        : verification.reason === 'INVALID_TIMESTAMP'
+          ? 'WEBHOOK_TIMESTAMP_INVALID'
+          : 'WEBHOOK_PAYLOAD_INVALID';
+    console.warn(
+      JSON.stringify({
+        event: 'webhook.stripe',
+        endpoint,
+        environment,
+        result: 'signature_invalid',
+        reason: verification.reason,
+        durationMs: Date.now() - startTime,
+      }),
+    );
+    return {
+      kind: 'FAILURE',
+      statusCode: 400,
+      error: code,
+      message: 'Signature ou payload invalide',
+    };
+  }
+
+  const event = verification.event;
+
+  // Log de réception (pas de corps brut, pas de secret).
+  console.log(
+    JSON.stringify({
+      event: 'webhook.stripe',
+      endpoint,
+      environment,
+      providerEventId: event.id,
+      eventType: event.type,
+      result: 'received',
+      durationMs: Date.now() - startTime,
+    }),
+  );
+
+  try {
+    // ── 2. Dispatch par type d'événement ──────────────────────────────────────
+
+    // Événements Connect (account.updated) — journaliser, projeter et marquer PROCESSED/IGNORED.
+    if (endpoint === 'connect') {
+      return await handleConnectEvent(db, event, rawBody, environment, startTime);
+    }
+
+    // Événements de refund — journaliser et projeter le statut (Phase 6 : pas de worker).
+    if (REFUND_EVENT_TYPES.has(event.type)) {
+      return await handleRefundEvent(db, event, rawBody, environment, startTime);
+    }
+
+    // Événements PaymentIntent gérés.
+    const handledTypes: readonly string[] = [
+      'payment_intent.succeeded',
+      'payment_intent.processing',
+      'payment_intent.payment_failed',
+      'payment_intent.canceled',
+    ];
+
+    if (!handledTypes.includes(event.type)) {
+      // Événement non géré — journaliser et retourner 200 (éviter les retries inutiles).
+      console.log(
+        JSON.stringify({
+          event: 'webhook.stripe',
+          endpoint,
+          environment,
+          providerEventId: event.id,
+          eventType: event.type,
+          result: 'unhandled',
+          durationMs: Date.now() - startTime,
+        }),
+      );
+      return { kind: 'SUCCESS', statusCode: 200 };
+    }
+
+    // ── 3. Extraire PaymentIntentEventData ────────────────────────────────────
+    let piData;
+    try {
+      piData = extractPaymentIntentEventData(event);
+    } catch (extractError) {
+      console.warn(
+        JSON.stringify({
+          event: 'webhook.stripe',
+          endpoint,
+          environment,
+          providerEventId: event.id,
+          eventType: event.type,
+          result: 'extract_failed',
+          error: extractError instanceof Error ? extractError.message : String(extractError),
+          durationMs: Date.now() - startTime,
+        }),
+      );
+      return {
+        kind: 'FAILURE',
+        statusCode: 400,
+        error: 'WEBHOOK_PAYLOAD_INVALID',
+        message: 'Données PaymentIntent invalides dans le webhook',
+      };
+    }
+
+    // ── 4. Résoudre la tentative (HORS transaction) ───────────────────────────
+    const attempt = await resolveAttempt(db, piData, environment, event.accountId);
+
+    if (attempt === null) {
+      // Aucune tentative trouvée — anomalie plateforme.
+      // Journaliser et retourner 200 (éviter les retries sur un événement non rattachable).
+      console.warn(
+        JSON.stringify({
+          event: 'webhook.stripe',
+          endpoint,
+          environment,
+          providerEventId: event.id,
+          eventType: event.type,
+          providerObjectId: event.objectId,
+          result: 'attempt_not_found',
+          durationMs: Date.now() - startTime,
+        }),
+      );
+      // Insérer quand même l'événement avec organization_id résolu depuis le compte connecté
+      // (si possible), sinon avec organization_id = NULL et marquer IGNORED.
+      try {
+        await logUnattachedEvent(db, event, rawBody, environment, startTime);
+      } catch {
+        // Erreur technique de journalisation → 500 (Stripe retry).
+        return {
+          kind: 'FAILURE',
+          statusCode: 500,
+          error: 'UNKNOWN',
+          message: 'Erreur technique lors de la journalisation du webhook non rattaché',
+        };
+      }
+      return { kind: 'SUCCESS', statusCode: 200 };
+    }
+
+    // ── 5. Transaction 1 : ingestion (courte, sans verrou FOR UPDATE) ────────
+    const ingestResult = await db.transaction(async (tx) => {
+      return await ingestEvent(tx, event, rawBody, environment, attempt.organizationId);
+    });
+
+    // Si organization_id non résolu (ne devrait pas arriver ici car attempt trouvé).
+    if (ingestResult.organizationId === null) {
+      console.warn(
+        JSON.stringify({
+          event: 'webhook.stripe',
+          endpoint,
+          environment,
+          providerEventId: event.id,
+          result: 'no_tenant',
+          durationMs: Date.now() - startTime,
+        }),
+      );
+      return { kind: 'SUCCESS', statusCode: 200 };
+    }
+
+    // Doublon : déjà PROCESSED ou IGNORED → retourner 200 sans rejouer.
+    if (ingestResult.isDuplicate) {
+      console.log(
+        JSON.stringify({
+          event: 'webhook.stripe',
+          endpoint,
+          environment,
+          providerEventId: event.id,
+          eventType: event.type,
+          result: 'duplicate',
+          durationMs: Date.now() - startTime,
+        }),
+      );
+      return { kind: 'SUCCESS', statusCode: 200 };
+    }
+
+    const webhookEventId = ingestResult.row.id;
+
+    // ── 6. Transaction 2 : business (dispatch + verrous métier + webhook_event en dernier) ──
+    return await db.transaction(async (tx) => {
+      const eventType = event.type as HandledEventType;
+
+      if (eventType === 'payment_intent.succeeded') {
+        // P1-2 : Vérifier si une réservation existe déjà pour ce payment (doublon distinct).
+        const existingBookings = await tx
+          .select({ id: bookings.id })
+          .from(bookings)
+          .where(eq(bookings.paymentId, attempt.paymentId))
+          .limit(1);
+
+        if (existingBookings.length > 0) {
+          // Une réservation existe déjà → l'effet a été produit par un autre événement.
+          // Marquer IGNORED (pas PROCESSED) et retourner 200.
+          await tx
+            .update(paymentWebhookEvents)
+            .set({ status: 'IGNORED', processedAt: sql`transaction_timestamp()` })
+            .where(eq(paymentWebhookEvents.id, webhookEventId));
+          console.log(
+            JSON.stringify({
+              event: 'webhook.stripe',
+              endpoint,
+              environment,
+              providerEventId: event.id,
+              eventType: event.type,
+              result: 'duplicate_distinct_pi',
+              durationMs: Date.now() - startTime,
+            }),
+          );
+          return { kind: 'SUCCESS', statusCode: 200 };
+        }
+
+        // Vérifier si la tentative est déjà SUCCEEDED (doublon distinct sans réservation).
+        const attemptRows = await tx
+          .select({ status: paymentAttempts.status })
+          .from(paymentAttempts)
+          .where(eq(paymentAttempts.id, attempt.attemptId))
+          .limit(1);
+
+        if (attemptRows.length > 0 && attemptRows[0]!.status === 'SUCCEEDED') {
+          // Tentative déjà SUCCEEDED mais aucune réservation → marquer IGNORED.
+          await tx
+            .update(paymentWebhookEvents)
+            .set({ status: 'IGNORED', processedAt: sql`transaction_timestamp()` })
+            .where(eq(paymentWebhookEvents.id, webhookEventId));
+          console.log(
+            JSON.stringify({
+              event: 'webhook.stripe',
+              endpoint,
+              environment,
+              providerEventId: event.id,
+              eventType: event.type,
+              result: 'duplicate_succeeded_no_booking',
+              durationMs: Date.now() - startTime,
+            }),
+          );
+          return { kind: 'SUCCESS', statusCode: 200 };
+        }
+
+        // Vérifier si le brouillon est terminal → compensation tardive.
+        if (isDraftTerminalForConversion(attempt.draftStatus)) {
+          const compOutcome = await compensateLatePayment(
+            tx,
+            attempt,
+            piData,
+            webhookEventId,
+            environment,
+          );
+          if (compOutcome instanceof WebhookHandlerError) {
+            if (isIrreconcilable(compOutcome)) {
+              // P1-2 : Irreconciliable → SUCCESS 200 (arrête les retries Stripe).
+              console.warn(
+                JSON.stringify({
+                  event: 'webhook.stripe',
+                  endpoint,
+                  environment,
+                  providerEventId: event.id,
+                  eventType: event.type,
+                  result: 'invariant_failed_terminated',
+                  errorCode: compOutcome.code,
+                  durationMs: Date.now() - startTime,
+                }),
+              );
+              return { kind: 'SUCCESS', statusCode: 200 };
+            }
+            console.warn(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint,
+                environment,
+                providerEventId: event.id,
+                eventType: event.type,
+                result: 'invariant_failed_compensate',
+                errorCode: compOutcome.code,
+                durationMs: Date.now() - startTime,
+              }),
+            );
+            return {
+              kind: 'FAILURE',
+              statusCode: compOutcome.statusCode,
+              error: compOutcome.code,
+              message: compOutcome.message,
+            };
+          }
+          console.log(
+            JSON.stringify({
+              event: 'webhook.stripe',
+              endpoint,
+              environment,
+              providerEventId: event.id,
+              eventType: event.type,
+              result: 'compensated',
+              paymentId: attempt.paymentId,
+              durationMs: Date.now() - startTime,
+            }),
+          );
+          return { kind: 'SUCCESS', statusCode: 200 };
+        }
+
+        // Confirmation atomique (§10 étapes 2-12).
+        try {
+          const result = await confirmBooking(
+            tx,
+            attempt,
+            piData,
+            webhookEventId,
+            environment,
+            event.id,
+          );
+          // Si confirmBooking retourne une erreur d'invariant (FAILED marqué),
+          // P1-2 : une erreur irréconciliable retourne SUCCESS 200 (pas 500) pour
+          // arrêter les retries Stripe. L'événement est déjà marqué FAILED dans la
+          // transaction.
+          if (result instanceof WebhookHandlerError) {
+            if (isIrreconcilable(result)) {
+              console.warn(
+                JSON.stringify({
+                  event: 'webhook.stripe',
+                  endpoint,
+                  environment,
+                  providerEventId: event.id,
+                  eventType: event.type,
+                  result: 'invariant_failed_terminated',
+                  errorCode: result.code,
+                  durationMs: Date.now() - startTime,
+                }),
+              );
+              return { kind: 'SUCCESS', statusCode: 200 };
+            }
+            // Control flow (WEBHOOK_ALREADY_PROCESSED, etc.) → comportement existant.
+            console.warn(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint,
+                environment,
+                providerEventId: event.id,
+                eventType: event.type,
+                result: 'invariant_failed',
+                errorCode: result.code,
+                durationMs: Date.now() - startTime,
+              }),
+            );
+            return {
+              kind: 'FAILURE',
+              statusCode: result.statusCode,
+              error: result.code,
+              message: result.message,
+            };
+          }
+          // confirmBooking retourne ConfirmBookingResult sinon (jamais void).
+          const confirmResult = result as ConfirmBookingResult;
+          console.log(
+            JSON.stringify({
+              event: 'webhook.stripe',
+              endpoint,
+              environment,
+              providerEventId: event.id,
+              eventType: event.type,
+              result: 'confirmed',
+              bookingId: confirmResult.bookingId,
+              paymentId: attempt.paymentId,
+              durationMs: Date.now() - startTime,
+            }),
+          );
+          return { kind: 'SUCCESS', statusCode: 200 };
+        } catch (confirmError) {
+          // Si WEBHOOK_LATE_PAYMENT : le brouillon est devenu terminal sous verrou.
+          // → compensation tardive dans la même transaction.
+          if (
+            confirmError instanceof WebhookHandlerError &&
+            confirmError.code === 'WEBHOOK_LATE_PAYMENT'
+          ) {
+            const compOutcome = await compensateLatePayment(
+              tx,
+              attempt,
+              piData,
+              webhookEventId,
+              environment,
+            );
+            if (compOutcome instanceof WebhookHandlerError) {
+              if (isIrreconcilable(compOutcome)) {
+                // P1-2 : Irreconciliable → SUCCESS 200 (arrête les retries Stripe).
+                console.warn(
+                  JSON.stringify({
+                    event: 'webhook.stripe',
+                    endpoint,
+                    environment,
+                    providerEventId: event.id,
+                    eventType: event.type,
+                    result: 'invariant_failed_terminated',
+                    errorCode: compOutcome.code,
+                    durationMs: Date.now() - startTime,
+                  }),
+                );
+                return { kind: 'SUCCESS', statusCode: 200 };
+              }
+              console.warn(
+                JSON.stringify({
+                  event: 'webhook.stripe',
+                  endpoint,
+                  environment,
+                  providerEventId: event.id,
+                  eventType: event.type,
+                  result: 'invariant_failed_late',
+                  errorCode: compOutcome.code,
+                  durationMs: Date.now() - startTime,
+                }),
+              );
+              return {
+                kind: 'FAILURE',
+                statusCode: compOutcome.statusCode,
+                error: compOutcome.code,
+                message: compOutcome.message,
+              };
+            }
+            console.log(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint,
+                environment,
+                providerEventId: event.id,
+                eventType: event.type,
+                result: 'compensated_late_under_lock',
+                paymentId: attempt.paymentId,
+                durationMs: Date.now() - startTime,
+              }),
+            );
+            return { kind: 'SUCCESS', statusCode: 200 };
+          }
+          // Si WEBHOOK_ALREADY_PROCESSED : doublon sous verrou.
+          if (
+            confirmError instanceof WebhookHandlerError &&
+            confirmError.code === 'WEBHOOK_ALREADY_PROCESSED'
+          ) {
+            // P1-3 : Marquer l'événement courant IGNORED (un autre événement a
+            // déjà produit l'effet) avant de retourner 200.
+            await tx
+              .update(paymentWebhookEvents)
+              .set({ status: 'IGNORED', processedAt: sql`transaction_timestamp()` })
+              .where(eq(paymentWebhookEvents.id, webhookEventId));
+            console.log(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint,
+                environment,
+                providerEventId: event.id,
+                eventType: event.type,
+                result: 'duplicate_under_lock',
+                durationMs: Date.now() - startTime,
+              }),
+            );
+            return { kind: 'SUCCESS', statusCode: 200 };
+          }
+          throw confirmError;
+        }
+      }
+
+      if (eventType === 'payment_intent.payment_failed') {
+        const outcome = await handlePaymentFailed(
+          tx,
+          attempt,
+          webhookEventId,
+          event,
+          piData,
+          environment,
+        );
+        if (outcome instanceof WebhookHandlerError) {
+          return buildHandlerOutcomeResult(
+            outcome,
+            endpoint,
+            environment,
+            event.id,
+            event.type,
+            startTime,
+          );
+        }
+        console.log(
+          JSON.stringify({
+            event: 'webhook.stripe',
+            endpoint,
+            environment,
+            providerEventId: event.id,
+            eventType: event.type,
+            result: 'failed',
+            paymentId: attempt.paymentId,
+            durationMs: Date.now() - startTime,
+          }),
+        );
+        return { kind: 'SUCCESS', statusCode: 200 };
+      }
+
+      if (eventType === 'payment_intent.canceled') {
+        const outcome = await handleCanceled(
+          tx,
+          attempt,
+          piData,
+          webhookEventId,
+          event,
+          environment,
+        );
+        if (outcome instanceof WebhookHandlerError) {
+          return buildHandlerOutcomeResult(
+            outcome,
+            endpoint,
+            environment,
+            event.id,
+            event.type,
+            startTime,
+          );
+        }
+        console.log(
+          JSON.stringify({
+            event: 'webhook.stripe',
+            endpoint,
+            environment,
+            providerEventId: event.id,
+            eventType: event.type,
+            result: 'canceled',
+            paymentId: attempt.paymentId,
+            durationMs: Date.now() - startTime,
+          }),
+        );
+        return { kind: 'SUCCESS', statusCode: 200 };
+      }
+
+      if (eventType === 'payment_intent.processing') {
+        const outcome = await handleProcessing(
+          tx,
+          attempt,
+          webhookEventId,
+          event,
+          piData,
+          environment,
+        );
+        if (outcome instanceof WebhookHandlerError) {
+          return buildHandlerOutcomeResult(
+            outcome,
+            endpoint,
+            environment,
+            event.id,
+            event.type,
+            startTime,
+          );
+        }
+        console.log(
+          JSON.stringify({
+            event: 'webhook.stripe',
+            endpoint,
+            environment,
+            providerEventId: event.id,
+            eventType: event.type,
+            result: 'processing',
+            paymentId: attempt.paymentId,
+            durationMs: Date.now() - startTime,
+          }),
+        );
+        return { kind: 'SUCCESS', statusCode: 200 };
+      }
+
+      // Type non géré (ne devrait pas arriver ici car filtré plus haut).
+      return { kind: 'SUCCESS', statusCode: 200 };
+    });
+  } catch (error) {
+    // Erreur métier reconnue → log + retourner le statusCode approprié.
+    const normalized = normalizeWebhookError(error);
+    if (normalized) {
+      console.warn(
+        JSON.stringify({
+          event: 'webhook.stripe',
+          endpoint,
+          environment,
+          providerEventId: event.id,
+          eventType: event.type,
+          result: 'business_error',
+          errorCode: normalized.code,
+          durationMs: Date.now() - startTime,
+        }),
+      );
+      return {
+        kind: 'FAILURE',
+        statusCode: normalized.statusCode,
+        error: normalized.code,
+        message: normalized.message,
+      };
+    }
+
+    // Erreur technique inattendue → 500 (Stripe retry).
+    console.error(
+      JSON.stringify({
+        event: 'webhook.stripe',
+        endpoint,
+        environment,
+        providerEventId: event.id,
+        eventType: event.type,
+        result: 'error',
+        error: error instanceof Error ? error.message : String(error),
+        durationMs: Date.now() - startTime,
+      }),
+    );
+    return {
+      kind: 'FAILURE',
+      statusCode: 500,
+      error: 'UNKNOWN',
+      message: 'Erreur technique lors du traitement du webhook',
+    };
+  }
+}
+
+/**
+ * P1-2 : Construit le résultat HTTP pour un HandlerOutcome (erreur retournée
+ * par un handler métier). Une erreur irréconciliable retourne SUCCESS 200
+ * (arrête les retries Stripe, l'événement est déjà marqué FAILED). Une erreur
+ * de control flow retourne FAILURE avec le statusCode d'origine.
+ */
+function buildHandlerOutcomeResult(
+  outcome: WebhookHandlerError,
+  endpoint: string,
+  environment: 'TEST' | 'LIVE',
+  providerEventId: string,
+  eventType: string,
+  startTime: number,
+): WebhookHandlerResult {
+  if (isIrreconcilable(outcome)) {
+    console.warn(
+      JSON.stringify({
+        event: 'webhook.stripe',
+        endpoint,
+        environment,
+        providerEventId,
+        eventType,
+        result: 'invariant_failed_terminated',
+        errorCode: outcome.code,
+        durationMs: Date.now() - startTime,
+      }),
+    );
+    return { kind: 'SUCCESS', statusCode: 200 };
+  }
+  console.warn(
+    JSON.stringify({
+      event: 'webhook.stripe',
+      endpoint,
+      environment,
+      providerEventId,
+      eventType,
+      result: 'invariant_failed',
+      errorCode: outcome.code,
+      durationMs: Date.now() - startTime,
+    }),
+  );
+  return {
+    kind: 'FAILURE',
+    statusCode: outcome.statusCode,
+    error: outcome.code,
+    message: outcome.message,
+  };
+}
+
+/**
+ * Gère un événement Connect (account.updated) : déduplication + projection
+ * dans organization_payment_accounts + marquer PROCESSED/IGNORED.
+ */
+async function handleConnectEvent(
+  db: DatabaseClient,
+  event: VerifiedWebhookEvent,
+  rawBody: string,
+  environment: 'TEST' | 'LIVE',
+  startTime: number,
+): Promise<WebhookHandlerResult> {
+  // Résoudre organization_id depuis le compte connecté (event.accountId).
+  let orgId: string | null = null;
+  if (event.accountId) {
+    orgId = await resolveOrgFromConnectedAccount(db, event.accountId, environment);
+  }
+
+  if (orgId === null) {
+    // Événement non rattachable — persister avec organization_id = NULL + IGNORED.
+    console.warn(
+      JSON.stringify({
+        event: 'webhook.stripe',
+        endpoint: 'connect',
+        environment,
+        providerEventId: event.id,
+        eventType: event.type,
+        providerAccountId: event.accountId,
+        result: 'connect_no_tenant',
+        durationMs: Date.now() - startTime,
+      }),
+    );
+  }
+
+  return await db.transaction(async (tx) => {
+    const ingest = await ingestEvent(tx, event, rawBody, environment, orgId);
+
+    if (ingest.isDuplicate) {
+      console.log(
+        JSON.stringify({
+          event: 'webhook.stripe',
+          endpoint: 'connect',
+          environment,
+          providerEventId: event.id,
+          eventType: event.type,
+          result: 'duplicate',
+          durationMs: Date.now() - startTime,
+        }),
+      );
+      return { kind: 'SUCCESS', statusCode: 200 };
+    }
+
+    const webhookEventId = ingest.row.id;
+    const now = sql`transaction_timestamp()`;
+
+    // P1-3/P1-6 : Projeter account.updated dans organization_payment_accounts.
+    // projectAccountUpdated retourne 'PROCESSED', 'IGNORED' ou 'FAILED'.
+    let finalStatus: 'PROCESSED' | 'IGNORED' | 'FAILED' = orgId === null ? 'IGNORED' : 'PROCESSED';
+    if (event.type === 'account.updated' && event.accountId && orgId !== null) {
+      const projectionStatus = await projectAccountUpdated(tx, event, environment, orgId);
+      finalStatus = projectionStatus;
+    }
+
+    // P1-3 : Si FAILED (mismatch event.accountId/data.id), marquer FAILED + failureCode.
+    if (finalStatus === 'FAILED') {
+      await tx
+        .update(paymentWebhookEvents)
+        .set({
+          status: 'FAILED',
+          failureCode: 'WEBHOOK_AGGREGATE_INCONSISTENT',
+          processedAt: now,
+        })
+        .where(eq(paymentWebhookEvents.id, webhookEventId));
+    } else {
+      await tx
+        .update(paymentWebhookEvents)
+        .set({ status: finalStatus, processedAt: now })
+        .where(eq(paymentWebhookEvents.id, webhookEventId));
+    }
+
+    console.log(
+      JSON.stringify({
+        event: 'webhook.stripe',
+        endpoint: 'connect',
+        environment,
+        providerEventId: event.id,
+        eventType: event.type,
+        result:
+          finalStatus === 'IGNORED'
+            ? 'ignored_connect'
+            : finalStatus === 'FAILED'
+              ? 'invariant_failed_terminated'
+              : 'processed_connect',
+        organizationId: orgId,
+        durationMs: Date.now() - startTime,
+      }),
+    );
+    // P1-3 : FAILED retourne 200 (pas 500) pour arrêter les retries Stripe.
+    return { kind: 'SUCCESS', statusCode: 200 };
+  });
+}
+
+/**
+ * Projette un événement account.updated dans organization_payment_accounts.
+ * Extrait les champs avec une allow-list stricte depuis event.data.object.
+ *
+ * P1-3 : Garde monotone, validation event.accountId === data.id, fail-closed
+ * pour statut inconnu, check row count, SELECT FOR UPDATE de la ligne existante.
+ *
+ * @returns 'PROCESSED' si la projection a modifié une ligne, 'IGNORED' si
+ * l'événement est ancien ou aucune ligne à mettre à jour, 'FAILED' si
+ * incohérence irréconciliable (event.accountId !== data.id).
+ */
+async function projectAccountUpdated(
+  tx: DatabaseTransaction,
+  event: VerifiedWebhookEvent,
+  environment: 'TEST' | 'LIVE',
+  orgId: string,
+): Promise<'PROCESSED' | 'IGNORED' | 'FAILED'> {
+  const obj = event.data;
+  if (!obj || typeof obj !== 'object') return 'IGNORED';
+
+  const accountId = obj.id;
+  if (typeof accountId !== 'string' || accountId.length === 0) return 'IGNORED';
+
+  // P1-3 : Valider event.accountId === obj.id.
+  if (event.accountId !== accountId) {
+    console.warn(
+      JSON.stringify({
+        event: 'webhook.stripe',
+        endpoint: 'connect',
+        result: 'connect_account_id_mismatch',
+        eventAccountId: event.accountId,
+        dataAccountId: accountId,
+      }),
+    );
+    return 'FAILED';
+  }
+
+  // P1-3 : SELECT FOR UPDATE la ligne existante (filtrée par organization_id).
+  const existing = await tx
+    .select({
+      id: organizationPaymentAccounts.id,
+      lastProviderEventAt: organizationPaymentAccounts.lastProviderEventAt,
+    })
+    .from(organizationPaymentAccounts)
+    .where(
+      and(
+        eq(organizationPaymentAccounts.providerAccountId, accountId),
+        eq(organizationPaymentAccounts.provider, 'STRIPE'),
+        eq(organizationPaymentAccounts.environment, environment),
+        eq(organizationPaymentAccounts.organizationId, orgId),
+      ),
+    )
+    .for('update')
+    .limit(1);
+
+  if (existing.length === 0) {
+    // Aucune ligne → ne pas projeter.
+    return 'IGNORED';
+  }
+
+  // P1-3 : Garde monotone — comparer event.created (Unix secondes) avec
+  // existing.lastProviderEventAt (timestamp). Si l'événement est antérieur ou
+  // de même timestamp, ne pas projeter (éviter la régression).
+  const existingRow = existing[0]!;
+  if (existingRow.lastProviderEventAt !== null) {
+    const existingUnix = Math.floor(existingRow.lastProviderEventAt.getTime() / 1000);
+    if (event.created <= existingUnix) {
+      // Événement ancien ou de même timestamp — ignorer pour éviter la régression.
+      return 'IGNORED';
+    }
+  }
+
+  // Allow-list stricte des champs à projeter.
+  const updates: Record<string, unknown> = {};
+  if (typeof obj.charges_enabled === 'boolean') {
+    updates.chargesEnabled = obj.charges_enabled;
+  }
+  if (typeof obj.payouts_enabled === 'boolean') {
+    updates.payoutsEnabled = obj.payouts_enabled;
+  }
+  // P1-6 : Stripe expose la capacité via account.capabilities.transfers
+  // (valeurs : active, inactive, pending, unrequested).
+  const capabilities = obj.capabilities as Record<string, unknown> | undefined;
+  if (capabilities && typeof capabilities === 'object') {
+    const transfers = capabilities.transfers;
+    if (typeof transfers === 'string') {
+      // P1-3 : Fail-closed pour statut inconnu — retourner FAILED au lieu de
+      // continuer avec mapped = null (qui permettrait à d'autres champs d'être
+      // projetés, lastProviderEventAt d'avancer, et l'événement d'être PROCESSED).
+      let mapped: 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'UNREQUESTED';
+      switch (transfers) {
+        case 'active':
+          mapped = 'ACTIVE';
+          break;
+        case 'inactive':
+          mapped = 'INACTIVE';
+          break;
+        case 'pending':
+          mapped = 'PENDING';
+          break;
+        case 'unrequested':
+          mapped = 'UNREQUESTED';
+          break;
+        default:
+          // Statut inconnu → FAILED, pas de projection partielle.
+          console.warn(
+            JSON.stringify({
+              event: 'webhook.stripe',
+              endpoint: 'connect',
+              result: 'connect_unknown_capability',
+              capability: 'transfers',
+              value: transfers,
+            }),
+          );
+          return 'FAILED';
+      }
+      updates.transfersCapabilityStatus = mapped;
+    }
+  }
+  // requirements et controller sont des objets complexes.
+  // P2-2 : Appliquer la même allow-list que normalizeEventData.
+  if (obj.requirements !== undefined && typeof obj.requirements === 'object') {
+    const rawRequirements = obj.requirements as Record<string, unknown>;
+    const filteredRequirements: Record<string, unknown> = {};
+    if (Array.isArray(rawRequirements.currently_due)) {
+      filteredRequirements.currently_due = rawRequirements.currently_due;
+    }
+    if (Array.isArray(rawRequirements.past_due)) {
+      filteredRequirements.past_due = rawRequirements.past_due;
+    }
+    if (Object.keys(filteredRequirements).length > 0) {
+      updates.requirementsSnapshot = filteredRequirements;
+    }
+  }
+  if (obj.controller !== undefined && typeof obj.controller === 'object') {
+    const rawController = obj.controller as Record<string, unknown>;
+    const filteredController: Record<string, unknown> = {};
+    if (typeof rawController.fees_collector === 'string') {
+      filteredController.fees_collector = rawController.fees_collector;
+    }
+    if (typeof rawController.is_controller === 'boolean') {
+      filteredController.is_controller = rawController.is_controller;
+    }
+    if (Object.keys(filteredController).length > 0) {
+      updates.controllerConfigurationSnapshot = filteredController;
+    }
+  }
+
+  if (Object.keys(updates).length === 0) return 'IGNORED';
+
+  updates.updatedAt = sql`transaction_timestamp()`;
+  // P1-3 : lastProviderEventAt reçoit event.created (Unix timestamp) au lieu
+  // de transaction_timestamp().
+  updates.lastProviderEventAt = sql`to_timestamp(${event.created})`;
+
+  // P1-3 : Mettre à jour organization_payment_accounts pour ce compte connecté
+  // + environnement + organization_id, et vérifier le row count.
+  const updated = await tx
+    .update(organizationPaymentAccounts)
+    .set(updates)
+    .where(
+      and(
+        eq(organizationPaymentAccounts.providerAccountId, accountId),
+        eq(organizationPaymentAccounts.environment, environment),
+        eq(organizationPaymentAccounts.provider, 'STRIPE'),
+        eq(organizationPaymentAccounts.organizationId, orgId),
+      ),
+    )
+    .returning({ id: organizationPaymentAccounts.id });
+
+  // P1-3 : Si 0 ligne modifiée → IGNORED au lieu de PROCESSED.
+  if (updated.length === 0) {
+    return 'IGNORED';
+  }
+
+  return 'PROCESSED';
+}
+
+/**
+ * Gère un événement de refund : journaliser et projeter le statut.
+ * Phase 6 : pas de worker de refund, juste persister l'événement + projeter le statut.
+ */
+async function handleRefundEvent(
+  db: DatabaseClient,
+  event: VerifiedWebhookEvent,
+  rawBody: string,
+  environment: 'TEST' | 'LIVE',
+  startTime: number,
+): Promise<WebhookHandlerResult> {
+  // P1-6 : Même si event.accountId est null, tenter de résoudre le refund via
+  // le payment_intent ID présent dans l'événement refund.
+  let orgId: string | null = null;
+  if (event.accountId) {
+    orgId = await resolveOrgFromConnectedAccount(db, event.accountId, environment);
+  }
+
+  // Si pas d'org via accountId, tenter via le payment_intent ID.
+  let paymentId: string | null = null;
+  if (orgId === null) {
+    const piId = extractRefundPaymentIntentId(event);
+    if (piId) {
+      const paymentRow = await db
+        .select({
+          id: payments.id,
+          organizationId: payments.organizationId,
+        })
+        .from(payments)
+        .innerJoin(paymentAttempts, eq(paymentAttempts.providerPaymentIntentId, piId))
+        .where(eq(paymentAttempts.providerPaymentIntentId, piId))
+        .limit(1);
+
+      if (paymentRow.length > 0) {
+        orgId = paymentRow[0]!.organizationId;
+        paymentId = paymentRow[0]!.id;
+      }
+    }
+  }
+
+  // P1-2 : Si toujours non résolu, tenter via le provider_refund_id d'un refund
+  // existant. Un refund.updated sans payment_intent peut quand même être rattaché
+  // à un paiement local si la ligne refunds existe déjà.
+  if (orgId === null) {
+    const refundObjects = extractRefundObjects(event);
+    for (const refundObj of refundObjects) {
+      if (refundObj === null || typeof refundObj !== 'object') continue;
+      const refundRecord = refundObj as Record<string, unknown>;
+      const refundId = refundRecord.id;
+      if (typeof refundId !== 'string' || refundId.length === 0) continue;
+      const existingRefund = await db
+        .select({
+          paymentId: refunds.paymentId,
+          organizationId: refunds.organizationId,
+        })
+        .from(refunds)
+        .where(eq(refunds.providerRefundId, refundId))
+        .limit(1);
+      if (existingRefund.length > 0) {
+        orgId = existingRefund[0]!.organizationId;
+        paymentId = existingRefund[0]!.paymentId;
+        break;
+      }
+    }
+  }
+
+  if (orgId === null) {
+    // Non rattachable — persister avec organization_id = NULL + IGNORED.
+    console.warn(
+      JSON.stringify({
+        event: 'webhook.stripe',
+        endpoint: 'platform',
+        environment,
+        providerEventId: event.id,
+        eventType: event.type,
+        result: 'refund_no_tenant',
+        durationMs: Date.now() - startTime,
+      }),
+    );
+  }
+
+  return await db.transaction(async (tx) => {
+    const ingest = await ingestEvent(tx, event, rawBody, environment, orgId);
+
+    if (ingest.isDuplicate) {
+      console.log(
+        JSON.stringify({
+          event: 'webhook.stripe',
+          endpoint: 'platform',
+          environment,
+          providerEventId: event.id,
+          eventType: event.type,
+          result: 'duplicate',
+          durationMs: Date.now() - startTime,
+        }),
+      );
+      return { kind: 'SUCCESS', statusCode: 200 };
+    }
+
+    const webhookEventId = ingest.row.id;
+    const now = sql`transaction_timestamp()`;
+
+    // P1-4/P1-6 : Projeter le statut du refund dans la table refunds.
+    let finalStatus: 'PROCESSED' | 'IGNORED' | 'FAILED' = orgId === null ? 'IGNORED' : 'PROCESSED';
+    let failureCode: RefundProjectionFailureCode | undefined;
+    if (orgId !== null) {
+      const projection = await projectRefundStatus(tx, event, orgId, paymentId);
+      finalStatus = projection.result;
+      failureCode = projection.failureCode;
+    }
+
+    // P1-2/P1-4 : Si FAILED (incohérence), marquer FAILED + failureCode fermé.
+    // Retourner 200 (pas 500) pour arrêter les retries Stripe — l'anomalie est
+    // persistée et observable, pas récupérable par un retry.
+    if (finalStatus === 'FAILED') {
+      await tx
+        .update(paymentWebhookEvents)
+        .set({
+          status: 'FAILED',
+          failureCode: failureCode ?? 'REFUND_INVARIANT_BROKEN',
+          processedAt: now,
+        })
+        .where(eq(paymentWebhookEvents.id, webhookEventId));
+    } else {
+      await tx
+        .update(paymentWebhookEvents)
+        .set({ status: finalStatus, processedAt: now })
+        .where(eq(paymentWebhookEvents.id, webhookEventId));
+    }
+
+    console.log(
+      JSON.stringify({
+        event: 'webhook.stripe',
+        endpoint: 'platform',
+        environment,
+        providerEventId: event.id,
+        eventType: event.type,
+        result:
+          finalStatus === 'FAILED'
+            ? 'refund_failed'
+            : finalStatus === 'IGNORED'
+              ? 'refund_ignored'
+              : 'refund_logged',
+        failureCode: failureCode,
+        organizationId: orgId,
+        durationMs: Date.now() - startTime,
+      }),
+    );
+    return { kind: 'SUCCESS', statusCode: 200 };
+  });
+}
+
+/**
+ * Extrait le payment_intent ID depuis un événement de refund.
+ * Les événements charge.refunded / refund.created / refund.updated contiennent
+ * un objet refund avec un champ `payment_intent`.
+ */
+function extractRefundPaymentIntentId(event: VerifiedWebhookEvent): string | null {
+  const obj = event.data;
+  if (!obj || typeof obj !== 'object') return null;
+
+  // Pour charge.refunded, l'objet est une charge avec payment_intent.
+  // Pour refund.created/refund.updated, l'objet est un refund avec payment_intent.
+  const piId = obj.payment_intent;
+  if (typeof piId === 'string' && piId.length > 0) {
+    return piId;
+  }
+
+  // Pour charge.refunded, le refund peut être dans charges.refunds.data (ApiList<Refund>).
+  const refundsData = obj.refunds;
+  if (refundsData && typeof refundsData === 'object') {
+    const refundsList = refundsData as Record<string, unknown>;
+    const data = refundsList.data;
+    if (Array.isArray(data)) {
+      for (const refund of data) {
+        if (refund && typeof refund === 'object') {
+          const refundPiId = (refund as Record<string, unknown>).payment_intent;
+          if (typeof refundPiId === 'string' && refundPiId.length > 0) {
+            return refundPiId;
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Extrait les objets refund depuis un événement Stripe.
+ * - Pour charge.refunded : l'objet est une charge avec `refunds.data = Refund[]`.
+ * - Pour refund.created / refund.updated / refund.failed : l'objet est le refund lui-même.
+ *
+ * P1-3 : Ne filtre PAS les éléments non-objets — la validation se fait dans le
+ * savepoint pour garantir l'atomicité « tout ou rien ». Un élément non-objet
+ * déclenchera REFUND_OBJECT_INVALID et annulera toutes les projections partielles.
+ */
+function extractRefundObjects(event: VerifiedWebhookEvent): unknown[] {
+  const obj = event.data;
+  if (!obj || typeof obj !== 'object') return [];
+
+  if (event.type === 'charge.refunded') {
+    // Stripe expose charge.refunds = ApiList<Refund> avec charge.refunds.data = Refund[].
+    const refundsData = obj.refunds;
+    if (refundsData && typeof refundsData === 'object' && refundsData !== null) {
+      const refundsList = refundsData as Record<string, unknown>;
+      const data = refundsList.data;
+      if (Array.isArray(data)) {
+        return data; // Ne pas filtrer — valider dans le savepoint
+      }
+    }
+    return [];
+  }
+
+  // refund.created / refund.updated / refund.failed : l'objet est le refund lui-même.
+  return [obj];
+}
+
+/**
+ * Projette le statut d'un refund dans la table refunds.
+ * Cherche par provider_refund_id ou crée une ligne si non existante.
+ * Ne crée une ligne que si on a un paymentId local identifié ET un provider_refund_id.
+ * Les refunds externes sans ligne locale sont journalisés (warn) sans invention de raison.
+ *
+ * P1-4 : Garde monotone (providerEventCreatedAt), recoupement payment_intent,
+ * montant, devise, organisation sur ligne existante. SELECT FOR UPDATE.
+ *
+ * @returns { result: 'PROCESSED' } si au moins un refund a été projeté,
+ * { result: 'IGNORED' } si aucun, { result: 'FAILED', failureCode } si
+ * incohérence irréconciliable (refund invalide ou mismatch).
+ */
+async function projectRefundStatus(
+  tx: DatabaseTransaction,
+  event: VerifiedWebhookEvent,
+  orgId: string,
+  paymentId: string | null,
+): Promise<{
+  result: 'PROCESSED' | 'IGNORED' | 'FAILED';
+  failureCode?: RefundProjectionFailureCode;
+}> {
+  const refundObjects = extractRefundObjects(event);
+  let anyProjected = false;
+  let failure: { code: RefundProjectionFailureCode } | null = null;
+
+  // P1-1 : Wraper toute la projection dans un savepoint. Si un refund est
+  // invalide, le savepoint est annulé (ROLLBACK TO SAVEPOINT) — aucune
+  // projection partielle n'est commitée.
+  try {
+    await tx.transaction(async (sp) => {
+      // P1 : Si aucun objet refund exploitable n'a pu être extrait, lever une
+      // anomalie plutôt que d'acquitter silencieusement l'événement (IGNORED +
+      // 200 + déduplication empêcherait tout retraitement ultérieur).
+      if (refundObjects.length === 0) {
+        throw new RefundProjectionError('REFUND_OBJECTS_MISSING');
+      }
+      for (const refundObj of refundObjects) {
+        // P1-3 : Valider que chaque élément est un objet non-null avant tout
+        // traitement. Un élément non-objet déclenche REFUND_OBJECT_INVALID et
+        // annule toutes les projections partielles (savepoint).
+        if (refundObj === null || typeof refundObj !== 'object') {
+          throw new RefundProjectionError('REFUND_OBJECT_INVALID');
+        }
+        // Maintenant on peut accéder aux propriétés
+        const refundRecord = refundObj as Record<string, unknown>;
+        const refundId = refundRecord.id;
+        // P1 : identifiant de remboursement absent → anomalie (pas de skip).
+        if (typeof refundId !== 'string' || refundId.length === 0) {
+          throw new RefundProjectionError('REFUND_ID_MISSING');
+        }
+
+        const refundStatus = refundRecord.status;
+        // P1 : statut absent → anomalie (pas de skip).
+        if (typeof refundStatus !== 'string') {
+          throw new RefundProjectionError('REFUND_STATUS_MISSING');
+        }
+
+        // Mapper le statut Stripe vers notre enum refund_status.
+        // Note : `SUBMITTED` provient uniquement de la soumission locale au
+        // fournisseur, pas d'un état webhook Stripe. `processing` n'est pas une
+        // valeur valide de Refund.status (c'est une valeur possible de
+        // pending_reason) — il déclenchera REFUND_PROVIDER_STATE_UNSUPPORTED.
+        let mappedStatus: 'PENDING' | 'SUBMITTED' | 'SUCCEEDED' | 'FAILED' | null = null;
+        if (refundStatus === 'succeeded') mappedStatus = 'SUCCEEDED';
+        else if (refundStatus === 'failed') mappedStatus = 'FAILED';
+        else if (refundStatus === 'canceled') mappedStatus = 'FAILED';
+        else if (refundStatus === 'pending' || refundStatus === 'requires_action')
+          mappedStatus = 'PENDING';
+
+        // P1 : statut Stripe inconnu → anomalie (pas de skip).
+        if (mappedStatus === null) {
+          throw new RefundProjectionError('REFUND_PROVIDER_STATE_UNSUPPORTED');
+        }
+
+        const now = sql`transaction_timestamp()`;
+
+        // P1-4 : SELECT FOR UPDATE le refund existant par provider_refund_id.
+        const existing = await sp
+          .select({
+            id: refunds.id,
+            organizationId: refunds.organizationId,
+            paymentId: refunds.paymentId,
+            amountMinor: refunds.amountMinor,
+            providerEventCreatedAt: refunds.providerEventCreatedAt,
+            status: refunds.status,
+          })
+          .from(refunds)
+          .where(eq(refunds.providerRefundId, refundId))
+          .for('update')
+          .limit(1);
+
+        if (existing.length > 0) {
+          const existingRow = existing[0]!;
+
+          // P1-4 : Garde monotone — comparer event.created avec
+          // existing.providerEventCreatedAt. Si l'événement est antérieur ou de
+          // même timestamp, skip (ne pas régresser le statut).
+          if (
+            existingRow.providerEventCreatedAt !== null &&
+            event.created <= existingRow.providerEventCreatedAt
+          ) {
+            // Événement ancien ou de même timestamp — ne pas régresser le statut.
+            continue;
+          }
+
+          // P2-2 : Machine de transitions — un refund terminal (SUCCEEDED/FAILED) est
+          // immuable. Toute transition depuis un état terminal vers un état différent
+          // est une anomalie de réconciliation : journaliser sans écraser l'état.
+          const TERMINAL_REFUND_STATUSES = new Set(['SUCCEEDED', 'FAILED']);
+          if (
+            TERMINAL_REFUND_STATUSES.has(existingRow.status) &&
+            mappedStatus !== existingRow.status
+          ) {
+            console.warn(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint: 'platform',
+                result: 'refund_terminal_regression',
+                providerRefundId: refundId,
+                fromStatus: existingRow.status,
+                toStatus: mappedStatus,
+                providerEventCreatedAt: event.created,
+              }),
+            );
+            // P2-3 : Marquer FAILED au lieu de IGNORED — signal de réconciliation durable.
+            throw new RefundProjectionError('REFUND_TERMINAL_STATE_CONFLICT');
+          }
+
+          // P1-2 : payment_intent OBLIGATOIRE pour un refund existant.
+          const refundPiId = refundRecord.payment_intent;
+          if (typeof refundPiId !== 'string' || refundPiId.length === 0) {
+            console.warn(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint: 'platform',
+                result: 'refund_pi_missing',
+                providerRefundId: refundId,
+              }),
+            );
+            throw new RefundProjectionError('REFUND_PI_MISSING');
+          }
+          // Vérifier la correspondance du payment_intent.
+          const existingPayment = await sp
+            .select({ id: payments.id, connectedAccountId: payments.connectedAccountId })
+            .from(payments)
+            .innerJoin(paymentAttempts, eq(paymentAttempts.paymentId, existingRow.paymentId))
+            .where(eq(paymentAttempts.providerPaymentIntentId, refundPiId))
+            .limit(1);
+          if (existingPayment.length === 0 || existingPayment[0]!.id !== existingRow.paymentId) {
+            console.warn(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint: 'platform',
+                result: 'refund_payment_intent_mismatch',
+                providerRefundId: refundId,
+                expectedPaymentId: existingRow.paymentId,
+              }),
+            );
+            throw new RefundProjectionError('REFUND_PI_MISMATCH');
+          }
+
+          // P1-2 : amount OBLIGATOIRE pour un refund existant. P2-4 : un refund
+          // de montant 0 n'a aucun sens métier — aligné avec la contrainte DB
+          // stricte (refunds_amount_positive > 0) et le chemin « nouveau refund ».
+          const refundAmount = refundRecord.amount;
+          if (
+            typeof refundAmount !== 'number' ||
+            !Number.isSafeInteger(refundAmount) ||
+            refundAmount <= 0
+          ) {
+            console.warn(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint: 'platform',
+                result: 'refund_invalid_amount',
+                providerRefundId: refundId,
+                amount: refundAmount,
+              }),
+            );
+            throw new RefundProjectionError('REFUND_INVALID_AMOUNT');
+          }
+          if (refundAmount !== existingRow.amountMinor) {
+            console.warn(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint: 'platform',
+                result: 'refund_amount_mismatch',
+                providerRefundId: refundId,
+                expected: existingRow.amountMinor,
+                received: refundAmount,
+              }),
+            );
+            throw new RefundProjectionError('REFUND_AMOUNT_MISMATCH');
+          }
+
+          // P1-2 : currency OBLIGATOIRE pour un refund existant.
+          const refundCurrency = refundRecord.currency;
+          if (typeof refundCurrency !== 'string' || refundCurrency.length === 0) {
+            console.warn(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint: 'platform',
+                result: 'refund_currency_missing',
+                providerRefundId: refundId,
+              }),
+            );
+            throw new RefundProjectionError('REFUND_CURRENCY_MISSING');
+          }
+          if (refundCurrency.toLowerCase() !== 'eur') {
+            console.warn(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint: 'platform',
+                result: 'refund_currency_mismatch',
+                providerRefundId: refundId,
+                received: refundCurrency,
+              }),
+            );
+            throw new RefundProjectionError('REFUND_CURRENCY_MISMATCH');
+          }
+
+          // P1-4 : Recouper org.
+          if (existingRow.organizationId !== orgId) {
+            console.warn(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint: 'platform',
+                result: 'refund_org_mismatch',
+                providerRefundId: refundId,
+                expected: existingRow.organizationId,
+                received: orgId,
+              }),
+            );
+            throw new RefundProjectionError('REFUND_ORG_MISMATCH');
+          }
+
+          // Mettre à jour le statut du refund existant + providerEventCreatedAt.
+          const updateData: Record<string, unknown> = {
+            status: mappedStatus,
+            updatedAt: now,
+            providerEventCreatedAt: event.created,
+          };
+          if (mappedStatus === 'SUCCEEDED') updateData.succeededAt = now;
+          if (mappedStatus === 'FAILED') {
+            updateData.failedAt = now;
+            updateData.failureCode = event.type;
+          }
+          await sp.update(refunds).set(updateData).where(eq(refunds.id, existingRow.id));
+          anyProjected = true;
+        } else if (paymentId) {
+          // Créer une ligne refunds si on a le paymentId local ET le provider_refund_id.
+          // P1-2 : Valider l'autorité financière du nouveau refund avant l'insertion.
+          // P1-2 : Un refund incohérent rattaché à un paiement est une anomalie
+          // financière qui doit être persistée comme FAILED, pas ignorée silencieusement.
+
+          // PaymentIntent : OBLIGATOIRE — un refund sans payment_intent est une
+          // anomalie financière (refund non rattachable à un paiement local).
+          const refundPiId = refundRecord.payment_intent;
+          if (typeof refundPiId !== 'string' || refundPiId.length === 0) {
+            console.warn(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint: 'platform',
+                result: 'refund_pi_missing',
+                providerRefundId: refundId,
+              }),
+            );
+            throw new RefundProjectionError('REFUND_PI_MISSING');
+          }
+
+          const amount = refundRecord.amount;
+
+          // Montant : doit être un entier strictement positif.
+          if (typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount <= 0) {
+            console.warn(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint: 'platform',
+                result: 'refund_invalid_amount',
+                providerRefundId: refundId,
+                amount,
+              }),
+            );
+            throw new RefundProjectionError('REFUND_INVALID_AMOUNT');
+          }
+
+          // Devise : doit être 'eur' (minuscules chez Stripe) ou 'EUR'.
+          const refundCurrency =
+            typeof refundRecord.currency === 'string' ? refundRecord.currency.toUpperCase() : null;
+          if (refundCurrency !== 'EUR') {
+            console.warn(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint: 'platform',
+                result: 'refund_currency_mismatch',
+                providerRefundId: refundId,
+                currency: refundRecord.currency,
+              }),
+            );
+            throw new RefundProjectionError('REFUND_CURRENCY_MISMATCH');
+          }
+
+          // PaymentIntent : doit correspondre au PI du paiement local (via join sur
+          // payment_attempts). Un mismatch est une anomalie financière → FAILED.
+          const paymentRow = await sp
+            .select({ id: payments.id })
+            .from(payments)
+            .innerJoin(paymentAttempts, eq(paymentAttempts.paymentId, payments.id))
+            .where(
+              and(
+                eq(payments.id, paymentId),
+                eq(paymentAttempts.providerPaymentIntentId, refundPiId),
+              ),
+            )
+            .limit(1);
+          if (paymentRow.length === 0) {
+            console.warn(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint: 'platform',
+                result: 'refund_pi_mismatch',
+                providerRefundId: refundId,
+                paymentIntentId: refundPiId,
+              }),
+            );
+            throw new RefundProjectionError('REFUND_PI_MISMATCH');
+          }
+
+          // Insertion avec devise validée (pas hardcodée).
+          await sp
+            .insert(refunds)
+            .values({
+              organizationId: orgId,
+              paymentId,
+              reason: 'EXTERNAL_REFUND',
+              status: mappedStatus,
+              amountMinor: amount,
+              currency: 'EUR', // Validé ci-dessus
+              providerRefundId: refundId,
+              providerIdempotencyKey: `refund_external_${refundId}`,
+              reverseTransfer: true,
+              refundApplicationFee: true,
+              requestedAt: now,
+              providerEventCreatedAt: event.created,
+              succeededAt: mappedStatus === 'SUCCEEDED' ? now : null,
+              failedAt: mappedStatus === 'FAILED' ? now : null,
+            })
+            .onConflictDoNothing({
+              target: [refunds.providerIdempotencyKey],
+            });
+          anyProjected = true;
+        } else {
+          // Refund externe sans ligne locale correspondante — journaliser sans inventer.
+          console.warn(
+            JSON.stringify({
+              event: 'webhook.stripe',
+              endpoint: 'platform',
+              result: 'external_refund_no_local_payment',
+              providerRefundId: refundId,
+              refundStatus,
+            }),
+          );
+        }
+      }
+    });
+  } catch (error) {
+    if (error instanceof RefundProjectionError) {
+      failure = { code: error.code };
+    } else {
+      throw error; // Erreur technique → rollback global
+    }
+  }
+
+  if (failure) {
+    return { result: 'FAILED', failureCode: failure.code };
+  }
+  return { result: anyProjected ? 'PROCESSED' : 'IGNORED' };
+}
+
+/**
+ * Journalise un événement non rattachable (aucune tentative trouvée).
+ * Tente d'insérer la ligne webhook avec organization_id résolu depuis le
+ * compte connecté ou le payment_intent, sinon avec un UUID nil et marque IGNORED.
+ * Ne JAMAIS retourner 200 sans persistance.
+ */
+async function logUnattachedEvent(
+  db: DatabaseClient,
+  event: VerifiedWebhookEvent,
+  rawBody: string,
+  environment: 'TEST' | 'LIVE',
+  _startTime: number,
+): Promise<void> {
+  let orgId: string | null = null;
+  if (event.accountId) {
+    orgId = await resolveOrgFromConnectedAccount(db, event.accountId, environment);
+  }
+
+  // Si pas d'org via accountId, tenter via le payment_intent ID dans les metadata.
+  if (orgId === null) {
+    const piId = event.objectId;
+    if (piId && piId.startsWith('pi_')) {
+      const paymentRow = await db
+        .select({ organizationId: payments.organizationId })
+        .from(payments)
+        .innerJoin(paymentAttempts, eq(paymentAttempts.providerPaymentIntentId, piId))
+        .where(eq(paymentAttempts.providerPaymentIntentId, piId))
+        .limit(1);
+
+      if (paymentRow.length > 0) {
+        orgId = paymentRow[0]!.organizationId;
+      }
+    }
+  }
+
+  // Si vraiment non rattachable, utiliser organization_id = NULL et marquer IGNORED.
+  const effectiveOrgId = orgId ?? null;
+
+  try {
+    await db.transaction(async (tx) => {
+      const ingest = await ingestEvent(tx, event, rawBody, environment, effectiveOrgId);
+      if (!ingest.isDuplicate) {
+        await tx
+          .update(paymentWebhookEvents)
+          .set({ status: 'IGNORED', processedAt: sql`transaction_timestamp()` })
+          .where(eq(paymentWebhookEvents.id, ingest.row.id));
+      }
+    });
+  } catch (error) {
+    // Ne pas avaler silencieusement : logger l'erreur technique.
+    // Si l'insertion échoue pour une raison autre que la FK (qui ne devrait
+    // plus arriver depuis que organization_id est nullable), retourner 500.
+    throw error;
+  }
+}

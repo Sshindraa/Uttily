@@ -463,6 +463,12 @@ Règles :
 `payment_intent.canceled`, événements de refund nécessaires, et
 `account.updated` côté Connect.
 
+L'événement `charge.refund.updated` n'est pas abonné dans la configuration
+Stripe du MVP. Stripe recommande d'écouter `refund.updated` pour les mises à
+jour de refunds sur tous les moyens de paiement. Si `charge.refund.updated`
+devient nécessaire (certains moyens de paiement spécifiques), il sera ajouté
+à `REFUND_EVENT_TYPES` avec une mise à jour de cette ADR.
+
 ## 10. Confirmation atomique
 
 Sur `payment_intent.succeeded`, une seule transaction :
@@ -582,6 +588,14 @@ silencieusement `reverse_transfer` ou `refund_application_fee`.
 Le rate limiting ne doit pas transformer un pic légitime de retries en perte
 d'événements : les réponses limitées sont explicites et observées, et la
 réconciliation reste le filet de sécurité.
+
+Le rate limiting des endpoints webhook est délégué à l'edge (Vercel Firewall
+pour le MVP). Un verrou technique d'activation LIVE est imposé via la variable
+d'environnement `STRIPE_WEBHOOK_RATE_LIMIT_VERIFIED` : en environnement LIVE,
+les endpoints webhook refusent les requêtes (503) tant que cette variable n'est
+pas explicitement `true`, attestant que le rate limiting edge a été configuré
+et vérifié. Cette attestation est un prérequis LIVE au même titre que
+`STRIPE_WEBHOOK_IP_ALLOWLIST`.
 
 ## 15. Tests obligatoires
 
@@ -710,3 +724,38 @@ l'implémentation sans autoriser l'encaissement réel.
 Le mode LIVE reste bloqué jusqu'à validation et configuration explicites des six
 points de la section 4. Un test ou une valeur par défaut ne peut jamais contourner
 ce verrou.
+
+## Amendement Phase 6 (2026) — Webhooks : persistance, FAILED, refunds externes
+
+### A. `payment_webhook_events.organization_id` nullable
+
+La colonne `organization_id` devient nullable (migration 0021). Les événements
+non rattachables (aucune tentative, aucun compte connecté identifié) sont
+persistés avec `organization_id = NULL` et marqués `IGNORED`. L'UUID nil
+précédemment utilisé violait la contrainte de clé étrangère vers `organizations`.
+
+### B. Motif `EXTERNAL_REFUND`
+
+Le motif `EXTERNAL_REFUND` est ajouté à l'enum `refund_reason` pour les refunds
+projetés depuis les webhooks Stripe (`charge.refunded`, `refund.created`,
+`refund.updated`, `refund.failed`) qui ne sont pas des compensations tardives
+(`LATE_PAYMENT_NO_BOOKING`). La contrainte unique `(payment_id, reason)` est
+remplacée par un index unique partiel limité à `LATE_PAYMENT_NO_BOOKING`
+(migration 0022), permettant plusieurs refunds externes pour le même paiement.
+
+### C. `refunds.provider_event_created_at`
+
+La colonne `provider_event_created_at` (bigint, nullable) est ajoutée à `refunds`
+(migration 0022) pour supporter la garde monotone : un événement Stripe ancien
+ne peut pas faire régresser le statut d'un refund déjà projeté par un événement
+plus récent.
+
+### D. Protocole FAILED pour invariants irréconciliables
+
+Les erreurs d'invariant irréconciliables (`WEBHOOK_INVARIANT_BROKEN`,
+`WEBHOOK_AGGREGATE_INCONSISTENT`, `WEBHOOK_AMOUNT_MISMATCH`, etc.) marquent
+l'événement webhook `FAILED` avec un `failure_code` et retournent `2xx` (pas
+`5xx`) pour arrêter les retries Stripe. Un événement `FAILED` est considéré
+comme dédupliqué : un retry Stripe du même `provider_event_id` retourne `200`
+sans rejouer. Les erreurs transitoires (DB, connexion) provoquent un rollback
+et `5xx` (Stripe retry).

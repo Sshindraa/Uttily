@@ -360,7 +360,7 @@ export const outboxEventStatus = pgEnum('outbox_event_status', [
   'FAILED',
 ]);
 
-export const refundReason = pgEnum('refund_reason', ['LATE_PAYMENT_NO_BOOKING']);
+export const refundReason = pgEnum('refund_reason', ['LATE_PAYMENT_NO_BOOKING', 'EXTERNAL_REFUND']);
 
 export const refundStatus = pgEnum('refund_status', [
   'PENDING',
@@ -905,9 +905,7 @@ export const paymentWebhookEvents = pgTable(
   'payment_webhook_events',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    organizationId: uuid('organization_id')
-      .notNull()
-      .references(() => organizations.id),
+    organizationId: uuid('organization_id').references(() => organizations.id),
     provider: paymentProvider('provider').notNull().default('STRIPE'),
     environment: paymentEnvironment('environment').notNull(),
     providerEventId: text('provider_event_id').notNull(),
@@ -1123,13 +1121,16 @@ export const refunds = pgTable(
     succeededAt: timestamp('succeeded_at', { withTimezone: true }),
     failedAt: timestamp('failed_at', { withTimezone: true }),
     failureCode: text('failure_code'),
+    providerEventCreatedAt: bigint('provider_event_created_at', { mode: 'number' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    unique('refunds_payment_reason_unique').on(t.paymentId, t.reason),
+    uniqueIndex('refunds_late_payment_unique')
+      .on(t.paymentId, t.reason)
+      .where(sql`${t.reason} = 'LATE_PAYMENT_NO_BOOKING'`),
     check('refunds_currency_eur', sql`${t.currency} = 'EUR'`),
-    check('refunds_amount_nonneg', sql`${t.amountMinor} >= 0`),
+    check('refunds_amount_positive', sql`${t.amountMinor} > 0`),
     check('refunds_amount_max_safe', sql`${t.amountMinor} <= 9007199254740991`),
     check(
       'refunds_late_payment_reverse_transfer',

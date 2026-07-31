@@ -618,6 +618,59 @@ describe('FakeStripeAdapter', () => {
         expect(result.event.data).toHaveProperty('metadata');
       }
     });
+
+    // P1-3 : Le fake adapter ne doit pas filtrer les éléments non-objets de
+    // refunds.data. Un payload contenant [refundValide, null] doit conserver
+    // l'élément null pour que projectRefundStatus lève REFUND_OBJECT_INVALID.
+    it('préserve les éléments null dans refunds.data (ne filtre pas — P1-3)', async () => {
+      const rawBody = JSON.stringify({
+        id: 'evt_refund_null_element',
+        type: 'charge.refunded',
+        created: Math.floor(Date.now() / 1000),
+        api_version: 'fake-v1',
+        data: {
+          object: {
+            id: 'ch_test_null_element',
+            object: 'charge',
+            payment_intent: 'pi_123',
+            amount_refunded: 5000,
+            refunds: {
+              object: 'list',
+              data: [
+                {
+                  id: 're_valid',
+                  object: 'refund',
+                  status: 'succeeded',
+                  amount: 5000,
+                  payment_intent: 'pi_123',
+                  currency: 'eur',
+                },
+                null, // Élément mal formé — ne doit pas être filtré
+              ],
+              has_more: false,
+            },
+          },
+        },
+      });
+
+      const signature = fake.generateValidSignature(rawBody, 'platform');
+      const result = await fake.verifyWebhook({
+        rawBody,
+        signature,
+        endpoint: 'platform',
+        environment: 'TEST',
+      });
+
+      expect(result.valid).toBe(true);
+      if (result.valid) {
+        const data = result.event.data as Record<string, unknown>;
+        const refunds = data.refunds as Record<string, unknown>;
+        const refundList = refunds.data as unknown[];
+        expect(refundList).toHaveLength(2);
+        expect(refundList[0]).not.toBeNull();
+        expect(refundList[1]).toBeNull();
+      }
+    });
   });
 
   describe('createConnectedAccount', () => {
