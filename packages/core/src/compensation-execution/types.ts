@@ -43,12 +43,25 @@ export interface ClaimedCompensation {
   leaseUntil: Date;
   /** Nombre de tentatives déjà effectuées (pour le backoff). */
   attemptCount: number;
+  /**
+   * P2-2 : validité du payload (casts SQL sûrs). false → l'événement est
+   * intraitable (PAYLOAD_MALFORMED durable) et executeCompensation n'est
+   * jamais appelé — les autres événements du batch ne sont pas bloqués.
+   */
+  payloadValid: boolean;
 }
 
 /** Résultat agrégé d'un batch d'exécution de compensations. */
 export interface CompensationBatchResult {
   claimedCount: number;
   submittedCount: number;
+  /**
+   * P2 (metrics) : nombre d'événements où le refund était déjà SUCCEEDED
+   * (projeté par le webhook) au moment du markOutboxFailed. Ces événements
+   * sont marqués PROCESSED mais ne sont pas des soumissions du worker —
+   * c'est un cas où le webhook a déjà terminé. Distinct de submittedCount.
+   */
+  alreadySucceededCount: number;
   failedCount: number;
   rescheduledCount: number;
   anomalies: Array<{ outboxEventId: string; code: string }>;

@@ -573,12 +573,15 @@ function makeChargeRefundedBody(params: {
   refundId: string;
   refundStatus: string;
   amount: number;
+  /** Compte Connect (champ `account` de l'événement) — endpoint connect. */
+  account?: string;
 }): string {
   return JSON.stringify({
     id: params.eventId ?? `evt_${Math.random().toString(36).slice(2, 12)}`,
     type: 'charge.refunded',
     created: params.created ?? Math.floor(Date.now() / 1000),
     api_version: '2026-06-24.dahlia',
+    ...(params.account !== undefined ? { account: params.account } : {}),
     data: {
       object: {
         id: params.chargeId,
@@ -5370,5 +5373,91 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
     // L'outbox est PROCESSED dans la même transaction que la Phase 3.
     const outbox = await rawSql`SELECT status FROM outbox_events WHERE id = ${seed.outboxEventId}`;
     expect(outbox[0]!.status).toBe('PROCESSED');
+  });
+
+  // P8-6. Webhook Connect précoce (endpoint connect, event.accountId non null) :
+  // le paymentId est résolu depuis le payment_intent MÊME quand l'org est déjà
+  // résolue via accountId — le remboursement LATE orphelin est rattaché et
+  // projeté SUCCEEDED, jamais consommé sans projection ni EXTERNAL_REFUND.
+  it("P8-6. webhook Connect précoce : rattachement du remboursement LATE orphelin avec org résolue via accountId, pas d'EXTERNAL_REFUND", async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('connect-early-refund');
+    // Compte Connect de l'organisation — permet la résolution org via accountId.
+    await seedPaymentAccount(ids, 'acct_test_123');
+    const seed = await seedLateCompensation(ids, 'connect-early-refund');
+    const deps = makeDeps();
+
+    // Le refund LATE est encore PENDING sans provider_refund_id : simuler le
+    // webhook Stripe qui arrive sur l'endpoint CONNECT (account non null)
+    // AVANT la Phase 3 du worker.
+    const body = makeChargeRefundedBody({
+      chargeId: 'ch_connect_early',
+      paymentIntentId: seed.providerPaymentIntentId,
+      refundId: 're_connect_early_1',
+      refundStatus: 'succeeded',
+      amount: seed.amountMinor,
+      account: 'acct_test_123',
+    });
+    const result = await handleWebhook(deps, makeWebhookInput(body, deps.adapter, 'connect'));
+    expect(result.kind).toBe('SUCCESS');
+
+    // Le remboursement LATE a été rattaché : provider_refund_id + SUCCEEDED —
+    // le paymentId a été résolu depuis le payment_intent malgré orgId déjà set.
+    const refundRows =
+      await rawSql`SELECT status, provider_refund_id, reason FROM refunds WHERE payment_id = ${seed.paymentId}`;
+    expect(refundRows.length).toBe(1);
+    expect(refundRows[0]!.reason).toBe('LATE_PAYMENT_NO_BOOKING');
+    expect(refundRows[0]!.provider_refund_id).toBe('re_connect_early_1');
+    expect(refundRows[0]!.status).toBe('SUCCEEDED');
+
+    // L'événement webhook est PROCESSED (pas IGNORED/acquitté sans projection).
+    const webhookEvents =
+      await rawSql`SELECT status, organization_id FROM payment_webhook_events WHERE event_type = 'charge.refunded'`;
+    expect(webhookEvents.length).toBe(1);
+    expect(webhookEvents[0]!.status).toBe('PROCESSED');
+    expect(webhookEvents[0]!.organization_id).toBe(ids.orgId);
+  });
+
+  // P8-6-bis. Webhook Connect précoce avec accountId ≠ connectedAccountId du
+  // paiement : l'événement est FAILED (refund_account_mismatch), le refund LATE
+  // orphelin n'est PAS rattaché (provider_refund_id reste NULL), aucun
+  // EXTERNAL_REFUND créé.
+  it('P8-6-bis. webhook Connect précoce avec accountId ≠ connectedAccountId du paiement → FAILED, pas de rattachement', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('connect-mismatch');
+    // Compte Connect A de l'organisation — le paiement utilise ce compte.
+    await seedPaymentAccount(ids, 'acct_test_123');
+    const seed = await seedLateCompensation(ids, 'connect-mismatch');
+    const deps = makeDeps();
+
+    // Le refund LATE est encore PENDING sans provider_refund_id : simuler un
+    // webhook Stripe sur l'endpoint CONNECT avec event.accountId = compte_B
+    // (différent du connectedAccountId du paiement = acct_test_123).
+    const body = makeChargeRefundedBody({
+      chargeId: 'ch_connect_mismatch',
+      paymentIntentId: seed.providerPaymentIntentId,
+      refundId: 're_connect_mismatch_1',
+      refundStatus: 'succeeded',
+      amount: seed.amountMinor,
+      account: 'acct_test_456',
+    });
+    const result = await handleWebhook(deps, makeWebhookInput(body, deps.adapter, 'connect'));
+    expect(result.kind).toBe('SUCCESS');
+
+    // L'événement webhook est FAILED (refund_account_mismatch) — pas PROCESSED.
+    const webhookEvents =
+      await rawSql`SELECT status, failure_code FROM payment_webhook_events WHERE event_type = 'charge.refunded'`;
+    expect(webhookEvents.length).toBe(1);
+    expect(webhookEvents[0]!.status).toBe('FAILED');
+    expect(webhookEvents[0]!.failure_code).toBe('REFUND_ACCOUNT_MISMATCH');
+
+    // Le refund LATE orphelin est inchangé : pas rattaché, provider_refund_id
+    // toujours NULL, statut toujours PENDING.
+    const refundRows =
+      await rawSql`SELECT status, provider_refund_id, reason FROM refunds WHERE payment_id = ${seed.paymentId}`;
+    expect(refundRows.length).toBe(1);
+    expect(refundRows[0]!.reason).toBe('LATE_PAYMENT_NO_BOOKING');
+    expect(refundRows[0]!.provider_refund_id).toBeNull();
+    expect(refundRows[0]!.status).toBe('PENDING');
   });
 });

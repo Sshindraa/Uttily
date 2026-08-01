@@ -44,10 +44,14 @@ export async function executeCompensation(
   const verification = await db.transaction(async (tx) => {
     // P1-6 (fencing précoce) : vérifier le lease AVANT tout appel provider.
     // Si la lease a été perdue/reprise, ne jamais atteindre la Phase 2.
+    // P2-1 : le contrôle inclut l'EXPIRATION — une lease expirée (reclaimable
+    // par un autre worker à tout moment) est traitée comme LEASE_LOST, même
+    // avec le bon token.
     const earlyLeaseRows = await tx.execute(sql`
       SELECT "id" FROM "outbox_events"
       WHERE "id" = ${claimed.outboxEventId}::uuid
         AND "lease_token" = ${claimed.leaseToken}::uuid
+        AND "lease_until" > transaction_timestamp()
     `);
     if ((earlyLeaseRows as unknown as Array<{ id: string }>).length === 0) {
       throw new CompensationError(
@@ -72,12 +76,30 @@ export async function executeCompensation(
 
     const refund = refundRows[0]!;
 
-    // Si le refund n'est plus PENDING, il a déjà été soumis (replay).
-    if (refund.status !== 'PENDING') {
-      throw new CompensationError(
-        'REFUND_ALREADY_SUBMITTED',
-        `Le refund ${refund.id} n'est plus PENDING (statut: ${refund.status})`,
-      );
+    // P1-4 : Distinguer explicitement les statuts non-PENDING — un refund déjà
+    // SUBMITTED/SUCCEEDED est un replay traité (outbox PROCESSED), un refund
+    // déjà FAILED est un remboursement non abouti (échec durable + alerte).
+    switch (refund.status) {
+      case 'PENDING':
+        break; // Seul statut éligible à la soumission.
+      case 'SUBMITTED':
+      case 'SUCCEEDED':
+        throw new CompensationError(
+          'REFUND_ALREADY_SUBMITTED',
+          `Le refund ${refund.id} est déjà ${refund.status} — remboursement déjà soumis`,
+        );
+      case 'FAILED':
+        throw new CompensationError(
+          'REFUND_ALREADY_FAILED',
+          `Le refund ${refund.id} est déjà FAILED — remboursement non abouti`,
+        );
+      default: {
+        // Invariant explicite : l'union TypeScript refund_status est fermée
+        // (PENDING/SUBMITTED/SUCCEEDED/FAILED) — tout autre statut est une
+        // anomalie d'intégrité, jamais un cas à traiter silencieusement.
+        const unexpected: never = refund.status;
+        throw new Error(`Statut refund inattendu (invariant violé): ${String(unexpected)}`);
+      }
     }
 
     // P2 : guard clause — reverse_transfer et refund_application_fee doivent
@@ -243,7 +265,16 @@ export async function executeCompensation(
       `Devise fournisseur (${result.currency}) ≠ EUR`,
     );
   }
-  if (result.status !== 'pending' && result.status !== 'succeeded') {
+  // P1-2 : requires_action est admissible — statut NON terminal, visible et
+  // actionnable côté Stripe (RefundStatus le reconnaît, la projection webhook
+  // le projette PENDING localement). Le refund a bien été soumis : il est
+  // persisté SUBMITTED + provider_refund_id, et la projection webhook fait foi
+  // pour le statut final (SUCCEEDED/FAILED).
+  if (
+    result.status !== 'pending' &&
+    result.status !== 'succeeded' &&
+    result.status !== 'requires_action'
+  ) {
     throw new CompensationError(
       'PROVIDER_RESULT_INVALID',
       `Statut fournisseur inadmissible: ${result.status}`,
@@ -252,11 +283,13 @@ export async function executeCompensation(
 
   // ─── Phase 3 : Transaction de persistance ───
   await db.transaction(async (tx) => {
-    // Vérifier le lease : UPDATE conditionnel sur lease_token.
+    // Vérifier le lease : token + expiration (P2-1 — une lease expirée est
+    // reclaimable par un autre worker, elle ne protège plus rien).
     const leaseRows = await tx.execute(sql`
       SELECT "id" FROM "outbox_events"
       WHERE "id" = ${claimed.outboxEventId}::uuid
         AND "lease_token" = ${claimed.leaseToken}::uuid
+        AND "lease_until" > transaction_timestamp()
       FOR UPDATE
     `);
 

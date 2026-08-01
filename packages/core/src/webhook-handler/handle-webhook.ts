@@ -160,14 +160,16 @@ export async function handleWebhook(
   try {
     // ── 2. Dispatch par type d'événement ──────────────────────────────────────
 
+    // Événements de refund — journaliser et projeter le statut, QUEL QUE SOIT
+    // l'endpoint (P1-1 : un refund Connect précoce avec event.accountId non
+    // null doit être projeté SUCCEEDED/FAILED, pas seulement consommé).
+    if (REFUND_EVENT_TYPES.has(event.type)) {
+      return await handleRefundEvent(db, event, rawBody, environment, endpoint, startTime);
+    }
+
     // Événements Connect (account.updated) — journaliser, projeter et marquer PROCESSED/IGNORED.
     if (endpoint === 'connect') {
       return await handleConnectEvent(db, event, rawBody, environment, startTime);
-    }
-
-    // Événements de refund — journaliser et projeter le statut (Phase 6 : pas de worker).
-    if (REFUND_EVENT_TYPES.has(event.type)) {
-      return await handleRefundEvent(db, event, rawBody, environment, startTime);
     }
 
     // Événements PaymentIntent gérés.
@@ -1057,6 +1059,7 @@ async function handleRefundEvent(
   event: VerifiedWebhookEvent,
   rawBody: string,
   environment: 'TEST' | 'LIVE',
+  endpoint: 'platform' | 'connect',
   startTime: number,
 ): Promise<WebhookHandlerResult> {
   // P1-6 : Même si event.accountId est null, tenter de résoudre le refund via
@@ -1066,24 +1069,74 @@ async function handleRefundEvent(
     orgId = await resolveOrgFromConnectedAccount(db, event.accountId, environment);
   }
 
-  // Si pas d'org via accountId, tenter via le payment_intent ID.
+  // P1-1 : Résoudre le paymentId depuis le payment_intent DANS TOUS LES CAS
+  // (que orgId vienne déjà de accountId ou non) — sinon, pour un webhook
+  // Connect précoce, la branche de rattachement du remboursement LATE orphelin
+  // (else if (paymentId) dans projectRefundStatus) n'est jamais exécutée et
+  // l'événement est consommé sans projeter SUCCEEDED/FAILED.
   let paymentId: string | null = null;
-  if (orgId === null) {
-    const piId = extractRefundPaymentIntentId(event);
-    if (piId) {
-      const paymentRow = await db
-        .select({
-          id: payments.id,
-          organizationId: payments.organizationId,
-        })
-        .from(payments)
-        .innerJoin(paymentAttempts, eq(paymentAttempts.providerPaymentIntentId, piId))
-        .where(eq(paymentAttempts.providerPaymentIntentId, piId))
-        .limit(1);
+  // P1-1 : Échec de recoupement des deux sources (accountId ET payment_intent)
+  // — l'événement est une anomalie marquée FAILED, jamais acquittée.
+  let resolutionFailure: RefundProjectionFailureCode | null = null;
+  const piId = extractRefundPaymentIntentId(event);
+  if (piId) {
+    const paymentRow = await db
+      .select({
+        id: payments.id,
+        organizationId: payments.organizationId,
+        connectedAccountId: payments.connectedAccountId,
+      })
+      .from(payments)
+      .innerJoin(
+        paymentAttempts,
+        and(
+          eq(paymentAttempts.paymentId, payments.id),
+          eq(paymentAttempts.providerPaymentIntentId, piId),
+        ),
+      )
+      .limit(1);
 
-      if (paymentRow.length > 0) {
-        orgId = paymentRow[0]!.organizationId;
-        paymentId = paymentRow[0]!.id;
+    if (paymentRow.length > 0) {
+      const resolved = paymentRow[0]!;
+      if (event.accountId !== null && orgId !== null && resolved.organizationId !== orgId) {
+        // P1-1 : Recoupement — l'organisation du paiement résolu depuis le
+        // payment_intent ne concorde pas avec celle résolue depuis accountId.
+        console.warn(
+          JSON.stringify({
+            event: 'webhook.stripe',
+            endpoint,
+            environment,
+            providerEventId: event.id,
+            eventType: event.type,
+            result: 'refund_org_mismatch',
+            expected: resolved.organizationId,
+            received: orgId,
+            durationMs: Date.now() - startTime,
+          }),
+        );
+        resolutionFailure = 'REFUND_ORG_MISMATCH';
+      } else if (event.accountId !== null && resolved.connectedAccountId !== event.accountId) {
+        // P1-1 : Recoupement — le compte Connect du paiement ne concorde pas
+        // avec event.accountId.
+        console.warn(
+          JSON.stringify({
+            event: 'webhook.stripe',
+            endpoint,
+            environment,
+            providerEventId: event.id,
+            eventType: event.type,
+            result: 'refund_account_mismatch',
+            expected: resolved.connectedAccountId,
+            received: event.accountId,
+            durationMs: Date.now() - startTime,
+          }),
+        );
+        resolutionFailure = 'REFUND_ACCOUNT_MISMATCH';
+      } else {
+        if (orgId === null) {
+          orgId = resolved.organizationId;
+        }
+        paymentId = resolved.id;
       }
     }
   }
@@ -1091,7 +1144,8 @@ async function handleRefundEvent(
   // P1-2 : Si toujours non résolu, tenter via le provider_refund_id d'un refund
   // existant. Un refund.updated sans payment_intent peut quand même être rattaché
   // à un paiement local si la ligne refunds existe déjà.
-  if (orgId === null) {
+  // P1-1 : Ne pas retenter si un recoupement a déjà échoué (anomalie durable).
+  if (orgId === null && resolutionFailure === null) {
     const refundObjects = extractRefundObjects(event);
     for (const refundObj of refundObjects) {
       if (refundObj === null || typeof refundObj !== 'object') continue;
@@ -1114,12 +1168,12 @@ async function handleRefundEvent(
     }
   }
 
-  if (orgId === null) {
+  if (orgId === null && resolutionFailure === null) {
     // Non rattachable — persister avec organization_id = NULL + IGNORED.
     console.warn(
       JSON.stringify({
         event: 'webhook.stripe',
-        endpoint: 'platform',
+        endpoint,
         environment,
         providerEventId: event.id,
         eventType: event.type,
@@ -1136,7 +1190,7 @@ async function handleRefundEvent(
       console.log(
         JSON.stringify({
           event: 'webhook.stripe',
-          endpoint: 'platform',
+          endpoint,
           environment,
           providerEventId: event.id,
           eventType: event.type,
@@ -1153,8 +1207,12 @@ async function handleRefundEvent(
     // P1-4/P1-6 : Projeter le statut du refund dans la table refunds.
     let finalStatus: 'PROCESSED' | 'IGNORED' | 'FAILED' = orgId === null ? 'IGNORED' : 'PROCESSED';
     let failureCode: RefundProjectionFailureCode | undefined;
-    if (orgId !== null) {
-      const projection = await projectRefundStatus(tx, event, orgId, paymentId);
+    if (resolutionFailure !== null) {
+      // P1-1 : Recoupement org/compte échoué — anomalie durable, jamais acquittée.
+      finalStatus = 'FAILED';
+      failureCode = resolutionFailure;
+    } else if (orgId !== null) {
+      const projection = await projectRefundStatus(tx, event, orgId, paymentId, endpoint);
       finalStatus = projection.result;
       failureCode = projection.failureCode;
     }
@@ -1181,7 +1239,7 @@ async function handleRefundEvent(
     console.log(
       JSON.stringify({
         event: 'webhook.stripe',
-        endpoint: 'platform',
+        endpoint,
         environment,
         providerEventId: event.id,
         eventType: event.type,
@@ -1294,6 +1352,7 @@ async function projectRefundStatus(
   event: VerifiedWebhookEvent,
   orgId: string,
   paymentId: string | null,
+  endpoint: 'platform' | 'connect',
 ): Promise<{
   result: 'PROCESSED' | 'IGNORED' | 'FAILED';
   failureCode?: RefundProjectionFailureCode;
@@ -1393,7 +1452,7 @@ async function projectRefundStatus(
             console.warn(
               JSON.stringify({
                 event: 'webhook.stripe',
-                endpoint: 'platform',
+                endpoint,
                 result: 'refund_terminal_regression',
                 providerRefundId: refundId,
                 fromStatus: existingRow.status,
@@ -1411,7 +1470,7 @@ async function projectRefundStatus(
             console.warn(
               JSON.stringify({
                 event: 'webhook.stripe',
-                endpoint: 'platform',
+                endpoint,
                 result: 'refund_pi_missing',
                 providerRefundId: refundId,
               }),
@@ -1429,7 +1488,7 @@ async function projectRefundStatus(
             console.warn(
               JSON.stringify({
                 event: 'webhook.stripe',
-                endpoint: 'platform',
+                endpoint,
                 result: 'refund_payment_intent_mismatch',
                 providerRefundId: refundId,
                 expectedPaymentId: existingRow.paymentId,
@@ -1451,7 +1510,7 @@ async function projectRefundStatus(
             console.warn(
               JSON.stringify({
                 event: 'webhook.stripe',
-                endpoint: 'platform',
+                endpoint,
                 result: 'refund_account_mismatch',
                 providerRefundId: refundId,
                 expected: existingPayment[0]!.connectedAccountId,
@@ -1473,7 +1532,7 @@ async function projectRefundStatus(
             console.warn(
               JSON.stringify({
                 event: 'webhook.stripe',
-                endpoint: 'platform',
+                endpoint,
                 result: 'refund_invalid_amount',
                 providerRefundId: refundId,
                 amount: refundAmount,
@@ -1485,7 +1544,7 @@ async function projectRefundStatus(
             console.warn(
               JSON.stringify({
                 event: 'webhook.stripe',
-                endpoint: 'platform',
+                endpoint,
                 result: 'refund_amount_mismatch',
                 providerRefundId: refundId,
                 expected: existingRow.amountMinor,
@@ -1501,7 +1560,7 @@ async function projectRefundStatus(
             console.warn(
               JSON.stringify({
                 event: 'webhook.stripe',
-                endpoint: 'platform',
+                endpoint,
                 result: 'refund_currency_missing',
                 providerRefundId: refundId,
               }),
@@ -1512,7 +1571,7 @@ async function projectRefundStatus(
             console.warn(
               JSON.stringify({
                 event: 'webhook.stripe',
-                endpoint: 'platform',
+                endpoint,
                 result: 'refund_currency_mismatch',
                 providerRefundId: refundId,
                 received: refundCurrency,
@@ -1526,7 +1585,7 @@ async function projectRefundStatus(
             console.warn(
               JSON.stringify({
                 event: 'webhook.stripe',
-                endpoint: 'platform',
+                endpoint,
                 result: 'refund_org_mismatch',
                 providerRefundId: refundId,
                 expected: existingRow.organizationId,
@@ -1571,7 +1630,7 @@ async function projectRefundStatus(
               console.warn(
                 JSON.stringify({
                   event: 'webhook.stripe',
-                  endpoint: 'platform',
+                  endpoint,
                   result: 'refund_account_mismatch',
                   providerRefundId: refundId,
                   paymentId,
@@ -1622,7 +1681,7 @@ async function projectRefundStatus(
               console.warn(
                 JSON.stringify({
                   event: 'webhook.stripe',
-                  endpoint: 'platform',
+                  endpoint,
                   result: 'refund_invalid_amount',
                   providerRefundId: refundId,
                   amount: orphanAmount,
@@ -1634,7 +1693,7 @@ async function projectRefundStatus(
               console.warn(
                 JSON.stringify({
                   event: 'webhook.stripe',
-                  endpoint: 'platform',
+                  endpoint,
                   result: 'refund_amount_mismatch',
                   providerRefundId: refundId,
                   expected: orphanRow.amountMinor,
@@ -1653,7 +1712,7 @@ async function projectRefundStatus(
               console.warn(
                 JSON.stringify({
                   event: 'webhook.stripe',
-                  endpoint: 'platform',
+                  endpoint,
                   result: 'refund_currency_mismatch',
                   providerRefundId: refundId,
                   currency: refundRecord.currency,
@@ -1682,7 +1741,7 @@ async function projectRefundStatus(
               console.warn(
                 JSON.stringify({
                   event: 'webhook.stripe',
-                  endpoint: 'platform',
+                  endpoint,
                   result: 'refund_terminal_regression',
                   providerRefundId: refundId,
                   fromStatus: orphanRow.status,
@@ -1725,7 +1784,7 @@ async function projectRefundStatus(
             console.warn(
               JSON.stringify({
                 event: 'webhook.stripe',
-                endpoint: 'platform',
+                endpoint,
                 result: 'refund_pi_missing',
                 providerRefundId: refundId,
               }),
@@ -1740,7 +1799,7 @@ async function projectRefundStatus(
             console.warn(
               JSON.stringify({
                 event: 'webhook.stripe',
-                endpoint: 'platform',
+                endpoint,
                 result: 'refund_invalid_amount',
                 providerRefundId: refundId,
                 amount,
@@ -1756,7 +1815,7 @@ async function projectRefundStatus(
             console.warn(
               JSON.stringify({
                 event: 'webhook.stripe',
-                endpoint: 'platform',
+                endpoint,
                 result: 'refund_currency_mismatch',
                 providerRefundId: refundId,
                 currency: refundRecord.currency,
@@ -1782,7 +1841,7 @@ async function projectRefundStatus(
             console.warn(
               JSON.stringify({
                 event: 'webhook.stripe',
-                endpoint: 'platform',
+                endpoint,
                 result: 'refund_pi_mismatch',
                 providerRefundId: refundId,
                 paymentIntentId: refundPiId,
@@ -1819,7 +1878,7 @@ async function projectRefundStatus(
           console.warn(
             JSON.stringify({
               event: 'webhook.stripe',
-              endpoint: 'platform',
+              endpoint,
               result: 'external_refund_no_local_payment',
               providerRefundId: refundId,
               refundStatus,

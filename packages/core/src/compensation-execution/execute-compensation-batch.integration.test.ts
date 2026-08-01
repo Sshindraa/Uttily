@@ -2,11 +2,18 @@
  * @uttily/core — Tests d'intégration PostgreSQL du moteur d'exécution des
  * compensations (Phase 8, ADR-010 §13).
  *
- * 13 scénarios couvrant : batch vide, claim + exécution succès, idempotence
+ * 25 scénarios couvrant : batch vide, claim + exécution succès, idempotence
  * replay, refund déjà SUBMITTED, crash après claim, stale lease, concurrence
  * SKIP LOCKED, erreur technique avec backoff, max attempts dépassé, refus
  * Stripe (solde Connect), filtrage par environnement, vérification montant
- * mismatch, et provider.environment mismatch.
+ * mismatch, provider.environment mismatch, fencing stale worker, stale token
+ * précoce, sélection déterministe de tentative, réponse fournisseur incohérente,
+ * flags invalides, classification api_error/idempotency_error, statut
+ * requires_action admissible, refund SUCCEEDED puis erreur provider durable,
+ * refund déjà FAILED au reclaim, lease expirée non reprise, et isolation des
+ * payloads mal formés. Tests 26-27 : transition SUBMITTED → PENDING par webhook
+ * requires_action, et isolation de plusieurs payloads mal formés dans le même
+ * batch.
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -20,6 +27,8 @@ import {
 } from '../integration/setup';
 import { FakeStripeAdapter } from '../payments/fake-stripe-adapter';
 import { PaymentProviderError } from '../payments/errors';
+import { handleWebhook } from '../webhook-handler/handle-webhook';
+import type { WebhookHandlerDeps, WebhookHandlerInput } from '../webhook-handler/types';
 import { executeCompensationBatch } from './execute-compensation-batch';
 import { claimCompensationBatch } from './claim-compensation-batch';
 import { executeCompensation } from './execute-compensation';
@@ -172,6 +181,7 @@ async function seedCompensation(
     overrideAvailableAt?: string;
     overrideLeaseUntil?: string | null;
     connectedAccountId?: string;
+    overrideProviderRefundId?: string;
   } = {},
 ): Promise<SeedCompensationResult> {
   if (!rawSql) throw new Error('rawSql not initialized');
@@ -243,22 +253,40 @@ async function seedCompensation(
 
   // Créer le refund PENDING.
   const refundIdempotencyKey = `refund_late_${payment.id}`;
-  const refund = await sql`
-    INSERT INTO "refunds" (
-      "organization_id", "payment_id", "reason", "status",
-      "amount_minor", "currency",
-      "provider_idempotency_key",
-      "reverse_transfer", "refund_application_fee",
-      "requested_at"
-    ) VALUES (
-      ${ids.orgId}, ${payment.id}, ${options.overrideRefundReason ?? 'LATE_PAYMENT_NO_BOOKING'}::refund_reason, ${options.overrideRefundStatus ?? 'PENDING'}::refund_status,
-      ${amountMinor}, 'EUR',
-      ${refundIdempotencyKey},
-      ${options.overrideReverseTransfer ?? true}, ${options.overrideRefundApplicationFee ?? true},
-      now()
-    )
-    RETURNING "id"
-  `.then((r) => r[0]!);
+  const providerRefundId = options.overrideProviderRefundId;
+  const refund = providerRefundId
+    ? await sql`
+        INSERT INTO "refunds" (
+          "organization_id", "payment_id", "reason", "status",
+          "amount_minor", "currency",
+          "provider_idempotency_key", "provider_refund_id",
+          "reverse_transfer", "refund_application_fee",
+          "requested_at", "submitted_at"
+        ) VALUES (
+          ${ids.orgId}, ${payment.id}, ${options.overrideRefundReason ?? 'LATE_PAYMENT_NO_BOOKING'}::refund_reason, ${options.overrideRefundStatus ?? 'PENDING'}::refund_status,
+          ${amountMinor}, 'EUR',
+          ${refundIdempotencyKey}, ${providerRefundId},
+          ${options.overrideReverseTransfer ?? true}, ${options.overrideRefundApplicationFee ?? true},
+          now(), now()
+        )
+        RETURNING "id"
+      `.then((r) => r[0]!)
+    : await sql`
+        INSERT INTO "refunds" (
+          "organization_id", "payment_id", "reason", "status",
+          "amount_minor", "currency",
+          "provider_idempotency_key",
+          "reverse_transfer", "refund_application_fee",
+          "requested_at"
+        ) VALUES (
+          ${ids.orgId}, ${payment.id}, ${options.overrideRefundReason ?? 'LATE_PAYMENT_NO_BOOKING'}::refund_reason, ${options.overrideRefundStatus ?? 'PENDING'}::refund_status,
+          ${amountMinor}, 'EUR',
+          ${refundIdempotencyKey},
+          ${options.overrideReverseTransfer ?? true}, ${options.overrideRefundApplicationFee ?? true},
+          now()
+        )
+        RETURNING "id"
+      `.then((r) => r[0]!);
 
   // Créer l'outbox event PAYMENT_COMPENSATION_REQUESTED.
   const outboxAmountMinor = options.overrideOutboxAmountMinor ?? amountMinor;
@@ -362,6 +390,73 @@ function makeDeps(adapter?: FakeStripeAdapter): CompensationDependencies {
     db,
     provider: adapter ?? new FakeStripeAdapter({ environment: 'TEST' }),
   };
+}
+
+/**
+ * Dépendances webhook (endpoint platform) — utilisées par les tests qui
+ * simulent la course webhook/worker (P1-2/P1-3, 3e correctif Phase 8).
+ */
+function makeWebhookDeps(): WebhookHandlerDeps & { adapter: FakeStripeAdapter } {
+  if (!db) throw new Error('db not initialized');
+  const adapter = new FakeStripeAdapter({
+    platformWebhookSecret: 'whsec_fake_platform',
+    connectWebhookSecret: 'whsec_fake_connect',
+    environment: 'TEST',
+  });
+  return { db, provider: adapter, adapter };
+}
+
+function makeWebhookInput(rawBody: string, adapter: FakeStripeAdapter): WebhookHandlerInput {
+  const signature = adapter.generateValidSignature(rawBody, 'platform');
+  return {
+    rawBody,
+    signature,
+    endpoint: 'platform',
+    environment: 'TEST',
+  };
+}
+
+/**
+ * Construit un payload webhook Stripe charge.refunded avec un seul refund
+ * (endpoint platform, sans champ account).
+ */
+function makeChargeRefundedBody(params: {
+  eventId?: string;
+  created?: number;
+  chargeId: string;
+  paymentIntentId: string;
+  refundId: string;
+  refundStatus: string;
+  amount: number;
+}): string {
+  return JSON.stringify({
+    id: params.eventId ?? `evt_${Math.random().toString(36).slice(2, 12)}`,
+    type: 'charge.refunded',
+    created: params.created ?? Math.floor(Date.now() / 1000),
+    api_version: '2026-06-24.dahlia',
+    data: {
+      object: {
+        id: params.chargeId,
+        object: 'charge',
+        payment_intent: params.paymentIntentId,
+        amount_refunded: params.amount,
+        refunds: {
+          object: 'list',
+          data: [
+            {
+              id: params.refundId,
+              object: 'refund',
+              status: params.refundStatus,
+              amount: params.amount,
+              payment_intent: params.paymentIntentId,
+              currency: 'eur',
+            },
+          ],
+          has_more: false,
+        },
+      },
+    },
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -770,7 +865,11 @@ describe.skipIf(shouldSkipIntegrationTests())(
 
       const result = await executeCompensationBatch(makeDeps(adapter), { environment: 'TEST' });
       expect(result.claimedCount).toBe(1);
-      expect(result.failedCount).toBe(1);
+      // P1-3 (3e correctif) : markOutboxFailed retourne 'lease_lost' — le fencing
+      // RETURNING-gated a empêché toute mutation et l'événement appartient au
+      // successeur : ce worker ne compte NI échec NI anomalie.
+      expect(result.failedCount).toBe(0);
+      expect(result.anomalies.length).toBe(0);
 
       // P1-3 : le fencing RETURNING-gated a empêché toute mutation — le refund
       // n'est PAS marqué FAILED et l'outbox n'est PAS marqué FAILED.
@@ -977,6 +1076,361 @@ describe.skipIf(shouldSkipIntegrationTests())(
         await rawSql`SELECT status, failure_code FROM refunds WHERE id = ${seed.refundId}`;
       expect(refund[0]!.status).toBe('FAILED');
       expect(refund[0]!.failure_code).toBe('idempotency_error');
+    });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Correctifs Phase 8, 3e revue (P1-1 à P1-4, P2-1, P2-2) — tests 21 à 25
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // 21. P1-2 : création fournisseur retournant requires_action
+    it('21. requires_action : statut admissible → refund SUBMITTED + provider_refund_id, outbox PROCESSED, webhook requires_action projeté PENDING sans conflit', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const adapter = new FakeStripeAdapter({ environment: 'TEST' });
+      const seed = await seedCompensation(ids, 'requires-action');
+      preloadSucceededIntent(adapter, seed.providerPaymentIntentId);
+
+      // Le provider retourne requires_action (non terminal, visible, actionnable).
+      vi.spyOn(adapter, 'createRefund').mockResolvedValue({
+        id: 're_requires_action_1',
+        status: 'requires_action',
+        amountMinor: 10000,
+        currency: 'EUR',
+      });
+
+      const result = await executeCompensationBatch(makeDeps(adapter), { environment: 'TEST' });
+      expect(result.claimedCount).toBe(1);
+      expect(result.submittedCount).toBe(1);
+      expect(result.failedCount).toBe(0);
+      expect(result.anomalies.length).toBe(0);
+
+      // Le refund est SUBMITTED avec provider_refund_id persisté.
+      const refund =
+        await rawSql`SELECT status, provider_refund_id FROM refunds WHERE id = ${seed.refundId}`;
+      expect(refund[0]!.status).toBe('SUBMITTED');
+      expect(refund[0]!.provider_refund_id).toBe('re_requires_action_1');
+
+      // L'outbox est PROCESSED.
+      const outbox =
+        await rawSql`SELECT status FROM outbox_events WHERE id = ${seed.outboxEventId}`;
+      expect(outbox[0]!.status).toBe('PROCESSED');
+
+      // Puis le webhook requires_action (projeté PENDING) : transition acceptée,
+      // PAS de conflit terminal (FAILED → PENDING aurait été refusé par la
+      // garde terminale REFUND_TERMINAL_STATE_CONFLICT).
+      const webhookDeps = makeWebhookDeps();
+      const body = makeChargeRefundedBody({
+        chargeId: 'ch_requires_action',
+        paymentIntentId: seed.providerPaymentIntentId,
+        refundId: 're_requires_action_1',
+        refundStatus: 'requires_action',
+        amount: 10000,
+      });
+      const webhookResult = await handleWebhook(
+        webhookDeps,
+        makeWebhookInput(body, webhookDeps.adapter),
+      );
+      expect(webhookResult.kind).toBe('SUCCESS');
+
+      const refundAfter = await rawSql`SELECT status FROM refunds WHERE id = ${seed.refundId}`;
+      expect(refundAfter[0]!.status).toBe('PENDING');
+      const webhookEvent =
+        await rawSql`SELECT status FROM payment_webhook_events WHERE event_type = 'charge.refunded'`;
+      expect(webhookEvent.length).toBe(1);
+      expect(webhookEvent[0]!.status).toBe('PROCESSED');
+    });
+
+    // 22. P1-3 : webhook SUCCEEDED puis exception provider durable
+    it("22. refund SUCCEEDED projeté par le webhook puis erreur provider durable → outbox PROCESSED (PAS FAILED), submittedCount, pas d'anomalie", async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const adapter = new FakeStripeAdapter({ environment: 'TEST' });
+      const seed = await seedCompensation(ids, 'succeeded-then-error');
+      preloadSucceededIntent(adapter, seed.providerPaymentIntentId);
+      const webhookDeps = makeWebhookDeps();
+
+      vi.spyOn(adapter, 'createRefund').mockImplementation(async () => {
+        // (a) Stripe a réellement créé le refund : le webhook le projette
+        // SUCCEEDED (rattachement du remboursement LATE orphelin).
+        const body = makeChargeRefundedBody({
+          chargeId: 'ch_succeeded_then_error',
+          paymentIntentId: seed.providerPaymentIntentId,
+          refundId: 're_succeeded_then_error_1',
+          refundStatus: 'succeeded',
+          amount: 10000,
+        });
+        const webhookResult = await handleWebhook(
+          webhookDeps,
+          makeWebhookInput(body, webhookDeps.adapter),
+        );
+        expect(webhookResult.kind).toBe('SUCCESS');
+        // (b) L'appel retourne néanmoins une erreur durable/ambiguë.
+        throw new PaymentProviderError('UNKNOWN', 'Ambiguous durable error', 'idempotency_error');
+      });
+
+      const result = await executeCompensationBatch(makeDeps(adapter), { environment: 'TEST' });
+      expect(result.claimedCount).toBe(1);
+      // P1-3 : le refund SUCCEEDED impose outbox PROCESSED — compté
+      // alreadySucceeded (P2 metrics), PAS submitted, PAS failed, AUCUNE anomalie.
+      expect(result.submittedCount).toBe(0);
+      expect(result.alreadySucceededCount).toBe(1);
+      expect(result.failedCount).toBe(0);
+      expect(result.anomalies.length).toBe(0);
+
+      const outbox =
+        await rawSql`SELECT status FROM outbox_events WHERE id = ${seed.outboxEventId}`;
+      expect(outbox[0]!.status).toBe('PROCESSED');
+
+      // Le refund reste SUCCEEDED, jamais écrasé en FAILED.
+      const refund =
+        await rawSql`SELECT status, provider_refund_id, failure_code FROM refunds WHERE id = ${seed.refundId}`;
+      expect(refund[0]!.status).toBe('SUCCEEDED');
+      expect(refund[0]!.provider_refund_id).toBe('re_succeeded_then_error_1');
+      expect(refund[0]!.failure_code).toBeNull();
+    });
+
+    // 23. P1-4 : refund déjà FAILED au reclaim
+    it('23. refund déjà FAILED au reclaim → REFUND_ALREADY_FAILED, outbox FAILED (PAS PROCESSED), anomalie, createRefund JAMAIS appelé', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const adapter = new FakeStripeAdapter({ environment: 'TEST' });
+      const seed = await seedCompensation(ids, 'already-failed', {
+        overrideRefundStatus: 'FAILED',
+      });
+      const createRefundSpy = vi.spyOn(adapter, 'createRefund');
+
+      const result = await executeCompensationBatch(makeDeps(adapter), { environment: 'TEST' });
+      expect(result.claimedCount).toBe(1);
+      // P1-4 : un refund FAILED n'est JAMAIS compté comme soumis.
+      expect(result.submittedCount).toBe(0);
+      expect(result.failedCount).toBe(1);
+      expect(result.anomalies.length).toBe(1);
+      expect(result.anomalies[0]!.code).toBe('REFUND_ALREADY_FAILED');
+      expect(createRefundSpy).not.toHaveBeenCalled();
+
+      const outbox =
+        await rawSql`SELECT status FROM outbox_events WHERE id = ${seed.outboxEventId}`;
+      expect(outbox[0]!.status).toBe('FAILED');
+
+      // Le refund reste FAILED (l'UPDATE monotone exclut les terminaux).
+      const refund = await rawSql`SELECT status FROM refunds WHERE id = ${seed.refundId}`;
+      expect(refund[0]!.status).toBe('FAILED');
+    });
+
+    // 24. P2-1 : lease expirée mais pas encore reprise (token inchangé)
+    it('24. lease expirée (token inchangé) → LEASE_LOST en Phase 1, createRefund JAMAIS appelé', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const adapter = new FakeStripeAdapter({ environment: 'TEST' });
+      const seed = await seedCompensation(ids, 'expired-lease');
+      preloadSucceededIntent(adapter, seed.providerPaymentIntentId);
+      const createRefundSpy = vi.spyOn(adapter, 'createRefund');
+
+      // Claim (token T1, lease valide 2 minutes).
+      const claimed = await claimCompensationBatch(db, 10, 'TEST');
+      expect(claimed.length).toBe(1);
+
+      // Expirer la lease SANS changer le token — l'événement est reclaimable
+      // par un autre worker à tout moment.
+      await rawSql`
+        UPDATE "outbox_events"
+        SET "lease_until" = transaction_timestamp() - interval '1 minute'
+        WHERE "id" = ${seed.outboxEventId}
+      `;
+
+      let leaseLost = false;
+      try {
+        await executeCompensation(makeDeps(adapter), claimed[0]!, 'TEST');
+      } catch (error) {
+        if (error instanceof CompensationError && error.code === 'LEASE_LOST') {
+          leaseLost = true;
+        } else {
+          throw error;
+        }
+      }
+      expect(leaseLost).toBe(true);
+      // Le provider n'a JAMAIS été appelé.
+      expect(createRefundSpy).not.toHaveBeenCalled();
+    });
+
+    // 25. P2-2 : payload mal formé n'empêche pas les autres événements
+    it("25. payload mal formé → PAYLOAD_MALFORMED durable + outbox FAILED, l'événement valide du batch est soumis (aucune exception SQL au claim)", async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const adapter = new FakeStripeAdapter({ environment: 'TEST' });
+      const seed = await seedCompensation(ids, 'valid-payload');
+      preloadSucceededIntent(adapter, seed.providerPaymentIntentId);
+
+      // Insérer un événement mal formé : amountMinor non numérique et
+      // paymentId non UUID — les casts directs auraient levé une erreur SQL
+      // et bloqué TOUT le batch.
+      const malformed = await rawSql`
+        INSERT INTO "outbox_events" (
+          "organization_id", "aggregate_type", "aggregate_id", "event_type", "event_version",
+          "payload", "status", "attempt_count", "available_at", "idempotency_key"
+        ) VALUES (
+          ${ids.orgId}, 'PAYMENT', ${randomUUID()}::uuid, 'PAYMENT_COMPENSATION_REQUESTED', 'v1',
+          ${rawSql.json({
+            paymentId: 'not-a-uuid',
+            refundIdempotencyKey: 'refund_malformed_x',
+            amountMinor: 'abc',
+            currency: 'EUR',
+            reason: 'LATE_PAYMENT_NO_BOOKING',
+          })},
+          'PENDING', 0, now(),
+          ${'payment_compensation_malformed_' + randomUUID()}
+        )
+        RETURNING "id"
+      `.then((r) => r[0]!);
+
+      // Le claim ne lève AUCUNE exception SQL ; les deux événements sont revendiqués.
+      const result = await executeCompensationBatch(makeDeps(adapter), { environment: 'TEST' });
+      expect(result.claimedCount).toBe(2);
+      expect(result.submittedCount).toBe(1);
+      expect(result.failedCount).toBe(1);
+      expect(result.anomalies.length).toBe(1);
+      expect(result.anomalies[0]!.code).toBe('PAYLOAD_MALFORMED');
+
+      // Le mal formé est FAILED (durable, pas de retry).
+      const malformedOutbox =
+        await rawSql`SELECT status FROM outbox_events WHERE id = ${malformed.id}`;
+      expect(malformedOutbox[0]!.status).toBe('FAILED');
+
+      // L'événement valide est soumis normalement.
+      const validOutbox =
+        await rawSql`SELECT status FROM outbox_events WHERE id = ${seed.outboxEventId}`;
+      expect(validOutbox[0]!.status).toBe('PROCESSED');
+      const refund = await rawSql`SELECT status FROM refunds WHERE id = ${seed.refundId}`;
+      expect(refund[0]!.status).toBe('SUBMITTED');
+    });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Correctifs Phase 8, 4e revue — tests 26 à 27
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // 26. webhook requires_action sur refund SUBMITTED → transition SUBMITTED →
+    // PENDING acceptée (pas de conflit terminal). SUBMITTED n'est pas un statut
+    // terminal — la projection webhook requires_action (→ PENDING) est admise.
+    it('26. webhook requires_action sur refund SUBMITTED → transition SUBMITTED → PENDING acceptée (pas de conflit terminal)', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const providerRefundId = 're_test_26_requires_action';
+      // Seeder un refund LATE SUBMITTED avec provider_refund_id persisté +
+      // outbox PROCESSED (comme si le worker avait fini avec requires_action).
+      const seed = await seedCompensation(ids, 'submitted-then-webhook-pending', {
+        overrideRefundStatus: 'SUBMITTED',
+        overrideOutboxStatus: 'PROCESSED',
+        overrideProviderRefundId: providerRefundId,
+      });
+
+      // Appeler le handler webhook avec un événement refund requires_action
+      // (projeté PENDING localement) pour le même provider_refund_id.
+      const webhookDeps = makeWebhookDeps();
+      const body = makeChargeRefundedBody({
+        chargeId: 'ch_submitted_then_webhook_pending',
+        paymentIntentId: seed.providerPaymentIntentId,
+        refundId: providerRefundId,
+        refundStatus: 'requires_action',
+        amount: 10000,
+      });
+      const webhookResult = await handleWebhook(
+        webhookDeps,
+        makeWebhookInput(body, webhookDeps.adapter),
+      );
+      expect(webhookResult.kind).toBe('SUCCESS');
+
+      // Le refund passe à PENDING (transition monotone acceptée — SUBMITTED
+      // n'est pas terminal), provider_refund_id inchangé.
+      const refundAfter =
+        await rawSql`SELECT status, provider_refund_id FROM refunds WHERE id = ${seed.refundId}`;
+      expect(refundAfter[0]!.status).toBe('PENDING');
+      expect(refundAfter[0]!.provider_refund_id).toBe(providerRefundId);
+
+      // L'événement webhook est PROCESSED (pas de conflit terminal).
+      const webhookEvent =
+        await rawSql`SELECT status, failure_code FROM payment_webhook_events WHERE event_type = 'charge.refunded'`;
+      expect(webhookEvent.length).toBe(1);
+      expect(webhookEvent[0]!.status).toBe('PROCESSED');
+      expect(webhookEvent[0]!.failure_code).toBeNull();
+    });
+
+    // 27. plusieurs payloads mal formés dans le même batch → tous isolés
+    // (FAILED), l'événement valide soumis. Vérifie que le safe-cast SQL au claim
+    // isole chaque payload mal formé sans bloquer le batch.
+    it("27. plusieurs payloads mal formés dans le même batch → tous isolés (FAILED), l'événement valide soumis", async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const adapter = new FakeStripeAdapter({ environment: 'TEST' });
+      const seed = await seedCompensation(ids, 'valid-multi-malformed');
+      preloadSucceededIntent(adapter, seed.providerPaymentIntentId);
+
+      // Insérer deux événements mal formés : un avec amountMinor = "abc", un
+      // avec paymentId = "not-a-uuid" — les casts directs auraient levé une
+      // erreur SQL et bloqué TOUT le batch.
+      const malformed1 = await rawSql`
+        INSERT INTO "outbox_events" (
+          "organization_id", "aggregate_type", "aggregate_id", "event_type", "event_version",
+          "payload", "status", "attempt_count", "available_at", "idempotency_key"
+        ) VALUES (
+          ${ids.orgId}, 'PAYMENT', ${randomUUID()}::uuid, 'PAYMENT_COMPENSATION_REQUESTED', 'v1',
+          ${rawSql.json({
+            paymentId: 'd1b3e4f2-a1b2-4c3d-8e5f-6a7b8c9d0e1f',
+            refundIdempotencyKey: 'refund_malformed_1',
+            amountMinor: 'abc',
+            currency: 'EUR',
+            reason: 'LATE_PAYMENT_NO_BOOKING',
+          })},
+          'PENDING', 0, now(),
+          ${'payment_compensation_malformed_1_' + randomUUID()}
+        )
+        RETURNING "id"
+      `.then((r) => r[0]!);
+
+      const malformed2 = await rawSql`
+        INSERT INTO "outbox_events" (
+          "organization_id", "aggregate_type", "aggregate_id", "event_type", "event_version",
+          "payload", "status", "attempt_count", "available_at", "idempotency_key"
+        ) VALUES (
+          ${ids.orgId}, 'PAYMENT', ${randomUUID()}::uuid, 'PAYMENT_COMPENSATION_REQUESTED', 'v1',
+          ${rawSql.json({
+            paymentId: 'not-a-uuid',
+            refundIdempotencyKey: 'refund_malformed_2',
+            amountMinor: 10000,
+            currency: 'EUR',
+            reason: 'LATE_PAYMENT_NO_BOOKING',
+          })},
+          'PENDING', 0, now(),
+          ${'payment_compensation_malformed_2_' + randomUUID()}
+        )
+        RETURNING "id"
+      `.then((r) => r[0]!);
+
+      // Le claim ne lève AUCUNE exception SQL ; les trois événements sont
+      // revendiqués.
+      const result = await executeCompensationBatch(makeDeps(adapter), {
+        environment: 'TEST',
+        batchLimit: 3,
+      });
+      expect(result.claimedCount).toBe(3);
+      expect(result.submittedCount).toBe(1);
+      expect(result.failedCount).toBe(2);
+      expect(result.anomalies.length).toBe(2);
+      expect(result.anomalies.some((a) => a.code === 'PAYLOAD_MALFORMED')).toBe(true);
+
+      // Les deux outbox mal formés sont FAILED (durable, pas de retry).
+      const malformed1Outbox =
+        await rawSql`SELECT status FROM outbox_events WHERE id = ${malformed1.id}`;
+      expect(malformed1Outbox[0]!.status).toBe('FAILED');
+      const malformed2Outbox =
+        await rawSql`SELECT status FROM outbox_events WHERE id = ${malformed2.id}`;
+      expect(malformed2Outbox[0]!.status).toBe('FAILED');
+
+      // L'événement valide est soumis normalement.
+      const validOutbox =
+        await rawSql`SELECT status FROM outbox_events WHERE id = ${seed.outboxEventId}`;
+      expect(validOutbox[0]!.status).toBe('PROCESSED');
+      const refund = await rawSql`SELECT status FROM refunds WHERE id = ${seed.refundId}`;
+      expect(refund[0]!.status).toBe('SUBMITTED');
     });
   },
 );

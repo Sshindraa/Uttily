@@ -656,10 +656,12 @@ Le flux d'exécution est :
    (autorités à recouper en Phase 1). Commit.
 
 2. **Charger et verrouiller** : dans une nouvelle transaction, vérifier
-   d'abord le lease (`WHERE id = ? AND lease_token = ?` — un token périmé
-   lève `LEASE_LOST` avant tout appel fournisseur), puis charger le refund
-   (par `provider_idempotency_key`), le paiement et la tentative. Verrouiller
-   avec `SELECT FOR UPDATE`.
+   d'abord le lease (`WHERE id = ? AND lease_token = ? AND lease_until >
+   transaction_timestamp()` — un token périmé ou une lease expirée lève
+   `LEASE_LOST` avant tout appel fournisseur ; P2-1 : une lease expirée est
+   reclaimable par un autre worker à tout moment, elle ne protège plus rien),
+   puis charger le refund (par `provider_idempotency_key`), le paiement et la
+   tentative. Verrouiller avec `SELECT FOR UPDATE`.
 
 3. **Vérifier (recoupement complet des autorités)** : montant, devise,
    PaymentIntent ID, organisation et environnement ; plus
@@ -677,8 +679,12 @@ Le flux d'exécution est :
    `refund_application_fee = true`. **Jamais de retry sans ces deux flags.**
    Le résultat fournisseur est validé de manière fail-closed avant toute
    persistance : identifiant non vide, montant égal à celui demandé, devise
-   `EUR`, statut `pending` ou `succeeded` — sinon anomalie durable
-   `PROVIDER_RESULT_INVALID`.
+   `EUR`, statut `pending`, `succeeded` ou `requires_action` — sinon anomalie
+   durable `PROVIDER_RESULT_INVALID`. P1-2 : `requires_action` est un statut
+   non terminal, visible et actionnable côté Stripe (reconnu par `RefundStatus`
+   et projeté `PENDING` localement par le webhook) ; le refund a bien été
+   soumis, il est persisté `SUBMITTED` + `provider_refund_id`, et la projection
+   webhook fait foi pour le statut final.
 
 5. **Persister (transition monotone)** : re-verrouiller le refund
    (`SELECT ... FOR UPDATE`). Si un `provider_refund_id` différent est déjà
@@ -737,6 +743,60 @@ Les erreurs provider sont classées en deux ensembles fermés :
 
 L'endpoint `/api/cron/process-compensations` déclenche ce batch chaque minute
 via Vercel Cron, authentifié par `CRON_SECRET`.
+
+### Amendement — 3e revue d'exécution des compensations
+
+Les amendements suivants durcissent l'exécution des compensations après la
+troisième revue de code (P1-1 à P1-4, P2-1, P2-2) :
+
+1. **`requires_action` admissible et non terminal (P1-2).** Le worker accepte
+   `requires_action` comme statut admissible au même titre que `pending` et
+   `succeeded`. Le refund est persisté `SUBMITTED` + `provider_refund_id` — il
+   a bien été soumis. La projection webhook projette `requires_action` en
+   `PENDING` localement et fait foi pour le statut final.
+
+2. **Résolution systématique du paymentId depuis payment_intent (P1-1).** Le
+   handler webhook résout le `paymentId` depuis le `payment_intent` de
+   l'événement **dans tous les cas** (webhooks Connect ET platform), via le join
+   `payments`/`payment_attempts`. Quand les deux sources existent (`accountId`
+   ET `payment_intent`), un recoupement est effectué : si
+   `paymentRow.organizationId ≠ orgId` (org résolue depuis `accountId`) ou si
+   `connected_account_id ≠ event.accountId`, l'événement est marqué `FAILED`
+   (anomalie durable, jamais acquitté). La résolution par `provider_refund_id`
+   existant reste en fallback quand `payment_intent` est absent.
+
+3. **`markOutboxFailed` : verrou refund d'abord, `SUCCEEDED` → outbox
+   `PROCESSED` (P1-3).** Avant de marquer l'outbox `FAILED`, le refund est
+   verrouillé (`SELECT ... FOR UPDATE` par `provider_idempotency_key`, ordre de
+   verrouillage ADR-010 §10 : `refunds → outbox_events`). Si le refund est déjà
+   `SUCCEEDED` (projeté par le webhook malgré une erreur provider durable ou
+   ambiguë), l'outbox devient `PROCESSED` — **jamais** `FAILED` — et aucune
+   alerte d'échec n'est émise (log informatif `compensation.refund_already_succeeded`
+   à la place). L'appelant compte `submittedCount++` et ne pousse pas
+   d'anomalie.
+
+4. **Distinction `SUBMITTED`/`SUCCEEDED` (traité) vs `FAILED` (échec + alerte)
+   (P1-4).** En Phase 1, le worker distingue explicitement les statuts
+   non-`PENDING` : `SUBMITTED` ou `SUCCEEDED` → `REFUND_ALREADY_SUBMITTED`
+   (replay traité, outbox `PROCESSED`, `submittedCount++`) ; `FAILED` →
+   `REFUND_ALREADY_FAILED` (remboursement non abouti, outbox `FAILED` avec
+   `failureCode`, `failedCount++`, anomalie poussée). Tout autre statut est un
+   invariant explicite (l'union TypeScript `refund_status` est fermée).
+
+5. **Contrôle de lease incluant l'expiration (P2-1).** Les contrôles de lease
+   (Phase 1 précoce et Phase 3) vérifient le token **ET** `lease_until >
+   transaction_timestamp()`. Une lease expirée (reclaimable par un autre worker
+   à tout moment) est traitée comme `LEASE_LOST`, même avec le bon token.
+
+6. **Isolation des payloads mal formés (P2-2).** Les casts JSON dans la requête
+   de claim sont sûrs (regex-gardés, `NULL` si invalide) — un événement mal
+   formé ne fait **jamais** échouer le claim de tout le batch. Les JOINs
+   `refunds` et `payments` sont en `LEFT JOIN` sur les valeurs safe-castées. Un
+   champ calculé `payload_valid` (boolean) est propagé dans
+   `ClaimedCompensation`. Si `!payloadValid` : log anomalie
+   `compensation.payload_malformed`, `markOutboxFailed` avec code
+   `PAYLOAD_MALFORMED` (durable), `failedCount++`, anomalie poussée, et le
+   traitement continue avec les autres événements.
 
 ## 14. Sécurité et données sensibles
 
