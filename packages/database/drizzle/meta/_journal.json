@@ -176,6 +176,13 @@
       "when": 1764528000024,
       "tag": "0025_reconcile_lease_token_and_payment_environment",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1785546181789,
+      "tag": "0026_outbox_lease_token",
+      "breakpoints": true
     }
   ]
 }

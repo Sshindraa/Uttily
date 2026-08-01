@@ -614,6 +614,52 @@ idempotente et exige une décision opérationnelle explicite avant un éventuel
 remboursement financé par la plateforme. Aucun retry ne doit retirer
 silencieusement `reverse_transfer` ou `refund_application_fee`.
 
+### Exécution idempotente des compensations
+
+Le worker d'exécution consomme les événements `PAYMENT_COMPENSATION_REQUESTED`
+de l'outbox. Le modèle d'outbox est amendé avec deux colonnes :
+
+- `lease_token` (uuid nullable) : fencing token atomique pour la lease ;
+- `lease_until` (timestamptz nullable) : expiration de la lease.
+
+Une contrainte CHECK impose que `lease_token` et `lease_until` soient
+simultanément nuls ou non nuls.
+
+Le flux d'exécution est :
+
+1. **Claim** : `SELECT ... FOR UPDATE SKIP LOCKED` sur les événements
+   `PENDING` avec `available_at <= now()` et `(lease_until IS NULL OR
+   lease_until <= now())`. Assignation d'un `lease_token` UUID et
+   `lease_until = now() + 2 minutes`. Commit.
+
+2. **Charger et verrouiller** : dans une nouvelle transaction, charger le
+   refund (par `provider_idempotency_key`), le paiement et le
+   `payment_attempt` (pour `provider_payment_intent_id`). Verrouiller avec
+   `SELECT FOR UPDATE`.
+
+3. **Vérifier** : montant, devise, PaymentIntent ID, organisation et
+   environnement. Lever une erreur si incohérent.
+
+4. **Appeler Stripe hors transaction** : `createRefund` avec la clé stable
+   `refund_late_${payment.id}`, `reverse_transfer = true`,
+   `refund_application_fee = true`. **Jamais de retry sans ces deux flags.**
+
+5. **Persister** : `provider_refund_id`, `status = SUBMITTED`,
+   `submitted_at = now()`. **Ne pas déclarer le refund réussi avant webhook.**
+
+6. **Marquer outbox `PROCESSED`** : `processed_at = now()`,
+   `lease_token = NULL`, `lease_until = NULL`.
+
+7. **Erreurs techniques** : incrémenter `attempt_count`, rescheduler
+   `available_at = now() + backoff exponentiel`, remettre `PENDING`,
+   `lease_token = NULL`, `lease_until = NULL`.
+
+8. **Refus de solde Connect** : rester visible et alertable, pas de fallback
+   silencieux. Marquer `FAILED` avec `failure_code`, logger une alerte.
+
+L'endpoint `/api/cron/process-compensations` déclenche ce batch chaque minute
+via Vercel Cron, authentifié par `CRON_SECRET`.
+
 ## 14. Sécurité et données sensibles
 
 - clés Stripe uniquement côté serveur et dans les secrets d'environnement ;

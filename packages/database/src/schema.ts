@@ -1096,13 +1096,22 @@ export const outboxEvents = pgTable(
     availableAt: timestamp('available_at', { withTimezone: true }).notNull(),
     processedAt: timestamp('processed_at', { withTimezone: true }),
     idempotencyKey: text('idempotency_key').notNull().unique(),
+    leaseToken: uuid('lease_token'),
+    leaseUntil: timestamp('lease_until', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     check('outbox_events_attempt_count_nonneg', sql`${t.attemptCount} >= 0`),
     check('outbox_events_idempotency_key_nonempty', sql`length(btrim(${t.idempotencyKey})) > 0`),
+    check(
+      'outbox_events_lease_token_lease_until_consistent',
+      sql`(${t.leaseToken} IS NULL AND ${t.leaseUntil} IS NULL) OR (${t.leaseToken} IS NOT NULL AND ${t.leaseUntil} IS NOT NULL)`,
+    ),
     index('outbox_events_status_available_at_created_at_index')
       .on(t.status, t.availableAt, t.createdAt)
+      .where(sql`${t.status} IN ('PENDING', 'PROCESSING')`),
+    index('outbox_events_lease_until_index')
+      .on(t.leaseUntil)
       .where(sql`${t.status} IN ('PENDING', 'PROCESSING')`),
   ],
 );

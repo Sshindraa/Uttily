@@ -46,3 +46,6 @@ export * from './webhook-handler/index';
 
 // Phase 7A — Moteur de réconciliation des paiements (ADR-010 §12).
 export * from './payment-reconciliation';
+
+// Phase 8 — Exécution idempotente des compensations (ADR-010 §13).
+export * from './compensation-execution';
