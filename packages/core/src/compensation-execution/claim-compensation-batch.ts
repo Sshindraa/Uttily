@@ -56,6 +56,10 @@ export async function claimCompensationBatch(
         (oe.payload->>'amountMinor')::bigint AS amount_minor,
         (oe.payload->>'currency') AS currency,
         (oe.payload->>'reason') AS reason,
+        -- P1-4 : métadonnées outbox à recouper contre les autorités financières.
+        oe.aggregate_type,
+        oe.aggregate_id,
+        oe.event_version,
         oe.attempt_count,
         oe.lease_until AS current_lease_until
       FROM "outbox_events" oe
@@ -82,6 +86,9 @@ export async function claimCompensationBatch(
       amount_minor: string | number;
       currency: string;
       reason: string;
+      aggregate_type: string;
+      aggregate_id: string;
+      event_version: string;
       attempt_count: number;
       current_lease_until: Date | null;
     }>;
@@ -142,6 +149,9 @@ export async function claimCompensationBatch(
         amountMinor: Number(r.amount_minor),
         currency: r.currency,
         reason: r.reason,
+        aggregateType: r.aggregate_type,
+        aggregateId: r.aggregate_id,
+        eventVersion: r.event_version,
         leaseToken,
         leaseUntil,
         attemptCount: r.attempt_count,

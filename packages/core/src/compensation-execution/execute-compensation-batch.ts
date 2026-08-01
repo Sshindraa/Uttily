@@ -9,9 +9,12 @@
  *    a. executeCompensation (vérification + appel Stripe hors tx + persistance).
  *    b. En cas de succès : submittedCount++.
  *    c. En cas de REFUND_ALREADY_SUBMITTED : marquer outbox PROCESSED.
- *    d. En cas d'erreur technique : rescheduler avec backoff exponentiel.
+ *    d. En cas d'erreur transitoire (provider transitoire ou technique) :
+ *       rescheduler avec backoff exponentiel.
  *       Si attempt_count >= MAX_ATTEMPTS : marquer FAILED.
- *    e. En cas de refus Stripe (solde Connect) : marquer FAILED, pas de retry.
+ *    e. En cas d'erreur provider durable (refus solde Connect, conflit
+ *       d'idempotence, tout code non transitoire — fail-closed) : marquer
+ *       FAILED immédiat, pas de retry, alerte humaine.
  *    f. En cas de LEASE_LOST : ignorer (un autre worker s'en occupe).
  *
  * Aucun appel Stripe n'est effectué sous transaction PostgreSQL.
@@ -46,7 +49,9 @@ async function markOutboxProcessed(
 ): Promise<void> {
   try {
     await db.transaction(async (tx) => {
-      await tx.execute(sql`
+      // P1-3 : RETURNING-gated — si 0 ligne, la lease n'appartient plus à ce
+      // worker : no-op silencieux acceptable (le successeur s'en occupe).
+      const updatedRows = await tx.execute(sql`
         UPDATE "outbox_events"
         SET "status" = 'PROCESSED',
             "processed_at" = transaction_timestamp(),
@@ -54,7 +59,11 @@ async function markOutboxProcessed(
             "lease_until" = NULL
         WHERE "id" = ${claimed.outboxEventId}::uuid
           AND "lease_token" = ${claimed.leaseToken}::uuid
+        RETURNING "id"
       `);
+      if ((updatedRows as unknown as Array<{ id: string }>).length === 0) {
+        return;
+      }
     });
   } catch {
     // Best-effort : si la tx échoue, le lease expirera naturellement.
@@ -71,7 +80,9 @@ async function rescheduleOutbox(db: DatabaseClient, claimed: ClaimedCompensation
   try {
     const backoff = getBackoffInterval(claimed.attemptCount);
     await db.transaction(async (tx) => {
-      await tx.execute(sql`
+      // P1-3 : RETURNING-gated — si 0 ligne, la lease n'appartient plus à ce
+      // worker : no-op silencieux acceptable (le successeur s'en occupe).
+      const updatedRows = await tx.execute(sql`
         UPDATE "outbox_events"
         SET "status" = 'PENDING',
             "attempt_count" = "attempt_count" + 1,
@@ -80,7 +91,11 @@ async function rescheduleOutbox(db: DatabaseClient, claimed: ClaimedCompensation
             "lease_until" = NULL
         WHERE "id" = ${claimed.outboxEventId}::uuid
           AND "lease_token" = ${claimed.leaseToken}::uuid
+        RETURNING "id"
       `);
+      if ((updatedRows as unknown as Array<{ id: string }>).length === 0) {
+        return;
+      }
     });
   } catch {
     // Best-effort : si la tx échoue, le lease expirera naturellement.
@@ -98,17 +113,27 @@ async function markOutboxFailed(
 ): Promise<void> {
   try {
     await db.transaction(async (tx) => {
-      // Marquer l'outbox FAILED.
-      await tx.execute(sql`
+      // P1-3 : L'UPDATE outbox est RETURNING-gated — si 0 ligne retournée, la
+      // lease n'appartient plus à ce worker : ne PAS toucher au refund (un
+      // successeur ou un webhook a pu le traiter entre-temps).
+      const outboxRows = await tx.execute(sql`
         UPDATE "outbox_events"
         SET "status" = 'FAILED',
             "lease_token" = NULL,
             "lease_until" = NULL
         WHERE "id" = ${claimed.outboxEventId}::uuid
           AND "lease_token" = ${claimed.leaseToken}::uuid
+        RETURNING "id"
       `);
 
+      if ((outboxRows as unknown as Array<{ id: string }>).length === 0) {
+        // Fencing : l'outbox n'a pas été acquis → early-return, refund inchangé.
+        return;
+      }
+
       // Marquer le refund FAILED avec failure_code.
+      // P1-3 : UPDATE monotone — ne jamais régresser un statut terminal
+      // (SUCCEEDED/FAILED projeté par le webhook ou un successeur).
       await tx.execute(sql`
         UPDATE "refunds"
         SET "status" = 'FAILED',
@@ -116,6 +141,7 @@ async function markOutboxFailed(
             "failure_code" = ${failureCode},
             "updated_at" = transaction_timestamp()
         WHERE "provider_idempotency_key" = ${claimed.refundIdempotencyKey}
+          AND "status" NOT IN ('SUCCEEDED', 'FAILED')
       `);
     });
   } catch {
@@ -124,22 +150,29 @@ async function markOutboxFailed(
 }
 
 /**
- * Détermine si une erreur provider est un refus Stripe (solde Connect
- * insuffisant) qui ne doit pas être retryé.
+ * Classification fermée des erreurs provider (ADR-010 §13).
+ *
+ * TRANSIENT : erreurs réseau/plateforme pouvant disparaître au retry → reschedule avec backoff.
+ * DURABLE : refus ou conflit qui ne disparaîtra JAMAIS au retry → FAILED immédiat, alerte humaine.
+ * Tout code non listé est DURABLE par défaut (fail-closed : mieux vaut alerter qu'une boucle silencieuse).
  */
-function isStripeRefusal(error: unknown): boolean {
-  if (error instanceof PaymentProviderError) {
-    // Les refus Stripe ont des codes fermés comme 'card_declined',
-    // 'invalid_request_error', etc. Un refus de solde Connect se manifeste
-    // typiquement par un invalid_request_error ou un api_error.
-    // On considère que toute erreur provider avec un code non-transitoire
-    // est un refus (pas de retry).
-    // Codes transitoires : rate_limit, api_connection_error, idempotency_error,
-    // timeout (timeout réseau côté Stripe, potentiellement transitoire).
-    const transientCodes = ['rate_limit', 'api_connection_error', 'idempotency_error', 'timeout'];
-    return !transientCodes.includes(error.providerErrorCode ?? '');
-  }
-  return false;
+const TRANSIENT_PROVIDER_CODES = new Set([
+  'rate_limit', // 429 — disparaît avec backoff
+  'api_connection_error', // réseau — disparaît au retry
+  'timeout', // timeout réseau — disparaît au retry
+  'api_error', // 5xx plateforme — classé UNKNOWN par l'adapter, transitoire
+]);
+
+// Codes durables connus (documentés, non exhaustifs — le défaut est durable) :
+// 'card_declined', 'invalid_request_error', 'resource_missing', 'authentication_error',
+// 'permission_error', 'idempotency_error' (conflit de paramètres sur même clé —
+// ne disparaît JAMAIS au retry), 'unknown'.
+
+function isTransientProviderError(error: unknown): boolean {
+  return (
+    error instanceof PaymentProviderError &&
+    TRANSIENT_PROVIDER_CODES.has(error.providerErrorCode ?? '')
+  );
 }
 
 /**
@@ -195,10 +228,19 @@ export async function executeCompensationBatch(
           case 'REFUND_NOT_FOUND':
           case 'PAYMENT_NOT_FOUND':
           case 'PAYMENT_INTENT_MISSING':
+          case 'ATTEMPT_NOT_SUCCEEDED':
           case 'AMOUNT_MISMATCH':
           case 'CURRENCY_MISMATCH':
           case 'ORGANIZATION_MISMATCH':
-          case 'ENVIRONMENT_MISMATCH': {
+          case 'ENVIRONMENT_MISMATCH':
+          case 'OUTBOX_METADATA_MISMATCH':
+          case 'PAYMENT_ID_MISMATCH':
+          case 'REFUND_REASON_MISMATCH':
+          case 'PAYMENT_NOT_SUCCEEDED':
+          case 'REFUND_FLAGS_INVALID':
+          case 'PROVIDER_REFUND_FAILED':
+          case 'PROVIDER_REFUND_ID_CONFLICT':
+          case 'PROVIDER_RESULT_INVALID': {
             // Anomalie de cohérence : marquer FAILED, pas de retry.
             console.warn(
               JSON.stringify({
@@ -213,10 +255,12 @@ export async function executeCompensationBatch(
             break;
           }
         }
-      } else if (isStripeRefusal(error)) {
-        // Refus Stripe (solde Connect insuffisant) : marquer FAILED, pas de retry.
-        const providerError = error as PaymentProviderError;
-        const failureCode = providerError.providerErrorCode ?? 'STRIPE_REFUSAL';
+      } else if (error instanceof PaymentProviderError && !isTransientProviderError(error)) {
+        // P1-6 : Erreur provider DURABLE — refus Stripe (solde Connect
+        // insuffisant), conflit d'idempotence sur même clé (ne disparaît JAMAIS
+        // au retry) ou tout code non listé comme transitoire (fail-closed) :
+        // marquer FAILED immédiat, pas de retry, alerte humaine.
+        const failureCode = error.providerErrorCode ?? 'STRIPE_REFUSAL';
         console.warn(
           JSON.stringify({
             event: 'compensation.stripe_refusal',
@@ -228,7 +272,9 @@ export async function executeCompensationBatch(
         result.failedCount++;
         result.anomalies.push({ outboxEventId: claimed.outboxEventId, code: failureCode });
       } else {
-        // Erreur technique transitoire : rescheduler avec backoff.
+        // P1-6 : Erreur TRANSITOIRE — provider transitoire (rate_limit,
+        // api_connection_error, timeout, api_error) ou erreur technique
+        // générique : rescheduler avec backoff.
         if (claimed.attemptCount + 1 >= MAX_ATTEMPTS) {
           console.warn(
             JSON.stringify({

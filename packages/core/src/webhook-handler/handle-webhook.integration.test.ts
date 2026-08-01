@@ -7,7 +7,7 @@
  * Reprend le pattern de initiate-payment.integration.test.ts.
  */
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import postgres from 'postgres';
 import { createDatabase, type DatabaseClient } from '@uttily/database';
 import {
@@ -23,6 +23,7 @@ import type {
   InitiatePaymentInput,
 } from '../payment-initiation/types';
 import { FakeStripeAdapter } from '../payments/fake-stripe-adapter';
+import { executeCompensationBatch } from '../compensation-execution';
 import { handleWebhook } from './handle-webhook';
 import type { WebhookHandlerDeps, WebhookHandlerInput, WebhookHandlerResult } from './types';
 import type { FinancialTermsConfig, TermsAcceptanceProof } from '../financial-terms/types';
@@ -313,6 +314,294 @@ async function getPaymentId(draftId: string): Promise<string> {
   if (!rawSql) throw new Error('rawSql not initialized');
   const row = await rawSql`SELECT id FROM payments WHERE draft_id = ${draftId}`.then((r) => r[0]);
   return row!.id;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers Phase 8 (P1-1/P1-2) — compensation tardive et course webhook/worker
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface SeedLateCompensationResult {
+  paymentId: string;
+  refundId: string;
+  outboxEventId: string;
+  providerPaymentIntentId: string;
+  refundIdempotencyKey: string;
+  amountMinor: number;
+  /** Présent uniquement quand le refund est seedé SUBMITTED (worker terminé). */
+  providerRefundId?: string;
+}
+
+/**
+ * Insère directement un paiement SUCCEEDED + tentative SUCCEEDED + refund
+ * LATE_PAYMENT_NO_BOOKING PENDING (provider_refund_id NULL) + outbox
+ * PAYMENT_COMPENSATION_REQUESTED — l'état du système entre la création de la
+ * compensation (webhook payment_intent.succeeded tardif) et l'exécution du
+ * worker de compensation.
+ */
+async function seedLateCompensation(
+  ids: BaseIds,
+  keySuffix: string,
+): Promise<SeedLateCompensationResult> {
+  if (!rawSql) throw new Error('rawSql not initialized');
+  const sql = rawSql;
+  const amountMinor = 10000;
+
+  const draft = await sql`
+    INSERT INTO "booking_drafts" (
+      "organization_id", "location_id", "customer_user_id",
+      "customer_start_at", "customer_end_at",
+      "blocked_start_at", "blocked_end_at",
+      "timezone", "prep_buffer_minutes", "cleanup_buffer_minutes",
+      "subtotal_amount_minor", "mandatory_fees_amount_minor", "total_amount_minor",
+      "tax_status", "tax_amount_minor", "tax_rate_bps", "commission_amount_minor",
+      "billable_unit", "billable_unit_count",
+      "currency", "cancellation_policy_snapshot"
+    ) VALUES (
+      ${ids.orgId}, ${ids.locationId}, ${ids.userId},
+      '2026-02-10 09:00:00+00', '2026-02-12 17:00:00+00',
+      '2026-02-10 08:30:00+00', '2026-02-12 17:30:00+00',
+      'Europe/Paris', 30, 30,
+      ${amountMinor}, 0, ${amountMinor},
+      'NOT_APPLICABLE', 0, null, 500,
+      'DAY', 2,
+      'EUR', ${sql.json({ policy_code: 'FLEXIBLE', policy_version: '1', timezone: 'Europe/Paris' })}
+    )
+    RETURNING "id"
+  `.then((r) => r[0]!);
+
+  const payment = await sql`
+    INSERT INTO "payments" (
+      "organization_id", "draft_id", "customer_user_id",
+      "status", "amount_minor", "currency",
+      "tax_status", "commission_amount_minor",
+      "financial_terms_version", "legal_terms_version",
+      "terms_acceptance_snapshot",
+      "connected_account_id", "charge_model", "settlement_merchant_mode",
+      "environment", "succeeded_at"
+    ) VALUES (
+      ${ids.orgId}, ${draft.id}, ${ids.userId},
+      'SUCCEEDED', ${amountMinor}, 'EUR',
+      'NOT_APPLICABLE', 500,
+      'v1', 'v1',
+      ${sql.json({ version: 'v1', user_id: ids.userId, accepted_at: new Date().toISOString() })},
+      'acct_test_123', 'DESTINATION', 'PLATFORM',
+      'TEST'::payment_environment, now()
+    )
+    RETURNING "id"
+  `.then((r) => r[0]!);
+
+  const providerPaymentIntentId = `pi_test_late_${keySuffix}`;
+  await sql`
+    INSERT INTO "payment_attempts" (
+      "organization_id", "payment_id", "attempt_number", "status",
+      "provider_payment_intent_id", "provider_idempotency_key", "provider_status"
+    ) VALUES (
+      ${ids.orgId}, ${payment.id}, 1, 'SUCCEEDED',
+      ${providerPaymentIntentId}, ${'pi_idem_late_' + keySuffix}, 'succeeded'
+    )
+    RETURNING "id"
+  `.then((r) => r[0]!);
+
+  const refundIdempotencyKey = `refund_late_${payment.id}`;
+  const refund = await sql`
+    INSERT INTO "refunds" (
+      "organization_id", "payment_id", "reason", "status",
+      "amount_minor", "currency", "provider_idempotency_key",
+      "reverse_transfer", "refund_application_fee", "requested_at"
+    ) VALUES (
+      ${ids.orgId}, ${payment.id}, 'LATE_PAYMENT_NO_BOOKING', 'PENDING',
+      ${amountMinor}, 'EUR', ${refundIdempotencyKey},
+      true, true, now()
+    )
+    RETURNING "id"
+  `.then((r) => r[0]!);
+
+  const outbox = await sql`
+    INSERT INTO "outbox_events" (
+      "organization_id", "aggregate_type", "aggregate_id", "event_type", "event_version",
+      "payload", "status", "attempt_count", "available_at", "idempotency_key"
+    ) VALUES (
+      ${ids.orgId}, 'PAYMENT', ${payment.id}::uuid, 'PAYMENT_COMPENSATION_REQUESTED', 'v1',
+      ${sql.json({
+        paymentId: payment.id,
+        refundIdempotencyKey,
+        amountMinor,
+        currency: 'EUR',
+        reason: 'LATE_PAYMENT_NO_BOOKING',
+      })},
+      'PENDING', 0, now(),
+      ${'payment_compensation_' + payment.id}
+    )
+    RETURNING "id"
+  `.then((r) => r[0]!);
+
+  return {
+    paymentId: payment.id,
+    refundId: refund.id,
+    outboxEventId: outbox.id,
+    providerPaymentIntentId,
+    refundIdempotencyKey,
+    amountMinor,
+  };
+}
+
+/**
+ * Insère directement un paiement SUCCEEDED + tentative SUCCEEDED + refund
+ * LATE_PAYMENT_NO_BOOKING SUBMITTED (provider_refund_id déjà persisté) + outbox
+ * PROCESSED — l'état du système APRÈS l'exécution complète du worker de
+ * compensation (Phases 1-3), avant l'arrivée du webhook de confirmation.
+ */
+async function seedSubmittedLateRefund(
+  ids: BaseIds,
+  keySuffix: string,
+): Promise<SeedLateCompensationResult> {
+  if (!rawSql) throw new Error('rawSql not initialized');
+  const sql = rawSql;
+  const amountMinor = 10000;
+  const providerRefundId = `re_test_submitted_${keySuffix}`;
+
+  const draft = await sql`
+    INSERT INTO "booking_drafts" (
+      "organization_id", "location_id", "customer_user_id",
+      "customer_start_at", "customer_end_at",
+      "blocked_start_at", "blocked_end_at",
+      "timezone", "prep_buffer_minutes", "cleanup_buffer_minutes",
+      "subtotal_amount_minor", "mandatory_fees_amount_minor", "total_amount_minor",
+      "tax_status", "tax_amount_minor", "tax_rate_bps", "commission_amount_minor",
+      "billable_unit", "billable_unit_count",
+      "currency", "cancellation_policy_snapshot"
+    ) VALUES (
+      ${ids.orgId}, ${ids.locationId}, ${ids.userId},
+      '2026-02-10 09:00:00+00', '2026-02-12 17:00:00+00',
+      '2026-02-10 08:30:00+00', '2026-02-12 17:30:00+00',
+      'Europe/Paris', 30, 30,
+      ${amountMinor}, 0, ${amountMinor},
+      'NOT_APPLICABLE', 0, null, 500,
+      'DAY', 2,
+      'EUR', ${sql.json({ policy_code: 'FLEXIBLE', policy_version: '1', timezone: 'Europe/Paris' })}
+    )
+    RETURNING "id"
+  `.then((r) => r[0]!);
+
+  const payment = await sql`
+    INSERT INTO "payments" (
+      "organization_id", "draft_id", "customer_user_id",
+      "status", "amount_minor", "currency",
+      "tax_status", "commission_amount_minor",
+      "financial_terms_version", "legal_terms_version",
+      "terms_acceptance_snapshot",
+      "connected_account_id", "charge_model", "settlement_merchant_mode",
+      "environment", "succeeded_at"
+    ) VALUES (
+      ${ids.orgId}, ${draft.id}, ${ids.userId},
+      'SUCCEEDED', ${amountMinor}, 'EUR',
+      'NOT_APPLICABLE', 500,
+      'v1', 'v1',
+      ${sql.json({ version: 'v1', user_id: ids.userId, accepted_at: new Date().toISOString() })},
+      'acct_test_123', 'DESTINATION', 'PLATFORM',
+      'TEST'::payment_environment, now()
+    )
+    RETURNING "id"
+  `.then((r) => r[0]!);
+
+  const providerPaymentIntentId = `pi_test_submitted_${keySuffix}`;
+  await sql`
+    INSERT INTO "payment_attempts" (
+      "organization_id", "payment_id", "attempt_number", "status",
+      "provider_payment_intent_id", "provider_idempotency_key", "provider_status"
+    ) VALUES (
+      ${ids.orgId}, ${payment.id}, 1, 'SUCCEEDED',
+      ${providerPaymentIntentId}, ${'pi_idem_submitted_' + keySuffix}, 'succeeded'
+    )
+    RETURNING "id"
+  `.then((r) => r[0]!);
+
+  const refundIdempotencyKey = `refund_late_${payment.id}`;
+  const refund = await sql`
+    INSERT INTO "refunds" (
+      "organization_id", "payment_id", "reason", "status",
+      "amount_minor", "currency", "provider_idempotency_key",
+      "provider_refund_id", "reverse_transfer", "refund_application_fee",
+      "requested_at", "submitted_at"
+    ) VALUES (
+      ${ids.orgId}, ${payment.id}, 'LATE_PAYMENT_NO_BOOKING', 'SUBMITTED',
+      ${amountMinor}, 'EUR', ${refundIdempotencyKey},
+      ${providerRefundId}, true, true,
+      now(), now()
+    )
+    RETURNING "id"
+  `.then((r) => r[0]!);
+
+  const outbox = await sql`
+    INSERT INTO "outbox_events" (
+      "organization_id", "aggregate_type", "aggregate_id", "event_type", "event_version",
+      "payload", "status", "attempt_count", "available_at", "processed_at", "idempotency_key"
+    ) VALUES (
+      ${ids.orgId}, 'PAYMENT', ${payment.id}::uuid, 'PAYMENT_COMPENSATION_REQUESTED', 'v1',
+      ${sql.json({
+        paymentId: payment.id,
+        refundIdempotencyKey,
+        amountMinor,
+        currency: 'EUR',
+        reason: 'LATE_PAYMENT_NO_BOOKING',
+      })},
+      'PROCESSED', 1, now(), now(),
+      ${'payment_compensation_' + payment.id}
+    )
+    RETURNING "id"
+  `.then((r) => r[0]!);
+
+  return {
+    paymentId: payment.id,
+    refundId: refund.id,
+    outboxEventId: outbox.id,
+    providerPaymentIntentId,
+    refundIdempotencyKey,
+    amountMinor,
+    providerRefundId,
+  };
+}
+
+/**
+ * Construit un payload webhook Stripe charge.refunded avec un seul refund.
+ */
+function makeChargeRefundedBody(params: {
+  eventId?: string;
+  created?: number;
+  chargeId: string;
+  paymentIntentId: string;
+  refundId: string;
+  refundStatus: string;
+  amount: number;
+}): string {
+  return JSON.stringify({
+    id: params.eventId ?? `evt_${Math.random().toString(36).slice(2, 12)}`,
+    type: 'charge.refunded',
+    created: params.created ?? Math.floor(Date.now() / 1000),
+    api_version: '2026-06-24.dahlia',
+    data: {
+      object: {
+        id: params.chargeId,
+        object: 'charge',
+        payment_intent: params.paymentIntentId,
+        amount_refunded: params.amount,
+        refunds: {
+          object: 'list',
+          data: [
+            {
+              id: params.refundId,
+              object: 'refund',
+              status: params.refundStatus,
+              amount: params.amount,
+              payment_intent: params.paymentIntentId,
+              currency: 'eur',
+            },
+          ],
+          has_more: false,
+        },
+      },
+    },
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -4846,5 +5135,240 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
     const webhookEvent =
       await rawSql`SELECT status, failure_code FROM payment_webhook_events WHERE provider_event_id = 'evt_legit_cancelled_cancelled'`;
     expect(webhookEvent[0]!.failure_code).not.toBe('WEBHOOK_INVARIANT_BROKEN');
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Phase 8 — P1-1/P1-2 : course webhook vs worker de compensation
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // P8-1. Webhook reçu entre createRefund et la Phase 3 du worker : le webhook
+  // rattache le remboursement LATE orphelin au lieu de créer un EXTERNAL_REFUND.
+  it("P8-1. webhook reçu avant la persistance du worker : rattachement du remboursement LATE orphelin, pas d'EXTERNAL_REFUND", async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('orphan-attach');
+    const seed = await seedLateCompensation(ids, 'orphan-attach');
+    const deps = makeDeps();
+
+    // Le refund LATE est encore PENDING sans provider_refund_id : simuler le
+    // webhook Stripe qui arrive AVANT la Phase 3 du worker.
+    const body = makeChargeRefundedBody({
+      chargeId: 'ch_orphan_attach',
+      paymentIntentId: seed.providerPaymentIntentId,
+      refundId: 're_orphan_attach_1',
+      refundStatus: 'succeeded',
+      amount: seed.amountMinor,
+    });
+    const result = await handleWebhook(deps, makeWebhookInput(body, deps.adapter));
+    expect(result.kind).toBe('SUCCESS');
+
+    // Le remboursement LATE a été rattaché : provider_refund_id + SUCCEEDED.
+    const refundRows =
+      await rawSql`SELECT status, provider_refund_id, reason FROM refunds WHERE payment_id = ${seed.paymentId}`;
+    expect(refundRows.length).toBe(1);
+    expect(refundRows[0]!.reason).toBe('LATE_PAYMENT_NO_BOOKING');
+    expect(refundRows[0]!.provider_refund_id).toBe('re_orphan_attach_1');
+    expect(refundRows[0]!.status).toBe('SUCCEEDED');
+
+    // L'événement webhook est PROCESSED.
+    const webhookEvents =
+      await rawSql`SELECT status FROM payment_webhook_events WHERE event_type = 'charge.refunded'`;
+    expect(webhookEvents.length).toBe(1);
+    expect(webhookEvents[0]!.status).toBe('PROCESSED');
+  });
+
+  // P8-2. Aucune duplication EXTERNAL_REFUND : après le rattachement, une seule
+  // ligne refunds existe et le worker ne lève pas de conflit unique.
+  it("P8-2. après rattachement webhook : une seule ligne refunds, le worker marque l'outbox PROCESSED sans conflit", async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('orphan-no-dup');
+    const seed = await seedLateCompensation(ids, 'orphan-no-dup');
+    const deps = makeDeps();
+
+    // 1. Le webhook rattache le remboursement LATE (SUCCEEDED).
+    const body = makeChargeRefundedBody({
+      chargeId: 'ch_orphan_no_dup',
+      paymentIntentId: seed.providerPaymentIntentId,
+      refundId: 're_orphan_no_dup_1',
+      refundStatus: 'succeeded',
+      amount: seed.amountMinor,
+    });
+    const webhookResult = await handleWebhook(deps, makeWebhookInput(body, deps.adapter));
+    expect(webhookResult.kind).toBe('SUCCESS');
+
+    // 2. Le worker de compensation s'exécute ensuite : le refund est déjà
+    // SUCCEEDED (REFUND_ALREADY_SUBMITTED) → outbox PROCESSED, aucune
+    // violation de contrainte unique sur provider_refund_id.
+    const batchResult = await executeCompensationBatch(
+      { db, provider: new FakeStripeAdapter({ environment: 'TEST' }) },
+      { environment: 'TEST' },
+    );
+    expect(batchResult.claimedCount).toBe(1);
+    expect(batchResult.failedCount).toBe(0);
+
+    // Une SEULE ligne refunds pour ce paiement — pas d'EXTERNAL_REFUND créé.
+    const refundRows =
+      await rawSql`SELECT reason, status, provider_refund_id FROM refunds WHERE payment_id = ${seed.paymentId}`;
+    expect(refundRows.length).toBe(1);
+    expect(refundRows[0]!.reason).toBe('LATE_PAYMENT_NO_BOOKING');
+    expect(refundRows[0]!.provider_refund_id).toBe('re_orphan_no_dup_1');
+
+    // L'outbox est PROCESSED.
+    const outbox = await rawSql`SELECT status FROM outbox_events WHERE id = ${seed.outboxEventId}`;
+    expect(outbox[0]!.status).toBe('PROCESSED');
+  });
+
+  // P8-3. Webhook SUCCEEDED entre createRefund et la Phase 3 : la Phase 3 ne
+  // régresse JAMAIS le statut vers SUBMITTED, l'outbox est marqué PROCESSED.
+  it('P8-3. webhook SUCCEEDED pendant createRefund : la Phase 3 ne régresse pas vers SUBMITTED, outbox PROCESSED', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('orphan-race');
+    const seed = await seedLateCompensation(ids, 'orphan-race');
+    const webhookDeps = makeDeps();
+
+    // Adapter du worker : createRefund simule la course — le webhook arrive
+    // PENDANT l'appel provider (entre la Phase 1 et la Phase 3 du worker).
+    const workerAdapter = new FakeStripeAdapter({ environment: 'TEST' });
+    vi.spyOn(workerAdapter, 'createRefund').mockImplementation(async () => {
+      const body = makeChargeRefundedBody({
+        chargeId: 'ch_orphan_race',
+        paymentIntentId: seed.providerPaymentIntentId,
+        refundId: 're_orphan_race_1',
+        refundStatus: 'succeeded',
+        amount: seed.amountMinor,
+      });
+      const webhookResult = await handleWebhook(
+        webhookDeps,
+        makeWebhookInput(body, webhookDeps.adapter),
+      );
+      expect(webhookResult.kind).toBe('SUCCESS');
+      return {
+        id: 're_orphan_race_1',
+        status: 'succeeded',
+        amountMinor: seed.amountMinor,
+        currency: 'EUR',
+      };
+    });
+
+    const batchResult = await executeCompensationBatch(
+      { db, provider: workerAdapter },
+      { environment: 'TEST' },
+    );
+    expect(batchResult.claimedCount).toBe(1);
+    expect(batchResult.submittedCount).toBe(1);
+    expect(batchResult.failedCount).toBe(0);
+
+    // P1-2 : transition monotone — le statut reste SUCCEEDED, jamais régressé
+    // vers SUBMITTED, et provider_refund_id n'est pas écrasé.
+    const refundRows =
+      await rawSql`SELECT status, provider_refund_id, succeeded_at FROM refunds WHERE id = ${seed.refundId}`;
+    expect(refundRows.length).toBe(1);
+    expect(refundRows[0]!.status).toBe('SUCCEEDED');
+    expect(refundRows[0]!.provider_refund_id).toBe('re_orphan_race_1');
+    expect(refundRows[0]!.succeeded_at).not.toBeNull();
+
+    // L'outbox est PROCESSED dans la même transaction que la Phase 3.
+    const outbox = await rawSql`SELECT status FROM outbox_events WHERE id = ${seed.outboxEventId}`;
+    expect(outbox[0]!.status).toBe('PROCESSED');
+  });
+
+  // P8-4. Worker SUBMITTED puis webhook SUCCEEDED : la projection webhook fait
+  // transitionner le refund SUBMITTED → SUCCEEDED sans conflit (le worker a
+  // déjà persisté provider_refund_id et marqué l'outbox PROCESSED).
+  it('P8-4. worker SUBMITTED puis webhook SUCCEEDED : transition SUBMITTED → SUCCEEDED, pas de conflit', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('submitted-then-webhook');
+    const seed = await seedSubmittedLateRefund(ids, 'submitted-then-webhook');
+    const deps = makeDeps();
+    const providerRefundId = seed.providerRefundId!;
+
+    // Le worker a fini (refund SUBMITTED + provider_refund_id + outbox
+    // PROCESSED) : le webhook Stripe de confirmation arrive ensuite.
+    const body = makeChargeRefundedBody({
+      chargeId: 'ch_submitted_then_webhook',
+      paymentIntentId: seed.providerPaymentIntentId,
+      refundId: providerRefundId,
+      refundStatus: 'succeeded',
+      amount: seed.amountMinor,
+    });
+    const result = await handleWebhook(deps, makeWebhookInput(body, deps.adapter));
+    expect(result.kind).toBe('SUCCESS');
+
+    // Le refund est passé à SUCCEEDED (succeeded_at set), provider_refund_id
+    // inchangé — aucune nouvelle ligne refunds (pas d'EXTERNAL_REFUND).
+    const refundRows =
+      await rawSql`SELECT status, provider_refund_id, reason, succeeded_at FROM refunds WHERE payment_id = ${seed.paymentId}`;
+    expect(refundRows.length).toBe(1);
+    expect(refundRows[0]!.reason).toBe('LATE_PAYMENT_NO_BOOKING');
+    expect(refundRows[0]!.status).toBe('SUCCEEDED');
+    expect(refundRows[0]!.provider_refund_id).toBe(providerRefundId);
+    expect(refundRows[0]!.succeeded_at).not.toBeNull();
+
+    // L'événement webhook est PROCESSED.
+    const webhookEvents =
+      await rawSql`SELECT status FROM payment_webhook_events WHERE event_type = 'charge.refunded'`;
+    expect(webhookEvents.length).toBe(1);
+    expect(webhookEvents[0]!.status).toBe('PROCESSED');
+
+    // L'outbox reste PROCESSED (le worker n'est pas rejoué).
+    const outbox = await rawSql`SELECT status FROM outbox_events WHERE id = ${seed.outboxEventId}`;
+    expect(outbox[0]!.status).toBe('PROCESSED');
+  });
+
+  // P8-5. Webhook FAILED entre createRefund et la Phase 3 : la Phase 3 ne
+  // régresse JAMAIS le statut terminal FAILED vers SUBMITTED, l'outbox est
+  // marqué PROCESSED. Variante FAILED de P8-3 (SUCCEEDED).
+  it('P8-5. webhook FAILED pendant createRefund : la Phase 3 ne régresse pas le statut terminal FAILED', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('orphan-race-failed');
+    const seed = await seedLateCompensation(ids, 'orphan-race-failed');
+    const webhookDeps = makeDeps();
+
+    // Adapter du worker : createRefund simule la course — le webhook FAILED
+    // arrive PENDANT l'appel provider (entre la Phase 1 et la Phase 3).
+    const workerAdapter = new FakeStripeAdapter({ environment: 'TEST' });
+    vi.spyOn(workerAdapter, 'createRefund').mockImplementation(async () => {
+      const body = makeChargeRefundedBody({
+        chargeId: 'ch_orphan_race_failed',
+        paymentIntentId: seed.providerPaymentIntentId,
+        refundId: 're_orphan_race_failed_1',
+        refundStatus: 'failed',
+        amount: seed.amountMinor,
+      });
+      const webhookResult = await handleWebhook(
+        webhookDeps,
+        makeWebhookInput(body, webhookDeps.adapter),
+      );
+      expect(webhookResult.kind).toBe('SUCCESS');
+      // L'appel createRefund lui-même reste admissible côté worker (pending) —
+      // c'est le webhook qui projette l'échec terminal.
+      return {
+        id: 're_orphan_race_failed_1',
+        status: 'pending',
+        amountMinor: seed.amountMinor,
+        currency: 'EUR',
+      };
+    });
+
+    const batchResult = await executeCompensationBatch(
+      { db, provider: workerAdapter },
+      { environment: 'TEST' },
+    );
+    expect(batchResult.claimedCount).toBe(1);
+    expect(batchResult.submittedCount).toBe(1);
+    expect(batchResult.failedCount).toBe(0);
+
+    // Transition monotone — le statut terminal FAILED projeté par le webhook
+    // n'est JAMAIS régressé vers SUBMITTED par la Phase 3, provider_refund_id
+    // est présent et non écrasé.
+    const refundRows =
+      await rawSql`SELECT status, provider_refund_id, failed_at FROM refunds WHERE id = ${seed.refundId}`;
+    expect(refundRows.length).toBe(1);
+    expect(refundRows[0]!.status).toBe('FAILED');
+    expect(refundRows[0]!.provider_refund_id).toBe('re_orphan_race_failed_1');
+    expect(refundRows[0]!.failed_at).not.toBeNull();
+
+    // L'outbox est PROCESSED dans la même transaction que la Phase 3.
+    const outbox = await rawSql`SELECT status FROM outbox_events WHERE id = ${seed.outboxEventId}`;
+    expect(outbox[0]!.status).toBe('PROCESSED');
   });
 });

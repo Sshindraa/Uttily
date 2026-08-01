@@ -9,7 +9,7 @@
  * mismatch, et provider.environment mismatch.
  */
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import postgres from 'postgres';
 import { createDatabase, type DatabaseClient } from '@uttily/database';
@@ -161,6 +161,9 @@ async function seedCompensation(
   options: {
     environment?: 'TEST' | 'LIVE';
     overrideRefundStatus?: string;
+    overrideRefundReason?: string;
+    overrideReverseTransfer?: boolean;
+    overrideRefundApplicationFee?: boolean;
     overrideOutboxStatus?: string;
     overrideAmountMinor?: number;
     overrideOutboxAmountMinor?: number;
@@ -248,10 +251,10 @@ async function seedCompensation(
       "reverse_transfer", "refund_application_fee",
       "requested_at"
     ) VALUES (
-      ${ids.orgId}, ${payment.id}, 'LATE_PAYMENT_NO_BOOKING', ${options.overrideRefundStatus ?? 'PENDING'}::refund_status,
+      ${ids.orgId}, ${payment.id}, ${options.overrideRefundReason ?? 'LATE_PAYMENT_NO_BOOKING'}::refund_reason, ${options.overrideRefundStatus ?? 'PENDING'}::refund_status,
       ${amountMinor}, 'EUR',
       ${refundIdempotencyKey},
-      true, true,
+      ${options.overrideReverseTransfer ?? true}, ${options.overrideRefundApplicationFee ?? true},
       now()
     )
     RETURNING "id"
@@ -737,6 +740,243 @@ describe.skipIf(shouldSkipIntegrationTests())(
       await expect(
         executeCompensationBatch(makeDeps(adapter), { environment: 'TEST' }),
       ).rejects.toThrow(CompensationError);
+    });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Correctifs Phase 8 (P1-1 à P1-6) — tests 14 à 20
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // 14. P1-3 : stale worker incapable de marquer le refund FAILED
+    it('14. stale worker : markOutboxFailed avec token périmé → refund et outbox inchangés (fencing RETURNING)', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const adapter = new FakeStripeAdapter({ environment: 'TEST' });
+      const seed = await seedCompensation(ids, 'stale-fencing');
+      preloadSucceededIntent(adapter, seed.providerPaymentIntentId);
+
+      // Le successeur reprend la lease PENDANT l'appel provider (token T2),
+      // puis le provider lève une erreur durable → le batch tente
+      // markOutboxFailed avec le token T1 périmé.
+      const successorToken = randomUUID();
+      vi.spyOn(adapter, 'createRefund').mockImplementation(async () => {
+        await rawSql!`
+          UPDATE "outbox_events"
+          SET "lease_token" = ${successorToken}::uuid,
+              "lease_until" = now() + interval '2 minutes'
+          WHERE "id" = ${seed.outboxEventId}
+        `;
+        throw new PaymentProviderError('UNKNOWN', 'Durable refusal', 'invalid_request_error');
+      });
+
+      const result = await executeCompensationBatch(makeDeps(adapter), { environment: 'TEST' });
+      expect(result.claimedCount).toBe(1);
+      expect(result.failedCount).toBe(1);
+
+      // P1-3 : le fencing RETURNING-gated a empêché toute mutation — le refund
+      // n'est PAS marqué FAILED et l'outbox n'est PAS marqué FAILED.
+      const refund =
+        await rawSql`SELECT status, failure_code FROM refunds WHERE id = ${seed.refundId}`;
+      expect(refund[0]!.status).toBe('PENDING');
+      expect(refund[0]!.failure_code).toBeNull();
+
+      const outbox =
+        await rawSql`SELECT status, lease_token FROM outbox_events WHERE id = ${seed.outboxEventId}`;
+      expect(outbox[0]!.status).toBe('PROCESSING');
+      expect(outbox[0]!.lease_token).toBe(successorToken);
+    });
+
+    // 15. P1-6 : stale token détecté avant l'appel fournisseur
+    it('15. stale token : executeCompensation lève LEASE_LOST en Phase 1, createRefund JAMAIS appelé', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const adapter = new FakeStripeAdapter({ environment: 'TEST' });
+      const seed = await seedCompensation(ids, 'stale-early');
+      preloadSucceededIntent(adapter, seed.providerPaymentIntentId);
+      const createRefundSpy = vi.spyOn(adapter, 'createRefund');
+
+      // Claim (token T1).
+      const claimed = await claimCompensationBatch(db, 10, 'TEST');
+      expect(claimed.length).toBe(1);
+
+      // Perdre la lease : un autre worker pose un nouveau token directement en SQL.
+      await rawSql`
+        UPDATE "outbox_events"
+        SET "lease_token" = ${randomUUID()}::uuid
+        WHERE "id" = ${seed.outboxEventId}
+      `;
+
+      // executeCompensation avec l'ancien token → LEASE_LOST en Phase 1.
+      let leaseLost = false;
+      try {
+        await executeCompensation(makeDeps(adapter), claimed[0]!, 'TEST');
+      } catch (error) {
+        if (error instanceof CompensationError && error.code === 'LEASE_LOST') {
+          leaseLost = true;
+        } else {
+          throw error;
+        }
+      }
+      expect(leaseLost).toBe(true);
+      // Le provider n'a JAMAIS été appelé.
+      expect(createRefundSpy).not.toHaveBeenCalled();
+    });
+
+    // 16. P1-4 : sélection déterministe de la tentative réussie
+    it('16. plusieurs tentatives : le worker rembourse le PI de la tentative SUCCEEDED, pas celui de la FAILED', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const adapter = new FakeStripeAdapter({ environment: 'TEST' });
+      const seed = await seedCompensation(ids, 'deterministic');
+
+      // Insérer une seconde tentative FAILED avec un PI différent (pi_old).
+      await rawSql`
+        INSERT INTO "payment_attempts" (
+          "organization_id", "payment_id", "attempt_number", "status",
+          "provider_payment_intent_id", "provider_idempotency_key", "provider_status",
+          "created_at"
+        ) VALUES (
+          ${ids.orgId}, ${seed.paymentId}, 2, 'FAILED',
+          'pi_old_failed_det', 'pi_idem_old_failed_det', 'failed',
+          now() + interval '1 second'
+        )
+      `;
+
+      preloadSucceededIntent(adapter, seed.providerPaymentIntentId);
+      const createRefundSpy = vi.spyOn(adapter, 'createRefund');
+
+      const result = await executeCompensationBatch(makeDeps(adapter), { environment: 'TEST' });
+      expect(result.submittedCount).toBe(1);
+      expect(createRefundSpy).toHaveBeenCalledTimes(1);
+      // Le PI remboursé est celui de la tentative SUCCEEDED (pi_new), pas pi_old.
+      expect(createRefundSpy.mock.calls[0]![0].paymentIntentId).toBe(seed.providerPaymentIntentId);
+    });
+
+    // 17. P1-5 : réponse fournisseur incohérente (montant) → PROVIDER_RESULT_INVALID, durable
+    it('17. provider retourne un montant incohérent → PROVIDER_RESULT_INVALID, outbox FAILED, refund FAILED, pas de retry', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const adapter = new FakeStripeAdapter({ environment: 'TEST' });
+      const seed = await seedCompensation(ids, 'bad-result');
+      preloadSucceededIntent(adapter, seed.providerPaymentIntentId);
+
+      // Le provider retourne un montant différent de celui demandé (10000).
+      vi.spyOn(adapter, 'createRefund').mockResolvedValue({
+        id: 're_bad_amount',
+        status: 'succeeded',
+        amountMinor: 9999,
+        currency: 'EUR',
+      });
+
+      const result = await executeCompensationBatch(makeDeps(adapter), { environment: 'TEST' });
+      expect(result.claimedCount).toBe(1);
+      expect(result.failedCount).toBe(1);
+      expect(result.rescheduledCount).toBe(0);
+      expect(result.anomalies.length).toBe(1);
+      expect(result.anomalies[0]!.code).toBe('PROVIDER_RESULT_INVALID');
+
+      const outbox =
+        await rawSql`SELECT status FROM outbox_events WHERE id = ${seed.outboxEventId}`;
+      expect(outbox[0]!.status).toBe('FAILED');
+
+      const refund =
+        await rawSql`SELECT status, failure_code FROM refunds WHERE id = ${seed.refundId}`;
+      expect(refund[0]!.status).toBe('FAILED');
+      expect(refund[0]!.failure_code).toBe('PROVIDER_RESULT_INVALID');
+    });
+
+    // 18. P1-6 : flags invalides durablement signalés (pas de boucle PROCESSING)
+    it('18. refund avec reverse_transfer = false → REFUND_FLAGS_INVALID, outbox FAILED, refund FAILED', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const adapter = new FakeStripeAdapter({ environment: 'TEST' });
+      // La contrainte CHECK refunds_late_payment_reverse_transfer interdit
+      // reverse_transfer = false pour LATE_PAYMENT_NO_BOOKING : le seed utilise
+      // EXTERNAL_REFUND (seul moyen de matérialiser des flags invalides en base).
+      // La guard clause des flags est évaluée en Phase 1 avant le recoupement
+      // de la raison, donc REFUND_FLAGS_INVALID est bien levée.
+      const seed = await seedCompensation(ids, 'flags-invalid', {
+        overrideRefundReason: 'EXTERNAL_REFUND',
+        overrideReverseTransfer: false,
+      });
+
+      const result = await executeCompensationBatch(makeDeps(adapter), { environment: 'TEST' });
+      expect(result.claimedCount).toBe(1);
+      expect(result.failedCount).toBe(1);
+      expect(result.rescheduledCount).toBe(0);
+      expect(result.anomalies.length).toBe(1);
+      expect(result.anomalies[0]!.code).toBe('REFUND_FLAGS_INVALID');
+
+      // L'outbox est FAILED (pas PROCESSING qui bouclerait à l'infini).
+      const outbox =
+        await rawSql`SELECT status FROM outbox_events WHERE id = ${seed.outboxEventId}`;
+      expect(outbox[0]!.status).toBe('FAILED');
+
+      const refund =
+        await rawSql`SELECT status, failure_code FROM refunds WHERE id = ${seed.refundId}`;
+      expect(refund[0]!.status).toBe('FAILED');
+      expect(refund[0]!.failure_code).toBe('REFUND_FLAGS_INVALID');
+    });
+
+    // 19. P1-6 : api_error (5xx plateforme) est transitoire → reschedule, pas FAILED
+    it('19. api_error : provider lève une erreur 5xx → reschedule avec backoff, PAS FAILED', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const adapter = new FakeStripeAdapter({
+        environment: 'TEST',
+        forceCreateRefundError: new PaymentProviderError(
+          'UNKNOWN',
+          'Simulated platform 5xx',
+          'api_error',
+        ),
+      });
+      const seed = await seedCompensation(ids, 'api-error');
+      preloadSucceededIntent(adapter, seed.providerPaymentIntentId);
+
+      const result = await executeCompensationBatch(makeDeps(adapter), { environment: 'TEST' });
+      expect(result.claimedCount).toBe(1);
+      expect(result.rescheduledCount).toBe(1);
+      expect(result.failedCount).toBe(0);
+
+      const outbox =
+        await rawSql`SELECT status, attempt_count, available_at FROM outbox_events WHERE id = ${seed.outboxEventId}`;
+      expect(outbox[0]!.status).toBe('PENDING');
+      expect(outbox[0]!.attempt_count).toBe(1);
+      const availableAt = new Date(outbox[0]!.available_at).getTime();
+      expect(availableAt).toBeGreaterThan(Date.now() - 1000);
+
+      // Le refund n'est PAS marqué FAILED.
+      const refund = await rawSql`SELECT status FROM refunds WHERE id = ${seed.refundId}`;
+      expect(refund[0]!.status).toBe('PENDING');
+    });
+
+    // 20. P1-6 : idempotency_error est durable → FAILED immédiat, pas de boucle
+    it('20. idempotency_error : conflit de paramètres sur même clé → FAILED immédiat, refund FAILED, PAS de reschedule', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const adapter = new FakeStripeAdapter({
+        environment: 'TEST',
+        forceCreateRefundError: new PaymentProviderError(
+          'CONFLICT_IDEMPOTENCY',
+          'Conflit de paramètres sur la même clé',
+          'idempotency_error',
+        ),
+      });
+      const seed = await seedCompensation(ids, 'idempotency-error');
+      preloadSucceededIntent(adapter, seed.providerPaymentIntentId);
+
+      const result = await executeCompensationBatch(makeDeps(adapter), { environment: 'TEST' });
+      expect(result.claimedCount).toBe(1);
+      expect(result.failedCount).toBe(1);
+      expect(result.rescheduledCount).toBe(0);
+
+      const outbox =
+        await rawSql`SELECT status FROM outbox_events WHERE id = ${seed.outboxEventId}`;
+      expect(outbox[0]!.status).toBe('FAILED');
+
+      const refund =
+        await rawSql`SELECT status, failure_code FROM refunds WHERE id = ${seed.refundId}`;
+      expect(refund[0]!.status).toBe('FAILED');
+      expect(refund[0]!.failure_code).toBe('idempotency_error');
     });
   },
 );

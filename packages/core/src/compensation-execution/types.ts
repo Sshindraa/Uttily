@@ -31,6 +31,12 @@ export interface ClaimedCompensation {
   amountMinor: number;
   currency: string;
   reason: string;
+  /** P1-4 : aggregate_type de l'événement outbox (autorité à recouper). */
+  aggregateType: string;
+  /** P1-4 : aggregate_id de l'événement outbox (autorité à recouper). */
+  aggregateId: string;
+  /** P1-4 : event_version de l'événement outbox (autorité à recouper). */
+  eventVersion: string;
   /** Token UUID de lease pour fencing atomique. */
   leaseToken: string;
   /** Expiration de la lease. */

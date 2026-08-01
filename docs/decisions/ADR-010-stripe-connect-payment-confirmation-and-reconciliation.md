@@ -524,6 +524,27 @@ Cet ordre reprend et étend exactement le contrat ADR-009 sections 15 et 16 :
 brouillon racine, holds dans un ordre stable, puis allocations. Aucun parcours
 Lot 5 ne verrouille un hold isolément.
 
+### Ordre de verrouillage — refunds, outbox et événements webhook (Phase 8)
+
+L'ordre global est étendu :
+
+`booking_draft → inventory_blocks (id) → allocations (id) → payment →
+payment_attempt → refunds → outbox_events → webhook_event`
+
+Invariants empêchant tout cycle :
+
+1. La projection de remboursement du webhook ne prend FOR UPDATE que sur
+   `refunds` (et `webhook_event` en amont). Les jointures de validation sur
+   `payments`/`payment_attempts` sont des SELECT sans verrou.
+2. Le worker de compensation verrouille `refunds → payments` en Phase 1 et
+   `outbox_events → refunds` en Phase 3 ; `payment_attempts` est lu sans
+   verrou (la tentative SUCCEEDED est immutable après projection).
+3. Aucun chemin ne verrouille `refunds` puis `outbox_events` ni `payments`
+   puis `outbox_events` avec FOR UPDATE.
+
+Toute nouvelle transaction touchant `refunds` ou `outbox_events` doit
+respecter cet ordre.
+
 ## 11. Échec, nouvelle tentative et abandon
 
 - `payment_intent.payment_failed` met à jour la tentative et le paiement en
@@ -630,32 +651,89 @@ Le flux d'exécution est :
 1. **Claim** : `SELECT ... FOR UPDATE SKIP LOCKED` sur les événements
    `PENDING` avec `available_at <= now()` et `(lease_until IS NULL OR
    lease_until <= now())`. Assignation d'un `lease_token` UUID et
-   `lease_until = now() + 2 minutes`. Commit.
+   `lease_until = now() + 2 minutes`. Le snapshot revendiqué inclut
+   `aggregate_type`, `aggregate_id` et `event_version` de l'événement
+   (autorités à recouper en Phase 1). Commit.
 
-2. **Charger et verrouiller** : dans une nouvelle transaction, charger le
-   refund (par `provider_idempotency_key`), le paiement et le
-   `payment_attempt` (pour `provider_payment_intent_id`). Verrouiller avec
-   `SELECT FOR UPDATE`.
+2. **Charger et verrouiller** : dans une nouvelle transaction, vérifier
+   d'abord le lease (`WHERE id = ? AND lease_token = ?` — un token périmé
+   lève `LEASE_LOST` avant tout appel fournisseur), puis charger le refund
+   (par `provider_idempotency_key`), le paiement et la tentative. Verrouiller
+   avec `SELECT FOR UPDATE`.
 
-3. **Vérifier** : montant, devise, PaymentIntent ID, organisation et
-   environnement. Lever une erreur si incohérent.
+3. **Vérifier (recoupement complet des autorités)** : montant, devise,
+   PaymentIntent ID, organisation et environnement ; plus
+   `aggregate_type = 'PAYMENT'`, `aggregate_id = refund.payment_id`,
+   `event_version = 'v1'`, `payload.paymentId = refund.payment_id`,
+   `refund.reason = 'LATE_PAYMENT_NO_BOOKING'`, montant et devise du refund
+   recoupés avec le total du paiement, `payment.status = 'SUCCEEDED'`.
+   La tentative est sélectionnée de manière déterministe : statut
+   `SUCCEEDED`, `provider_payment_intent_id` non nul, ordre
+   `(created_at DESC, id DESC)`, `LIMIT 1`. Toute incohérence est une
+   anomalie durable (`FAILED`, alerte humaine).
 
 4. **Appeler Stripe hors transaction** : `createRefund` avec la clé stable
    `refund_late_${payment.id}`, `reverse_transfer = true`,
    `refund_application_fee = true`. **Jamais de retry sans ces deux flags.**
+   Le résultat fournisseur est validé de manière fail-closed avant toute
+   persistance : identifiant non vide, montant égal à celui demandé, devise
+   `EUR`, statut `pending` ou `succeeded` — sinon anomalie durable
+   `PROVIDER_RESULT_INVALID`.
 
-5. **Persister** : `provider_refund_id`, `status = SUBMITTED`,
-   `submitted_at = now()`. **Ne pas déclarer le refund réussi avant webhook.**
+5. **Persister (transition monotone)** : re-verrouiller le refund
+   (`SELECT ... FOR UPDATE`). Si un `provider_refund_id` différent est déjà
+   persisté → anomalie durable `PROVIDER_REFUND_ID_CONFLICT`. Si le statut
+   est terminal (`SUCCEEDED`/`FAILED`, projeté par le webhook entre-temps) :
+   ne jamais écraser le statut, persister seulement `provider_refund_id`
+   s'il est encore `NULL`. Sinon : `provider_refund_id` (si `NULL`),
+   `status = SUBMITTED` (depuis `PENDING` uniquement — un `SUBMITTED` reste
+   `SUBMITTED`), `submitted_at = now()` (si `NULL`).
+   **Ne pas déclarer le refund réussi avant webhook.**
 
 6. **Marquer outbox `PROCESSED`** : `processed_at = now()`,
-   `lease_token = NULL`, `lease_until = NULL`.
+   `lease_token = NULL`, `lease_until = NULL` (même transaction que 5).
 
-7. **Erreurs techniques** : incrémenter `attempt_count`, rescheduler
+7. **Erreurs transitoires** : incrémenter `attempt_count`, rescheduler
    `available_at = now() + backoff exponentiel`, remettre `PENDING`,
    `lease_token = NULL`, `lease_until = NULL`.
 
-8. **Refus de solde Connect** : rester visible et alertable, pas de fallback
+8. **Anomalies durables** : rester visible et alertable, pas de fallback
    silencieux. Marquer `FAILED` avec `failure_code`, logger une alerte.
+
+### Rattachement webhook du remboursement tardif orphelin
+
+Le webhook de refund peut arriver **avant** que la Phase 5 du worker ne
+persiste `provider_refund_id`. Avant d'envisager l'insertion d'un
+`EXTERNAL_REFUND`, la projection webhook recherche le remboursement
+`LATE_PAYMENT_NO_BOOKING` du même paiement encore sans identifiant
+fournisseur (`SELECT ... FOR UPDATE`). S'il existe : validation du montant
+et de la devise, garde monotone (`provider_event_created_at`), machine de
+transitions terminale, puis rattachement atomique (`provider_refund_id` +
+statut projeté) — **jamais** d'`EXTERNAL_REFUND` pour ce remboursement,
+sinon la Phase 5 entrerait en conflit unique sur `provider_refund_id` et
+bouclerait indéfiniment.
+
+### Fencing des chemins d'échec
+
+Toutes les transitions d'état de l'outbox (`PROCESSED`, `PENDING`
+reschedule, `FAILED`) sont conditionnées sur `lease_token` et vérifiées via
+`RETURNING "id"` : si 0 ligne est retournée, le worker a perdu sa lease et
+ne touche **pas** au refund. Le marquage du refund `FAILED` est monotone
+(`WHERE status NOT IN ('SUCCEEDED', 'FAILED')`) — un worker périmé ne peut
+jamais écraser le travail d'un successeur ou d'un webhook.
+
+### Classification fermée des erreurs fournisseur
+
+Les erreurs provider sont classées en deux ensembles fermés :
+
+- **Transitoires** (reschedule avec backoff) : `rate_limit`,
+  `api_connection_error`, `timeout`, `api_error` (5xx plateforme — classé
+  `UNKNOWN` par l'adapter mais transitoire par nature) ;
+- **Durables** (`FAILED` immédiat, alerte humaine) : refus de solde Connect
+  (`invalid_request_error`, etc.), `idempotency_error` (conflit de
+  paramètres sur la même clé — ne disparaît **jamais** au retry), et **tout
+  code non listé** (défaut fail-closed : mieux vaut alerter qu'une boucle
+  silencieuse).
 
 L'endpoint `/api/cron/process-compensations` déclenche ce batch chaque minute
 via Vercel Cron, authentifié par `CRON_SECRET`.

@@ -21,7 +21,7 @@
  * après tous les autres verrous. La transaction 1 (ingestion) ne prend aucun verrou FOR UPDATE.
  */
 
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import {
   bookings,
   organizationPaymentAccounts,
@@ -77,7 +77,8 @@ export type RefundProjectionFailureCode =
   | 'REFUND_OBJECT_INVALID'
   | 'REFUND_ID_MISSING'
   | 'REFUND_STATUS_MISSING'
-  | 'REFUND_PROVIDER_STATE_UNSUPPORTED';
+  | 'REFUND_PROVIDER_STATE_UNSUPPORTED'
+  | 'REFUND_ACCOUNT_MISMATCH';
 
 /**
  * Erreur de projection de refund (P1-1). Levée à l'intérieur d'un savepoint
@@ -1274,6 +1275,16 @@ function extractRefundObjects(event: VerifiedWebhookEvent): unknown[] {
  * P1-4 : Garde monotone (providerEventCreatedAt), recoupement payment_intent,
  * montant, devise, organisation sur ligne existante. SELECT FOR UPDATE.
  *
+ * R1-P2-3 : Recoupement explicite du connected_account_id quand l'événement
+ * expose un compte Connect (endpoint connect). Sur l'endpoint platform
+ * (accountId null), l'organisation est résolue depuis le compte ou le
+ * payment_intent et le recoupement orgId existant suffit.
+ *
+ * P1-1 : Avant tout EXTERNAL_REFUND, rattache atomiquement le remboursement
+ * LATE_PAYMENT_NO_BOOKING orphelin du paiement (provider_refund_id encore NULL)
+ * — le webhook peut arriver avant que le worker de compensation ne persiste
+ * provider_refund_id. Jamais de doublon EXTERNAL_REFUND pour ce remboursement.
+ *
  * @returns { result: 'PROCESSED' } si au moins un refund a été projeté,
  * { result: 'IGNORED' } si aucun, { result: 'FAILED', failureCode } si
  * incohérence irréconciliable (refund invalide ou mismatch).
@@ -1427,6 +1438,29 @@ async function projectRefundStatus(
             throw new RefundProjectionError('REFUND_PI_MISMATCH');
           }
 
+          // R1-P2-3 : Recoupement explicite du compte Connect quand l'événement
+          // l'expose (endpoint connect, event.accountId non null). Sur l'endpoint
+          // platform, accountId est null : l'organisation est résolue depuis le
+          // compte ou le payment_intent en amont et le recoupement orgId
+          // (REFUND_ORG_MISMATCH ci-dessous) suffit — le paiement et son compte
+          // Connect appartiennent à la même organisation.
+          if (
+            event.accountId !== null &&
+            existingPayment[0]!.connectedAccountId !== event.accountId
+          ) {
+            console.warn(
+              JSON.stringify({
+                event: 'webhook.stripe',
+                endpoint: 'platform',
+                result: 'refund_account_mismatch',
+                providerRefundId: refundId,
+                expected: existingPayment[0]!.connectedAccountId,
+                received: event.accountId,
+              }),
+            );
+            throw new RefundProjectionError('REFUND_ACCOUNT_MISMATCH');
+          }
+
           // P1-2 : amount OBLIGATOIRE pour un refund existant. P2-4 : un refund
           // de montant 0 n'a aucun sens métier — aligné avec la contrainte DB
           // stricte (refunds_amount_positive > 0) et le chemin « nouveau refund ».
@@ -1516,6 +1550,169 @@ async function projectRefundStatus(
           await sp.update(refunds).set(updateData).where(eq(refunds.id, existingRow.id));
           anyProjected = true;
         } else if (paymentId) {
+          // R1-P2-3 : Recoupement explicite du compte Connect du paiement local
+          // quand l'événement expose event.accountId (endpoint connect). Couvre
+          // à la fois le rattachement du remboursement LATE orphelin et
+          // l'insertion EXTERNAL_REFUND ci-dessous. Sur l'endpoint platform,
+          // accountId est null : l'organisation est résolue depuis le compte ou
+          // le payment_intent en amont, et le paiement (dont le compte Connect
+          // est celui de l'organisation) est déjà recoupé par payment_intent —
+          // la vérification existante suffit.
+          if (event.accountId !== null) {
+            const paymentAccount = await sp
+              .select({ connectedAccountId: payments.connectedAccountId })
+              .from(payments)
+              .where(eq(payments.id, paymentId))
+              .limit(1);
+            if (
+              paymentAccount.length === 0 ||
+              paymentAccount[0]!.connectedAccountId !== event.accountId
+            ) {
+              console.warn(
+                JSON.stringify({
+                  event: 'webhook.stripe',
+                  endpoint: 'platform',
+                  result: 'refund_account_mismatch',
+                  providerRefundId: refundId,
+                  paymentId,
+                  expected: paymentAccount[0]?.connectedAccountId ?? null,
+                  received: event.accountId,
+                }),
+              );
+              throw new RefundProjectionError('REFUND_ACCOUNT_MISMATCH');
+            }
+          }
+
+          // P1-1 : Avant d'envisager un EXTERNAL_REFUND, rechercher le remboursement
+          // LATE_PAYMENT_NO_BOOKING du même paiement encore sans identifiant fournisseur
+          // (le worker peut ne pas avoir encore persisté provider_refund_id).
+          // SELECT FOR UPDATE pour verrouiller la ligne et empêcher la Phase 3
+          // concurrente de créer un conflit.
+          const orphanLateRefund = await sp
+            .select({
+              id: refunds.id,
+              organizationId: refunds.organizationId,
+              paymentId: refunds.paymentId,
+              amountMinor: refunds.amountMinor,
+              status: refunds.status,
+              providerEventCreatedAt: refunds.providerEventCreatedAt,
+            })
+            .from(refunds)
+            .where(
+              and(
+                eq(refunds.paymentId, paymentId),
+                eq(refunds.reason, 'LATE_PAYMENT_NO_BOOKING'),
+                isNull(refunds.providerRefundId),
+              ),
+            )
+            .for('update')
+            .limit(1);
+
+          if (orphanLateRefund.length > 0) {
+            const orphanRow = orphanLateRefund[0]!;
+
+            // P1-1 : Montant — le remboursement LATE couvre le total du paiement.
+            // Tout écart est une anomalie financière irréconciliable.
+            const orphanAmount = refundRecord.amount;
+            if (
+              typeof orphanAmount !== 'number' ||
+              !Number.isSafeInteger(orphanAmount) ||
+              orphanAmount <= 0
+            ) {
+              console.warn(
+                JSON.stringify({
+                  event: 'webhook.stripe',
+                  endpoint: 'platform',
+                  result: 'refund_invalid_amount',
+                  providerRefundId: refundId,
+                  amount: orphanAmount,
+                }),
+              );
+              throw new RefundProjectionError('REFUND_INVALID_AMOUNT');
+            }
+            if (orphanAmount !== orphanRow.amountMinor) {
+              console.warn(
+                JSON.stringify({
+                  event: 'webhook.stripe',
+                  endpoint: 'platform',
+                  result: 'refund_amount_mismatch',
+                  providerRefundId: refundId,
+                  expected: orphanRow.amountMinor,
+                  received: orphanAmount,
+                }),
+              );
+              throw new RefundProjectionError('REFUND_AMOUNT_MISMATCH');
+            }
+
+            // P1-1 : Devise EUR obligatoire, comme pour le chemin EXTERNAL_REFUND.
+            const orphanCurrency =
+              typeof refundRecord.currency === 'string'
+                ? refundRecord.currency.toUpperCase()
+                : null;
+            if (orphanCurrency !== 'EUR') {
+              console.warn(
+                JSON.stringify({
+                  event: 'webhook.stripe',
+                  endpoint: 'platform',
+                  result: 'refund_currency_mismatch',
+                  providerRefundId: refundId,
+                  currency: refundRecord.currency,
+                }),
+              );
+              throw new RefundProjectionError('REFUND_CURRENCY_MISMATCH');
+            }
+
+            // P1-1 : Garde monotone — si l'événement est antérieur ou de même
+            // timestamp, ne rien rattacher MAIS ne pas créer d'EXTERNAL_REFUND
+            // non plus (le remboursement appartient déjà à ce paiement).
+            if (
+              orphanRow.providerEventCreatedAt !== null &&
+              event.created <= orphanRow.providerEventCreatedAt
+            ) {
+              continue;
+            }
+
+            // P1-1 : Machine de transitions terminale — un remboursement LATE
+            // déjà terminal ne peut pas régresser vers un statut différent.
+            const TERMINAL_ORPHAN_STATUSES = new Set(['SUCCEEDED', 'FAILED']);
+            if (
+              TERMINAL_ORPHAN_STATUSES.has(orphanRow.status) &&
+              mappedStatus !== orphanRow.status
+            ) {
+              console.warn(
+                JSON.stringify({
+                  event: 'webhook.stripe',
+                  endpoint: 'platform',
+                  result: 'refund_terminal_regression',
+                  providerRefundId: refundId,
+                  fromStatus: orphanRow.status,
+                  toStatus: mappedStatus,
+                  providerEventCreatedAt: event.created,
+                }),
+              );
+              throw new RefundProjectionError('REFUND_TERMINAL_STATE_CONFLICT');
+            }
+
+            // P1-1 : Rattachement atomique — attribuer provider_refund_id et
+            // projeter le statut sur le remboursement LATE, sans JAMAIS insérer
+            // d'EXTERNAL_REFUND (sinon la Phase 3 du worker entrerait en conflit
+            // unique sur provider_refund_id).
+            const orphanUpdate: Record<string, unknown> = {
+              providerRefundId: refundId,
+              status: mappedStatus,
+              updatedAt: now,
+              providerEventCreatedAt: event.created,
+            };
+            if (mappedStatus === 'SUCCEEDED') orphanUpdate.succeededAt = now;
+            if (mappedStatus === 'FAILED') {
+              orphanUpdate.failedAt = now;
+              orphanUpdate.failureCode = event.type;
+            }
+            await sp.update(refunds).set(orphanUpdate).where(eq(refunds.id, orphanRow.id));
+            anyProjected = true;
+            continue;
+          }
+
           // Créer une ligne refunds si on a le paymentId local ET le provider_refund_id.
           // P1-2 : Valider l'autorité financière du nouveau refund avant l'insertion.
           // P1-2 : Un refund incohérent rattaché à un paiement est une anomalie

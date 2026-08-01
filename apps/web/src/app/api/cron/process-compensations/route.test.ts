@@ -480,9 +480,12 @@ async function seedCompensationData(
   if (initResult.kind !== 'SUCCESS') throw new Error('initiatePayment failed');
   const providerPaymentIntentId = initResult.providerPaymentIntentId;
 
-  // Récupérer les IDs.
-  const paymentRow = await rawSql`SELECT id FROM payments WHERE draft_id = ${draftId}`;
+  // Récupérer les IDs et le montant réel du paiement (P1-4 : le refund est
+  // recoupé contre le total du paiement — le seed doit être cohérent).
+  const paymentRow =
+    await rawSql`SELECT id, amount_minor FROM payments WHERE draft_id = ${draftId}`;
   const paymentId = paymentRow[0]!.id;
+  const paymentAmountMinor = Number(paymentRow[0]!.amount_minor);
   const attemptRow = await rawSql`SELECT id FROM payment_attempts WHERE payment_id = ${paymentId}`;
   const attemptId = attemptRow[0]!.id;
 
@@ -504,7 +507,7 @@ async function seedCompensationData(
       "requested_at"
     ) VALUES (
       ${ids.orgId}, ${paymentId}, 'LATE_PAYMENT_NO_BOOKING', 'PENDING',
-      10000, 'EUR',
+      ${paymentAmountMinor}, 'EUR',
       ${refundIdempotencyKey},
       true, true,
       now()
@@ -522,7 +525,7 @@ async function seedCompensationData(
       ${rawSql.json({
         paymentId,
         refundIdempotencyKey,
-        amountMinor: 10000,
+        amountMinor: paymentAmountMinor,
         currency: 'EUR',
         reason: 'LATE_PAYMENT_NO_BOOKING',
       })},
