@@ -39,3 +39,6 @@ export { confirmBooking, isDraftTerminalForConversion } from './confirm-booking'
 export { handlePaymentFailed, handleCanceled, handleProcessing } from './handle-non-success';
 export { compensateLatePayment } from './compensate-late';
 export { withInvariantHandling, isHandlerError } from './with-invariant-handling';
+
+// Phase 7A — Transitions métier source-agnostiques (réutilisées par la réconciliation).
+export * from '../payment-transitions';

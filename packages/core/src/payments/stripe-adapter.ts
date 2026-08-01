@@ -631,9 +631,11 @@ function validateControllerConfig(controller: CreateConnectedAccountParams['cont
 export class StripeAdapter implements PaymentProviderAdapter {
   private readonly stripe: Stripe;
   private readonly config: StripeAdapterConfig;
+  readonly environment: StripeEnvironment;
 
   constructor(config: StripeAdapterConfig) {
     this.config = config;
+    this.environment = config.environment;
     // Validation : la clé secrète doit correspondre à l'environnement déclaré (ADR-010 §14).
     if (config.environment === 'TEST' && !config.secretKey.startsWith('sk_test_')) {
       throw new Error("L'environnement TEST nécessite une clé sk_test_");

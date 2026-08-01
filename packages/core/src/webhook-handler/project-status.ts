@@ -86,6 +86,18 @@ export function projectAttemptStatus(eventType: string, currentStatus: string): 
       }
       return { newStatus: 'REQUIRES_PAYMENT_METHOD', ignored: false };
 
+    case 'payment_intent.requires_action':
+      // REQUIRES_ACTION est non terminal. Si déjà terminal, on ignore.
+      // Utilisé par le moteur de réconciliation (statut provider requires_action).
+      if (isTerminal) {
+        return { newStatus: null, ignored: true };
+      }
+      // Si déjà REQUIRES_ACTION, pas de changement.
+      if (currentStatus === 'REQUIRES_ACTION') {
+        return { newStatus: null, ignored: true };
+      }
+      return { newStatus: 'REQUIRES_ACTION', ignored: false };
+
     default:
       // Événement inconnu ou non géré → fail-closed (ignoré, pas de transformation).
       return { newStatus: null, ignored: true };

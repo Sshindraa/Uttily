@@ -20,21 +20,12 @@
  */
 
 import { eq, sql } from 'drizzle-orm';
-import {
-  bookings,
-  lockOrganization,
-  outboxEvents,
-  paymentAttempts,
-  paymentWebhookEvents,
-  payments,
-  refunds,
-  type DatabaseTransaction,
-} from '@uttily/database';
+import { paymentWebhookEvents, type DatabaseTransaction } from '@uttily/database';
 import type { PaymentIntentEventData, ResolvedAttempt, HandlerOutcome } from './types';
 import { WebhookHandlerError } from './errors';
 import { lockWebhookEvent } from './dedupe-event';
-import { validateWebhookAuthority } from './validate-authority';
 import { withInvariantHandling } from './with-invariant-handling';
+import { lockPaymentAttemptRows, applyLateCompensation } from '../payment-transitions';
 
 /**
  * Exécute la compensation tardive dans une transaction.
@@ -53,71 +44,8 @@ export async function compensateLatePayment(
 ): Promise<HandlerOutcome> {
   // P1-2 : withInvariantHandling wrap TOUT le corps du handler.
   return withInvariantHandling(tx, webhookEventId, async (tx) => {
-    await lockOrganization(tx, attempt.organizationId);
-
     // Verrouiller le paiement et la tentative (ordre global).
-    const paymentRows = await tx
-      .select()
-      .from(payments)
-      .where(eq(payments.id, attempt.paymentId))
-      .for('update')
-      .limit(1);
-
-    if (paymentRows.length === 0) {
-      throw new WebhookHandlerError(
-        'WEBHOOK_AGGREGATE_INCONSISTENT',
-        'Paiement introuvable lors de la compensation tardive.',
-        { statusCode: 500 },
-      );
-    }
-    const payment = paymentRows[0]!;
-
-    const attemptRows = await tx
-      .select()
-      .from(paymentAttempts)
-      .where(eq(paymentAttempts.id, attempt.attemptId))
-      .for('update')
-      .limit(1);
-
-    if (attemptRows.length === 0) {
-      throw new WebhookHandlerError(
-        'WEBHOOK_AGGREGATE_INCONSISTENT',
-        'Tentative introuvable lors de la compensation tardive.',
-        { statusCode: 500 },
-      );
-    }
-    const attemptRow = attemptRows[0]!;
-
-    // Valider l'autorité du webhook avant toute mutation (ADR-010 §10 étape 6).
-    // La compensation est une mutation financière (refund + outbox) : elle doit
-    // recouper montant, devise, destination, commission, on_behalf_of,
-    // environnement, organisation et PaymentIntent ID, comme les autres handlers.
-    await validateWebhookAuthority(
-      tx,
-      attempt,
-      piData,
-      { payment, attempt: attemptRow },
-      environment,
-    );
-
-    // Vérifier qu'aucune réservation n'existe pour ce payment (P1-2).
-    // Si une réservation existe déjà, l'effet a été produit par un autre événement
-    // → marquer IGNORED, ne pas compenser.
-    const existingBookings = await tx
-      .select({ id: bookings.id })
-      .from(bookings)
-      .where(eq(bookings.paymentId, payment.id))
-      .limit(1);
-
-    if (existingBookings.length > 0) {
-      // Une réservation existe déjà — ne pas créer de refund spurieux.
-      const now = sql`transaction_timestamp()`;
-      await tx
-        .update(paymentWebhookEvents)
-        .set({ status: 'IGNORED', processedAt: now })
-        .where(eq(paymentWebhookEvents.id, webhookEventId));
-      return;
-    }
+    const lockedRows = await lockPaymentAttemptRows(tx, attempt);
 
     // Verrouiller l'événement webhook EN DERNIER (ordre ADR-010 §10).
     const webhookRow = await lockWebhookEvent(tx, webhookEventId);
@@ -141,73 +69,19 @@ export async function compensateLatePayment(
       );
     }
 
+    // Appliquer la compensation tardive (validations + check bookings + mutations).
+    const compensated = await applyLateCompensation(tx, attempt, piData, environment, lockedRows);
+
     const now = sql`transaction_timestamp()`;
 
-    // 1. Enregistrer le succès externe sur payment/attempt (SUCCEEDED) SANS créer de réservation.
-    // Ne pas régresser si déjà SUCCEEDED.
-    if (payment.status !== 'SUCCEEDED') {
+    if (!compensated) {
+      // Une réservation existe déjà — ne pas créer de refund spurieux.
       await tx
-        .update(payments)
-        .set({ status: 'SUCCEEDED', succeededAt: now, updatedAt: now })
-        .where(eq(payments.id, payment.id));
+        .update(paymentWebhookEvents)
+        .set({ status: 'IGNORED', processedAt: now })
+        .where(eq(paymentWebhookEvents.id, webhookEventId));
+      return;
     }
-
-    if (attemptRow.status !== 'SUCCEEDED') {
-      await tx
-        .update(paymentAttempts)
-        .set({
-          status: 'SUCCEEDED',
-          providerPaymentIntentId: piData.id,
-          providerStatus: 'succeeded',
-          updatedAt: now,
-        })
-        .where(eq(paymentAttempts.id, attempt.attemptId));
-    }
-
-    // 2. Créer une seule ligne refunds (idempotente via ON CONFLICT sur provider_idempotency_key).
-    const refundIdempotencyKey = `refund_late_${payment.id}`;
-    await tx
-      .insert(refunds)
-      .values({
-        organizationId: attempt.organizationId,
-        paymentId: payment.id,
-        reason: 'LATE_PAYMENT_NO_BOOKING',
-        status: 'PENDING',
-        amountMinor: payment.amountMinor,
-        currency: 'EUR',
-        providerIdempotencyKey: refundIdempotencyKey,
-        reverseTransfer: true,
-        refundApplicationFee: true,
-        requestedAt: now,
-      })
-      .onConflictDoNothing({
-        target: [refunds.providerIdempotencyKey],
-      });
-
-    // 3. Écrire PAYMENT_COMPENSATION_REQUESTED.v1 dans outbox (idempotent).
-    await tx
-      .insert(outboxEvents)
-      .values({
-        organizationId: attempt.organizationId,
-        aggregateType: 'PAYMENT',
-        aggregateId: payment.id,
-        eventType: 'PAYMENT_COMPENSATION_REQUESTED',
-        eventVersion: 'v1',
-        payload: {
-          paymentId: payment.id,
-          refundIdempotencyKey,
-          amountMinor: payment.amountMinor,
-          currency: 'EUR',
-          reason: 'LATE_PAYMENT_NO_BOOKING',
-        },
-        status: 'PENDING',
-        attemptCount: 0,
-        availableAt: now,
-        idempotencyKey: `payment_compensation_${payment.id}`,
-      })
-      .onConflictDoNothing({
-        target: [outboxEvents.idempotencyKey],
-      });
 
     // 4. Marquer l'événement webhook PROCESSED.
     await tx

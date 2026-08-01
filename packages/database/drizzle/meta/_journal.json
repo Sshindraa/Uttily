@@ -162,6 +162,20 @@
       "when": 1764528000022,
       "tag": "0023_refunds_amount_positive",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1764528000023,
+      "tag": "0024_reconcile_index_includes_requires_payment_method",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1764528000024,
+      "tag": "0025_reconcile_lease_token_and_payment_environment",
+      "breakpoints": true
     }
   ]
 }

@@ -1084,6 +1084,7 @@ describe.skipIf(shouldSkipIntegrationTests())('initiatePayment — intégration 
     let draftStatusAtProviderTime: string | null = null;
     const baseProvider = new FakeStripeAdapter({ environment: 'TEST' });
     const trackingProvider: PaymentProviderAdapter = {
+      environment: 'TEST' as const,
       createPaymentIntent: async (params: CreatePaymentIntentParams) => {
         const draft = await rawSql!`SELECT status FROM booking_drafts WHERE id = ${draftId}`;
         draftStatusAtProviderTime = draft[0]!.status;
@@ -1173,6 +1174,7 @@ describe.skipIf(shouldSkipIntegrationTests())('initiatePayment — intégration 
     const baseProvider = new FakeStripeAdapter({ environment: 'TEST' });
     // Custom provider that simulates a webhook setting SUCCEEDED during the provider call
     const webhookSimulatingProvider: PaymentProviderAdapter = {
+      environment: 'TEST' as const,
       createPaymentIntent: async (params: CreatePaymentIntentParams) => {
         // Simulate webhook: set the attempt to SUCCEEDED before the provider returns
         await rawSql!`
@@ -1227,6 +1229,7 @@ describe.skipIf(shouldSkipIntegrationTests())('initiatePayment — intégration 
 
     const baseProvider = new FakeStripeAdapter({ environment: 'TEST' });
     const wrongAmountProvider: PaymentProviderAdapter = {
+      environment: 'TEST' as const,
       createPaymentIntent: async (params: CreatePaymentIntentParams) => {
         const result = await baseProvider.createPaymentIntent(params);
         // Return a different amount than what was persisted
@@ -1317,6 +1320,7 @@ describe.skipIf(shouldSkipIntegrationTests())('initiatePayment — intégration 
 
     const baseProvider = new FakeStripeAdapter({ environment: 'TEST' });
     const wrongDestProvider: PaymentProviderAdapter = {
+      environment: 'TEST' as const,
       createPaymentIntent: async (params: CreatePaymentIntentParams) => {
         const result = await baseProvider.createPaymentIntent(params);
         // Return a different connectedAccountId than what was persisted
@@ -1358,6 +1362,7 @@ describe.skipIf(shouldSkipIntegrationTests())('initiatePayment — intégration 
 
     const baseProvider = new FakeStripeAdapter({ environment: 'TEST' });
     const nullDestProvider: PaymentProviderAdapter = {
+      environment: 'TEST' as const,
       createPaymentIntent: async (params: CreatePaymentIntentParams) => {
         const result = await baseProvider.createPaymentIntent(params);
         // Return null connectedAccountId (missing transfer_data.destination)
@@ -1388,5 +1393,46 @@ describe.skipIf(shouldSkipIntegrationTests())('initiatePayment — intégration 
     // Draft should be PAYMENT_PROCESSING (Transaction A committed before the error)
     const draft = await rawSql`SELECT status FROM booking_drafts WHERE id = ${draftId}`;
     expect(draft[0]!.status).toBe('PAYMENT_PROCESSING');
+  });
+
+  // 29. Réutilisation d'un paiement dans un environnement différent → UNSUPPORTED_PROVIDER_STATE
+  // (mappage public de PROVIDER_STATE_INCONSISTENT via toActionErrorCode()).
+  it('29. réutilisation paiement environnement différent : paiement TEST existant, initiation LIVE → UNSUPPORTED_PROVIDER_STATE (mappage public de PROVIDER_STATE_INCONSISTENT)', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData();
+    // Seeder un compte TEST et un compte LIVE pour la même org.
+    await seedPaymentAccount(ids, { environment: 'TEST', providerAccountId: 'acct_test_123' });
+    await seedPaymentAccount(ids, { environment: 'LIVE', providerAccountId: 'acct_live_123' });
+    const draftId = await createHeldDraft(ids, 'env-reuse');
+
+    // Première initiation en TEST — crée un paiement TEST.
+    const testProvider = new FakeStripeAdapter({ environment: 'TEST' });
+    const testInput = makeInitiateInput(ids, draftId, 'env-reuse-test', {
+      environment: 'TEST',
+      financialTermsConfig: makeFinancialTermsConfig('acct_test_123'),
+    });
+    const r1 = await initiatePayment({ db: db!, provider: testProvider }, testInput);
+    expect(r1.kind).toBe('SUCCESS');
+
+    // Vérifier que le paiement est en environnement TEST.
+    const paymentRow = await rawSql`SELECT environment FROM payments WHERE draft_id = ${draftId}`;
+    expect(paymentRow[0]!.environment).toBe('TEST');
+
+    // Deuxième initiation avec une clé différente mais en LIVE — doit détecter
+    // que le payment existant est TEST et lever PROVIDER_STATE_INCONSISTENT.
+    const liveProvider = new FakeStripeAdapter({ environment: 'LIVE' });
+    const liveInput = makeInitiateInput(ids, draftId, 'env-reuse-live', {
+      environment: 'LIVE',
+      financialTermsConfig: makeFinancialTermsConfig('acct_live_123'),
+    });
+
+    const result = await initiatePayment({ db: db!, provider: liveProvider }, liveInput);
+    expect(result.kind).toBe('FAILURE');
+    if (result.kind !== 'FAILURE') return;
+    // Le code interne PROVIDER_STATE_INCONSISTENT est mappé vers UNSUPPORTED_PROVIDER_STATE
+    // pour l'API publique via toActionErrorCode().
+    expect(result.error).toBe('UNSUPPORTED_PROVIDER_STATE');
+    expect(result.message).toContain('TEST');
+    expect(result.message).toContain('LIVE');
   });
 });

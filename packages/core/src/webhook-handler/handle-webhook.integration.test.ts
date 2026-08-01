@@ -1611,13 +1611,13 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
         "amount_minor", "currency", "tax_status", "commission_amount_minor",
         "commission_rule_snapshot", "financial_terms_version", "legal_terms_version",
         "terms_acceptance_snapshot", "connected_account_id", "charge_model",
-        "settlement_merchant_mode"
+        "settlement_merchant_mode", "environment"
       ) VALUES (
         gen_random_uuid(), ${ids.orgId}, ${draftId}, ${ids.userId}, 'PENDING_PROVIDER',
         ${amount}, 'EUR', 'NOT_APPLICABLE', 500,
         ${rawSql.json({ version: 'v1', basis: 'percentage', amountMinor: 500 })}, 'v1', 'v1',
         ${rawSql.json({ termsVersion: 'v1', userId: ids.userId, acceptedAt: new Date().toISOString() })},
-        'acct_test_123', 'DESTINATION', 'PLATFORM'
+        'acct_test_123', 'DESTINATION', 'PLATFORM', 'TEST'
       )
     `;
     const newPaymentId = await getPaymentId(draftId);
@@ -4466,5 +4466,385 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
     // 4. Aucun refund n'a été inséré (zéro mutation — le savepoint a tout annulé).
     const refundRows = await rawSql`SELECT id FROM refunds WHERE provider_refund_id = ${refundId1}`;
     expect(refundRows.length).toBe(0);
+  });
+
+  // P1-3 : Asymétrie terminal/non-terminal — payment SUCCEEDED, attempt PROCESSING → WEBHOOK_INVARIANT_BROKEN
+  it('P1-3a. asymétrie terminale : payment=SUCCEEDED, attempt=PROCESSING → WEBHOOK_INVARIANT_BROKEN', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('asym-succeeded-processing');
+    await seedPaymentAccount(ids);
+    const draftId = await createHeldDraft(ids, 'asym-succeeded-processing');
+
+    const initDeps = makeInitDeps();
+    const initResult = await initiatePayment(
+      initDeps,
+      makeInitiateInput(ids, draftId, 'asym-succeeded-processing'),
+    );
+    expect(initResult.kind).toBe('SUCCESS');
+    if (initResult.kind !== 'SUCCESS') return;
+
+    const piId = initResult.providerPaymentIntentId;
+    const paymentId = await getPaymentId(draftId);
+    const amount = await getPaymentAmount(draftId);
+
+    // Créer une asymétrie : payment SUCCEEDED (terminal) mais attempt PROCESSING (non-terminal).
+    await rawSql`UPDATE "payments" SET "status" = 'SUCCEEDED', "succeeded_at" = now() WHERE "id" = ${paymentId}`;
+    await rawSql`UPDATE "payment_attempts" SET "status" = 'PROCESSING' WHERE "id" = ${initResult.paymentAttemptId}`;
+
+    const deps = makeDeps();
+    const body = makeWebhookPayload(
+      'payment_intent.processing',
+      piId,
+      amount,
+      {
+        payment_id: paymentId,
+        payment_attempt_id: initResult.paymentAttemptId,
+        draft_id: draftId,
+        organization_id: ids.orgId,
+        protocol_version: 'v1',
+      },
+      'processing',
+      { eventId: 'evt_asym_succeeded_processing' },
+    );
+    const input = makeWebhookInput(body, deps.adapter);
+
+    const result = await handleWebhook(deps, input);
+    expect(result.kind).toBe('SUCCESS');
+    if (result.kind === 'SUCCESS') {
+      expect(result.statusCode).toBe(200);
+    }
+
+    // L'événement webhook est marqué FAILED avec WEBHOOK_INVARIANT_BROKEN.
+    const webhookEvent =
+      await rawSql`SELECT status, failure_code FROM payment_webhook_events WHERE provider_event_id = 'evt_asym_succeeded_processing'`;
+    expect(webhookEvent[0]!.status).toBe('FAILED');
+    expect(webhookEvent[0]!.failure_code).toBe('WEBHOOK_INVARIANT_BROKEN');
+
+    // Le payment reste SUCCEEDED (pas de régression).
+    const payment = await rawSql`SELECT status FROM payments WHERE id = ${paymentId}`.then(
+      (r) => r[0],
+    );
+    expect(payment!.status).toBe('SUCCEEDED');
+  });
+
+  // P1-3 : Asymétrie terminal/non-terminal — payment FAILED, attempt REQUIRES_ACTION → WEBHOOK_INVARIANT_BROKEN
+  it('P1-3b. asymétrie terminale : payment=FAILED, attempt=REQUIRES_ACTION → WEBHOOK_INVARIANT_BROKEN', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('asym-failed-requires');
+    await seedPaymentAccount(ids);
+    const draftId = await createHeldDraft(ids, 'asym-failed-requires');
+
+    const initDeps = makeInitDeps();
+    const initResult = await initiatePayment(
+      initDeps,
+      makeInitiateInput(ids, draftId, 'asym-failed-requires'),
+    );
+    expect(initResult.kind).toBe('SUCCESS');
+    if (initResult.kind !== 'SUCCESS') return;
+
+    const piId = initResult.providerPaymentIntentId;
+    const paymentId = await getPaymentId(draftId);
+    const amount = await getPaymentAmount(draftId);
+
+    // Créer une asymétrie : payment FAILED (terminal) mais attempt REQUIRES_ACTION (non-terminal).
+    await rawSql`UPDATE "payments" SET "status" = 'FAILED', "failed_at" = now() WHERE "id" = ${paymentId}`;
+    await rawSql`UPDATE "payment_attempts" SET "status" = 'REQUIRES_ACTION' WHERE "id" = ${initResult.paymentAttemptId}`;
+
+    const deps = makeDeps();
+    const body = makeWebhookPayload(
+      'payment_intent.payment_failed',
+      piId,
+      amount,
+      {
+        payment_id: paymentId,
+        payment_attempt_id: initResult.paymentAttemptId,
+        draft_id: draftId,
+        organization_id: ids.orgId,
+        protocol_version: 'v1',
+      },
+      'requires_payment_method',
+      { eventId: 'evt_asym_failed_requires' },
+    );
+    const input = makeWebhookInput(body, deps.adapter);
+
+    const result = await handleWebhook(deps, input);
+    expect(result.kind).toBe('SUCCESS');
+    if (result.kind === 'SUCCESS') {
+      expect(result.statusCode).toBe(200);
+    }
+
+    const webhookEvent =
+      await rawSql`SELECT status, failure_code FROM payment_webhook_events WHERE provider_event_id = 'evt_asym_failed_requires'`;
+    expect(webhookEvent[0]!.status).toBe('FAILED');
+    expect(webhookEvent[0]!.failure_code).toBe('WEBHOOK_INVARIANT_BROKEN');
+  });
+
+  // P1-3 : Asymétrie terminal/non-terminal — attempt SUCCEEDED, payment PROCESSING → WEBHOOK_INVARIANT_BROKEN
+  it('P1-3c. asymétrie terminale : attempt=SUCCEEDED, payment=PROCESSING → WEBHOOK_INVARIANT_BROKEN', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('asym-attempt-succeeded');
+    await seedPaymentAccount(ids);
+    const draftId = await createHeldDraft(ids, 'asym-attempt-succeeded');
+
+    const initDeps = makeInitDeps();
+    const initResult = await initiatePayment(
+      initDeps,
+      makeInitiateInput(ids, draftId, 'asym-attempt-succeeded'),
+    );
+    expect(initResult.kind).toBe('SUCCESS');
+    if (initResult.kind !== 'SUCCESS') return;
+
+    const piId = initResult.providerPaymentIntentId;
+    const paymentId = await getPaymentId(draftId);
+    const amount = await getPaymentAmount(draftId);
+
+    // Créer une asymétrie : attempt SUCCEEDED (terminal) mais payment PROCESSING (non-terminal).
+    await rawSql`UPDATE "payment_attempts" SET "status" = 'SUCCEEDED' WHERE "id" = ${initResult.paymentAttemptId}`;
+    await rawSql`UPDATE "payments" SET "status" = 'PROCESSING' WHERE "id" = ${paymentId}`;
+
+    // Envoyer un événement payment_failed — passe par handle-non-success qui
+    // appelle validateWebhookAuthority, qui détecte l'asymétrie terminale.
+    const deps = makeDeps();
+    const body = makeWebhookPayload(
+      'payment_intent.payment_failed',
+      piId,
+      amount,
+      {
+        payment_id: paymentId,
+        payment_attempt_id: initResult.paymentAttemptId,
+        draft_id: draftId,
+        organization_id: ids.orgId,
+        protocol_version: 'v1',
+      },
+      'requires_payment_method',
+      { eventId: 'evt_asym_attempt_succeeded' },
+    );
+    const input = makeWebhookInput(body, deps.adapter);
+
+    const result = await handleWebhook(deps, input);
+    expect(result.kind).toBe('SUCCESS');
+    if (result.kind === 'SUCCESS') {
+      expect(result.statusCode).toBe(200);
+    }
+
+    const webhookEvent =
+      await rawSql`SELECT status, failure_code FROM payment_webhook_events WHERE provider_event_id = 'evt_asym_attempt_succeeded'`;
+    expect(webhookEvent[0]!.status).toBe('FAILED');
+    expect(webhookEvent[0]!.failure_code).toBe('WEBHOOK_INVARIANT_BROKEN');
+  });
+
+  // P1-3 : Les deux non-terminaux et cohérents → OK (pas d'erreur)
+  it('P1-3d. non-terminaux cohérents : payment=PROCESSING, attempt=PROCESSING → OK (pas WEBHOOK_INVARIANT_BROKEN)', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('asym-ok-processing');
+    await seedPaymentAccount(ids);
+    const draftId = await createHeldDraft(ids, 'asym-ok-processing');
+
+    const initDeps = makeInitDeps();
+    const initResult = await initiatePayment(
+      initDeps,
+      makeInitiateInput(ids, draftId, 'asym-ok-processing'),
+    );
+    expect(initResult.kind).toBe('SUCCESS');
+    if (initResult.kind !== 'SUCCESS') return;
+
+    const piId = initResult.providerPaymentIntentId;
+    const paymentId = await getPaymentId(draftId);
+    const amount = await getPaymentAmount(draftId);
+
+    // Les deux sont PROCESSING (non-terminal, cohérent) — pas d'asymétrie.
+    await rawSql`UPDATE "payments" SET "status" = 'PROCESSING' WHERE "id" = ${paymentId}`;
+    await rawSql`UPDATE "payment_attempts" SET "status" = 'PROCESSING' WHERE "id" = ${initResult.paymentAttemptId}`;
+
+    const deps = makeDeps();
+    const body = makeWebhookPayload(
+      'payment_intent.processing',
+      piId,
+      amount,
+      {
+        payment_id: paymentId,
+        payment_attempt_id: initResult.paymentAttemptId,
+        draft_id: draftId,
+        organization_id: ids.orgId,
+        protocol_version: 'v1',
+      },
+      'processing',
+      { eventId: 'evt_asym_ok_processing' },
+    );
+    const input = makeWebhookInput(body, deps.adapter);
+
+    const result = await handleWebhook(deps, input);
+    expect(result.kind).toBe('SUCCESS');
+    if (result.kind === 'SUCCESS') {
+      expect(result.statusCode).toBe(200);
+    }
+
+    // L'événement ne doit PAS être FAILED avec WEBHOOK_INVARIANT_BROKEN.
+    const webhookEvent =
+      await rawSql`SELECT status, failure_code FROM payment_webhook_events WHERE provider_event_id = 'evt_asym_ok_processing'`;
+    expect(webhookEvent[0]!.failure_code).not.toBe('WEBHOOK_INVARIANT_BROKEN');
+  });
+
+  // P2-3 : Cas légitimes de la garde terminale — les deux terminaux avec le même
+  // statut ne doivent PAS déclencher WEBHOOK_INVARIANT_BROKEN. La garde passe car
+  // il n'y a ni asymétrie terminal/non-terminal ni incohérence terminale.
+  it('P2-3a. garde terminale légitime : payment=SUCCEEDED, attempt=SUCCEEDED → pas WEBHOOK_INVARIANT_BROKEN', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('legit-succeeded-succeeded');
+    await seedPaymentAccount(ids);
+    const draftId = await createHeldDraft(ids, 'legit-succeeded-succeeded');
+
+    const initDeps = makeInitDeps();
+    const initResult = await initiatePayment(
+      initDeps,
+      makeInitiateInput(ids, draftId, 'legit-succeeded-succeeded'),
+    );
+    expect(initResult.kind).toBe('SUCCESS');
+    if (initResult.kind !== 'SUCCESS') return;
+
+    const piId = initResult.providerPaymentIntentId;
+    const paymentId = await getPaymentId(draftId);
+    const amount = await getPaymentAmount(draftId);
+
+    // Les deux sont SUCCEEDED (terminal, cohérent) — pas d'asymétrie ni d'incohérence.
+    await rawSql`UPDATE "payments" SET "status" = 'SUCCEEDED', "succeeded_at" = now() WHERE "id" = ${paymentId}`;
+    await rawSql`UPDATE "payment_attempts" SET "status" = 'SUCCEEDED' WHERE "id" = ${initResult.paymentAttemptId}`;
+
+    // Envoyer un événement non-succès (processing) qui passe par handle-non-success
+    // → applyProcessingProjection → validateWebhookAuthority. La garde terminale
+    // doit passer (les deux sont terminaux et cohérents).
+    const deps = makeDeps();
+    const body = makeWebhookPayload(
+      'payment_intent.processing',
+      piId,
+      amount,
+      {
+        payment_id: paymentId,
+        payment_attempt_id: initResult.paymentAttemptId,
+        draft_id: draftId,
+        organization_id: ids.orgId,
+        protocol_version: 'v1',
+      },
+      'processing',
+      { eventId: 'evt_legit_succeeded_succeeded' },
+    );
+    const input = makeWebhookInput(body, deps.adapter);
+
+    const result = await handleWebhook(deps, input);
+    expect(result.kind).toBe('SUCCESS');
+    if (result.kind === 'SUCCESS') {
+      expect(result.statusCode).toBe(200);
+    }
+
+    // L'événement ne doit PAS être FAILED avec WEBHOOK_INVARIANT_BROKEN.
+    const webhookEvent =
+      await rawSql`SELECT status, failure_code FROM payment_webhook_events WHERE provider_event_id = 'evt_legit_succeeded_succeeded'`;
+    expect(webhookEvent[0]!.failure_code).not.toBe('WEBHOOK_INVARIANT_BROKEN');
+  });
+
+  it('P2-3b. garde terminale légitime : payment=FAILED, attempt=FAILED → pas WEBHOOK_INVARIANT_BROKEN', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('legit-failed-failed');
+    await seedPaymentAccount(ids);
+    const draftId = await createHeldDraft(ids, 'legit-failed-failed');
+
+    const initDeps = makeInitDeps();
+    const initResult = await initiatePayment(
+      initDeps,
+      makeInitiateInput(ids, draftId, 'legit-failed-failed'),
+    );
+    expect(initResult.kind).toBe('SUCCESS');
+    if (initResult.kind !== 'SUCCESS') return;
+
+    const piId = initResult.providerPaymentIntentId;
+    const paymentId = await getPaymentId(draftId);
+    const amount = await getPaymentAmount(draftId);
+
+    // Les deux sont FAILED (terminal, cohérent) — pas d'asymétrie ni d'incohérence.
+    await rawSql`UPDATE "payments" SET "status" = 'FAILED', "failed_at" = now() WHERE "id" = ${paymentId}`;
+    await rawSql`UPDATE "payment_attempts" SET "status" = 'FAILED' WHERE "id" = ${initResult.paymentAttemptId}`;
+
+    // Envoyer un événement payment_failed qui passe par handlePaymentFailed
+    // → validateWebhookAuthority. La garde terminale doit passer.
+    const deps = makeDeps();
+    const body = makeWebhookPayload(
+      'payment_intent.payment_failed',
+      piId,
+      amount,
+      {
+        payment_id: paymentId,
+        payment_attempt_id: initResult.paymentAttemptId,
+        draft_id: draftId,
+        organization_id: ids.orgId,
+        protocol_version: 'v1',
+      },
+      'requires_payment_method',
+      { eventId: 'evt_legit_failed_failed' },
+    );
+    const input = makeWebhookInput(body, deps.adapter);
+
+    const result = await handleWebhook(deps, input);
+    expect(result.kind).toBe('SUCCESS');
+    if (result.kind === 'SUCCESS') {
+      expect(result.statusCode).toBe(200);
+    }
+
+    // L'événement ne doit PAS être FAILED avec WEBHOOK_INVARIANT_BROKEN.
+    const webhookEvent =
+      await rawSql`SELECT status, failure_code FROM payment_webhook_events WHERE provider_event_id = 'evt_legit_failed_failed'`;
+    expect(webhookEvent[0]!.failure_code).not.toBe('WEBHOOK_INVARIANT_BROKEN');
+  });
+
+  it('P2-3c. garde terminale légitime : payment=CANCELLED, attempt=CANCELLED → pas WEBHOOK_INVARIANT_BROKEN', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('legit-cancelled-cancelled');
+    await seedPaymentAccount(ids);
+    const draftId = await createHeldDraft(ids, 'legit-cancelled-cancelled');
+
+    const initDeps = makeInitDeps();
+    const initResult = await initiatePayment(
+      initDeps,
+      makeInitiateInput(ids, draftId, 'legit-cancelled-cancelled'),
+    );
+    expect(initResult.kind).toBe('SUCCESS');
+    if (initResult.kind !== 'SUCCESS') return;
+
+    const piId = initResult.providerPaymentIntentId;
+    const paymentId = await getPaymentId(draftId);
+    const amount = await getPaymentAmount(draftId);
+
+    // Les deux sont CANCELLED (terminal, cohérent) — pas d'asymétrie ni d'incohérence.
+    await rawSql`UPDATE "payments" SET "status" = 'CANCELLED', "cancelled_at" = now() WHERE "id" = ${paymentId}`;
+    await rawSql`UPDATE "payment_attempts" SET "status" = 'CANCELLED' WHERE "id" = ${initResult.paymentAttemptId}`;
+
+    // Envoyer un événement canceled qui passe par handleCanceled
+    // → applyCancellation → validateWebhookAuthority. La garde terminale doit passer.
+    const deps = makeDeps();
+    const body = makeWebhookPayload(
+      'payment_intent.canceled',
+      piId,
+      amount,
+      {
+        payment_id: paymentId,
+        payment_attempt_id: initResult.paymentAttemptId,
+        draft_id: draftId,
+        organization_id: ids.orgId,
+        protocol_version: 'v1',
+      },
+      'canceled',
+      { eventId: 'evt_legit_cancelled_cancelled' },
+    );
+    const input = makeWebhookInput(body, deps.adapter);
+
+    const result = await handleWebhook(deps, input);
+    expect(result.kind).toBe('SUCCESS');
+    if (result.kind === 'SUCCESS') {
+      expect(result.statusCode).toBe(200);
+    }
+
+    // L'événement ne doit PAS être FAILED avec WEBHOOK_INVARIANT_BROKEN.
+    const webhookEvent =
+      await rawSql`SELECT status, failure_code FROM payment_webhook_events WHERE provider_event_id = 'evt_legit_cancelled_cancelled'`;
+    expect(webhookEvent[0]!.failure_code).not.toBe('WEBHOOK_INVARIANT_BROKEN');
   });
 });

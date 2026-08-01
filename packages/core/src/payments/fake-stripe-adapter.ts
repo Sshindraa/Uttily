@@ -441,7 +441,7 @@ export class FakeStripeAdapter implements PaymentProviderAdapter {
   >();
   private readonly cancelResultsByIdempotencyKey = new Map<string, PaymentIntentResult>();
   private readonly config: FakeStripeConfig;
-  private readonly environment: StripeEnvironment;
+  readonly environment: StripeEnvironment;
 
   constructor(config: FakeStripeConfig = {}) {
     if (process.env.NODE_ENV === 'production') {

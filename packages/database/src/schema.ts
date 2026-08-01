@@ -813,6 +813,7 @@ export const payments = pgTable(
     onBehalfOfAccountId: text('on_behalf_of_account_id'),
     chargeModel: chargeModel('charge_model').notNull().default('DESTINATION'),
     settlementMerchantMode: settlementMerchantMode('settlement_merchant_mode').notNull(),
+    environment: paymentEnvironment('environment').notNull(),
     processingStartedAt: timestamp('processing_started_at', { withTimezone: true }),
     processingDeadlineAt: timestamp('processing_deadline_at', { withTimezone: true }),
     succeededAt: timestamp('succeeded_at', { withTimezone: true }),
@@ -847,6 +848,7 @@ export const payments = pgTable(
       'payments_succeeded_has_timestamp',
       sql`${t.status} <> 'SUCCEEDED' OR ${t.succeededAt} IS NOT NULL`,
     ),
+    check('payments_environment_check', sql`${t.environment} IN ('TEST', 'LIVE')`),
     index('payments_organization_id_status_index').on(t.organizationId, t.status),
     index('payments_non_terminal_processing_deadline_index')
       .on(t.status, t.processingDeadlineAt)
@@ -875,6 +877,7 @@ export const paymentAttempts = pgTable(
     lastProviderErrorCode: text('last_provider_error_code'),
     reconcileAfter: timestamp('reconcile_after', { withTimezone: true }),
     reconcileLeaseUntil: timestamp('reconcile_lease_until', { withTimezone: true }),
+    reconcileLeaseToken: uuid('reconcile_lease_token'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -888,10 +891,16 @@ export const paymentAttempts = pgTable(
     index('payment_attempts_payment_id_status_index').on(t.paymentId, t.status),
     index('payment_attempts_reconcile_index')
       .on(t.status, t.reconcileAfter, t.reconcileLeaseUntil)
-      .where(sql`${t.status} IN ('PENDING_PROVIDER', 'REQUIRES_ACTION', 'PROCESSING')`),
+      .where(
+        sql`${t.status} IN ('PENDING_PROVIDER', 'REQUIRES_PAYMENT_METHOD', 'REQUIRES_ACTION', 'PROCESSING')`,
+      ),
     check(
       'payment_attempts_provider_status_with_intent',
       sql`${t.providerPaymentIntentId} IS NULL OR ${t.providerStatus} IS NOT NULL`,
+    ),
+    check(
+      'payment_attempts_lease_token_lease_until_consistent',
+      sql`(${t.reconcileLeaseToken} IS NULL AND ${t.reconcileLeaseUntil} IS NULL) OR (${t.reconcileLeaseToken} IS NOT NULL AND ${t.reconcileLeaseUntil} IS NOT NULL)`,
     ),
     uniqueIndex('payment_attempts_single_non_terminal_attempt')
       .on(t.paymentId)

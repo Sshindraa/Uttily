@@ -582,14 +582,24 @@ async function executeTakeover(
         onBehalfOfAccountId: snapshot.onBehalfOfAccountId,
         chargeModel: 'DESTINATION',
         settlementMerchantMode: snapshot.settlementMerchantMode,
+        environment: input.environment,
         processingStartedAt: sql`transaction_timestamp()`,
         processingDeadlineAt: sql`transaction_timestamp() + ${PROCESSING_DEADLINE_INTERVAL}`,
       })
       .returning();
     paymentRows = [created!];
   } else {
-    // Vérifier la cohérence : montant, devise, compte connecté, commission.
+    // Vérifier la cohérence : montant, devise, compte connecté, commission, environnement.
     const existing = paymentRows[0]!;
+    // P1-2 : vérifier que l'environnement du payment existant correspond à l'initiation.
+    // Un paiement TEST ne doit jamais être réutilisé par une initiation LIVE (et inversement).
+    if (existing.environment !== input.environment) {
+      throw new PaymentInitiationError(
+        'PROVIDER_STATE_INCONSISTENT',
+        `Le payment existant est en environnement ${existing.environment} mais l'initiation demande ${input.environment}.`,
+        { statusCode: 500 },
+      );
+    }
     if (snapshot) {
       if (
         existing.amountMinor !== snapshot.totalAmountMinor ||
@@ -675,6 +685,7 @@ async function executeTakeover(
         status: 'PENDING_PROVIDER',
         providerIdempotencyKey,
         providerStatus: null,
+        reconcileAfter: sql`transaction_timestamp() + ${PROCESSING_DEADLINE_INTERVAL}`,
       })
       .returning();
     attemptRows = [createdAttempt!];

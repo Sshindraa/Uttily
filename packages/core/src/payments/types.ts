@@ -275,6 +275,9 @@ export type StripeErrorCode =
  * ou sous un verrou FOR UPDATE (ADR-010 §1, §8).
  */
 export interface PaymentProviderAdapter {
+  /** Environnement Stripe de cet adapter (TEST ou LIVE). */
+  readonly environment: StripeEnvironment;
+
   /** Crée un PaymentIntent (destination charge, carte, capture automatique). */
   createPaymentIntent(params: CreatePaymentIntentParams): Promise<PaymentIntentResult>;
 

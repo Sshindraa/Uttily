@@ -275,17 +275,26 @@ export async function validateWebhookAuthority(
   }
 
   // ── Cohérence terminale payment ↔ attempt ─────────────────────────────────
-  // Si payment et attempt sont tous deux terminaux mais dans des statuts
-  // incohérents (ex: payment SUCCEEDED mais attempt CANCELLED), c'est un
-  // invariant brisé — l'agrégat est dans un état impossible.
+  // P1-3 : détecter toute asymétrie terminal/non-terminal et toute incohérence
+  // terminale. Si un est terminal et l'autre non, l'agrégat est dans un état
+  // impossible. Si les deux sont terminaux, leurs statuts doivent être cohérents.
   const TERMINAL_PAYMENT_STATUSES = new Set(['SUCCEEDED', 'FAILED', 'CANCELLED']);
   const TERMINAL_ATTEMPT_STATUSES = new Set(['SUCCEEDED', 'FAILED', 'CANCELLED']);
 
-  if (
-    TERMINAL_PAYMENT_STATUSES.has(payment.status) &&
-    TERMINAL_ATTEMPT_STATUSES.has(attemptRow.status) &&
-    payment.status !== attemptRow.status
-  ) {
+  const paymentTerminal = TERMINAL_PAYMENT_STATUSES.has(payment.status);
+  const attemptTerminal = TERMINAL_ATTEMPT_STATUSES.has(attemptRow.status);
+
+  // Asymétrie terminal/non-terminal : invariant brisé.
+  if (paymentTerminal !== attemptTerminal) {
+    throw new WebhookHandlerError(
+      'WEBHOOK_INVARIANT_BROKEN',
+      `Asymétrie terminale : payment=${payment.status} (${paymentTerminal ? 'terminal' : 'non-terminal'}) mais attempt=${attemptRow.status} (${attemptTerminal ? 'terminal' : 'non-terminal'}). L'agrégat est dans un état impossible.`,
+      { statusCode: 500 },
+    );
+  }
+
+  // Les deux sont terminaux : leurs statuts doivent être cohérents.
+  if (paymentTerminal && attemptTerminal && payment.status !== attemptRow.status) {
     throw new WebhookHandlerError(
       'WEBHOOK_INVARIANT_BROKEN',
       `Incohérence terminale : payment=${payment.status} mais attempt=${attemptRow.status}. L'agrégat est dans un état impossible.`,

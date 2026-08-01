@@ -43,3 +43,6 @@ export * from './payment-initiation/index';
 
 // Lot 5 — Traitement des webhooks Stripe (ADR-010 §9, §10, §11, §13, §14).
 export * from './webhook-handler/index';
+
+// Phase 7A — Moteur de réconciliation des paiements (ADR-010 §12).
+export * from './payment-reconciliation';

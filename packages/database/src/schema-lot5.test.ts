@@ -247,6 +247,7 @@ interface PaymentPayload {
   connected_account_id: string;
   charge_model: string;
   settlement_merchant_mode: string;
+  environment: 'TEST' | 'LIVE';
   succeeded_at?: string | null;
 }
 
@@ -269,6 +270,7 @@ function validPaymentPayload(overrides: Partial<PaymentPayload> = {}): PaymentPa
     connected_account_id: 'acct_test123',
     charge_model: 'DESTINATION',
     settlement_merchant_mode: 'CONNECTED_ACCOUNT',
+    environment: 'TEST',
     succeeded_at: null,
     ...overrides,
   };
@@ -285,6 +287,7 @@ async function insertPayment(sql: postgres.Sql, ids: BaseIds, draftId: string, p
       "terms_acceptance_snapshot",
       "connected_account_id",
       "charge_model", "settlement_merchant_mode",
+      "environment",
       "succeeded_at"
     )
     VALUES (
@@ -296,6 +299,7 @@ async function insertPayment(sql: postgres.Sql, ids: BaseIds, draftId: string, p
       ${sql.json(p.terms_acceptance_snapshot)},
       ${p.connected_account_id},
       ${p.charge_model}, ${p.settlement_merchant_mode},
+      ${p.environment},
       ${p.succeeded_at ?? null}
     )
     RETURNING "id"
@@ -471,7 +475,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
   // -------------------------------------------------------------------------
   // 1. Migration from scratch — toutes les tables Lot 5 existent
   // -------------------------------------------------------------------------
-  it('crée les 9 tables Lot 5 et __drizzle_migrations a 23 entrées', async () => {
+  it('crée les 9 tables Lot 5 et __drizzle_migrations a 25 entrées', async () => {
     if (!testUrl) return;
     const sql = postgres(testUrl, { max: 1 });
     try {
@@ -487,7 +491,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
       expect(lot5Tables.length).toBe(9);
 
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(23);
+      expect(rows.length).toBe(25);
     } finally {
       await sql.end();
     }
@@ -502,7 +506,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
     const sql = postgres(testUrl, { max: 1 });
     try {
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(23);
+      expect(rows.length).toBe(25);
     } finally {
       await sql.end();
     }
@@ -602,7 +606,8 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
             "financial_terms_version", "legal_terms_version",
             "terms_acceptance_snapshot",
             "connected_account_id",
-            "charge_model", "settlement_merchant_mode"
+            "charge_model", "settlement_merchant_mode",
+            "environment"
           )
           VALUES (
             ${ids.orgId}, ${draftId}, ${ids.userId},
@@ -612,7 +617,8 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
             '1', '1',
             ${sql.json({ version: '1' })},
             'acct_test',
-            'DIRECT', 'CONNECTED_ACCOUNT'
+            'DIRECT', 'CONNECTED_ACCOUNT',
+            'TEST'
           )
         `,
       ).rejects.toThrow();
@@ -1950,7 +1956,8 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
             "financial_terms_version", "legal_terms_version",
             "terms_acceptance_snapshot",
             "connected_account_id",
-            "charge_model", "settlement_merchant_mode"
+            "charge_model", "settlement_merchant_mode",
+            "environment"
           )
           VALUES (
             ${orgB.id}, ${draftId}, ${ids.userId},
@@ -1960,7 +1967,8 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
             '1', '1',
             ${sql.json({ version: '1' })},
             'acct_test',
-            'DESTINATION', 'CONNECTED_ACCOUNT'
+            'DESTINATION', 'CONNECTED_ACCOUNT',
+            'TEST'
           )
         `,
       ).rejects.toThrow(/n'appartient pas à la même organisation/);
@@ -2379,7 +2387,8 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
             "financial_terms_version", "legal_terms_version",
             "terms_acceptance_snapshot",
             "connected_account_id",
-            "charge_model", "settlement_merchant_mode"
+            "charge_model", "settlement_merchant_mode",
+            "environment"
           )
           VALUES (
             ${ids.orgId}, ${draftId}, ${ids.userId},
@@ -2389,7 +2398,8 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
             '1', '1',
             NULL,
             'acct_test',
-            'DESTINATION', 'CONNECTED_ACCOUNT'
+            'DESTINATION', 'CONNECTED_ACCOUNT',
+            'TEST'
           )
         `,
       ).rejects.toThrow();

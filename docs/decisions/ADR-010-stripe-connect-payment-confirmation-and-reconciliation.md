@@ -230,6 +230,7 @@ terms_acceptance_snapshot
 connected_account_id
 on_behalf_of_account_id nullable
 charge_model / settlement_merchant_mode
+environment: TEST | LIVE
 processing_started_at / processing_deadline_at
 succeeded_at / failed_at / cancelled_at
 created_at / updated_at
@@ -237,6 +238,12 @@ created_at / updated_at
 
 États : `PENDING_PROVIDER`, `REQUIRES_PAYMENT_METHOD`, `REQUIRES_ACTION`,
 `PROCESSING`, `SUCCEEDED`, `FAILED`, `CANCELLED`.
+
+`environment` (enum `payment_environment`, NOT NULL sans défaut) permet au claim
+de réconciliation de filtrer par environnement Stripe pour éviter de traiter un
+paiement LIVE avec un adapter TEST (et inversement). La colonne est renseignée
+explicitement à la création du paiement depuis le compte connecté ; aucune valeur
+par défaut silencieuse n'est acceptée.
 
 Un paiement `SUCCEEDED` ne régresse jamais. Les remboursements sont portés par
 une table séparée et ne réécrivent pas l'état historique de collecte. Le snapshot
@@ -258,6 +265,7 @@ provider_idempotency_key UNIQUE
 provider_status
 last_provider_error_code nullable
 reconcile_after / reconcile_lease_until nullable
+reconcile_lease_token uuid nullable
 created_at / updated_at
 ```
 
@@ -265,6 +273,15 @@ Unicité : `(payment_id, attempt_number)`. Une seule tentative non terminale par
 paiement. États : `PENDING_PROVIDER`, `REQUIRES_PAYMENT_METHOD`,
 `REQUIRES_ACTION`, `PROCESSING`, `SUCCEEDED`, `FAILED`, `CANCELLED`. Le
 `client_secret` n'est pas stocké.
+
+`reconcile_lease_token` (UUID nullable) est le fencing token atomique de la lease
+de réconciliation : le worker qui claim génère un UUID et le persiste en même
+temps que `reconcile_lease_until`. Les mutations ultérieures (release, reschedule,
+apply) conditionnent leur `UPDATE` sur `reconcile_lease_token = ${token}` pour
+garantir qu'un worker ne modifie que sa propre lease. Une contrainte CHECK
+(`payment_attempts_lease_token_lease_until_consistent`) impose que
+`reconcile_lease_token` et `reconcile_lease_until` soient simultanément nuls ou
+non nuls.
 
 ### `payment_webhook_events`
 
@@ -542,6 +559,25 @@ Application du résultat :
 Les métriques minimales sont : âge du plus vieux `PAYMENT_PROCESSING`, nombre de
 reconciliations, statuts Stripe observés, anomalies, compensations en attente et
 durée de traitement.
+
+### Filtrage par environnement et fencing de lease
+
+Le claim filtre par `payments.environment` pour ne revendiquer que les paiements
+de l'environnement de l'adapter injecté (TEST ou LIVE). Avant tout appel
+provider, le moteur vérifie que `provider.environment` correspond à
+l'environnement demandé ; un mismatch lève `PROVIDER_ENVIRONMENT_MISMATCH`.
+
+La lease de réconciliation utilise un fencing token atomique
+(`payment_attempts.reconcile_lease_token`, UUID) posé dans la même transaction
+que `reconcile_lease_until`. Les mutations de release, reschedule et apply
+conditionnent leur `UPDATE` sur l'égalité du token, ce qui garantit qu'un worker
+ne peut effacer ou modifier que sa propre lease. Une contrainte CHECK impose que
+`reconcile_lease_token` et `reconcile_lease_until` soient simultanément nuls ou
+non nuls.
+
+L'âge de la clé d'idempotency Stripe est vérifié côté PostgreSQL avec
+`transaction_timestamp()` dans la transaction de claim (23h, marge de sécurité
+d'1h sous la limite Stripe de 24h) plutôt qu'avec `Date.now()` côté application.
 
 ## 13. Paiement tardif et compensation
 
