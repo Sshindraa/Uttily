@@ -579,6 +579,17 @@ L'âge de la clé d'idempotency Stripe est vérifié côté PostgreSQL avec
 `transaction_timestamp()` dans la transaction de claim (23h, marge de sécurité
 d'1h sous la limite Stripe de 24h) plutôt qu'avec `Date.now()` côté application.
 
+### Endpoint Cron
+
+L'endpoint `/api/cron/reconcile-payments` est exécuté chaque minute par Vercel
+Cron. Il est authentifié par `CRON_SECRET` (header `Authorization: Bearer`).
+L'environnement est déterminé par `STRIPE_ENVIRONMENT`. L'endpoint :
+
+- mesure l'âge du plus vieux `PAYMENT_PROCESSING` avant le batch ;
+- exécute `reconcilePaymentsBatch` avec un lot borné ;
+- logge les métriques minimales (âge, compteurs, anomalies, durée) ;
+- ne expose aucune donnée sensible dans la réponse (compteurs uniquement).
+
 ## 13. Paiement tardif et compensation
 
 Si le paiement est `succeeded` mais que le brouillon est déjà terminal ou que les
