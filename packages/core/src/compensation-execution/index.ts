@@ -22,7 +22,7 @@ export type {
   ClaimedCompensation,
   CompensationBatchResult,
 } from './types';
-export { MAX_ATTEMPTS, BASE_BACKOFF_INTERVAL, getBackoffInterval } from './scheduling';
+export { MAX_ATTEMPTS, BASE_BACKOFF_INTERVAL, getBackoffIntervalSeconds } from './scheduling';
 export { claimCompensationBatch } from './claim-compensation-batch';
 export { executeCompensation } from './execute-compensation';
 export { executeCompensationBatch } from './execute-compensation-batch';

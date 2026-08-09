@@ -39,6 +39,16 @@ export function getStripeAdapter(): StripeAdapter {
   }
   const environment = rawEnvironment;
 
+  // P1 : Défense en profondeur — verrou LIVE fail-closed (ADR-010 §4).
+  // Le constructeur StripeAdapter vérifie aussi cette condition, mais on échoue
+  // tôt dans la factory pour éviter de charger une configuration LIVE invalide.
+  if (environment === 'LIVE' && process.env.PAYMENTS_LIVE_ENABLED !== 'true') {
+    throw new Error(
+      'STRIPE_ENVIRONMENT=LIVE requiert PAYMENTS_LIVE_ENABLED=true (ADR-010 §4). ' +
+        'Ce verrou est fail-closed : aucune valeur par défaut ne peut le contourner.',
+    );
+  }
+
   const config: StripeAdapterConfig = {
     secretKey,
     platformWebhookSecret,

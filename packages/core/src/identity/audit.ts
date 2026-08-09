@@ -1,13 +1,14 @@
-import type { DatabaseClient } from '@uttily/database';
+import type { DbExecutor } from '@uttily/database';
 import { auditLog } from '@uttily/database';
 
 /**
  * Journal d'audit append-only (invariant §3).
- * Les actions de l'admin Uttily sont tracées ici.
+ * Sert à la traçabilité transverse : actions de l'admin Uttily, transitions
+ * terrain (fulfillment), rapports d'état et dommages, etc.
  * Aucune UPDATE ni DELETE ne doit être appliquée à audit_log.
  */
 export async function writeAuditEntry(
-  db: DatabaseClient,
+  db: DbExecutor,
   entry: {
     actorUserId?: string | null;
     action: string;

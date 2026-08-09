@@ -1080,6 +1080,9 @@ async function handleRefundEvent(
   let resolutionFailure: RefundProjectionFailureCode | null = null;
   const piId = extractRefundPaymentIntentId(event);
   if (piId) {
+    // P3 : filtrer par environment pour éviter qu'un webhook LIVE résolve
+    // un payment TEST (théorique en dev, improbable en prod car les PI IDs
+    // sont distincts entre environnements).
     const paymentRow = await db
       .select({
         id: payments.id,
@@ -1094,6 +1097,7 @@ async function handleRefundEvent(
           eq(paymentAttempts.providerPaymentIntentId, piId),
         ),
       )
+      .where(eq(payments.environment, environment))
       .limit(1);
 
     if (paymentRow.length > 0) {
@@ -1152,13 +1156,17 @@ async function handleRefundEvent(
       const refundRecord = refundObj as Record<string, unknown>;
       const refundId = refundRecord.id;
       if (typeof refundId !== 'string' || refundId.length === 0) continue;
+      // P3 : filtrer par environment via JOIN payments pour défense en profondeur
+      // (les provider_refund_id sont globalement uniques chez Stripe, mais ce filtre
+      // empêche tout risque théorique de cross-environment resolution).
       const existingRefund = await db
         .select({
           paymentId: refunds.paymentId,
           organizationId: refunds.organizationId,
         })
         .from(refunds)
-        .where(eq(refunds.providerRefundId, refundId))
+        .innerJoin(payments, eq(refunds.paymentId, payments.id))
+        .where(and(eq(refunds.providerRefundId, refundId), eq(payments.environment, environment)))
         .limit(1);
       if (existingRefund.length > 0) {
         orgId = existingRefund[0]!.organizationId;
@@ -1595,16 +1603,24 @@ async function projectRefundStatus(
             throw new RefundProjectionError('REFUND_ORG_MISMATCH');
           }
 
+          // P2-2 : Ne pas régresser SUBMITTED → PENDING. SUBMITTED est un état local
+          // signifiant "createRefund accepté par Stripe" — un webhook requires_action
+          // (projeté PENDING) ne doit pas annuler cette soumission.
+          const effectiveStatus =
+            existingRow.status === 'SUBMITTED' && mappedStatus === 'PENDING'
+              ? 'SUBMITTED'
+              : mappedStatus;
+
           // Mettre à jour le statut du refund existant + providerEventCreatedAt.
           const updateData: Record<string, unknown> = {
-            status: mappedStatus,
+            status: effectiveStatus,
             updatedAt: now,
             providerEventCreatedAt: event.created,
           };
-          if (mappedStatus === 'SUCCEEDED') updateData.succeededAt = now;
-          if (mappedStatus === 'FAILED') {
+          if (effectiveStatus === 'SUCCEEDED') updateData.succeededAt = now;
+          if (effectiveStatus === 'FAILED') {
             updateData.failedAt = now;
-            updateData.failureCode = event.type;
+            updateData.failureCode = 'STRIPE_REFUND_FAILED';
           }
           await sp.update(refunds).set(updateData).where(eq(refunds.id, existingRow.id));
           anyProjected = true;
@@ -1756,16 +1772,22 @@ async function projectRefundStatus(
             // projeter le statut sur le remboursement LATE, sans JAMAIS insérer
             // d'EXTERNAL_REFUND (sinon la Phase 3 du worker entrerait en conflit
             // unique sur provider_refund_id).
+            // P2-2 : Ne pas régresser SUBMITTED → PENDING (cf. chemin existing refund).
+            const orphanEffectiveStatus =
+              orphanRow.status === 'SUBMITTED' && mappedStatus === 'PENDING'
+                ? 'SUBMITTED'
+                : mappedStatus;
+
             const orphanUpdate: Record<string, unknown> = {
               providerRefundId: refundId,
-              status: mappedStatus,
+              status: orphanEffectiveStatus,
               updatedAt: now,
               providerEventCreatedAt: event.created,
             };
-            if (mappedStatus === 'SUCCEEDED') orphanUpdate.succeededAt = now;
-            if (mappedStatus === 'FAILED') {
+            if (orphanEffectiveStatus === 'SUCCEEDED') orphanUpdate.succeededAt = now;
+            if (orphanEffectiveStatus === 'FAILED') {
               orphanUpdate.failedAt = now;
-              orphanUpdate.failureCode = event.type;
+              orphanUpdate.failureCode = 'STRIPE_REFUND_FAILED';
             }
             await sp.update(refunds).set(orphanUpdate).where(eq(refunds.id, orphanRow.id));
             anyProjected = true;
@@ -1868,6 +1890,7 @@ async function projectRefundStatus(
               providerEventCreatedAt: event.created,
               succeededAt: mappedStatus === 'SUCCEEDED' ? now : null,
               failedAt: mappedStatus === 'FAILED' ? now : null,
+              failureCode: mappedStatus === 'FAILED' ? 'STRIPE_REFUND_FAILED' : null,
             })
             .onConflictDoNothing({
               target: [refunds.providerIdempotencyKey],
@@ -1923,11 +1946,18 @@ async function logUnattachedEvent(
   if (orgId === null) {
     const piId = event.objectId;
     if (piId && piId.startsWith('pi_')) {
+      // P3 : filtrer par environment pour défense en profondeur (empêche tout
+      // risque théorique de cross-environment resolution via payment_intent).
       const paymentRow = await db
         .select({ organizationId: payments.organizationId })
         .from(payments)
         .innerJoin(paymentAttempts, eq(paymentAttempts.providerPaymentIntentId, piId))
-        .where(eq(paymentAttempts.providerPaymentIntentId, piId))
+        .where(
+          and(
+            eq(paymentAttempts.providerPaymentIntentId, piId),
+            eq(payments.environment, environment),
+          ),
+        )
         .limit(1);
 
       if (paymentRow.length > 0) {

@@ -20,6 +20,33 @@ export interface IdempotentPayloadLine {
 }
 
 /**
+ * Payload canonique pour le calcul de l'empreinte flexible (G7P-B2-B).
+ * Version v2. Inclut `pricingMode`, `locale` et `intent` canonique.
+ * Le marqueur de version `v: 'v2'` empêche toute collision avec les
+ * empreintes legacy (v1).
+ */
+export interface FlexibleIdempotentPayload {
+  organizationId: string;
+  locationId: string;
+  customerUserId: string;
+  locale: string;
+  intent: FlexibleIntentCanonical;
+  lines: IdempotentPayloadLine[];
+  pricingMode: 'FLEXIBLE';
+}
+
+/**
+ * Forme canonique de l'intent pour l'empreinte flexible.
+ * - TIME_RANGE : startAt/endAt en chaînes de date+heure locale ISO 8601 sans
+ *   offset (ex : "2026-08-08T22:08:00"). L'empreinte est basée sur l'entrée
+ *   locale du client, pas sur la conversion UTC.
+ * - DAY_RANGE : startDate/endDateExclusive en YYYY-MM-DD.
+ */
+export type FlexibleIntentCanonical =
+  | { kind: 'TIME_RANGE'; startAt: string; endAt: string }
+  | { kind: 'DAY_RANGE'; startDate: string; endDateExclusive: string };
+
+/**
  * Statut d'un enregistrement d'idempotence.
  */
 export type IdempotencyStatus = 'PENDING' | 'COMPLETED' | 'FAILED';

@@ -1,0 +1,62 @@
+# .dockerignore — Exclusions du build context pour Dockerfile.worker (G5I-A).
+#
+# Le builder a besoin de : tous les package.json, pnpm-workspace.yaml,
+# pnpm-lock.yaml, apps/*/src, packages/*/src, apps/worker/build.mjs,
+# apps/worker/scripts (harness smoke + fixtures pour le stage validation),
+# apps/worker/assets (police Inter TTF pour le renderer PDF).
+#
+# Les fixtures ne sont PAS exclues globalement : le stage validation en a besoin
+# depuis le builder. Elles n'atteignent jamais le stage production car celui-ci
+# ne copie que dist/, node_modules/ et assets/fonts/.
+
+# Git
+.git
+
+# Dépendances (tous les workspaces)
+node_modules
+**/node_modules
+
+# Environnement (jamais dans l'image — secrets externes)
+# Règle générale : exclut TOUS les fichiers .env* à tout niveau du dépôt,
+# y compris .env, .env.local, .env.production, .env.worker, .env.*.local,
+# et les variantes dans des sous-répertoires (ex: apps/web/.env.local).
+**/.env*
+# Exception : conserve les fichiers .env.example documentaires (versionnables,
+# sans secret, nécessaires à la documentation).
+!**/.env.example
+
+# Build outputs (le builder produit son propre dist frais)
+**/dist
+**/build
+**/.next
+**/out
+**/.turbo
+**/*.tsbuildinfo
+
+# Tests (non nécessaires dans l'image)
+**/*.test.ts
+**/*.test.tsx
+**/*.integration.test.ts
+
+# Documentation (non nécessaire dans l'image)
+docs/
+
+# Configuration éditeur / agent
+.devin/
+.codeium/
+.cursor/
+.claude/
+.vscode/
+coverage/
+
+# Logs et OS
+*.log
+.DS_Store
+
+# Docker (non nécessaire dans l'image)
+docker-compose*.yml
+Dockerfile*
+
+# README et AGENTS (non nécessaires dans l'image)
+README.md
+AGENTS.md

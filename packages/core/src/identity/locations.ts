@@ -1,6 +1,6 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
-import { locations, locationOpeningHours } from '@uttily/database';
+import { locations, locationOpeningHours, organizations } from '@uttily/database';
 import { isValidSlug, slugify } from './slug';
 import { isValidTimeZone } from './time-zone';
 import type { LocationRecord, OpeningHourInput } from './types';
@@ -82,6 +82,13 @@ export async function createLocation(
       throw new Error('Ce slug est déjà utilisé pour cette organisation.');
     }
 
+    const [org] = await tx
+      .select({ defaultCurrency: organizations.defaultCurrency })
+      .from(organizations)
+      .where(eq(organizations.id, input.organizationId))
+      .limit(1);
+    if (!org) throw new Error('Organisation introuvable.');
+
     const [loc] = await tx
       .insert(locations)
       .values({
@@ -89,6 +96,7 @@ export async function createLocation(
         name,
         slug,
         timeZone: input.timeZone,
+        operatingCurrency: org.defaultCurrency,
         addressLine1: input.addressLine1 ?? null,
         city: input.city ?? null,
         postalCode: input.postalCode ?? null,

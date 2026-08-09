@@ -106,8 +106,8 @@ async function seedBaseData(
     RETURNING "id"
   `.then((r) => r[0]!);
   const location = await sql`
-    INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone")
-    VALUES (${org.id}, 'Annecy', ${'annecy-' + suffix}, 'Europe/Paris')
+    INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone", "operating_currency")
+    VALUES (${org.id}, 'Annecy', ${'annecy-' + suffix}, 'Europe/Paris', 'EUR')
     RETURNING "id"
   `.then((r) => r[0]!);
   const user = await sql`
@@ -478,8 +478,8 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 4 — contraintes Pos
         RETURNING "id"
       `.then((r) => r[0]!);
       const location = await sql`
-        INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone")
-        VALUES (${org.id}, 'Chamonix', 'chamonix', 'Europe/Paris')
+        INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone", "operating_currency")
+        VALUES (${org.id}, 'Chamonix', 'chamonix', 'Europe/Paris', 'EUR')
         RETURNING "prep_buffer_minutes", "cleanup_buffer_minutes"
       `.then((r) => r[0]!);
       expect(location.prep_buffer_minutes).toBe(30);
@@ -508,8 +508,8 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 4 — contraintes Pos
       `.then((r) => r[0]!);
       // Location rattachée à orgA.
       const locationA = await sql`
-        INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone")
-        VALUES (${orgA.id}, 'Annecy', ${'annecy-' + suffix}, 'Europe/Paris')
+        INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone", "operating_currency")
+        VALUES (${orgA.id}, 'Annecy', ${'annecy-' + suffix}, 'Europe/Paris', 'EUR')
         RETURNING "id"
       `.then((r) => r[0]!);
       // Utilisateur client.
@@ -606,8 +606,8 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 4 — contraintes Pos
         RETURNING "id"
       `.then((r) => r[0]!);
       const locB = await sql`
-        INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone")
-        VALUES (${orgB.id}, 'Loc B', ${'loc-b-' + suffix}, 'Europe/Paris')
+        INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone", "operating_currency")
+        VALUES (${orgB.id}, 'Loc B', ${'loc-b-' + suffix}, 'Europe/Paris', 'EUR')
         RETURNING "id"
       `.then((r) => r[0]!);
       const category =
@@ -1108,7 +1108,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 4 — contraintes Pos
     }
   });
 
-  it("rejette une variante avec currency != 'EUR'", async () => {
+  it('rejette une variante avec currency non-ISO 4217 (pas 3 lettres majuscules)', async () => {
     if (!testUrl) return;
     const sql = postgres(testUrl, { max: 1 });
     try {
@@ -1118,13 +1118,13 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 4 — contraintes Pos
       );
       const product = await sql`
         INSERT INTO "products" ("organization_id", "category_id", "name", "slug")
-        VALUES (${ids.orgId}, ${category.id}, 'Planche USD', 'planche-usd')
+        VALUES (${ids.orgId}, ${category.id}, 'Planche Bad', 'planche-bad')
         RETURNING "id"
       `.then((r) => r[0]!);
       await expect(
         sql`
           INSERT INTO "product_variants" ("product_id", "name", "currency")
-          VALUES (${product.id}, 'USD Variant', 'USD')
+          VALUES (${product.id}, 'Bad Variant', 'EURO')
         `,
       ).rejects.toThrow();
     } finally {

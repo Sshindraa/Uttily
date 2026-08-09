@@ -125,3 +125,49 @@ Critères d'acceptation :
 - Fiche produit affichant prix, conditions, loueur et lieu de retrait.
 - Vue loueur des réservations du jour, retours et alertes de maintenance.
 - Mesures minimales : recherche, résultat disponible, tentative de réservation et réservation confirmée.
+
+### Lot 7 — Découpage révisé (après arbitrage produit 2026-08-07)
+
+> Voir `docs/product/lot7-arbitrage.md` pour les décisions produit approuvées et
+> ADR-018 pour la conception de la tarification flexible. Le découpage antérieur
+> reste conservé ci-dessus pour historique. Décisions clés : France première
+> activation, architecture mondiale, activation pays explicite fail-closed ;
+> FR+EN dès le lancement ; trois photos obligatoires avant publication
+> publique ; tarification flexible par plans tarifaires.
+
+| Groupe | Scope | Dépendances | Hors périmètre |
+| --- | --- | --- | --- |
+| G7B-R3 Round 2 — Correction ciblée des incohérences documentaires | ce cycle : correctif documentaire uniquement (13 corrections sur 11 fichiers) | G7B-R3 | aucun code/SQL |
+| G7C-R3 — Alignement du schéma public géographique | corriger 0031 en place (viewport/bbox, countryCode, type de lieu, modèle de traductions par locale), stratégie activation pays fail-closed, tests complets upgrade/rollback — **Terminé** | G7B-R3 | recherche Core, géocodeur, photos, plans tarifaires |
+| G7P-A — Fondations des plans tarifaires | schéma des plans, fenêtres tarifaires, versions et paliers ; tables pricing_plans + multi_day_discount_tiers + pricing_plan_windows + pricing_plan_translations, enum pricing_lifecycle_state (DRAFT/ACTIVE/RETIRED), clé métier excluant la version, immutabilité après activation, traductions FR+EN requises pour l'activation, fonction resolve_effective_pricing_plans, contraintes CHECK cohérence, migration, backfill variantes existantes vers DAILY — **Terminé Round 2 (schéma uniquement)** | G7B-R3 | moteur, UI |
+| G7P-B — Moteur de pricing flexible | sélection déterministe, TIME_RANGE/DAY_RANGE, DST, horaires, réductions, snapshots étendus, retrait tardif, annulations horaires — **G7P-B1 terminé (moteur read-only, non intégré au flux de réservation) ; G7P-B2-A terminé — Round 3 (schéma + contraintes + triggers + tests, migration 0033, source_draft_line_id, copie exacte root, pas de re-validation catalogue, concurrence pg_advisory_lock) ; G7P-B2-B Round 2 terminé et validé (intégration dans createBookingDraftWithHold : union discriminée legacy/flexible, transition DRAFT → HELD, SET CONSTRAINTS ciblé, conversion local-to-UTC fail-closed, DAY_RANGE bornes premier/dernier jour, resolvedLocale du moteur, PricingWindowSnapshot persisté, billableUnitCount du moteur, dispatch fermé, isolation erreurs DB, 72 tests d'intégration) ; G7P-B2-C terminé (applyBookingConfirmation copie tous les champs flexibles root + lines, initiatePayment valide pricingSnapshotVersion fail-closed, document data loader sélectionne les champs flexibles, 22 tests d'intégration, aucune migration 0034 nécessaire)** | G7P-A, G7C-R3 | UI, paiement cross-currency, modifications de réservation avec variation financière |
+| G7M (ou G7P-C) — Modifications de réservation financières | modifications de réservation avec variation financière (conception paiement/remboursement requise au préalable) | G7P-B2, conception paiement/remboursement | UI, paiement cross-currency |
+| G7D — Core/read models de recherche uniquement | use case `searchPublicOffers`, read models, géographie viewport adaptative (exact Bbox), disponibilité booléenne, buffers, CTE/keyset — **G7D-A terminé et testé (83 tests : 34 intégration PostgreSQL, 14 curseur, 23 geo, 12 errors)** | G7C-R3, G7P-B2 | web, géocodeur configuré, routes, pages, carte |
+| G7E — Routes/pages/carte/i18n | page/route, UX/a11y, carte déplaçable/zoomable, relance viewport, FR+EN, alternatives séparées — **G7E-A implémenté comme socle ; G7E-B implémenté : carte MapLibre/MapTiler progressive, viewport validé et lié aux curseurs, relance explicite, résultats EXACT/VIEWPORT_ALTERNATIVE séparés ; voir ADR-021 et `docs/implementation/g7e-b-public-search-map.md`** | G7D | dashboard, géocodeur configuré |
+| G7F-A — Métadonnées photo et gating trois photos | table/colonnes photos, contrainte 3 photos obligatoires, gating publication et requête publique — **Terminé (G7F-A2)** | G7C-R3 | UI guidée, upload réel, CDN |
+| G7F-B — UI guidée photos | tutoriel par catégorie, upload, fallback | G7F-A, politique image | CDN imposé |
+| G7G — Dashboard | signal minimal maintenance/BROKEN, fuseaux — **Implémenté le 2026-08-09 : projection Core bornée, isolation PostgreSQL, bornes temporelles exactes, UI dashboard et tests dédiés** | G7B-R3 | workflow complet |
+| G7H — Analytics | ledger first-party, 4 mesures, privacy-gated | G7B-R3, validation privacy | provider externe, collecte avant validation |
+| G7I — Validation transversale | e2e, a11y, performance, concurrence, DST, snapshots | G7C-R3–G7H | réouverture Lot 6 |
+
+Dépendances explicites : G7C-R3 dépend de G7B-R3 ; G7P-A dépend de G7B-R3 ;
+G7P-B dépend de G7P-A et G7C-R3 ; G7M/G7P-C dépend de G7P-B2 et d'une conception
+paiement/remboursement ; G7D dépend de G7C-R3 et G7P-B2 ; G7E dépend de
+G7D ; G7F-A dépend de G7C-R3 ; G7F-B dépend de G7F-A ; G7G/G7H dépendent de
+G7B-R3 ; G7I dépend de tous.
+
+## Horizons stratégiques post-MVP — option C
+
+> Direction approuvée par ADR-019. Cette section n'est pas une autorisation
+> d'implémenter ces capacités pendant le Lot 7 et ne change pas ses dépendances.
+
+| Horizon | Résultat recherché | Condition d'ouverture |
+| --- | --- | --- |
+| Equipment Graph | ontologie des équipements, usages, compatibilités, accessoires et règles de sécurité | données MVP réelles, catégories prioritaires validées, ADR dédié |
+| Digital Equipment Passport | historique vérifiable d'un exemplaire, QR/NFC et interopérabilité progressive | usage opérationnel validé, accès et rétention cadrés, ADR dédié |
+| Rental Intelligence | prévision de demande, flotte, maintenance et recommandations de prix explicables | données suffisantes, métrique de valeur, human-in-the-loop, privacy review |
+| Agent-ready Commerce | recherche, devis, hold et checkout accessibles à des partenaires/agents autorisés | Core public stable, sécurité, consentement, protocole évalué au moment du lot |
+| Réseau et circularité | distribution multicanale, entretien, transfert, reconditionnement et revente | densité et rétention prouvées, cadre juridique et modèle économique validés |
+
+Garde-fou de planification : une fondation future n'est avancée dans le backlog
+que si elle sert un besoin actuel ou évite une impasse structurelle démontrée.

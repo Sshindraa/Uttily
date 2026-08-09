@@ -36,7 +36,13 @@ export default async function OrganizationLayout({
             <Link href={`/dashboard/${orgId}/inventory`}>Inventaire</Link>
           </li>
           <li>
+            <Link href={`/dashboard/${orgId}/operations`}>Opérations</Link>
+          </li>
+          <li>
             <Link href={`/dashboard/${orgId}/team`}>Équipe</Link>
+          </li>
+          <li>
+            <Link href={`/dashboard/${orgId}/settings/payments`}>Paiements</Link>
           </li>
         </ul>
       </nav>

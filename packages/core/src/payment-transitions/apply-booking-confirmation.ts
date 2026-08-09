@@ -241,6 +241,15 @@ export async function applyBookingConfirmation(
   const now = sql`transaction_timestamp()`;
   const blockIds = blocks.map((b) => b.id);
 
+  // G7P-B2-C Round 3 (P0-2) — Copie du snapshot du brouillon vers la réservation.
+  // Le brouillon est l'autorité pour le pricing de location, la période, le
+  // fuseau et le snapshot de pricing (ADR-010 §10, ADR-018). Les champs
+  // pricing_* et billableUnit sont copiés inconditionnellement : pour les
+  // brouillons legacy, ces champs sont NULL/'DAY' et la copie respecte les
+  // contraintes CHECK ; pour les brouillons flexibles, la copie satisfait le
+  // trigger validate_flexible_booking_aggregates. Les champs tax/commission/
+  // termsAcceptance proviennent toujours du payment (autorité ADR-010 §6),
+  // résolus à l'initiation du paiement par resolveFinancialTerms.
   const [booking] = await tx
     .insert(bookings)
     .values({
@@ -254,11 +263,18 @@ export async function applyBookingConfirmation(
       customerEndAt: draft.customerEndAt,
       blockedStartAt: draft.blockedStartAt,
       blockedEndAt: draft.blockedEndAt,
+      timezone: draft.timezone,
       prepBufferMinutes: draft.prepBufferMinutes,
       cleanupBufferMinutes: draft.cleanupBufferMinutes,
       currency: 'EUR',
       subtotalAmountMinor: draft.subtotalAmountMinor,
       mandatoryFeesAmountMinor: draft.mandatoryFeesAmountMinor,
+      // G7P-B2-C Round 3 (P0-2) — tax/commission/terms ALWAYS come from the
+      // payment (authority ADR-010 §6). The financial terms snapshot is resolved
+      // at payment initiation by resolveFinancialTerms and persisted on
+      // `payments`. The confirmed booking copies this snapshot without
+      // recalculation, for both legacy AND flexible drafts. The draft remains
+      // the authority for rental pricing, period, timezone, and pricing snapshot.
       taxStatus: payment.taxStatus,
       taxAmountMinor: payment.taxAmountMinor,
       taxRateBps: payment.taxRateBps,
@@ -266,15 +282,27 @@ export async function applyBookingConfirmation(
       commissionAmountMinor: payment.commissionAmountMinor,
       commissionRuleSnapshot: payment.commissionRuleSnapshot,
       totalAmountMinor: draft.totalAmountMinor,
+      billableUnit: draft.billableUnit,
+      billableUnitCount: draft.billableUnitCount,
       cancellationPolicySnapshot: draft.cancellationPolicySnapshot,
       termsAcceptanceSnapshot: payment.termsAcceptanceSnapshot,
       confirmedAt: now,
+      pricingSnapshotVersion: draft.pricingSnapshotVersion,
+      pricingAlgorithmVersion: draft.pricingAlgorithmVersion,
+      pricingRoundingRuleVersion: draft.pricingRoundingRuleVersion,
+      pricingIntentType: draft.pricingIntentType,
+      pricingIntentSnapshot: draft.pricingIntentSnapshot,
+      pricingResolvedLocale: draft.pricingResolvedLocale,
     })
     .returning({ id: bookings.id });
 
   const bookingId = booking!.id;
 
   // Créer booking_lines (copie des booking_draft_lines avec variant_snapshot).
+  // G7P-B2-C — Copie exacte du snapshot de prix flexible. Les champs pricing_*
+  // sont copiés inconditionnellement (NULL pour legacy, valeurs pour flexible).
+  // sourceDraftLineId est conditionnel : NULL pour legacy (le trigger
+  // enforce_booking_line_pricing_coherence l'exige), non-null pour flexible.
   const lineIdMap = new Map<string, string>();
   for (const line of lines) {
     const [bl] = await tx
@@ -288,6 +316,20 @@ export async function applyBookingConfirmation(
         lineTotalAmountMinor: line.lineTotalAmountMinor,
         currency: line.currency,
         variantSnapshot: line.variantSnapshot,
+        sourceDraftLineId: draft.pricingSnapshotVersion === 'flexible-pricing-v1' ? line.id : null,
+        pricingPlanId: line.pricingPlanId,
+        pricingPlanVersion: line.pricingPlanVersion,
+        pricingPlanType: line.pricingPlanType,
+        pricingPublicLabel: line.pricingPublicLabel,
+        pricingRequestedDurationMinutes: line.pricingRequestedDurationMinutes,
+        pricingBilledDurationMinutes: line.pricingBilledDurationMinutes,
+        pricingCoveredDurationMinutes: line.pricingCoveredDurationMinutes,
+        pricingBilledDays: line.pricingBilledDays,
+        pricingSelectedWindow: line.pricingSelectedWindow,
+        pricingDiscountThresholdDays: line.pricingDiscountThresholdDays,
+        pricingDiscountPercent: line.pricingDiscountPercent,
+        pricingAmountBeforeDiscountMinor: line.pricingAmountBeforeDiscountMinor,
+        pricingAmountAfterDiscountMinor: line.pricingAmountAfterDiscountMinor,
       })
       .returning({ id: bookingLines.id });
     lineIdMap.set(line.id, bl!.id);

@@ -8,9 +8,9 @@ import {
 } from '../integration/setup';
 import { createBookingDraftWithHold, expireBookingDraftsBatch, BookingDraftError } from './index';
 import type {
-  CreateBookingDraftInput,
   CreateBookingDraftResult,
   CreateBookingDraftSuccess,
+  LegacyCreateBookingDraftInput,
 } from './types';
 
 const isCi = process.env.CI === '1' || process.env.CI === 'true';
@@ -79,8 +79,8 @@ async function seedBaseData(suffix = SUFFIX()): Promise<BaseIds> {
     RETURNING "id"
   `.then((r) => r[0]!);
   const location = await sql`
-    INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone", "prep_buffer_minutes", "cleanup_buffer_minutes")
-    VALUES (${org.id}, 'Annecy', ${'annecy-' + suffix}, 'Europe/Paris', 30, 30)
+    INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone", "prep_buffer_minutes", "cleanup_buffer_minutes", "operating_currency")
+    VALUES (${org.id}, 'Annecy', ${'annecy-' + suffix}, 'Europe/Paris', 30, 30, 'EUR')
     RETURNING "id"
   `.then((r) => r[0]!);
   const user = await sql`
@@ -93,9 +93,25 @@ async function seedBaseData(suffix = SUFFIX()): Promise<BaseIds> {
   );
   const product = await sql`
     INSERT INTO "products" ("organization_id", "category_id", "name", "slug", "publication_status")
-    VALUES (${org.id}, ${category.id}, 'Kayak', ${'kayak-' + suffix}, 'PUBLISHED')
+    VALUES (${org.id}, ${category.id}, 'Kayak', ${'kayak-' + suffix}, 'DRAFT')
     RETURNING "id"
   `.then((r) => r[0]!);
+  // G7F-A2 : 3 photos valides requises pour la publication (trigger différé).
+  for (let _pi = 0; _pi < 3; _pi++) {
+    await sql`
+      INSERT INTO product_photos (
+        organization_id, product_id, storage_key,
+        content_type, byte_size, width_px, height_px, checksum_sha256,
+        sort_order, file_state
+      )
+      VALUES (
+        ${org.id}, ${product.id}, ${'product-photos/' + suffix + '-' + _pi},
+        'image/jpeg', 102400, 800, 600, ${('000' + _pi).repeat(16).slice(0, 64)},
+        ${_pi}, 'AVAILABLE'
+      )
+    `;
+  }
+  await sql`UPDATE "products" SET "publication_status" = 'PUBLISHED' WHERE "id" = ${product.id}`;
   const variant = await sql`
     INSERT INTO "product_variants" ("product_id", "name", "is_active", "daily_price_amount_minor", "currency")
     VALUES (${product.id}, 'Standard', true, 5000, 'EUR')
@@ -129,8 +145,8 @@ const STD_END = new Date('2026-02-12T17:00:00.000Z');
 
 function makeInput(
   ids: BaseIds,
-  overrides: Partial<CreateBookingDraftInput> = {},
-): CreateBookingDraftInput {
+  overrides: Partial<LegacyCreateBookingDraftInput> = {},
+): LegacyCreateBookingDraftInput {
   return {
     organizationId: ids.orgId,
     locationId: ids.locationId,
@@ -880,8 +896,16 @@ describe.skipIf(shouldSkipIntegrationTests())(
       const { draftId } = await createExpiredDraft(ids, 'anomaly-no-lines');
 
       // Supprimer les allocations puis les lignes (FK draft_line_id).
-      await rawSql`DELETE FROM "allocations" WHERE "draft_line_id" IN (SELECT "id" FROM "booking_draft_lines" WHERE "draft_id" = ${draftId})`;
-      await rawSql`DELETE FROM "booking_draft_lines" WHERE "draft_id" = ${draftId}`;
+      // Le trigger d'immutabilité conditionnelle (0033) rejette DELETE de
+      // draft_lines quand le parent est HELD. On désactive temporairement le
+      // trigger pour simuler une anomalie (lignes manquantes).
+      await rawSql`ALTER TABLE "booking_draft_lines" DISABLE TRIGGER "before_check_draft_line_immutability"`;
+      try {
+        await rawSql`DELETE FROM "allocations" WHERE "draft_line_id" IN (SELECT "id" FROM "booking_draft_lines" WHERE "draft_id" = ${draftId})`;
+        await rawSql`DELETE FROM "booking_draft_lines" WHERE "draft_id" = ${draftId}`;
+      } finally {
+        await rawSql`ALTER TABLE "booking_draft_lines" ENABLE TRIGGER "before_check_draft_line_immutability"`;
+      }
 
       const result = await expireBookingDraftsBatch(db);
       expect(result.expiredCount).toBe(0);
@@ -935,23 +959,31 @@ describe.skipIf(shouldSkipIntegrationTests())(
       const lineAId = originalLine.id;
 
       // Réduire la quantité de la ligne A à 2.
-      await rawSql`UPDATE "booking_draft_lines" SET "quantity" = 2 WHERE "id" = ${lineAId}`;
+      // Le trigger d'immutabilité conditionnelle (0033) rejette UPDATE de
+      // draft_lines quand le parent est HELD. On désactive temporairement le
+      // trigger pour simuler une anomalie (distribution incohérente).
+      await rawSql`ALTER TABLE "booking_draft_lines" DISABLE TRIGGER "before_check_draft_line_immutability"`;
+      try {
+        await rawSql`UPDATE "booking_draft_lines" SET "quantity" = 2 WHERE "id" = ${lineAId}`;
 
-      // Insérer une nouvelle ligne B avec quantity 1 (même variante, mêmes
-      // champs NOT NULL copiés depuis la ligne originale).
-      await rawSql`
-        INSERT INTO "booking_draft_lines" (
-          "draft_id", "variant_id", "quantity",
-          "unit_price_amount_minor", "billable_unit_count",
-          "line_total_amount_minor", "currency", "variant_snapshot"
-        )
-        VALUES (
-          ${draftId}, ${originalLine.variant_id}, 1,
-          ${originalLine.unit_price_amount_minor}, ${originalLine.billable_unit_count},
-          ${originalLine.line_total_amount_minor}, ${originalLine.currency},
-          ${originalLine.variant_snapshot}
-        )
-      `;
+        // Insérer une nouvelle ligne B avec quantity 1 (même variante, mêmes
+        // champs NOT NULL copiés depuis la ligne originale).
+        await rawSql`
+          INSERT INTO "booking_draft_lines" (
+            "draft_id", "variant_id", "quantity",
+            "unit_price_amount_minor", "billable_unit_count",
+            "line_total_amount_minor", "currency", "variant_snapshot"
+          )
+          VALUES (
+            ${draftId}, ${originalLine.variant_id}, 1,
+            ${originalLine.unit_price_amount_minor}, ${originalLine.billable_unit_count},
+            ${originalLine.line_total_amount_minor}, ${originalLine.currency},
+            ${originalLine.variant_snapshot}
+          )
+        `;
+      } finally {
+        await rawSql`ALTER TABLE "booking_draft_lines" ENABLE TRIGGER "before_check_draft_line_immutability"`;
+      }
 
       // Vérifier l'état initial : ligne A a 3 allocations, ligne B en a 0.
       const allocsA =

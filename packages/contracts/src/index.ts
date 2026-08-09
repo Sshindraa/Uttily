@@ -8,3 +8,4 @@
  * utilisé par les Server Actions Next.js.
  */
 export * from './action-result';
+export * from './booking-confirmed-event';

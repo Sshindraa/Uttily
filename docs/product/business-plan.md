@@ -4,6 +4,14 @@
 
 Uttily vise à devenir le système d'exploitation mondial de la location d'équipements : une marketplace pour les voyageurs et habitants, couplée à un SaaS opérationnel pour les loueurs professionnels.
 
+La direction stratégique retenue est l'**option C** : Uttily construit
+progressivement une infrastructure mondiale de l'accès au matériel, composée de
+trois couches complémentaires — **Uttily OS**, **Uttily Marketplace** et
+**Uttily Intelligence**. À terme, l'offre pourra également être distribuée par
+des partenaires et des agents logiciels autorisés. La vision canonique et ses
+garde-fous sont détaillés dans
+[`long-term-vision.md`](long-term-vision.md) et ADR-019.
+
 La stratégie n'est pas de se déployer partout immédiatement. Uttily crée d'abord une offre dense, fiable et utile dans une destination, puis reproduit ce modèle destination par destination.
 
 ## Problème
@@ -46,6 +54,11 @@ Les différenciateurs recherchés sont :
 - expérience internationale mobile-first ;
 - intégration progressive des partenaires touristiques ;
 - qualité des opérations : caution, contrat, retrait, retour et maintenance.
+
+À long terme s'ajoutent quatre avantages défendables : connaissance structurée
+des équipements (`Equipment Graph`), passeport numérique de chaque exemplaire,
+intelligence opérationnelle explicable et commerce compatible avec plusieurs
+canaux et agents. Ils restent hors MVP tant qu'un lot dédié n'est pas approuvé.
 
 L'avantage défendable vient surtout de la densité de l'offre locale, de la qualité des données de disponibilité, des relations avec les loueurs et de l'intégration dans leurs opérations.
 

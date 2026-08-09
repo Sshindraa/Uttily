@@ -8,11 +8,27 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build": "tsc"
+    "test:e2e": "vitest run --fileParallelism=false",
+    "build": "node build.mjs",
+    "smoke:built": "node scripts/smoke-built-worker.mjs",
+    "smoke": "pnpm build && pnpm smoke:built",
+    "smoke:verify": "pnpm build && pnpm smoke:built && vitest run src/smoke-harness.test.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1103.0",
+    "@pdf-lib/fontkit": "1.1.1",
+    "@uttily/core": "workspace:*",
+    "@uttily/database": "workspace:*",
+    "drizzle-orm": "^0.36.0",
+    "pdf-lib": "1.17.1",
+    "postgres": "^3.4.0",
+    "resend": "^6.18.1",
+    "stripe": "22.3.2"
   },
   "devDependencies": {
-    "@uttily/config": "workspace:*",
     "@types/node": "^22.0.0",
+    "@uttily/config": "workspace:*",
+    "esbuild": "^0.28.1",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vitest": "^2.0.0"

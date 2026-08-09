@@ -1,0 +1,125 @@
+# Dockerfile.worker — Packaging local Docker du @uttily/worker (G5I-A).
+#
+# DEV / LOCAL ONLY. Ce fichier prépare et teste localement l'image Docker du
+# worker pour un futur déploiement VPS. Il ne déploie RIEN, ne configure aucun
+# fournisseur réel (Neon, Cloudflare R2, Resend), ne contient aucun secret.
+#
+# Build context : racine du monorepo (`.`) afin d'accéder à pnpm-lock.yaml,
+# pnpm-workspace.yaml et aux packages workspace (@uttily/core, @uttily/database).
+#
+# Quatre stages :
+#   1. builder       — installe les deps, build le bundle esbuild, pnpm deploy.
+#   2. runtime-base  — image de base non-root (dist + node_modules prod + police).
+#   3. validation    — hérite de runtime-base + harness smoke + fixtures (DEV ONLY).
+#   4. production    — hérite de runtime-base + CMD node dist/index.js (DEFAULT).
+#
+# Le stage par défaut (dernier FROM) est `production` (image finale minimale).
+# Le pattern runtime-base permet de placer production en dernier : validation et
+# production héritent tous deux de runtime-base, donc production n'a plus besoin
+# d'être avant validation. Un build sans `--target` produit l'image production.
+# Le stage validation (dev-only, harness + fixtures) nécessite `--target validation`.
+#
+# Commandes de build (depuis la racine du monorepo) :
+#   PRODUCTION (stage par défaut, dernier FROM) :
+#     docker build -f Dockerfile.worker -t uttily-worker:local .
+#     # Compose utilise --target production explicitement (defense in depth) :
+#     docker build -f Dockerfile.worker -t uttily-worker:local --target production .
+#   VALIDATION (dev-only, --target obligatoire) :
+#     docker build -f Dockerfile.worker -t uttily-worker:validation --target validation .
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 1 — builder
+# ─────────────────────────────────────────────────────────────────────────────
+FROM node:24-slim AS builder
+
+# Corepack + pnpm piné à la version exacte du packageManager racine.
+RUN corepack enable && corepack prepare pnpm@10.33.3 --activate
+
+WORKDIR /build
+
+# Copie prioritaire des fichiers de manifeste pour le cache de couche deps.
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+
+# Copie du reste du dépôt (respecte .dockerignore).
+COPY . .
+
+# Installation reproductible (frozen lockfile).
+RUN pnpm install --frozen-lockfile
+
+# Build du bundle esbuild → apps/worker/dist/index.js + index.js.map.
+RUN pnpm --filter @uttily/worker build
+
+# Garantie défensive : la police Inter TTF doit exister après le build, car le
+# stage runtime-base la copie depuis /deploy/worker/assets/fonts (pnpm deploy).
+# Sans ce check, une police absente échouerait silencieusement au runtime
+# (DocumentRenderError).
+RUN test -d apps/worker/assets/fonts && test -f apps/worker/assets/fonts/inter-regular.ttf || (echo "Font directory or Inter TTF missing" && exit 1)
+
+# pnpm deploy : produit /deploy/worker avec node_modules prod uniquement
+# (postgres est désormais en dependencies après G5I-A, donc inclus).
+# --legacy requis par pnpm v10 (sinon ERR_PNPM_DEPLOY_NONINJECTED_WORKSPACE).
+RUN pnpm deploy --filter @uttily/worker --prod --legacy /deploy/worker
+
+# Garantie défensive : copie explicite de dist/ dans /deploy/worker au cas où
+# pnpm deploy l'exclurait (champ files ou .npmignore futur). Idempotent.
+RUN cp -r apps/worker/dist /deploy/worker/dist
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 2 — runtime-base (image de base non-root partagée par validation et production)
+# ─────────────────────────────────────────────────────────────────────────────
+FROM node:24-slim AS runtime-base
+
+# Utilisateur non-root dédié (UID/GID fixes 1001 pour reproductibilité).
+RUN groupadd --system --gid 1001 uttily && \
+    useradd --system --uid 1001 --gid uttily --home-dir /app --shell /usr/sbin/nologin uttily
+
+WORKDIR /app
+
+# Copie STRICTEMENT : dist/ (bundle) + node_modules/ (deps prod).
+# Aucun src/, scripts/, test, .env, package.json, tsconfig — dist est autonome
+# sauf node_modules.
+COPY --from=builder --chown=uttily:uttily /deploy/worker/dist ./dist
+COPY --from=builder --chown=uttily:uttily /deploy/worker/node_modules ./node_modules
+
+# Police Inter TTF — chargée depuis disque au runtime par le renderer PDF
+# (pdf-lib-document-renderer.ts via import.meta.url). Depuis dist/index.js,
+# le chemin résolu est ../assets/fonts/inter-regular.ttf → /app/assets/fonts/.
+# Sans ce fichier, le rendu PDF échoue (DocumentRenderError VALIDATION).
+# Chemin absolu /deploy/worker/assets/fonts (consistant avec les autres COPY
+# --from=builder ; le chemin relatif ne se résout pas dans cette version Docker).
+COPY --from=builder --chown=uttily:uttily /deploy/worker/assets/fonts ./assets/fonts
+
+ENV NODE_ENV=production
+
+USER uttily
+
+# Pas de CMD dans runtime-base : chaque stage final (validation/production)
+# définit son propre CMD.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 3 — validation (DEV ONLY, hérite de runtime-base)
+# ─────────────────────────────────────────────────────────────────────────────
+# Ce stage ajoute le harness smoke + fixtures pour validation locale.
+# Il ne doit JAMAIS être déployé en production. Les fixtures sont dev-only.
+# Ce stage nécessite --target validation (production est le stage par défaut).
+FROM runtime-base AS validation
+
+# Copie du harness smoke + fixtures uniquement (dev-only, jamais en production).
+# Chemins absolus /build/... (le chemin relatif ne se résout pas dans cette
+# version Docker ; les fixtures ne sont pas dans /deploy/worker car pnpm deploy
+# --prod n'inclut que les deps production, pas les scripts de test).
+COPY --from=builder --chown=uttily:uttily /build/apps/worker/scripts/smoke-built-worker.mjs ./scripts/smoke-built-worker.mjs
+COPY --from=builder --chown=uttily:uttily /build/apps/worker/scripts/fixtures ./scripts/fixtures
+
+# Le CMD du stage validation lance le harness smoke par défaut.
+CMD ["node", "scripts/smoke-built-worker.mjs"]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stage 4 — production (image finale minimale ; dernier FROM = stage par défaut)
+# ─────────────────────────────────────────────────────────────────────────────
+# Hérite de runtime-base (dist + node_modules + police + utilisateur non-root).
+# Aucun ajout : uniquement le CMD de production. Le stage validation (dev-only,
+# harness + fixtures) n'est PAS inclus dans cette image.
+FROM runtime-base AS production
+
+CMD ["node", "dist/index.js"]

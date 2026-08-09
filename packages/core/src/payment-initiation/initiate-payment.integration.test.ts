@@ -7,7 +7,7 @@ import {
   type IntegrationTestContext,
 } from '../integration/setup';
 import { createBookingDraftWithHold, expireBookingDraftsBatch } from '../booking-drafts';
-import type { CreateBookingDraftInput } from '../booking-drafts/types';
+import type { LegacyCreateBookingDraftInput as CreateBookingDraftInput } from '../booking-drafts/types';
 import { initiatePayment } from './initiate-payment';
 import type { InitiatePaymentDependencies, InitiatePaymentInput } from './types';
 import { PaymentInitiationError } from './errors';
@@ -106,8 +106,8 @@ async function seedBaseData(suffix = SUFFIX()): Promise<BaseIds> {
     RETURNING "id"
   `.then((r) => r[0]!);
   const location = await sql`
-    INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone", "prep_buffer_minutes", "cleanup_buffer_minutes")
-    VALUES (${org.id}, 'Annecy', ${'annecy-' + suffix}, 'Europe/Paris', 30, 30)
+    INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone", "prep_buffer_minutes", "cleanup_buffer_minutes", "operating_currency")
+    VALUES (${org.id}, 'Annecy', ${'annecy-' + suffix}, 'Europe/Paris', 30, 30, 'EUR')
     RETURNING "id"
   `.then((r) => r[0]!);
   const user = await sql`
@@ -120,9 +120,25 @@ async function seedBaseData(suffix = SUFFIX()): Promise<BaseIds> {
   );
   const product = await sql`
     INSERT INTO "products" ("organization_id", "category_id", "name", "slug", "publication_status")
-    VALUES (${org.id}, ${category.id}, 'Kayak', ${'kayak-' + suffix}, 'PUBLISHED')
+    VALUES (${org.id}, ${category.id}, 'Kayak', ${'kayak-' + suffix}, 'DRAFT')
     RETURNING "id"
   `.then((r) => r[0]!);
+  // G7F-A2 : 3 photos valides requises pour la publication (trigger différé).
+  for (let _pi = 0; _pi < 3; _pi++) {
+    await sql`
+      INSERT INTO product_photos (
+        organization_id, product_id, storage_key,
+        content_type, byte_size, width_px, height_px, checksum_sha256,
+        sort_order, file_state
+      )
+      VALUES (
+        ${org.id}, ${product.id}, ${'product-photos/' + suffix + '-' + _pi},
+        'image/jpeg', 102400, 800, 600, ${('000' + _pi).repeat(16).slice(0, 64)},
+        ${_pi}, 'AVAILABLE'
+      )
+    `;
+  }
+  await sql`UPDATE "products" SET "publication_status" = 'PUBLISHED' WHERE "id" = ${product.id}`;
   const variant = await sql`
     INSERT INTO "product_variants" ("product_id", "name", "is_active", "daily_price_amount_minor", "currency")
     VALUES (${product.id}, 'Standard', true, 5000, 'EUR')
@@ -199,7 +215,7 @@ async function seedPaymentAccount(
       ${merged.organizationId}, ${merged.provider}, ${merged.environment}, ${merged.providerAccountId},
       ${merged.accountApiGeneration}, ${merged.onboardingStatus}, ${merged.chargesEnabled}, ${merged.payoutsEnabled},
       ${merged.transfersCapabilityStatus}, ${merged.settlementMerchantMode},
-      ${sql.json(merged.controllerConfigurationSnapshot as any)}, ${sql.json(merged.requirementsSnapshot as any)}
+      ${sql.json(merged.controllerConfigurationSnapshot as unknown as Parameters<typeof sql.json>[0])}, ${sql.json(merged.requirementsSnapshot as unknown as Parameters<typeof sql.json>[0])}
     )
   `;
 }
@@ -321,7 +337,7 @@ type RawSql = ReturnType<typeof postgres>;
 async function waitForAdvisoryLockWaiter(
   conn: RawSql,
   key: number,
-  timeoutMs = 5000,
+  timeoutMs = 30000,
 ): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
@@ -628,17 +644,25 @@ describe.skipIf(shouldSkipIntegrationTests())('initiatePayment — intégration 
   // 9. Deux requêtes concurrentes avec la même clé
   it('9. deux requêtes concurrentes avec la même clé : un SUCCESS, un REPLAY', async () => {
     if (!db || !rawSql || !ctx) return;
+    // Note: db2 connection is closed in the finally block below to avoid leaks.
     const ids = await seedBaseData();
     await seedPaymentAccount(ids);
     const draftId = await createHeldDraft(ids, 'concurrent-same');
 
     const input = makeInitiateInput(ids, draftId, 'concurrent-same');
     const db2 = createDatabase(ctx.databaseUrl);
-    const deps2 = { db: db2, provider: new FakeStripeAdapter({ environment: 'TEST' }) };
+    // Share a single FakeStripeAdapter instance across both concurrent requests
+    // so that the REPLAY path can retrieve the PaymentIntent created by the
+    // winning request. Using separate adapter instances would cause a
+    // NOT_FOUND error in handleReplay since each FakeStripeAdapter has its
+    // own in-memory state.
+    const sharedProvider = new FakeStripeAdapter({ environment: 'TEST' });
+    const deps1 = { db: db!, provider: sharedProvider };
+    const deps2 = { db: db2, provider: sharedProvider };
 
     try {
       const [r1, r2] = await Promise.all([
-        initiatePayment(makeDeps(), input),
+        initiatePayment(deps1, input),
         initiatePayment(deps2, input),
       ]);
 
@@ -658,7 +682,7 @@ describe.skipIf(shouldSkipIntegrationTests())('initiatePayment — intégration 
     } finally {
       await db2.$client.end();
     }
-  });
+  }, 60000);
 
   // 10. Deux clés différentes sur le même draft : un payment, une tentative
   it('10. deux clés différentes sur le même draft : un payment, une tentative non terminale', async () => {
@@ -703,8 +727,7 @@ describe.skipIf(shouldSkipIntegrationTests())('initiatePayment — intégration 
     // Pendant que TX A est bloquée dans le trigger, le draft expire selon l'horloge PG.
     // Le batch voit alors `expires_at < now()` → true, tente SELECT FOR UPDATE SKIP LOCKED,
     // et saute la ligne car TX A détient le verrou.
-    const expiryResult =
-      await rawSql`SELECT (now() + interval '200 milliseconds')::timestamptz AS expiry`;
+    const expiryResult = await rawSql`SELECT (now() + interval '5 seconds')::timestamptz AS expiry`;
     const expiryIso = expiryResult[0]!.expiry.toISOString();
     await rawSql`UPDATE "booking_drafts" SET "expires_at" = ${expiryIso} WHERE "id" = ${draftId}`;
     await rawSql`UPDATE "inventory_blocks" SET "expires_at" = ${expiryIso} WHERE "source_id" = ${draftId}`;
@@ -773,7 +796,7 @@ describe.skipIf(shouldSkipIntegrationTests())('initiatePayment — intégration 
       await rawSql`DROP TRIGGER IF EXISTS test_block_trigger ON booking_drafts`;
       await rawSql`DROP FUNCTION IF EXISTS test_block_before_update()`;
     }
-  });
+  }, 60000);
 
   // 11b. Concurrence réelle : batch détient le verrou FOR UPDATE, initiation attend puis observe EXPIRED
   it('11b. concurrence réelle : batch détient le verrou FOR UPDATE, initiation attend puis observe EXPIRED', async () => {

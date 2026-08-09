@@ -12,3 +12,7 @@ export * from './types';
 export * from './errors';
 export * from './stripe-adapter';
 export * from './controller-config';
+// Fake déterministe pour tests (ADR-010). Test-only — un guard runtime lève
+// si NODE_ENV === 'production'. Exporté pour permettre aux tests d'intégration
+// de apps/web de mocker `@/lib/stripe` avec un FakeStripeAdapter.
+export * from './fake-stripe-adapter';

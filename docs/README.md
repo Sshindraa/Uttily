@@ -4,6 +4,7 @@
 | --- | --- |
 | [Périmètre MVP](product/mvp-scope.md) | Ce qui est inclus, exclu et reporté. |
 | [Business plan et stratégie](product/business-plan.md) | Vision, positionnement, pilote, modèle économique et indicateurs. |
+| [Vision long terme](product/long-term-vision.md) | Option C : OS loueur, marketplace, intelligence et distribution agent-ready. |
 | [Architecture](architecture/overview.md) | Structure du système et trajectoire de croissance. |
 | [Réservation & disponibilité](architecture/booking-and-availability.md) | Règles de concurrence, holds et états. |
 | [Modèle de données](architecture/data-model.md) | Entités métier et responsabilités. |
@@ -15,6 +16,7 @@
 | [ADR-001](decisions/ADR-001-monolithe-modulaire.md) | Monolithe modulaire Next.js au départ. |
 | [ADR-002](decisions/ADR-002-professionnels-only.md) | Lancement réservé aux loueurs professionnels. |
 | [ADR-003](decisions/ADR-003-reservation-flow.md) | Allocation immédiate et hold temporaire. |
+| [ADR-019](decisions/ADR-019-ai-native-global-rental-infrastructure.md) | Direction stratégique AI-native et garde-fous durables. |
 
 ## Règle de maintenance
 

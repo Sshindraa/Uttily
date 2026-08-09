@@ -57,8 +57,10 @@ export async function applyProcessingProjection(
   const now = sql`transaction_timestamp()`;
 
   // Mettre à jour la tentative et le paiement en PROCESSING.
-  // P1-1 : persister providerPaymentIntentId s'il est présent dans piData
-  // et non déjà stocké (COALESCE pour ne pas écraser un ID existant).
+  // P1-1 : persister providerPaymentIntentId depuis piData.id s'il n'est pas déjà stocké.
+  // COALESCE retourne la première valeur non NULL : si provider_payment_intent_id existe,
+  // on le garde ; sinon on utilise piData.id. Cela garantit qu'on n'écrase jamais un ID
+  // existant avec null.
   await tx
     .update(paymentAttempts)
     .set({

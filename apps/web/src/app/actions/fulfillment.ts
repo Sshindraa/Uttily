@@ -1,0 +1,330 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { requireFulfillmentOperatorOf } from '@/lib/fulfillment-auth';
+import { runAction } from '@/lib/action-mapper';
+import { isValidUuid, isOneOf } from '@/lib/validation';
+import {
+  prepareBooking,
+  pickupBooking,
+  returnBooking,
+  closeBooking,
+  createConditionReport,
+  createDamageReport,
+  CONDITION_REPORT_PHASES,
+  INVENTORY_CONDITIONS,
+  type FulfillmentTransitionResult,
+  type ConditionReportResult,
+  type DamageReportResult,
+  type ConditionReportPhase,
+  type InventoryCondition,
+} from '@uttily/core';
+import type { ActionResult } from '@uttily/contracts';
+import type { ParsedFailure } from './parsers';
+
+const MAX_NOTES_LENGTH = 5000;
+const MAX_DESCRIPTION_LENGTH = 5000;
+const MAX_IDEMPOTENCY_KEY_LENGTH = 200;
+
+function parseTransitionForm(
+  formData: FormData,
+): ParsedFailure | { bookingId: string; idempotencyKey: string } {
+  const fieldErrors: Record<string, string> = {};
+  const bookingId = String(formData.get('bookingId') ?? '');
+  const idempotencyKey = String(formData.get('idempotencyKey') ?? '').trim();
+
+  if (!isValidUuid(bookingId)) fieldErrors.bookingId = 'Réservation invalide.';
+  if (idempotencyKey.length < 1) {
+    fieldErrors.idempotencyKey = "La clé d'idempotence est requise.";
+  }
+  if (idempotencyKey.length > MAX_IDEMPOTENCY_KEY_LENGTH) {
+    fieldErrors.idempotencyKey = `La clé ne doit pas dépasser ${MAX_IDEMPOTENCY_KEY_LENGTH} caractères.`;
+  }
+
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+  return { bookingId, idempotencyKey };
+}
+
+function parseConditionReportForm(formData: FormData):
+  | ParsedFailure
+  | {
+      bookingId: string;
+      bookingItemId: string;
+      phase: ConditionReportPhase;
+      condition: InventoryCondition;
+      notes: string | null;
+      idempotencyKey: string;
+    } {
+  const fieldErrors: Record<string, string> = {};
+  const bookingId = String(formData.get('bookingId') ?? '');
+  const bookingItemId = String(formData.get('bookingItemId') ?? '');
+  const phaseRaw = String(formData.get('phase') ?? '').trim();
+  const conditionRaw = String(formData.get('condition') ?? '').trim();
+  const notesRaw = String(formData.get('notes') ?? '').trim();
+  const idempotencyKey = String(formData.get('idempotencyKey') ?? '').trim();
+
+  if (!isValidUuid(bookingId)) fieldErrors.bookingId = 'Réservation invalide.';
+  if (!isValidUuid(bookingItemId))
+    fieldErrors.bookingItemId = 'Exemplaire de réservation invalide.';
+
+  let phase: ConditionReportPhase;
+  if (isOneOf(phaseRaw, CONDITION_REPORT_PHASES)) {
+    phase = phaseRaw;
+  } else {
+    fieldErrors.phase = 'Phase invalide.';
+  }
+  // Après le early return sur fieldErrors, phase est nécessairement assigné.
+  // L'assertion d'assignation définitive rassure le contrôle de flux TypeScript.
+  const phaseValue: ConditionReportPhase = phase!;
+
+  let condition: InventoryCondition;
+  if (isOneOf(conditionRaw, INVENTORY_CONDITIONS)) {
+    condition = conditionRaw;
+  } else {
+    fieldErrors.condition = 'État invalide.';
+  }
+  const conditionValue: InventoryCondition = condition!;
+
+  if (idempotencyKey.length < 1) fieldErrors.idempotencyKey = "La clé d'idempotence est requise.";
+  if (idempotencyKey.length > MAX_IDEMPOTENCY_KEY_LENGTH)
+    fieldErrors.idempotencyKey = `La clé ne doit pas dépasser ${MAX_IDEMPOTENCY_KEY_LENGTH} caractères.`;
+  const notes = notesRaw.length === 0 ? null : notesRaw;
+  if (notes !== null && notes.length > MAX_NOTES_LENGTH)
+    fieldErrors.notes = `Les notes ne doivent pas dépasser ${MAX_NOTES_LENGTH} caractères.`;
+
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+  return {
+    bookingId,
+    bookingItemId,
+    phase: phaseValue,
+    condition: conditionValue,
+    notes,
+    idempotencyKey,
+  };
+}
+
+function parseDamageReportForm(formData: FormData):
+  | ParsedFailure
+  | {
+      bookingId: string;
+      bookingItemId: string;
+      description: string;
+      idempotencyKey: string;
+    } {
+  const fieldErrors: Record<string, string> = {};
+  const bookingId = String(formData.get('bookingId') ?? '');
+  const bookingItemId = String(formData.get('bookingItemId') ?? '');
+  const description = String(formData.get('description') ?? '').trim();
+  const idempotencyKey = String(formData.get('idempotencyKey') ?? '').trim();
+
+  if (!isValidUuid(bookingId)) fieldErrors.bookingId = 'Réservation invalide.';
+  if (!isValidUuid(bookingItemId))
+    fieldErrors.bookingItemId = 'Exemplaire de réservation invalide.';
+  if (description.length < 1) fieldErrors.description = 'La description est requise.';
+  if (description.length > MAX_DESCRIPTION_LENGTH)
+    fieldErrors.description = `La description ne doit pas dépasser ${MAX_DESCRIPTION_LENGTH} caractères.`;
+  if (idempotencyKey.length < 1) fieldErrors.idempotencyKey = "La clé d'idempotence est requise.";
+  if (idempotencyKey.length > MAX_IDEMPOTENCY_KEY_LENGTH)
+    fieldErrors.idempotencyKey = `La clé ne doit pas dépasser ${MAX_IDEMPOTENCY_KEY_LENGTH} caractères.`;
+
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+  return { bookingId, bookingItemId, description, idempotencyKey };
+}
+
+export async function prepareBookingAction(
+  organizationId: string,
+  _prev: ActionResult<FulfillmentTransitionResult>,
+  formData: FormData,
+): Promise<ActionResult<FulfillmentTransitionResult>> {
+  const parsed = parseTransitionForm(formData);
+  if ('fieldErrors' in parsed) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Veuillez corriger les erreurs.',
+      fieldErrors: parsed.fieldErrors,
+    };
+  }
+  return runAction(async () => {
+    const {
+      db,
+      user,
+      organizationId: authorizedOrgId,
+    } = await requireFulfillmentOperatorOf(organizationId);
+    const result = await prepareBooking(db, {
+      organizationId: authorizedOrgId,
+      bookingId: parsed.bookingId,
+      actorUserId: user.id,
+      idempotencyKey: parsed.idempotencyKey,
+    });
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations/${parsed.bookingId}`);
+    return result;
+  });
+}
+
+export async function pickupBookingAction(
+  organizationId: string,
+  _prev: ActionResult<FulfillmentTransitionResult>,
+  formData: FormData,
+): Promise<ActionResult<FulfillmentTransitionResult>> {
+  const parsed = parseTransitionForm(formData);
+  if ('fieldErrors' in parsed) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Veuillez corriger les erreurs.',
+      fieldErrors: parsed.fieldErrors,
+    };
+  }
+  return runAction(async () => {
+    const {
+      db,
+      user,
+      organizationId: authorizedOrgId,
+    } = await requireFulfillmentOperatorOf(organizationId);
+    const result = await pickupBooking(db, {
+      organizationId: authorizedOrgId,
+      bookingId: parsed.bookingId,
+      actorUserId: user.id,
+      idempotencyKey: parsed.idempotencyKey,
+    });
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations/${parsed.bookingId}`);
+    return result;
+  });
+}
+
+export async function returnBookingAction(
+  organizationId: string,
+  _prev: ActionResult<FulfillmentTransitionResult>,
+  formData: FormData,
+): Promise<ActionResult<FulfillmentTransitionResult>> {
+  const parsed = parseTransitionForm(formData);
+  if ('fieldErrors' in parsed) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Veuillez corriger les erreurs.',
+      fieldErrors: parsed.fieldErrors,
+    };
+  }
+  return runAction(async () => {
+    const {
+      db,
+      user,
+      organizationId: authorizedOrgId,
+    } = await requireFulfillmentOperatorOf(organizationId);
+    const result = await returnBooking(db, {
+      organizationId: authorizedOrgId,
+      bookingId: parsed.bookingId,
+      actorUserId: user.id,
+      idempotencyKey: parsed.idempotencyKey,
+    });
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations/${parsed.bookingId}`);
+    return result;
+  });
+}
+
+export async function closeBookingAction(
+  organizationId: string,
+  _prev: ActionResult<FulfillmentTransitionResult>,
+  formData: FormData,
+): Promise<ActionResult<FulfillmentTransitionResult>> {
+  const parsed = parseTransitionForm(formData);
+  if ('fieldErrors' in parsed) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Veuillez corriger les erreurs.',
+      fieldErrors: parsed.fieldErrors,
+    };
+  }
+  return runAction(async () => {
+    const {
+      db,
+      user,
+      organizationId: authorizedOrgId,
+    } = await requireFulfillmentOperatorOf(organizationId);
+    const result = await closeBooking(db, {
+      organizationId: authorizedOrgId,
+      bookingId: parsed.bookingId,
+      actorUserId: user.id,
+      idempotencyKey: parsed.idempotencyKey,
+    });
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations/${parsed.bookingId}`);
+    return result;
+  });
+}
+
+export async function createConditionReportAction(
+  organizationId: string,
+  _prev: ActionResult<ConditionReportResult>,
+  formData: FormData,
+): Promise<ActionResult<ConditionReportResult>> {
+  const parsed = parseConditionReportForm(formData);
+  if ('fieldErrors' in parsed) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Veuillez corriger les erreurs.',
+      fieldErrors: parsed.fieldErrors,
+    };
+  }
+  return runAction(async () => {
+    const {
+      db,
+      user,
+      organizationId: authorizedOrgId,
+    } = await requireFulfillmentOperatorOf(organizationId);
+    const result = await createConditionReport(db, {
+      organizationId: authorizedOrgId,
+      bookingId: parsed.bookingId,
+      bookingItemId: parsed.bookingItemId,
+      actorUserId: user.id,
+      idempotencyKey: parsed.idempotencyKey,
+      phase: parsed.phase,
+      condition: parsed.condition,
+      notes: parsed.notes,
+    });
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations/${parsed.bookingId}`);
+    return result;
+  });
+}
+
+export async function createDamageReportAction(
+  organizationId: string,
+  _prev: ActionResult<DamageReportResult>,
+  formData: FormData,
+): Promise<ActionResult<DamageReportResult>> {
+  const parsed = parseDamageReportForm(formData);
+  if ('fieldErrors' in parsed) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Veuillez corriger les erreurs.',
+      fieldErrors: parsed.fieldErrors,
+    };
+  }
+  return runAction(async () => {
+    const {
+      db,
+      user,
+      organizationId: authorizedOrgId,
+    } = await requireFulfillmentOperatorOf(organizationId);
+    const result = await createDamageReport(db, {
+      organizationId: authorizedOrgId,
+      bookingId: parsed.bookingId,
+      bookingItemId: parsed.bookingItemId,
+      actorUserId: user.id,
+      idempotencyKey: parsed.idempotencyKey,
+      description: parsed.description,
+    });
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations/${parsed.bookingId}`);
+    return result;
+  });
+}

@@ -56,9 +56,8 @@ beforeEach(async () => {
   // injoignable. Conservé par défense en profondeur.
   if (!ctx || !db) return;
   // Nettoie les tables entre les tests (ordre inverse des dépendances).
-  const { sql } = await import('drizzle-orm');
+  // audit_log est append-only (trigger bloquant UPDATE/DELETE) : non nettoyée.
   const {
-    auditLog,
     organizationInvitations,
     locationOpeningHours,
     locations,
@@ -66,14 +65,12 @@ beforeEach(async () => {
     organizations,
     users,
   } = await import('@uttily/database');
-  await db.delete(auditLog);
   await db.delete(organizationInvitations);
   await db.delete(locationOpeningHours);
   await db.delete(locations);
   await db.delete(organizationMemberships);
   await db.delete(organizations);
   await db.delete(users);
-  void sql;
 });
 
 async function createUser(

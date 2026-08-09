@@ -1,0 +1,22 @@
+export type PublicLabelLocale = 'fr' | 'en';
+
+const MVP_CATEGORY_LABELS_EN: Readonly<Record<string, string>> = {
+  equipment: 'Equipment',
+  surf: 'Surf',
+  paddle: 'Paddleboarding',
+  bike: 'Bikes',
+  ski: 'Ski & Snowboard',
+  camping: 'Camping & Outdoor',
+  climbing: 'Climbing',
+  diving: 'Diving',
+  other: 'Other',
+};
+
+/** Les slugs de la taxonomie MVP sont les clés stables de présentation. */
+export function getPublicCategoryLabel(
+  locale: PublicLabelLocale,
+  category: { slug: string; name: string },
+): string {
+  if (locale === 'fr') return category.name;
+  return MVP_CATEGORY_LABELS_EN[category.slug] ?? category.name;
+}

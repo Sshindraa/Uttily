@@ -35,8 +35,64 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
 | --- | --- | --- | --- |
 | `NODE_ENV` | `development` | `production` | |
 | `NEXT_PUBLIC_APP_NAME` | `Uttily` | `Uttily` | |
-| `DATABASE_URL` | `postgresql://...` | fournie par Neon | PostgreSQL + PostGIS |
+| `DATABASE_URL` | `postgresql://...` | fournie par Neon (endpoint **pooled**, hostname avec `-pooler`) | PostgreSQL + PostGIS. Connexion runtime distant : application Web et worker. Les tests unitaires n'utilisent aucune base. Les tests d'intégration PostgreSQL destructifs utilisent uniquement PostgreSQL local (garde-fou `assertLocalhost`). |
+| `DATABASE_DIRECT_URL` | `postgresql://...` (peut être identique à `DATABASE_URL` en local) | fournie par Neon (endpoint **direct**, hostname **sans** `-pooler`) | Réservée aux migrations Drizzle Kit et opérations administratives explicites. Jamais utilisée par le runtime. |
 | `CRON_SECRET` | `dev-cron-secret-local` | générée (voir ci-dessous) | Authentification du Cron d'expiration des holds (ADR-009 §18-19) |
+
+## Connexions Neon — pooled vs direct (G5G-C)
+
+Neon fournit deux endpoints par projet :
+
+- **Endpoint pooled** (hostname contenant `-pooler`) : utilise PgBouncer pour
+  multiplexer les connexions. Adapté au runtime (application Web, worker) qui
+  ouvre de nombreuses connexions courtes. **À utiliser pour `DATABASE_URL`.**
+- **Endpoint direct** (hostname **sans** `-pooler`) : connexion TCP directe au
+  Postgres. Requis pour Drizzle Kit (les migrations DDL ne supportent pas le
+  pooling de transactions). **À utiliser pour `DATABASE_DIRECT_URL`.**
+
+### Garde-fou `resolveMigrationUrl`
+
+Le helper `packages/database/src/resolve-migration-url.ts` résout l'URL de
+migration avec les règles suivantes :
+
+1. **`DATABASE_DIRECT_URL` prioritaire** si définie :
+   - hostname local → accepté (migration locale explicite) ;
+   - hostname distant **sans** `-pooler` → accepté (endpoint direct Neon) ;
+   - hostname distant **avec** `-pooler` → **rejet fail-closed** (les migrations
+     ne doivent pas passer par le pooler).
+2. **`DATABASE_URL` seule** (sans `DATABASE_DIRECT_URL`) :
+   - hostname local (`localhost`, `127.0.0.1`, `::1`) → accepté (développement
+     local historique) ;
+   - hostname distant → **rejet fail-closed** (risque d'utiliser le pooler pour
+     les migrations).
+3. **Aucune variable** → fallback localhost explicite
+   (`postgresql://uttily:uttily@localhost:5432/uttily`).
+
+Les messages d'erreur ne contiennent **jamais** l'URL, le mot de passe ou les
+credentials.
+
+### Garde-fou `assertLocalhost`
+
+Le helper `packages/database/src/assert-localhost.ts` interdit tout
+`DROP DATABASE` / `CREATE DATABASE` sur un hôte distant. Les tests
+d'intégration destructifs (`packages/core/src/integration/setup.ts`) ne peuvent
+cibler que `localhost`, `127.0.0.1` ou `::1`. Ce garde-fou n'est **pas**
+modifié par G5G-C et reste la protection principale contre les destructions
+accidentelles de bases distantes.
+
+### Environnement de développement actuel
+
+- **Neon Dev** : projet `Uttily-dev` (project ID non secret
+  `little-star-24391080`), région `aws-eu-central-1` (Frankfurt), PostgreSQL 16,
+  plan **Free**, Neon Auth désactivé.
+- **PostgreSQL local** (Docker Compose) reste la cible de tous les tests
+  d'intégration destructifs.
+- **Vercel / Neon / Resend payants** uniquement au lancement commercial
+  (ADR-014).
+- Aucune migration distante n'est exécutée implicitement par les tests.
+- La base Neon Dev ne contient **pas encore** le schéma Uttily : les migrations
+  seront appliquées dans une étape séparée, après configuration manuelle des
+  secrets.
 
 Les variables spécifiques (OIDC, Stripe, stockage objet, Sentry) seront
 documentées au fur et à mesure de leur introduction dans les lots concernés.

@@ -108,8 +108,8 @@ async function seedBaseData(
     RETURNING "id"
   `.then((r) => r[0]!);
   const location = await sql`
-    INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone")
-    VALUES (${org.id}, 'Annecy', ${'annecy-' + suffix}, 'Europe/Paris')
+    INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone", "operating_currency")
+    VALUES (${org.id}, 'Annecy', ${'annecy-' + suffix}, 'Europe/Paris', 'EUR')
     RETURNING "id"
   `.then((r) => r[0]!);
   const user = await sql`
@@ -475,7 +475,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
   // -------------------------------------------------------------------------
   // 1. Migration from scratch — toutes les tables Lot 5 existent
   // -------------------------------------------------------------------------
-  it('crée les 9 tables Lot 5 et __drizzle_migrations a 26 entrées', async () => {
+  it('crée les 9 tables Lot 5 et __drizzle_migrations a 34 entrées', async () => {
     if (!testUrl) return;
     const sql = postgres(testUrl, { max: 1 });
     try {
@@ -491,7 +491,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
       expect(lot5Tables.length).toBe(9);
 
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(26);
+      expect(rows.length).toBe(34);
     } finally {
       await sql.end();
     }
@@ -506,7 +506,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
     const sql = postgres(testUrl, { max: 1 });
     try {
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(26);
+      expect(rows.length).toBe(34);
     } finally {
       await sql.end();
     }
@@ -2075,8 +2075,8 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
       `.then((r) => r[0]!);
       // Crée un location dans orgB pour pouvoir créer un draft valide dans orgB.
       const locB = await sql`
-        INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone")
-        VALUES (${orgB.id}, 'Loc B', ${'loc-b-' + suffix}, 'Europe/Paris')
+        INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone", "operating_currency")
+        VALUES (${orgB.id}, 'Loc B', ${'loc-b-' + suffix}, 'Europe/Paris', 'EUR')
         RETURNING "id"
       `.then((r) => r[0]!);
       // Crée un brouillon valide dans orgB.
@@ -2263,8 +2263,8 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
         RETURNING "id"
       `.then((r) => r[0]!);
       const locationB = await sql`
-        INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone")
-        VALUES (${orgB.id}, 'Annecy B', ${'annecy-b-item-' + suffix}, 'Europe/Paris')
+        INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone", "operating_currency")
+        VALUES (${orgB.id}, 'Annecy B', ${'annecy-b-item-' + suffix}, 'Europe/Paris', 'EUR')
         RETURNING "id"
       `.then((r) => r[0]!);
       const category =
