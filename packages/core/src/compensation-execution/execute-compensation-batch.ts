@@ -30,7 +30,7 @@ import {
   validateBatchLimit,
   DEFAULT_BATCH_LIMIT,
   MAX_ATTEMPTS,
-  getBackoffInterval,
+  getBackoffIntervalSeconds,
 } from './scheduling';
 import { claimCompensationBatch } from './claim-compensation-batch';
 import { executeCompensation } from './execute-compensation';
@@ -41,16 +41,21 @@ import type {
   ClaimedCompensation,
 } from './types';
 
+type MarkOutboxProcessedOutcome = 'processed' | 'lease_lost' | 'error';
+
 /**
  * Marque un événement outbox comme PROCESSED (refund déjà soumis, replay).
  * Conditionné sur lease_token pour ne pas effacer le lease d'un autre worker.
+ *
+ * P2-5 : retourne un statut pour que l'appelant n'incrémente le compteur que
+ * si l'opération a réellement réussi.
  */
 async function markOutboxProcessed(
   db: DatabaseClient,
   claimed: ClaimedCompensation,
-): Promise<void> {
+): Promise<MarkOutboxProcessedOutcome> {
   try {
-    await db.transaction(async (tx) => {
+    return await db.transaction(async (tx): Promise<MarkOutboxProcessedOutcome> => {
       // P1-3 : RETURNING-gated — si 0 ligne, la lease n'appartient plus à ce
       // worker : no-op silencieux acceptable (le successeur s'en occupe).
       const updatedRows = await tx.execute(sql`
@@ -64,31 +69,49 @@ async function markOutboxProcessed(
         RETURNING "id"
       `);
       if ((updatedRows as unknown as Array<{ id: string }>).length === 0) {
-        return;
+        return 'lease_lost';
       }
+      return 'processed';
     });
-  } catch {
-    // Best-effort : si la tx échoue, le lease expirera naturellement.
+  } catch (error) {
+    // P2-4 : Best-effort — si la tx échoue, le lease expirera naturellement.
+    console.warn(
+      JSON.stringify({
+        event: 'compensation.mark_outbox_processed_error',
+        outboxEventId: claimed.outboxEventId,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+    return 'error';
   }
 }
+
+type RescheduleOutboxOutcome = 'rescheduled' | 'lease_lost' | 'error';
 
 /**
  * Reschedule un événement outbox avec backoff exponentiel.
  * Incrémente attempt_count, available_at = now() + backoff, remet PENDING,
  * lease_token = NULL, lease_until = NULL.
  * Conditionné sur lease_token (P1-2).
+ *
+ * P2-5 : retourne un statut pour que l'appelant n'incrémente le compteur que
+ * si l'opération a réellement réussi.
  */
-async function rescheduleOutbox(db: DatabaseClient, claimed: ClaimedCompensation): Promise<void> {
+async function rescheduleOutbox(
+  db: DatabaseClient,
+  claimed: ClaimedCompensation,
+): Promise<RescheduleOutboxOutcome> {
   try {
-    const backoff = getBackoffInterval(claimed.attemptCount);
-    await db.transaction(async (tx) => {
+    const backoffSeconds = getBackoffIntervalSeconds(claimed.attemptCount);
+    return await db.transaction(async (tx): Promise<RescheduleOutboxOutcome> => {
       // P1-3 : RETURNING-gated — si 0 ligne, la lease n'appartient plus à ce
       // worker : no-op silencieux acceptable (le successeur s'en occupe).
+      // P2-1 : backoff en paramètre bindé (pas de sql.raw).
       const updatedRows = await tx.execute(sql`
         UPDATE "outbox_events"
         SET "status" = 'PENDING',
             "attempt_count" = "attempt_count" + 1,
-            "available_at" = transaction_timestamp() + ${sql.raw(backoff)},
+            "available_at" = transaction_timestamp() + make_interval(secs => ${backoffSeconds}),
             "lease_token" = NULL,
             "lease_until" = NULL
         WHERE "id" = ${claimed.outboxEventId}::uuid
@@ -96,11 +119,21 @@ async function rescheduleOutbox(db: DatabaseClient, claimed: ClaimedCompensation
         RETURNING "id"
       `);
       if ((updatedRows as unknown as Array<{ id: string }>).length === 0) {
-        return;
+        return 'lease_lost';
       }
+      return 'rescheduled';
     });
-  } catch {
-    // Best-effort : si la tx échoue, le lease expirera naturellement.
+  } catch (error) {
+    // P2-4 : Best-effort — si la tx échoue, le lease expirera naturellement.
+    console.warn(
+      JSON.stringify({
+        event: 'compensation.reschedule_outbox_error',
+        outboxEventId: claimed.outboxEventId,
+        attemptCount: claimed.attemptCount,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+    return 'error';
   }
 }
 
@@ -117,15 +150,23 @@ type MarkOutboxFailedOutcome = 'processed' | 'failed' | 'lease_lost';
  * avec la Phase 3 du worker (execute-compensation.ts) et l'ADR-010 §10 —
  * l'ordre inverse (refunds → outbox_events) créait un deadlock potentiel.
  *
- * Si le refund est déjà SUCCEEDED (projeté par le webhook malgré une erreur
- * provider durable ou ambiguë), l'outbox devient PROCESSED — JAMAIS FAILED —
- * et aucune alerte d'échec n'est émise (log informatif à la place). Sinon,
- * comportement habituel : outbox FAILED + refund FAILED monotone.
+ * Si le refund est déjà SUCCEEDED ou SUBMITTED (projeté par le webhook ou
+ * soumis par le worker malgré une erreur provider durable ou ambiguë),
+ * l'outbox devient PROCESSED — JAMAIS FAILED — et aucune alerte d'échec n'est
+ * émise (log informatif à la place). Sinon, comportement habituel : outbox
+ * FAILED + refund FAILED monotone (uniquement quand terminalRefund est true).
+ *
+ * P1-1 : un échec interne outbox (payload malformé, métadonnées incohérentes,
+ * max attempts) ne doit PAS terminaliser le refund FAILED — le refund a pu
+ * être soumis à Stripe et le webhook doit pouvoir projeter le statut final.
+ * Seuls les refus Stripe durables (createRefund a échoué) justifient de
+ * terminaliser le refund (terminalRefund: true).
  */
 async function markOutboxFailed(
   db: DatabaseClient,
   claimed: ClaimedCompensation,
   failureCode: string,
+  options: { terminalRefund: boolean },
 ): Promise<MarkOutboxFailedOutcome> {
   try {
     return await db.transaction(async (tx): Promise<MarkOutboxFailedOutcome> => {
@@ -155,14 +196,18 @@ async function markOutboxFailed(
       `);
       const lockedRefund = (refundRows as unknown as Array<{ id: string; status: string }>)[0];
 
-      // P1-3 : Refund SUCCEEDED — le remboursement a abouti côté provider et
-      // a été projeté par le webhook. L'outbox est PROCESSED, jamais FAILED ;
-      // pas d'UPDATE refund, pas d'alerte d'échec. L'outbox est déjà verrouillé
-      // par le FOR UPDATE ci-dessus — pas besoin de RETURNING pour le fencing.
-      if (lockedRefund !== undefined && lockedRefund.status === 'SUCCEEDED') {
+      // P1-2 : Refund SUCCEEDED ou SUBMITTED — le remboursement a abouti ou a
+      // été accepté côté provider (createRefund a réussi) et projeté/persisté.
+      // L'outbox est PROCESSED, jamais FAILED ; pas d'UPDATE refund, pas
+      // d'alerte d'échec. L'outbox est déjà verrouillé par le FOR UPDATE
+      // ci-dessus — pas besoin de RETURNING pour le fencing.
+      if (
+        lockedRefund !== undefined &&
+        (lockedRefund.status === 'SUCCEEDED' || lockedRefund.status === 'SUBMITTED')
+      ) {
         console.info(
           JSON.stringify({
-            event: 'compensation.refund_already_succeeded',
+            event: 'compensation.refund_already_submitted_or_succeeded',
             outboxEventId: claimed.outboxEventId,
             refundId: lockedRefund.id,
           }),
@@ -189,22 +234,36 @@ async function markOutboxFailed(
         WHERE "id" = ${claimed.outboxEventId}::uuid
       `);
 
-      // Marquer le refund FAILED avec failure_code.
+      // P1-1 : Marquer le refund FAILED avec failure_code uniquement pour les
+      // refus Stripe durables (terminalRefund: true). Un échec interne outbox
+      // (payload malformé, métadonnées incohérentes, max attempts) ne doit pas
+      // terminaliser le refund — il a pu être soumis à Stripe et le webhook
+      // doit pouvoir projeter le statut final.
       // P1-3 : UPDATE monotone — ne jamais régresser un statut terminal
       // (SUCCEEDED/FAILED projeté par le webhook ou un successeur).
-      await tx.execute(sql`
-        UPDATE "refunds"
-        SET "status" = 'FAILED',
-            "failed_at" = transaction_timestamp(),
-            "failure_code" = ${failureCode},
-            "updated_at" = transaction_timestamp()
-        WHERE "provider_idempotency_key" = ${claimed.refundIdempotencyKey}
-          AND "status" NOT IN ('SUCCEEDED', 'FAILED')
-      `);
+      if (options.terminalRefund) {
+        await tx.execute(sql`
+          UPDATE "refunds"
+          SET "status" = 'FAILED',
+              "failed_at" = transaction_timestamp(),
+              "failure_code" = ${failureCode},
+              "updated_at" = transaction_timestamp()
+          WHERE "provider_idempotency_key" = ${claimed.refundIdempotencyKey}
+            AND "status" NOT IN ('SUCCEEDED', 'FAILED')
+        `);
+      }
       return 'failed';
     });
-  } catch {
-    // Best-effort : si la tx échoue, le lease expirera naturellement.
+  } catch (error) {
+    // P2-3 : Best-effort — si la tx échoue, le lease expirera naturellement.
+    console.warn(
+      JSON.stringify({
+        event: 'compensation.mark_outbox_failed_error',
+        outboxEventId: claimed.outboxEventId,
+        failureCode,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
     return 'lease_lost';
   }
 }
@@ -282,7 +341,9 @@ export async function executeCompensationBatch(
           outboxEventId: claimed.outboxEventId,
         }),
       );
-      const malformedOutcome = await markOutboxFailed(db, claimed, 'PAYLOAD_MALFORMED');
+      const malformedOutcome = await markOutboxFailed(db, claimed, 'PAYLOAD_MALFORMED', {
+        terminalRefund: false,
+      });
       if (malformedOutcome === 'failed') {
         result.failedCount++;
         result.anomalies.push({ outboxEventId: claimed.outboxEventId, code: 'PAYLOAD_MALFORMED' });
@@ -301,8 +362,12 @@ export async function executeCompensationBatch(
         switch (error.code) {
           case 'REFUND_ALREADY_SUBMITTED':
             // Le refund a déjà été soumis (replay). Marquer outbox PROCESSED.
-            await markOutboxProcessed(db, claimed);
-            result.submittedCount++;
+            {
+              const processedOutcome = await markOutboxProcessed(db, claimed);
+              if (processedOutcome === 'processed') {
+                result.submittedCount++;
+              }
+            }
             break;
           case 'REFUND_ALREADY_FAILED': {
             // P1-4 : Le refund est déjà FAILED — remboursement non abouti.
@@ -314,7 +379,9 @@ export async function executeCompensationBatch(
                 code: error.code,
               }),
             );
-            const alreadyFailedOutcome = await markOutboxFailed(db, claimed, error.code);
+            const alreadyFailedOutcome = await markOutboxFailed(db, claimed, error.code, {
+              terminalRefund: false,
+            });
             if (alreadyFailedOutcome === 'failed') {
               result.failedCount++;
               result.anomalies.push({ outboxEventId: claimed.outboxEventId, code: error.code });
@@ -346,7 +413,9 @@ export async function executeCompensationBatch(
             // Anomalie de cohérence : marquer FAILED, pas de retry.
             // P1-3 : si le refund est déjà SUCCEEDED (projeté par le webhook),
             // markOutboxFailed résout en PROCESSED — compter alreadySucceeded, pas failed.
-            const anomalyOutcome = await markOutboxFailed(db, claimed, error.code);
+            const anomalyOutcome = await markOutboxFailed(db, claimed, error.code, {
+              terminalRefund: false,
+            });
             if (anomalyOutcome === 'failed') {
               console.warn(
                 JSON.stringify({
@@ -372,13 +441,15 @@ export async function executeCompensationBatch(
         // P1-3 : si le refund est déjà SUCCEEDED (projeté par le webhook malgré
         // l'erreur), l'outbox devient PROCESSED — jamais FAILED, pas d'anomalie.
         const failureCode = error.providerErrorCode ?? 'STRIPE_REFUSAL';
-        const refusalOutcome = await markOutboxFailed(db, claimed, failureCode);
+        const refusalOutcome = await markOutboxFailed(db, claimed, failureCode, {
+          terminalRefund: true,
+        });
         if (refusalOutcome === 'failed') {
           console.warn(
             JSON.stringify({
               event: 'compensation.stripe_refusal',
               outboxEventId: claimed.outboxEventId,
-              failureCode,
+              code: failureCode,
             }),
           );
           result.failedCount++;
@@ -392,7 +463,9 @@ export async function executeCompensationBatch(
         // api_connection_error, timeout, api_error) ou erreur technique
         // générique : rescheduler avec backoff.
         if (claimed.attemptCount + 1 >= MAX_ATTEMPTS) {
-          const maxAttemptsOutcome = await markOutboxFailed(db, claimed, 'MAX_ATTEMPTS_EXCEEDED');
+          const maxAttemptsOutcome = await markOutboxFailed(db, claimed, 'MAX_ATTEMPTS_EXCEEDED', {
+            terminalRefund: false,
+          });
           if (maxAttemptsOutcome === 'failed') {
             console.warn(
               JSON.stringify({
@@ -411,8 +484,10 @@ export async function executeCompensationBatch(
             result.alreadySucceededCount++;
           }
         } else {
-          await rescheduleOutbox(db, claimed);
-          result.rescheduledCount++;
+          const rescheduleOutcome = await rescheduleOutbox(db, claimed);
+          if (rescheduleOutcome === 'rescheduled') {
+            result.rescheduledCount++;
+          }
         }
       }
     }

@@ -13,9 +13,64 @@ Ces sujets ne doivent pas être tranchés implicitement dans le code.
 | Taxes, facturation et rôle légal d'Uttily | Lot 5 / Stripe LIVE | Finance / juridique | Ouvert — nécessaire avant toute initiation réelle ; le résolveur Lot 5 doit produire `APPLIED` ou `NOT_APPLICABLE`, jamais conserver `UNDETERMINED` (ADR-010). |
 | Compensation des paiements confirmés tardivement | Stripe LIVE | Produit / paiement / juridique | Décision technique acceptée — remboursement intégral idempotent, inversion du transfert et restitution de la commission, sans réallocation. Restent à valider : délai/message client, frais Stripe et notifications (ADR-010). |
 | Catégories globales vs par organisation | Lot 2 | Produit / technique | Résolu — catégories globales (taxonomie partagée gérée par l'admin Uttily) |
-| Destination et partenaires pilotes confirmés | Lot 7 avant publication publique | Direction / commercial | Ouvert |
+| Destination et partenaires pilotes confirmés | Premier lancement public configuré | Direction / commercial | Résolu — France première activation, architecture mondiale, activation pays explicite fail-closed. ADR-017 révisé (2026-08-07) + ADR-018. La ville commerciale et les partenaires restent une réserve de lancement, non bloquante pour les fondations. |
 | Livraison ou retrait uniquement au pilote | Lot 1 | Produit | Résolu — retrait en établissement uniquement au MVP |
-| Langues initiales | Lot 7 | Produit | Ouvert |
+| Langues initiales | Lot 7 | Produit | Résolu — FR + EN dès le lancement. ADR-017 révisé (2026-08-07). Le contenu rédigé par les loueurs n'est pas automatiquement traduit ; le traitement du contenu manquant dans une langue reste à préciser. |
+| Rôles autorisés pour les opérations terrain (préparer, remettre, réceptionner) | Lot 6 use cases | Produit / technique | Résolu — ADR-011 §8 : tous les membres actifs (OWNER, ADMIN, MANAGER, STAFF) autorisés pour le MVP |
+| Annulation autorisée après READY_FOR_PICKUP ? | Lot 6 use cases | Produit / juridique | Ouvert |
+| Quels statuts opérationnels peuvent passer à REFUNDED ? | Lot 6 use cases | Produit / juridique | Ouvert |
+| Relation exacte entre CANCELLED et REFUNDED | Lot 6 use cases | Produit / juridique | Ouvert |
+| Traitement du no-show (client ne se présente pas au retrait) | Lot 6 use cases | Produit / juridique | Ouvert |
+| Renforcement de l'invariant append-only de audit_log en base (trigger PostgreSQL) | Lot 6 groupe ultérieur | Technique | **Résolu par ADR-016 (Accepted)** — Option A acceptée : FK `ON DELETE RESTRICT` + trigger bloquant UPDATE/DELETE sur `audit_log`. Implémentée dans G5J-B (migration 0030, trigger, tests dédiés). Le MVP ne prend en charge que le soft-delete utilisateur ; toute suppression dure est hors périmètre. |
+| Politique RGPD de suppression/anonymisation des utilisateurs (hard-delete, webhook Clerk `user.deleted`) | Avant tout hard-delete ou lancement production | Produit / juridique | Ouvert — ne bloque pas G5J-B (le MVP n'utilise que le soft-delete). Bloque tout futur hard-delete, webhook Clerk `user.deleted` destructif, ou lancement production sans politique de rétention. Ne remet pas en cause le soft-delete du MVP ni l'Option A d'ADR-016. Si un hard-delete devient nécessaire : (1) refuser la suppression si des entrées d'audit existent (comportement Option A), (2) anonymiser `actor_user_id` via snapshot/pseudonymisation (nouvel ADR ou amendement), ou (3) supprimer les entrées d'audit (violation append-only, non recommandé). |
+
+## G7B — Réserves après gel du contrat MVP
+
+| Sujet | Décision nécessaire avant | Propriétaire | Statut |
+| --- | --- | --- | --- |
+| Ville commerciale (premier lancement public configuré en France) | Premier lancement public configuré et son contenu | Direction / commercial | Ouvert — bloque ce premier lancement/contenu public configuré, pas les fondations G7C-R3–G7H. Recontextualisé : France première activation, architecture mondiale, activation pays explicite fail-closed. |
+| Publication juridique des termes | Publication des termes et activation production G7F | Juridique / produit | Ouvert — bloque les termes publics et l'activation production G7F, pas le socle G7C–G7E. Aucune validation juridique n'est affirmée. |
+| Consentement, rétention et agrégation analytics | Activation production G7H | Juridique / privacy / produit | Ouvert — bloque la seule activation production G7H, pas G7C–G7G. Aucune validation privacy ou juridique n'est affirmée. |
+| Images publiques : CDN/vendor, limites finales et politique d'upload | Livraison réelle d'images ou upload G7F | Technique / produit | Ouvert — bloque seulement la livraison réelle d'images et l'upload G7F, pas G7C ; trois photos minimum obligatoires avant visibilité publique ; le fallback peut être utilisé uniquement dans le dashboard, pendant un brouillon ou lors d'une erreur technique d'affichage ; il ne permet jamais de publier une offre qui possède moins de trois photos valides ; le gating est vérifié lors de la publication et dans la requête publique ; la meilleure stratégie PostgreSQL/transactionnelle sera définie en G7F-A. **Limites techniques verrouillées pour G7F-A2** (ADR-020 §F.2) : JPEG/PNG/WebP, 10 MB max, 200–8000 px. Ajustables par migration future. |
+| Workflow complet de maintenance | Futur workflow de maintenance | Produit / opérations | Ouvert — ne bloque pas le signal minimal G7G ; bloque seulement le workflow de maintenance ultérieur. |
+
+## G7B-R3 — Questions ouvertes après arbitrage produit (2026-08-07)
+
+| Sujet | Décision nécessaire avant | Propriétaire | Statut |
+| --- | --- | --- | --- |
+| Traduction du contenu libre des loueurs (FR+EN) | G7E/G7F affichage multilingue | Produit | Ouvert — bloque G7E/G7F affichage multilingue. Aucune traduction automatique opaque. |
+| Fournisseur de géocodage final et droits de stockage/cache | G7D/G7E géocodage réel | Technique / juridique | Ouvert — bloque G7D/G7E géocodage réel. Geoapify candidat recommandé, validation contractuelle/privacy requise. |
+| Paramètres internes de l'élargissement géographique (seuils viewport, calibration) | G7D calibration | Technique / produit | Ouvert — bloque G7D calibration. Seuils configurables, calibration avec données réelles. |
+| Règles juridiques exactes des annulations horaires (30 min) | Activation production G7P-B/G7D | Juridique / produit | Ouvert — bloque activation production. Fenêtre gratuite de 30 min après confirmation si début ≥ 2 h, validation juridique requise. |
+| Modification d'une réservation entraînant un changement de prix | G7P-B modifications | Produit / paiement / juridique | Ouvert — bloque G7P-B modifications. Conception paiement/remboursement séparée requise avant implémentation. |
+| Futures devises et conversion | Activation pays hors EUR | Produit / finance / juridique | Ouvert — bloque activation pays hors EUR. Architecture monétaire compatible, aucune conversion au lancement. |
+| Fiscalité par pays | Activation pays hors France | Finance / juridique | Ouvert — bloque activation pays hors France. |
+| Limites et traitement technique des images | G7F-A2/G7F-B | Technique / produit | **Partiellement résolu pour G7F-A2** — limites techniques verrouillées pour G7F-A2 (ADR-020 §F.2) : JPEG/PNG/WebP, byte_size > 0 AND <= 10485760 (10 MB), dimensions 200–8000 px, implémentées via CHECK constraints nullables. Ajustables par migration future. Règles qualité produit (modération, cadrage, re-encoding EXIF) reportées à G7F-B. Trois photos obligatoires avant publication, consignes par catégorie reportées à G7F-B. |
+| Règles détaillées des forfaits traversant minuit | G7P-A | Produit / technique | Ouvert — bloque G7P-A si non résolu. |
+
+## G5A — Documents transactionnels
+
+Questions ouvertes issues de l'ADR-013 (groupe de décision et de conception uniquement). Toutes doivent être résolues avant l'implémentation des groupes G5B à G5F.
+
+| Sujet | Décision nécessaire avant | Propriétaire | Statut |
+| --- | --- | --- | --- |
+| Statut légal du « reçu » et distinction avec une facture fiscale | G5C / G5D | Finance / juridique | Ouvert — le reçu atteste d'un encaissement mais ne constitue pas une facture fiscale ; la frontière exacte et les mentions obligatoires doivent être définies. |
+| Identité légale de l'émetteur des documents (Uttily vs loueur) | G5B / G5C | Direction / juridique | Ouvert — détermine le SIRET, RCS et mentions légales affichés sur la confirmation, le contrat et le reçu. |
+| Mentions contractuelles obligatoires dans le contrat de location | G5C | Juridique | Ouvert — clauses de responsabilité, assurance, caution, procédure en cas de dommage, juridiction compétente. |
+| Politique de numérotation des documents (séquentiel, UUID, format lisible) | G5B / G5C | Produit / technique | Ouvert — les documents portent un identifiant lisible par le client ; le format et la séquence restent à définir. |
+| Durée de conservation des documents (RGPD) | G5D | Juridique | Ouvert — rétention minimale légale, droit à l'effacement, politique d'expiration des binaires dans le stockage objet. |
+| Fournisseur de stockage objet (S3, Supabase Storage, etc.) | G5D | Technique | **Résolu par ADR-014** — Cloudflare R2, juridiction `eu`, bucket privé, API compatible S3. Les adapters R2 (`apps/worker/src/adapters/r2-object-storage.ts`) et Resend (`apps/worker/src/adapters/resend-transactional-email-sender.ts`) sont implémentés et testés, et câblés dans `createWorkerDependenciesFromEnv` depuis G5H-C2C-B3. |
+| Fournisseur d'email transactionnel (Resend, Postmark, SES, etc.) | G5E | Technique | **Résolu par ADR-014** — Resend (Resend Pro pour le lancement commercial ; Free en dev/staging). Les adapters R2 (`apps/worker/src/adapters/r2-object-storage.ts`) et Resend (`apps/worker/src/adapters/resend-transactional-email-sender.ts`) sont implémentés et testés, et câblés dans `createWorkerDependenciesFromEnv` depuis G5H-C2C-B3. |
+| Besoin de signature électronique pour le contrat | G5C / G5D | Juridique / produit | Ouvert — détermine si le contrat nécessite une signature qualifiée, avancée ou simple, et le fournisseur associé. |
+| Politique de téléchargement et durée des URLs signées | G5D | Produit / juridique | Ouvert — durée de validité des URLs signées, nombre de téléchargements autorisés, accès hors ligne. |
+| Mentions TVA sur le reçu (si taxStatus = APPLIED) | G5C / G5D | Finance / juridique | Ouvert — dépend de la décision fiscale globale (cf. question « Taxes, facturation et rôle légal d'Uttily ») ; le reçu n'est pas une facture mais peut devoir afficher le taux. |
+| Logo et branding sur les documents | G5C | Produit | Ouvert — branding Uttily, branding loueur, ou co-branding ; assets graphiques et charte. |
+| Conditions générales de vente/usage à inclure dans la confirmation | G5C | Juridique / produit | Ouvert — inclusion intégrale, résumé ou référence ; version et lien persistant. |
+| Données à figer au moment de BOOKING_CONFIRMED vs au premier traitement du worker | G5B/G5C | Technique/produit | Ouvert — déterminer si certaines données doivent être snapshotées dans la transaction de confirmation plutôt qu'au premier traitement du worker. |
+| Exigence d'idempotence du fournisseur email | G5E | Technique | **Résolu par ADR-014 + G5H-C1 (ADR-013 §13)** — Resend supporte `providerIdempotencyKey` nativement dans sa fenêtre documentée de 24 h (même clé + même payload → même email id ; payload différent → 409 `invalid_idempotent_request` ; concurrent → 409 `concurrent_idempotent_requests` temporaire). Politique validée et conçue finalement dans G5H-C1 : retry automatique strictement < 23 h (cutoff `PROVIDER_IDEMPOTENCY_WINDOW_SECONDS = 82 800`), puis fail-closed avec état `REQUIRES_MANUAL_REVIEW` et intervention manuelle. **Retry idempotent des résultats `UNCERTAIN` < 23 h clarifié** : un résultat incertain avec âge < 23 h ET `attempts < MAX_ATTEMPTS` est retryé automatiquement avec exactement la même `providerIdempotencyKey` et le même payload (Resend déduplique dans la fenêtre 24 h). `REQUIRES_MANUAL_REVIEW` n'est atteint que si âge ≥ 23 h (cutoff, `failure_code = 'EMAIL_RETRY_WINDOW_EXPIRED'`) ou `MAX_ATTEMPTS` atteint avec résultat incertain (`failure_code = 'PROVIDER_RESULT_UNCERTAIN'`, jamais `FAILED` car l'envoi peut avoir réussi). Contrat Core `EmailSendResult` (discriminated union) verrouillé avec try/catch défensif dans le pipeline Core. **Migration 0029 unique transactionnelle** livrée (G5H-C2A) (remplacement contrôlé des enums via rename + recreate + cast texte + drop old dans une seule migration — cible PostgreSQL 16, journal 28 → 29 migrations PAS 30, découpage en deux fichiers interdit car le runner Drizzle drizzle-orm 0.36.4 exécute toutes les migrations en attente dans une transaction commune). **Budget de retry email séparé** : basé exclusivement sur `outbox_effects.attempt_count` de l'effet `SEND_EMAIL` (pas `outbox_events.attempt_count` qui est un compteur de claims/observabilité). **Finalizer DB-only** : helper indépendant pour crash après MAX_ATTEMPTS (`PROVIDER_RESULT_UNCERTAIN`) et cutoff 23 h sans appel (`EMAIL_RETRY_WINDOW_EXPIRED`), aucun appel fournisseur, `FOR UPDATE SKIP LOCKED`, invariant absolu aucune 6e requête fournisseur. **Invariant de réservation atomique** Phase B (lock + vérifications + incrément + timestamp + commit avant appel). Machine d'états exhaustive (35 cas). Résolution manuelle atomique future (use case administratif, pas de SQL manuel partiel). Implémentation livrée (G5H-C2A/C2B/C2C-A). Câblage production livré G5H-C2C-B3. Au-delà de 24 h, la documentation officielle ne garantit plus la déduplication. L'adapter Resend est câblé au worker depuis G5H-C2C-B3. |
+| Politique en cas d'objet existant avec checksum différent | G5D | Technique | Ouvert — anomalie durable (`FAILED`) ou écrasement contrôlé ; l'écrasement est interdit par défaut. |
+| Régénération d'une nouvelle version documentaire | G5C/G5D | Produit/juridique | Ouvert — politique de versioning des documents, circonstances de régénération, conservation des versions antérieures. |
+| Webhooks de délivrabilité et bounce (reporté à un groupe futur) | Groupe futur post-G5E | Technique/produit | Ouvert — les webhooks de bounce et de délivrabilité sont reportés à un groupe futur ; `notification_delivery_status` inclut `PENDING \| SENT \| FAILED \| REQUIRES_MANUAL_REVIEW` (G5H-C1, ADR-013 §13) ; pas de `BOUNCED` jusqu'à décision. |
 
 ## Décisions déjà prises
 
@@ -42,3 +97,25 @@ Ces sujets ne doivent pas être tranchés implicitement dans le code.
 - Hold 10 min, marges 30 min (prep + cleanup), snapshot des marges dans le brouillon.
 - Cutoff strict : `ACTIVE` expiré jamais convertible, `PAYMENT_PROCESSING` exclu du batch normal, réconciliation dédiée, compensation idempotente.
 - Montants : PostgreSQL `bigint`, Drizzle `bigint({ mode: "number" })`, TypeScript `number`, `Number.isSafeInteger` aux frontières.
+
+## G7F-A1 — Questions ouvertes après conception ADR-020 (2026-08-08)
+
+Questions spécifiques non tranchées issues de la conception ADR-020 (métadonnées
+photo et gate de publication). Les questions générales « Images publiques :
+CDN/vendor, limites finales et politique d'upload » (G7B) et « Limites et
+traitement technique des images » (G7B-R3) restent valables ; les questions
+ci-dessous sont les sous-points granulaires à résoudre avant ou pendant
+G7F-A2/G7F-B. **Mise à jour Round 2** : les limites techniques sont
+verrouillées pour G7F-A2 (ADR-020 §F.2) et pourront être ajustées par migration
+future.
+
+| Sujet | Décision nécessaire avant | Propriétaire | Statut |
+| --- | --- | --- | --- |
+| Limites finales de taille par photo (min/max bytes) | G7F-A2 implémentation ou G7F-B upload réel | Technique / produit | **Résolu pour G7F-A2** — `byte_size > 0 AND <= 10485760` (10 MB), implémenté via CHECK constraint nullable. Ajustable par migration future. |
+| Limites finales de dimensions (min/max pixels) | G7F-A2 implémentation ou G7F-B upload réel | Technique / produit | **Résolu pour G7F-A2** — `200–8000` px, implémenté via CHECK constraint nullable. Ajustable par migration future. |
+| Formats autorisés (JPEG/PNG/WebP uniquement ? HEIC/AVIF ? Refus SVG/GIF/BMP/TIFF confirmé ?) | G7F-B upload réel | Technique / produit | **Résolu pour G7F-A2** — JPEG, PNG, WebP uniquement (CHECK constraint nullable). HEIC/AVIF et confirmation finale des formats restent ouverts pour G7F-B. |
+| Modération automatique (NSFW, copyright) | G7F-B upload réel ou activation production | Produit / juridique | Ouvert — modération manuelle pour le MVP ? Détection automatique reportée à G7F-B. |
+| Règles précises par catégorie (nombre minimum, vues requises, angles) | G7F-B | Produit / technique | Ouvert — reporté à G7F-B. Le MVP reste 3 photos génériques indépendamment de la catégorie. |
+| Durée de conservation des objets R2 supprimés (soft delete → suppression physique) | G7F-B ou activation production | Technique / juridique | Ouvert — 30 jours ? 90 jours ? Suppression immédiate après confirmation ? Reporté à G7F-B avec le consumer worker `photo_object_cleanup`. |
+| Re-encoding des images (stripper EXIF et re-encoder) | G7F-B | Technique / produit | **Résolu** — reporté à G7F-B avec `sharp`/imagor (ADR-020 §F.3). |
+| URLs signées : durée exacte | G7F-B livraison réelle | Technique / produit | Ouvert — 15 minutes ? 1 heure ? Configurable par usage (dashboard vs public) ? |

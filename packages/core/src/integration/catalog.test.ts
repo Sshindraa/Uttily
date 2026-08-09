@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { sql } from 'drizzle-orm';
 import {
   setupIntegrationTestDb,
   shouldSkipIntegrationTests,
@@ -137,6 +138,21 @@ async function createProductForOrg(
     name,
     description: 'Description de test',
   });
+  // G7F-A2 : 3 photos valides requises pour la publication.
+  for (let i = 0; i < 3; i++) {
+    await db.execute(sql`
+      INSERT INTO product_photos (
+        organization_id, product_id, storage_key,
+        content_type, byte_size, width_px, height_px, checksum_sha256,
+        sort_order, file_state
+      )
+      VALUES (
+        ${organizationId}, ${product.id}, ${'product-photos/test-' + product.id + '-' + i},
+        'image/jpeg', 102400, 800, 600, ${('000' + i).repeat(16).slice(0, 64)},
+        ${i}, 'AVAILABLE'
+      )
+    `);
+  }
   const variants = await listVariants(db, organizationId, product.id);
   return { product, variantId: variants[0]!.id };
 }

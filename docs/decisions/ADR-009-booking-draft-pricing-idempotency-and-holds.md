@@ -735,3 +735,47 @@ Les tests suivants supposent un modèle de paiement qui n'existera pas au Lot 4.
 4. **Compensation des paiements confirmés tardivement** : n'empêche pas le Lot 4 car la compensation est reportée au Lot 5 (open-questions.md : OUVERT, Lot 5).
 
 **Conclusion** : L'ADR-009 est acceptée pour le périmètre du Lot 4 technique. L'ADR-010 accepte ensuite le Lot 5 technique en Stripe TEST. Les réserves juridique/finance (politiques d'annulation, taxes, commission et responsabilités) restent des blocages stricts pour Stripe LIVE et l'activation en production.
+
+## Relation avec ADR-018 (révision 2026-08-07)
+
+L'ADR-018 — Tarification flexible par durée, recherche temporelle et
+modifications de réservation (2026-08-07, Accepted — conception approuvée,
+implémentation non démarrée) étend et remplace une partie du modèle établi par
+ADR-009. Cette section documente la relation sans réécrire l'historique
+d'ADR-009.
+
+### Parties conservées
+
+Les décisions suivantes d'ADR-009 restent valables :
+
+- Montants en unités mineures (`bigint`, mode `number` Drizzle).
+- EUR uniquement au lancement.
+- Snapshot de prix figé après confirmation (étendu par ADR-018 pour inclure le
+  plan retenu, le palier appliqué et la règle d'arrondi versionnée).
+- Hold PostgreSQL comme autorité finale de l'allocation transactionnelle.
+- Concurrence via la contrainte d'exclusion `no_overlapping_blocks`.
+- Idempotence par clé + empreinte.
+- Marges 30 min (`prep_buffer_minutes`, `cleanup_buffer_minutes`).
+
+### Parties étendues ou remplacées par ADR-018
+
+Les décisions suivantes d'ADR-009 sont étendues ou remplacées :
+
+- **daily-only** (modèle exclusivement journalier) : REMPLACÉ par des plans
+  tarifaires `HOURLY` / `FIXED_DURATION` / `DAILY` (ADR-018 §4).
+- **Calcul exclusif par jours civils** (ADR-009:53, 262) : ÉTENDU par
+  `TIME_RANGE` et `DAY_RANGE` (ADR-018 §8).
+- **`dailyPriceAmountMinor` unique** (ADR-009:169, 179) : REMPLACÉ par la table
+  `pricing_plans` (ADR-018 §4).
+- **`billableUnit = 'DAY'` hardcodé** : REMPLACÉ par le type de plan
+  (`plan_type` enum).
+
+### Implémentation actuelle
+
+L'implémentation actuelle (daily-only, `daily_price_amount_minor`,
+`billableUnit = 'DAY'`) reste en place tant que la migration tarifaire future
+(ADR-018 §14) n'est pas livrée. ADR-009 n'est pas réécrit ; son historique est
+préservé. La migration tarifaire est planifiée dans les groupes G7P-A, G7P-B
+(moteur de calcul et sélection déterministe sans modifications financières) et
+G7M/G7P-C (modifications de réservation avec variation financière, conception
+paiement/remboursement requise au préalable) du découpage révisé du Lot 7.

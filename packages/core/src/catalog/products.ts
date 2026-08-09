@@ -1,6 +1,6 @@
-import { and, eq, isNull, count } from 'drizzle-orm';
+import { and, eq, isNull, count, sql } from 'drizzle-orm';
 import type { DatabaseClient, DbExecutor } from '@uttily/database';
-import { categories, products, productVariants } from '@uttily/database';
+import { categories, products, productVariants, productPhotos } from '@uttily/database';
 import type {
   ProductRecord,
   CreateProductInput,
@@ -234,6 +234,7 @@ export async function updateProduct(
  * 2. description non vide
  * 3. catégorie active
  * 4. au moins une variante active
+ * 5. au moins 3 photos valides (file_state = 'AVAILABLE', checksums distincts)
  *
  * @returns tableau de messages d'erreur (vide si le produit est prêt à publier).
  *          ["Produit introuvable."] si le produit n'existe pas.
@@ -278,6 +279,24 @@ export async function collectPublicationFailures(
     failures.push('Au moins une variante active est requise.');
   }
 
+  // Vérifie le seuil des 3 photos valides (G7F-A2, ADR-020 §C.2).
+  // Une photo valide : file_state = 'AVAILABLE', deleted_at IS NULL,
+  // checksum_sha256 non null. Compte les checksums DISTINCTS (photos distinctes).
+  const [photoCount] = await tx
+    .select({ value: sql<number>`count(distinct ${productPhotos.checksumSha256})::integer` })
+    .from(productPhotos)
+    .where(
+      and(
+        eq(productPhotos.productId, productId),
+        eq(productPhotos.fileState, 'AVAILABLE'),
+        isNull(productPhotos.deletedAt),
+        sql`${productPhotos.checksumSha256} IS NOT NULL`,
+      ),
+    );
+  if (Number(photoCount?.value ?? 0) < 3) {
+    failures.push('Au moins 3 photos valides sont requises pour la publication.');
+  }
+
   return failures;
 }
 
@@ -288,6 +307,7 @@ export async function collectPublicationFailures(
  * - description non vide
  * - catégorie active (verrouillée pendant la transaction)
  * - au moins une variante active
+ * - au moins 3 photos valides (file_state = 'AVAILABLE', checksums distincts)
  * Pas d'exemplaire requis : un produit publié sans stock est un état légitime.
  */
 export async function publishProduct(

@@ -10,12 +10,13 @@ Avant de créer l'application, lire dans cet ordre :
 
 1. [Périmètre MVP](docs/product/mvp-scope.md)
 2. [Business plan et stratégie](docs/product/business-plan.md)
-3. [Contexte pour agents de développement](docs/implementation/agent-context.md)
-4. [Backlog de démarrage](docs/implementation/backlog.md)
-5. [Vue d'ensemble technique](docs/architecture/overview.md)
-6. [Réservations et disponibilité](docs/architecture/booking-and-availability.md)
-7. [Modèle de données](docs/architecture/data-model.md)
-8. [Décisions d'architecture](docs/decisions/)
+3. [Vision long terme](docs/product/long-term-vision.md)
+4. [Contexte pour agents de développement](docs/implementation/agent-context.md)
+5. [Backlog de démarrage](docs/implementation/backlog.md)
+6. [Vue d'ensemble technique](docs/architecture/overview.md)
+7. [Réservations et disponibilité](docs/architecture/booking-and-availability.md)
+8. [Modèle de données](docs/architecture/data-model.md)
+9. [Décisions d'architecture](docs/decisions/)
 
 ## Principes non négociables
 
@@ -25,6 +26,8 @@ Avant de créer l'application, lire dans cet ordre :
 - Les opérations sensibles sont idempotentes.
 - Les prix, devises, conditions et stratégies de garantie sont figés dans la réservation.
 - Les traitements secondaires passent par une outbox et un worker.
+- La vision long terme est l'option C : OS loueur + marketplace + intelligence +
+  distribution partenaires/agents, sans élargir prématurément le MVP (ADR-019).
 
 ## Stack
 

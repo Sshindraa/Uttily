@@ -11,6 +11,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+import { createHash } from 'node:crypto';
 
 // ---------------------------------------------------------------------------
 // Mocks : handleWebhook (mocké) + FakeStripeAdapter (réel via importActual).
@@ -39,7 +40,6 @@ vi.mock('@/lib/stripe', () => ({
 // Helper local pour générer des signatures fake (similaire à FakeStripeAdapter.generateValidSignature).
 // Utilisé pour les tests de sécurité HTTP sans dépendre de l'export public du fake adapter.
 function generateFakeSignature(rawBody: string, secret: string): string {
-  const { createHash } = require('node:crypto') as typeof import('node:crypto');
   const timestamp = Math.floor(Date.now() / 1000);
   const v1 = createHash('sha256')
     .update(rawBody + secret)

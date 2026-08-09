@@ -19,7 +19,7 @@ import {
   type IntegrationTestContext,
 } from '../integration/setup';
 import { createBookingDraftWithHold } from '../booking-drafts';
-import type { CreateBookingDraftInput } from '../booking-drafts/types';
+import type { LegacyCreateBookingDraftInput as CreateBookingDraftInput } from '../booking-drafts/types';
 import { initiatePayment } from '../payment-initiation/initiate-payment';
 import type {
   InitiatePaymentDependencies,
@@ -113,8 +113,8 @@ async function seedBaseData(suffix = SUFFIX()): Promise<BaseIds> {
     RETURNING "id"
   `.then((r) => r[0]!);
   const location = await sql`
-    INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone", "prep_buffer_minutes", "cleanup_buffer_minutes")
-    VALUES (${org.id}, 'Annecy', ${'annecy-' + suffix}, 'Europe/Paris', 30, 30)
+    INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone", "prep_buffer_minutes", "cleanup_buffer_minutes", "operating_currency")
+    VALUES (${org.id}, 'Annecy', ${'annecy-' + suffix}, 'Europe/Paris', 30, 30, 'EUR')
     RETURNING "id"
   `.then((r) => r[0]!);
   const user = await sql`
@@ -127,9 +127,25 @@ async function seedBaseData(suffix = SUFFIX()): Promise<BaseIds> {
   );
   const product = await sql`
     INSERT INTO "products" ("organization_id", "category_id", "name", "slug", "publication_status")
-    VALUES (${org.id}, ${category.id}, 'Kayak', ${'kayak-' + suffix}, 'PUBLISHED')
+    VALUES (${org.id}, ${category.id}, 'Kayak', ${'kayak-' + suffix}, 'DRAFT')
     RETURNING "id"
   `.then((r) => r[0]!);
+  // G7F-A2 : 3 photos valides requises pour la publication (trigger différé).
+  for (let _pi = 0; _pi < 3; _pi++) {
+    await sql`
+      INSERT INTO product_photos (
+        organization_id, product_id, storage_key,
+        content_type, byte_size, width_px, height_px, checksum_sha256,
+        sort_order, file_state
+      )
+      VALUES (
+        ${org.id}, ${product.id}, ${'product-photos/' + suffix + '-' + _pi},
+        'image/jpeg', 102400, 800, 600, ${('000' + _pi).repeat(16).slice(0, 64)},
+        ${_pi}, 'AVAILABLE'
+      )
+    `;
+  }
+  await sql`UPDATE "products" SET "publication_status" = 'PUBLISHED' WHERE "id" = ${product.id}`;
   const variant = await sql`
     INSERT INTO "product_variants" ("product_id", "name", "is_active", "daily_price_amount_minor", "currency")
     VALUES (${product.id}, 'Standard', true, 5000, 'EUR')
@@ -1207,9 +1223,80 @@ describe.skipIf(shouldSkipIntegrationTests())(
       if (!db || !rawSql) return;
       const ids = await seedBaseData();
       await seedPaymentAccount(ids);
-      await seedReconciliationData(ids, 'index', {
+      const seeded = await seedReconciliationData(ids, 'index', {
         overrideAttemptStatus: 'REQUIRES_PAYMENT_METHOD',
       });
+
+      // Seed 99 additional rows with status = 'REQUIRES_PAYMENT_METHOD' and
+      // reconcile_after <= now() to reach 100 matching rows total.
+      // We use a CTE to bulk-insert booking_drafts → payments → payment_attempts.
+      await rawSql`
+        WITH drafts AS (
+          INSERT INTO "booking_drafts" (
+            "organization_id", "location_id", "customer_user_id", "status",
+            "customer_start_at", "customer_end_at", "blocked_start_at", "blocked_end_at",
+            "timezone", "prep_buffer_minutes", "cleanup_buffer_minutes",
+            "subtotal_amount_minor", "total_amount_minor", "billable_unit_count",
+            "cancellation_policy_snapshot", "expires_at"
+          )
+          SELECT
+            ${ids.orgId}, ${ids.locationId}, ${ids.userId}, 'HELD',
+            '2026-02-10T09:00:00.000Z'::timestamptz, '2026-02-12T17:00:00.000Z'::timestamptz,
+            '2026-02-10T08:30:00.000Z'::timestamptz, '2026-02-12T17:30:00.000Z'::timestamptz,
+            'Europe/Paris', 30, 30,
+            5000, 5000, 3,
+            '{}'::jsonb, now() + interval '1 hour'
+          FROM generate_series(1, 99)
+          RETURNING "id"
+        ),
+        pays AS (
+          INSERT INTO "payments" (
+            "organization_id", "draft_id", "customer_user_id", "status",
+            "amount_minor", "currency", "tax_status", "tax_amount_minor",
+            "commission_amount_minor", "financial_terms_version", "legal_terms_version",
+            "terms_acceptance_snapshot", "connected_account_id",
+            "settlement_merchant_mode", "environment"
+          )
+          SELECT
+            ${ids.orgId}, d."id", ${ids.userId}, 'REQUIRES_PAYMENT_METHOD',
+            5000, 'EUR', 'NOT_APPLICABLE', 0,
+            0, 'v1', 'v1',
+            '{}'::jsonb, 'acct_test_123',
+            'PLATFORM', 'TEST'
+          FROM drafts d
+          RETURNING "id"
+        )
+        INSERT INTO "payment_attempts" (
+          "organization_id", "payment_id", "attempt_number", "status",
+          "provider_idempotency_key", "provider_status",
+          "reconcile_after", "reconcile_lease_until"
+        )
+        SELECT
+          ${ids.orgId}, p."id", 1, 'REQUIRES_PAYMENT_METHOD',
+          'bulk-key-' || gen_random_uuid()::text, NULL,
+          now() - interval '1 hour', NULL
+        FROM pays p
+      `;
+
+      // Insert a large number of SUCCEEDED rows (terminal status, not in the
+      // partial index) to make the table large enough that the planner prefers
+      // the partial index payment_attempts_reconcile_index over a Seq Scan.
+      // SUCCEEDED is a terminal status, so the unique index on non-terminal
+      // attempts per payment does not apply — we can reuse the same payment_id
+      // with incrementing attempt_numbers.
+      await rawSql`
+        INSERT INTO "payment_attempts" (
+          "organization_id", "payment_id", "attempt_number", "status",
+          "provider_idempotency_key", "provider_status"
+        )
+        SELECT
+          ${ids.orgId}, ${seeded.paymentId}, g + 1, 'SUCCEEDED',
+          'fill-key-' || gen_random_uuid()::text, 'succeeded'
+        FROM generate_series(1, 10000) g
+      `;
+
+      // ANALYZE pour mettre à jour les statistiques du planner.
+      await rawSql`ANALYZE payment_attempts`;
 
       // EXPLAIN la requête de claim pour REQUIRES_PAYMENT_METHOD.
       const explainResult = await rawSql`
@@ -1220,10 +1307,12 @@ describe.skipIf(shouldSkipIntegrationTests())(
         AND (pa.reconcile_lease_until IS NULL OR pa.reconcile_lease_until <= now())
     `;
 
-      const explainText = explainResult.map((r: any) => r['QUERY PLAN']).join('\n');
+      const explainText = explainResult
+        .map((r) => (r as unknown as { 'QUERY PLAN': string })['QUERY PLAN'])
+        .join('\n');
       // L'index payment_attempts_reconcile_index doit être utilisé.
       expect(explainText).toContain('payment_attempts_reconcile_index');
-    });
+    }, 120000);
 
     // 24. Filtrage strict TEST/LIVE : un paiement TEST n'est pas claimé par un batch LIVE
     it('24. filtrage strict TEST/LIVE : paiement TEST non claimé par batch LIVE, et inversement', async () => {

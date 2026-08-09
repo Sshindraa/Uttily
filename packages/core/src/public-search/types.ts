@@ -1,0 +1,185 @@
+import type { DatabaseClient } from '@uttily/database';
+
+/**
+ * @uttily/core — Module Public Search (G7E-B).
+ *
+ * Types d'entrée/sortie du moteur de recherche publique exacte et viewport.
+ * Aucune écriture. Le moteur est read-only et informatif : seul le hold
+ * transactionnel (createBookingDraftWithHold) décide de l'allocation réelle.
+ */
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Intent — discriminated union (même format que FlexiblePricingIntent)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type PublicSearchIntent =
+  /**
+   * `startAt` et `endAt` sont des chaînes de date+heure locale au format
+   * ISO 8601 SANS offset de fuseau horaire (ex : "2026-08-08T22:08:00").
+   * Elles représentent l'heure locale dans le fuseau IANA du lieu de location.
+   * La conversion en UTC est effectuée PAR LOCATION via localDateTimeStringToUtc.
+   */
+  | { kind: 'TIME_RANGE'; startAt: string; endAt: string }
+  /**
+   * `startDate` et `endDateExclusive` sont des dates civiles strictes
+   * (YYYY-MM-DD). L'intervalle est semi-ouvert [startDate, endDateExclusive[.
+   */
+  | { kind: 'DAY_RANGE'; startDate: string; endDateExclusive: string };
+
+/**
+ * Zone géographique explicitement choisie par l'utilisateur sur la carte.
+ *
+ * `west > east` est le cas valide d'une zone traversant l'antiméridien.
+ * L'absence de cette valeur signifie la bbox canonique de la destination.
+ */
+export interface PublicSearchViewport {
+  kind: 'VIEWPORT';
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}
+
+export type PublicSearchGeographicMatch = 'EXACT' | 'VIEWPORT_ALTERNATIVE';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Input
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface SearchPublicOffersInput {
+  /** Identifiant public (UUID) de la destination — jamais l'ID primaire interne. */
+  destinationPublicId: string;
+  /** Locale demandée (fr/en ou variantes fr-FR/en-GB). */
+  locale: string;
+  /** Intention temporelle de recherche. */
+  intent: PublicSearchIntent;
+  /** Filtre optionnel par catégorie (ID interne UUID). Inclut les descendants actifs. */
+  categoryId?: string;
+  /**
+   * Zone choisie explicitement sur la carte. La destination reste l'ancre
+   * canonique obligatoire, même lorsque cette zone est fournie.
+   */
+  viewport?: PublicSearchViewport;
+  /** Taille de page : défaut 24, min 1, max 48. Hors bornes → INVALID_INPUT. */
+  pageSize?: number;
+  /** Curseur opaque base64 versionné pour la pagination keyset. */
+  cursor?: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Output — Read model public
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Résumé public du prix calculé côté serveur.
+ * Informatif jusqu'au hold. Aucun ID interne de plan n'est exposé.
+ */
+export interface PublicPriceSummary {
+  currency: 'EUR';
+  totalAmountMinor: number;
+  planType: 'HOURLY' | 'FIXED_DURATION' | 'DAILY';
+  publicLabel: string;
+  requestedDurationMinutes: number | null;
+  billedDurationMinutes: number | null;
+  billedDays: number | null;
+  discountPercent: number | null;
+}
+
+/**
+ * Offre publique groupée par (publicProductId, publicLocationId).
+ * Si plusieurs variantes sont disponibles pour le même couple, l'offre au
+ * total le moins cher est sélectionnée (tie-breakers déterministes existants).
+ *
+ * Aucun ID interne (organizationId, locationId, productId, variantId,
+ * inventoryItemId, pricingPlanId), legalName, email, SKU, numéro de série,
+ * quantité exacte disponible ou détail de bloc n'est exposé.
+ */
+export interface PublicOfferSearchItem {
+  publicProductId: string;
+  publicLocationId: string;
+  organizationPublicDisplayName: string;
+  productName: string;
+  locationName: string;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string;
+  postalCode: string | null;
+  countryCode: string;
+  latitude: number;
+  longitude: number;
+  /** Distance arrondie pour l'affichage (en mètres). */
+  distanceMeters: number;
+  isAvailable: true;
+  /** Exact dans la bbox de destination, ou alternative dans le viewport. */
+  geographicMatch: PublicSearchGeographicMatch;
+  price: PublicPriceSummary;
+}
+
+export interface SearchPublicOffersResult {
+  items: PublicOfferSearchItem[];
+  /** Curseur pour la page suivante, ou null en fin de résultats. */
+  nextCursor: string | null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Internal types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Tuple keyset pour la pagination : (rawDistanceMeters, publicProductId, publicLocationId).
+ * rawDistanceMeters conserve sa précision pour le tri et le curseur.
+ */
+export interface KeysetTuple {
+  rawDistanceMeters: number;
+  publicProductId: string;
+  publicLocationId: string;
+}
+
+/**
+ * Ligne candidate brute issue de la requête SQL ensembliste.
+ * Contient les IDs internes nécessaires au calcul, mais qui ne sont
+ * JAMAIS exposés dans le read model public.
+ */
+export interface CandidateRow {
+  // IDs internes (non exposés)
+  organizationId: string;
+  locationId: string;
+  productId: string;
+  variantId: string;
+  // IDs publics (exposés)
+  publicProductId: string;
+  publicLocationId: string;
+  // Affichage
+  organizationPublicDisplayName: string;
+  productName: string;
+  locationName: string;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string;
+  postalCode: string | null;
+  countryCode: string;
+  latitude: number;
+  longitude: number;
+  // Tri
+  rawDistanceMeters: number;
+  // Contexte pour le pricing
+  timeZone: string;
+  operatingCurrency: string;
+  prepBufferMinutes: number;
+  cleanupBufferMinutes: number;
+}
+
+/**
+ * Interface du gating de publication publique (G7F-A).
+ *
+ * G7F-A fournira l'implémentation PostgreSQL réelle (au moins trois photos).
+ * Le moteur de recherche publique exige une dépendance explicite.
+ * Aucun prédicat synchrone, aucune implémentation par défaut permissive,
+ * aucun `() => true` n'est accepté.
+ */
+export interface PublicProductPublicationGate {
+  filterEligibleProductIds(
+    db: DatabaseClient,
+    productIds: readonly string[],
+  ): Promise<ReadonlySet<string>>;
+}

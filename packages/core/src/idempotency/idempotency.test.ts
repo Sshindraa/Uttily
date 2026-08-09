@@ -72,8 +72,8 @@ async function seedBaseData(sql: postgres.Sql): Promise<SeedIds> {
     RETURNING "id"
   `.then((r) => r[0]!);
   const location = await sql`
-    INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone")
-    VALUES (${org.id}, 'Annecy', ${'annecy-' + suffix}, 'Europe/Paris')
+    INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone", "operating_currency")
+    VALUES (${org.id}, 'Annecy', ${'annecy-' + suffix}, 'Europe/Paris', 'EUR')
     RETURNING "id"
   `.then((r) => r[0]!);
   const user = await sql`

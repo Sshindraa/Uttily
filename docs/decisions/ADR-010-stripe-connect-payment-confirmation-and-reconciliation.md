@@ -765,15 +765,16 @@ troisième revue de code (P1-1 à P1-4, P2-1, P2-2) :
    (anomalie durable, jamais acquitté). La résolution par `provider_refund_id`
    existant reste en fallback quand `payment_intent` est absent.
 
-3. **`markOutboxFailed` : verrou refund d'abord, `SUCCEEDED` → outbox
-   `PROCESSED` (P1-3).** Avant de marquer l'outbox `FAILED`, le refund est
-   verrouillé (`SELECT ... FOR UPDATE` par `provider_idempotency_key`, ordre de
-   verrouillage ADR-010 §10 : `refunds → outbox_events`). Si le refund est déjà
-   `SUCCEEDED` (projeté par le webhook malgré une erreur provider durable ou
-   ambiguë), l'outbox devient `PROCESSED` — **jamais** `FAILED` — et aucune
-   alerte d'échec n'est émise (log informatif `compensation.refund_already_succeeded`
-   à la place). L'appelant compte `submittedCount++` et ne pousse pas
-   d'anomalie.
+3. **`markOutboxFailed` : verrou outbox d'abord, puis refund, `SUCCEEDED`/`SUBMITTED` → outbox
+   `PROCESSED` (P1-2/P1-3).** Avant de marquer l'outbox `FAILED`, l'outbox est
+   verrouillé (`SELECT ... FOR UPDATE` par `id` + `lease_token`), puis le refund
+   est verrouillé (`SELECT ... FOR UPDATE` par `provider_idempotency_key`, ordre de
+   verrouillage `outbox_events → refunds`, cohérent avec la Phase 3). Si le refund est déjà
+   `SUCCEEDED` ou `SUBMITTED` (projeté par le webhook ou soumis par le worker malgré une
+   erreur provider durable ou ambiguë), l'outbox devient `PROCESSED` — **jamais** `FAILED` —
+   et aucune alerte d'échec n'est émise (log informatif
+   `compensation.refund_already_submitted_or_succeeded` à la place). L'appelant compte
+   `alreadySucceededCount++` et ne pousse pas d'anomalie.
 
 4. **Distinction `SUBMITTED`/`SUCCEEDED` (traité) vs `FAILED` (échec + alerte)
    (P1-4).** En Phase 1, le worker distingue explicitement les statuts
@@ -788,7 +789,20 @@ troisième revue de code (P1-1 à P1-4, P2-1, P2-2) :
    transaction_timestamp()`. Une lease expirée (reclaimable par un autre worker
    à tout moment) est traitée comme `LEASE_LOST`, même avec le bon token.
 
-6. **Isolation des payloads mal formés (P2-2).** Les casts JSON dans la requête
+6. **Borne `MAX_ATTEMPTS` sur les reclaims après crash (P2-7).** Le `claim`
+   incrémente `attempt_count` sur un reclaim (`PROCESSING` avec lease expirée)
+   via `CASE WHEN status = 'PROCESSING' THEN 1 ELSE 0 END`, et le `SELECT`
+   filtre `attempt_count < MAX_ATTEMPTS`. Un événement qui atteint
+   `MAX_ATTEMPTS` via reclaims successifs sans jamais atteindre
+   `rescheduleOutbox` (crash avant reschedule) reste `PROCESSING` avec lease
+   expirée, non reclaimable. Ce scénario edge case (MAX_ATTEMPTS crashes
+   consécutifs avant reschedule) est rare, observable via monitoring
+   (`status = 'PROCESSING' AND lease_until < now() AND attempt_count >=
+   MAX_ATTEMPTS`), et nécessite une intervention manuelle. Il est
+   intentionnellement préféré à la boucle infinie précédente (poison events
+   reclaimés indéfiniment sans borne).
+
+7. **Isolation des payloads mal formés (P2-2).** Les casts JSON dans la requête
    de claim sont sûrs (regex-gardés, `NULL` si invalide) — un événement mal
    formé ne fait **jamais** échouer le claim de tout le batch. Les JOINs
    `refunds` et `payments` sont en `LEFT JOIN` sur les valeurs safe-castées. Un

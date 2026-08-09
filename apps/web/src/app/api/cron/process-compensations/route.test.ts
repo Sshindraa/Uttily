@@ -5,9 +5,9 @@ import { createDatabase, runMigrations, assertLocalhost } from '@uttily/database
 import type { DatabaseClient } from '@uttily/database';
 import { createBookingDraftWithHold, initiatePayment } from '@uttily/core';
 import type {
-  CreateBookingDraftInput,
   CreateBookingDraftResult,
   CreateBookingDraftSuccess,
+  LegacyCreateBookingDraftInput,
   InitiatePaymentInput,
   InitiatePaymentDependencies,
   FinancialTermsConfig,
@@ -302,8 +302,8 @@ async function seedBaseData(suffix = SUFFIX()): Promise<BaseIds> {
     RETURNING "id"
   `.then((r) => r[0]!);
   const location = await s`
-    INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone", "prep_buffer_minutes", "cleanup_buffer_minutes")
-    VALUES (${org.id}, 'Annecy', ${'annecy-' + suffix}, 'Europe/Paris', 30, 30)
+    INSERT INTO "locations" ("organization_id", "name", "slug", "time_zone", "prep_buffer_minutes", "cleanup_buffer_minutes", "operating_currency")
+    VALUES (${org.id}, 'Annecy', ${'annecy-' + suffix}, 'Europe/Paris', 30, 30, 'EUR')
     RETURNING "id"
   `.then((r) => r[0]!);
   const user = await s`
@@ -316,9 +316,25 @@ async function seedBaseData(suffix = SUFFIX()): Promise<BaseIds> {
   );
   const product = await s`
     INSERT INTO "products" ("organization_id", "category_id", "name", "slug", "publication_status")
-    VALUES (${org.id}, ${category.id}, 'Kayak', ${'kayak-' + suffix}, 'PUBLISHED')
+    VALUES (${org.id}, ${category.id}, 'Kayak', ${'kayak-' + suffix}, 'DRAFT')
     RETURNING "id"
   `.then((r) => r[0]!);
+  // G7F-A2 : 3 photos valides requises pour la publication (trigger différé).
+  for (let _pi = 0; _pi < 3; _pi++) {
+    await s`
+      INSERT INTO product_photos (
+        organization_id, product_id, storage_key,
+        content_type, byte_size, width_px, height_px, checksum_sha256,
+        sort_order, file_state
+      )
+      VALUES (
+        ${org.id}, ${product.id}, ${'product-photos/' + suffix + '-' + _pi},
+        'image/jpeg', 102400, 800, 600, ${('000' + _pi).repeat(16).slice(0, 64)},
+        ${_pi}, 'AVAILABLE'
+      )
+    `;
+  }
+  await s`UPDATE "products" SET "publication_status" = 'PUBLISHED' WHERE "id" = ${product.id}`;
   const variant = await s`
     INSERT INTO "product_variants" ("product_id", "name", "is_active", "daily_price_amount_minor", "currency")
     VALUES (${product.id}, 'Standard', true, 5000, 'EUR')
@@ -351,8 +367,8 @@ const STD_END = new Date('2026-02-12T17:00:00.000Z');
 
 function makeInput(
   ids: BaseIds,
-  overrides: Partial<CreateBookingDraftInput> = {},
-): CreateBookingDraftInput {
+  overrides: Partial<LegacyCreateBookingDraftInput> = {},
+): LegacyCreateBookingDraftInput {
   return {
     organizationId: ids.orgId,
     locationId: ids.locationId,

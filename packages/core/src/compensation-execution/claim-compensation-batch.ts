@@ -16,7 +16,8 @@
 import { sql } from 'drizzle-orm';
 import { type DatabaseClient } from '@uttily/database';
 import type { StripeEnvironment } from '../payments/types';
-import { LEASE_INTERVAL, DEFAULT_BATCH_LIMIT } from './scheduling';
+import { DEFAULT_BATCH_LIMIT, MAX_ATTEMPTS } from './scheduling';
+import { poseLease } from '../outbox-claim/claim-outbox-batch';
 import type { ClaimedCompensation } from './types';
 
 /**
@@ -94,6 +95,12 @@ export async function claimCompensationBatch(
         AND oe."event_type" = 'PAYMENT_COMPENSATION_REQUESTED'
         AND oe."available_at" <= now()
         AND (oe."lease_until" IS NULL OR oe."lease_until" <= now())
+        -- P2-7 : borner les reclaims — un événement qui a atteint MAX_ATTEMPTS
+        -- (via reschedules OU reclaims après crash) n'est plus reclaimé. Il sera
+        -- marqué FAILED par l'orchestrateur si un worker le claim une dernière fois
+        -- avec attempt_count + 1 >= MAX_ATTEMPTS, ou restera PROCESSING si aucun
+        -- worker ne le claim (lease expirée, plus éligible).
+        AND oe."attempt_count" < ${MAX_ATTEMPTS}
         -- P2-2 : un événement mal formé (p.id NULL) ne peut pas être filtré
         -- par environnement ; il passe et sera marqué FAILED (intraitable
         -- quelle que soit l'environnement).
@@ -123,50 +130,18 @@ export async function claimCompensationBatch(
       return [];
     }
 
-    // Générer un token UUID par événement et poser le lease.
-    // NOTE : le token est généré côté application (Node.js crypto.randomUUID).
-    // Le fencing token est utilisé dans un UPDATE conditionnel
-    // (WHERE lease_token = ${token}) lors de la persistance, ce qui garantit
-    // qu'un worker ne peut effacer que son propre lease.
+    // P2-1 : poseLease du module commun (outbox-claim) — UPDATE individuels
+    // paramétrés (pas de sql.raw). La stratégie 'reclaim_only' préserve la
+    // sémantique ADR-010 §13 : n'incrémente attempt_count que lors d'un reclaim
+    // (PROCESSING→PROCESSING), pas lors du claim initial (PENDING→PROCESSING).
     const eventIds = rawRows.map((r) => r.outbox_event_id);
-    const leaseTokens = rawRows.map(() => crypto.randomUUID());
-
-    // UPDATE avec FROM (VALUES) pour assigner un token différent par ligne.
-    const valuesClause = leaseTokens
-      .map((token, i) => `('${eventIds[i]}'::uuid, '${token}'::uuid)`)
-      .join(', ');
-    const leaseRows = await tx.execute(sql`
-      UPDATE "outbox_events"
-      SET "lease_until" = now() + ${LEASE_INTERVAL},
-          "lease_token" = v.token,
-          "status" = 'PROCESSING'
-      FROM (VALUES ${sql.raw(valuesClause)}) AS v(id, token)
-      WHERE "outbox_events"."id" = v.id
-      RETURNING "outbox_events"."id" AS id, "outbox_events"."lease_until" AS lease_until
-    `);
-
-    // Construire le mapping lease par event.
-    const leaseMap = new Map<string, Date>();
-    for (const lr of leaseRows as unknown as Array<{
-      id: string;
-      lease_until: Date;
-    }>) {
-      leaseMap.set(lr.id, lr.lease_until);
-    }
-
-    // Construire le mapping token par event (même ordre que eventIds).
-    const tokenMap = new Map<string, string>();
-    for (let i = 0; i < eventIds.length; i++) {
-      tokenMap.set(eventIds[i]!, leaseTokens[i]!);
-    }
+    const leaseMap = await poseLease(tx, eventIds, 'reclaim_only');
 
     // Construire les ClaimedCompensation avec le snapshot complet.
     const claimed: ClaimedCompensation[] = [];
     for (const r of rawRows) {
-      const leaseUntil = leaseMap.get(r.outbox_event_id);
-      if (!leaseUntil) continue;
-      const leaseToken = tokenMap.get(r.outbox_event_id);
-      if (!leaseToken) continue;
+      const lease = leaseMap.get(r.outbox_event_id);
+      if (!lease) continue;
       claimed.push({
         outboxEventId: r.outbox_event_id,
         organizationId: r.organization_id,
@@ -181,9 +156,9 @@ export async function claimCompensationBatch(
         aggregateType: r.aggregate_type,
         aggregateId: r.aggregate_id,
         eventVersion: r.event_version,
-        leaseToken,
-        leaseUntil,
-        attemptCount: r.attempt_count,
+        leaseToken: lease.leaseToken,
+        leaseUntil: lease.leaseUntil,
+        attemptCount: lease.attemptCount,
         payloadValid: r.payload_valid,
       });
     }

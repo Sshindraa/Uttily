@@ -1,7 +1,15 @@
+import { inventoryCondition } from '@uttily/database';
+
 export const PUBLICATION_STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED'] as const;
 export type PublicationStatus = (typeof PUBLICATION_STATUSES)[number];
 
-export const INVENTORY_CONDITIONS = ['NEW', 'GOOD', 'FAIR', 'POOR', 'BROKEN'] as const;
+/**
+ * Conditions d'inventaire dérivées de l'enum Drizzle `inventoryCondition.enumValues`.
+ * Source de vérité unique : packages/database/src/schema.ts. Cet import est une
+ * description de schéma versionnée : aucune connexion PostgreSQL, aucune
+ * variable d'environnement, aucun effet de bord.
+ */
+export const INVENTORY_CONDITIONS = inventoryCondition.enumValues;
 export type InventoryCondition = (typeof INVENTORY_CONDITIONS)[number];
 
 export const INVENTORY_STATUSES = ['ACTIVE', 'RETIRED', 'LOST'] as const;

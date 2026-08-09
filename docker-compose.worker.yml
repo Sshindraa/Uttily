@@ -1,0 +1,52 @@
+# docker-compose.worker.yml — Packaging local Docker du worker (G5I-A).
+#
+# DEV / LOCAL ONLY. Ce fichier prépare et teste localement le conteneur worker
+# pour un futur déploiement VPS. Il ne déploie RIEN, ne configure aucun
+# fournisseur réel (Neon, Cloudflare R2, Resend), ne contient aucun secret.
+#
+# Le fichier d'environnement réel (.env.worker) est EXTERNE, hors Git, référencé
+# par chemin. Il n'est JAMAIS copié dans l'image Docker. Sur le VPS futur :
+# chmod 600, propriétaire dédié, jamais partagé avec sokar/goldbot.
+#
+# Ce fichier est distinct de docker-compose.yml (PostgreSQL dev local) — ne pas
+# modifier docker-compose.yml.
+#
+# Usage local (depuis la racine du monorepo) :
+#   ATTENTION : ne JAMAIS utiliser `up -d` avec des credentials factices — la
+#   politique restart: unless-stopped provoquerait une boucle de redémarrage.
+#   `up -d` ne doit être utilisé qu'avec une configuration RÉELLE et VALIDE.
+#   docker compose -f docker-compose.worker.yml config   (validation sans démarrage)
+#   docker compose -f docker-compose.worker.yml up -d    (config réelle uniquement)
+#   docker compose -f docker-compose.worker.yml logs -f --tail=100
+#   docker compose -f docker-compose.worker.yml stop
+#   docker compose -f docker-compose.worker.yml down
+
+services:
+  worker:
+    image: uttily-worker:local
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+      target: production
+    container_name: uttily-worker
+    init: true
+    user: '1001:1001'
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,nodev,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: '1.0'
+    stop_grace_period: 2m
+    stop_signal: SIGTERM
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    env_file: .env.worker

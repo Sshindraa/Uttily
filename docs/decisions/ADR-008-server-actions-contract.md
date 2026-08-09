@@ -40,3 +40,26 @@ Le domaine catalog levait jusqu'ici des `Error` génériques avec des messages f
 - `AuthorizationError` est conservée pour les cas d'autorisation (mappée vers `FORBIDDEN` ou `NOT_FOUND` côté action).
 - Le code `CONCURRENCY` a été retiré de l'union `ActionErrorCode` : aucun handling des deadlocks PostgreSQL (SQLSTATE `40P01`) n'est implémenté dans le domaine catalog. Le handling de la concurrence (deadlocks, retries optimistes) sera ajouté via ADR dans les lots futurs (réservations/paiements) où la concurrence sera plus critique.
 - Les actions futures (réservations, paiements) réutiliseront ce contrat et étendront `ActionErrorCode` via ADR.
+
+## Extension G4A — Frontière fulfillment
+
+**Nouveaux codes** :
+
+- `FULFILLMENT_INVALID_TRANSITION` : transition de statut booking invalide (INVALID_TRANSITION, TERMINAL_STATE, CONCURRENT_MODIFICATION, BOOKING_ITEM_MISMATCH)
+- `FULFILLMENT_REPORT_NOT_ALLOWED` : rapport d'état ou dommage refusé par statut booking (REPORT_PHASE_NOT_ALLOWED, DAMAGE_REPORT_NOT_ALLOWED)
+
+**Mapping FulfillmentError → ActionErrorCode** (fermé, pas de string matching) :
+
+- VALIDATION / INVALID_CONDITION → VALIDATION
+- BOOKING_NOT_FOUND / BOOKING_ITEM_NOT_FOUND → NOT_FOUND
+- ORGANIZATION_MISMATCH / FORBIDDEN → FORBIDDEN
+- IDEMPOTENCY_CONFLICT → CONFLICT_IDEMPOTENCY
+- INVALID_TRANSITION / TERMINAL_STATE / CONCURRENT_MODIFICATION / BOOKING_ITEM_MISMATCH → FULFILLMENT_INVALID_TRANSITION
+- REPORT_PHASE_NOT_ALLOWED / DAMAGE_REPORT_NOT_ALLOWED → FULFILLMENT_REPORT_NOT_ALLOWED
+- IDEMPOTENCY_REPLAY_INVALID / UNKNOWN → UNKNOWN
+
+**Confidentialité** : `fromStatus`/`toStatus` du `FulfillmentError` ne sont PAS exposés dans le message utilisateur. Le message de l'erreur Core est safe (messages contrôlés, pas de fuite DB). Les erreurs UNKNOWN produisent un message générique "Une erreur inattendue est survenue." sans fuite du message brut.
+
+**Defense in depth** : le helper Web `requireFulfillmentOperatorOf` vérifie l'authentification et la membership côté web AVANT d'appeler les use cases Core. Les use cases Core refont le contrôle dans la transaction (`verifyFulfillmentMembership`). Le helper Web ne remplace jamais l'autorisation Core.
+
+**Injection serveur** : `organizationId` est injecté par bind/closure (`action.bind(null, orgId)`), jamais lu du FormData. `actorUserId` vient du contexte authentifié (`user.id`), jamais du FormData. Les champs FormData frauduleux `organizationId` ou `actorUserId` sont ignorés.

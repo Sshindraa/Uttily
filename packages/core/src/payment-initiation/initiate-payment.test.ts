@@ -76,8 +76,8 @@ function baseInput(overrides: Partial<InitiatePaymentInput> = {}): InitiatePayme
 }
 
 const deps: InitiatePaymentDependencies = {
-  db: {} as any, // non atteint — la validation précède tout appel DB
-  provider: {} as any, // non atteint — la validation précède tout appel provider
+  db: {} as unknown as InitiatePaymentDependencies['db'], // non atteint — la validation précède tout appel DB
+  provider: {} as unknown as InitiatePaymentDependencies['provider'], // non atteint — la validation précède tout appel provider
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -221,7 +221,7 @@ describe('initiatePayment — validation', () => {
 
   it('rejette environment invalide', async () => {
     await expect(
-      initiatePayment(deps, baseInput({ environment: 'INVALID' as any })),
+      initiatePayment(deps, baseInput({ environment: 'INVALID' as unknown as 'TEST' | 'LIVE' })),
     ).rejects.toThrow(PaymentInitiationError);
   });
 

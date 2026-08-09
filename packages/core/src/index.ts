@@ -41,6 +41,9 @@ export * from './payments/index';
 // Lot 5 — Initiation de paiement (ADR-010 §7).
 export * from './payment-initiation/index';
 
+// Lot 5 — Onboarding Stripe Connect et projection du compte connecté (ADR-010 §3.3, §16 étape 4).
+export * from './connected-accounts/index';
+
 // Lot 5 — Traitement des webhooks Stripe (ADR-010 §9, §10, §11, §13, §14).
 export * from './webhook-handler/index';
 
@@ -49,3 +52,87 @@ export * from './payment-reconciliation';
 
 // Phase 8 — Exécution idempotente des compensations (ADR-010 §13).
 export * from './compensation-execution';
+
+// G5D — Module commun de revendication d'événements outbox (ADR-013 §7).
+export {
+  type KnownHandlerSelection,
+  validateHandlerSelection,
+  type IncrementStrategy,
+  type ClaimedOutboxEvent,
+  type ClaimEligibility,
+  claimOutboxBatch,
+  poseLease,
+  validateClaimEligibility,
+  validateBatchLimit as validateOutboxBatchLimit,
+  BOOKING_CONFIRMED_SELECTION,
+  MAX_BATCH_LIMIT as OUTBOX_MAX_BATCH_LIMIT,
+  DEFAULT_BATCH_LIMIT as OUTBOX_DEFAULT_BATCH_LIMIT,
+  MAX_ATTEMPTS as OUTBOX_MAX_ATTEMPTS,
+  BASE_BACKOFF_INTERVAL as OUTBOX_BASE_BACKOFF_INTERVAL,
+  getBackoffIntervalSeconds as getOutboxBackoffIntervalSeconds,
+} from './outbox-claim';
+
+// Phase 10 G1 — Machine à états pure des bookings (ADR-011).
+export * from './fulfillment/index';
+
+// Phase 10 G5B — Documents transactionnels : schéma et contrats (ADR-013).
+export * from './transactional-documents';
+
+// Pricing Plans — G7P-B1 (flexible pricing engine, read-only quote).
+export {
+  quoteFlexiblePricing,
+  computeQuote,
+  loadPricingContext,
+  FlexiblePricingError,
+  type QuoteFlexiblePricingInput,
+  type QuoteFlexiblePricingResult,
+  type QuoteLine,
+  type QuoteLineHourly,
+  type QuoteLineFixedDuration,
+  type QuoteLineDaily,
+  type FlexiblePricingIntent,
+  type SelectedWindow,
+  type FlexiblePricingErrorCode,
+  type PricingContext,
+  type ResolvedPlan,
+  type ResolvedWindow,
+  type ResolvedTier,
+  type ResolvedTranslation,
+  type OpeningHour,
+  type Candidate,
+} from './pricing-plans';
+
+// G7D-A — Moteur de recherche publique exacte (read-only, informatif).
+export {
+  searchPublicOffers,
+  listPublicSearchFilterOptions,
+  createPublicSearchCursorCodec,
+  isPointInBbox,
+  isValidPublicSearchViewport,
+  normalizePublicSearchViewport,
+  publicSearchViewportCenter,
+  haversineDistanceMeters,
+  roundDistanceForDisplay,
+  PublicSearchError,
+  type SearchPublicOffersInput,
+  type SearchPublicOffersResult,
+  type PublicOfferSearchItem,
+  type PublicPriceSummary,
+  type PublicSearchIntent,
+  type PublicSearchViewport,
+  type PublicSearchGeographicMatch,
+  type PublicSearchErrorCode,
+  type KeysetTuple,
+  type PublicProductPublicationGate,
+  type PublicSearchCursorCodec,
+  type CursorFingerprint,
+  type PublicSearchDestinationOption,
+  type PublicSearchCategoryOption,
+  type PublicSearchFilterOptions,
+} from './public-search';
+
+// G7F-A2 — Photos et publication gate.
+export * from './photos';
+
+// G7G — Projection read-only des signaux maintenance du dashboard.
+export * from './dashboard';

@@ -42,6 +42,7 @@ vi.mock('next/cache', () => ({
 // `getDb` est mocké pour retourner le client de test. On l'injecte via
 // une variable mutable afin de pouvoir la réinitialiser entre les tests.
 let testDb: DatabaseClient | null = null;
+let rawSql: ReturnType<typeof postgres> | null = null;
 
 vi.mock('@/lib/db', () => ({
   getDb: () => testDb,
@@ -138,9 +139,14 @@ beforeAll(async () => {
   await runMigrations(testUrl);
 
   testDb = createDatabase(testUrl);
+  rawSql = postgres(testUrl, { max: 5 });
 });
 
 afterAll(async () => {
+  if (rawSql) {
+    await rawSql.end();
+    rawSql = null;
+  }
   if (testDb) {
     await testDb.$client.end();
     testDb = null;
@@ -242,6 +248,32 @@ async function getCategoryId(slug = 'surf'): Promise<string> {
   const [cat] = await testDb.select().from(categories).where(eq(categories.slug, slug)).limit(1);
   if (!cat) throw new Error(`Catégorie seed "${slug}" introuvable.`);
   return cat.id;
+}
+/**
+ * Insère 3 photos valides pour un produit (trigger différé G7F-A2).
+ * Requis avant toute publication via publishProduct.
+ */
+async function addProductPhotos(
+  organizationId: string,
+  productId: string,
+  suffix: string,
+): Promise<void> {
+  if (!rawSql) throw new Error('db not initialized');
+  const s = rawSql;
+  for (let _pi = 0; _pi < 3; _pi++) {
+    await s`
+      INSERT INTO product_photos (
+        organization_id, product_id, storage_key,
+        content_type, byte_size, width_px, height_px, checksum_sha256,
+        sort_order, file_state
+      )
+      VALUES (
+        ${organizationId}, ${productId}, ${'product-photos/' + suffix + '-' + _pi},
+        'image/jpeg', 102400, 800, 600, ${('000' + _pi).repeat(16).slice(0, 64)},
+        ${_pi}, 'AVAILABLE'
+      )
+    `;
+  }
 }
 
 function makeFormData(data: Record<string, string>): FormData {
@@ -638,6 +670,8 @@ describe.skipIf(shouldSkipIntegrationTests())('Server Actions — frontière cat
       name: 'Archive Product',
       description: 'Desc',
     });
+    // G7F-A2 : 3 photos valides requises pour la publication (trigger différé).
+    await addProductPhotos(organizationId, product.id, 'archive-' + product.id);
     // Publie le produit (la variante Standard est créée automatiquement).
     await publishProduct(testDb, organizationId, product.id);
 
@@ -825,6 +859,8 @@ describe.skipIf(shouldSkipIntegrationTests())('Server Actions — frontière cat
       name: 'Restore Product',
       description: 'Desc',
     });
+    // G7F-A2 : 3 photos valides requises pour la publication (trigger différé).
+    await addProductPhotos(organizationId, product.id, 'restore-' + product.id);
     // Publie le produit puis l'archive pour pouvoir le restaurer.
     await publishProduct(testDb, organizationId, product.id);
     await archiveProduct(testDb, organizationId, product.id);

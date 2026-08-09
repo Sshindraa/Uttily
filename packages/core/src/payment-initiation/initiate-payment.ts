@@ -253,6 +253,19 @@ async function executeTakeover(
     );
   }
 
+  // G7P-B2-C — Fail-closed : refuser toute version de snapshot inconnue.
+  // Seules les deux versions connues sont acceptées. Cette vérification est
+  // placée après la validation du statut mais avant toute mutation.
+  if (
+    draft.pricingSnapshotVersion !== 'legacy-daily-v1' &&
+    draft.pricingSnapshotVersion !== 'flexible-pricing-v1'
+  ) {
+    throw new PaymentInitiationError(
+      'VALIDATION',
+      `Version de snapshot de pricing non supportée: ${draft.pricingSnapshotVersion}`,
+    );
+  }
+
   // 5. Si HELD : vérifier transaction_timestamp() < expires_at.
   if (draft.status === 'HELD') {
     const expiryCheck = await tx

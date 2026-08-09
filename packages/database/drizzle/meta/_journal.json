@@ -183,6 +183,62 @@
       "when": 1785546181789,
       "tag": "0026_outbox_lease_token",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1785546181790,
+      "tag": "0027_lot6_fulfillment",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1785546181791,
+      "tag": "0028_lot6_transactional_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1785546181792,
+      "tag": "0029_lot6_email_delivery_safety",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1785546181793,
+      "tag": "0030_audit_log_append_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1785546181794,
+      "tag": "0031_lot7_public_search_foundations",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1785546181795,
+      "tag": "0032_lot7_pricing_plan_foundations",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1785546181796,
+      "tag": "0033_g7p_b2_pricing_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1785546181797,
+      "tag": "0034_g7f_a_product_photos",
+      "breakpoints": true
     }
   ]
 }

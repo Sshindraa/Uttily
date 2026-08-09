@@ -1,20 +1,30 @@
 import { defineConfig } from 'drizzle-kit';
+import { resolveMigrationUrl } from './src/resolve-migration-url';
 
 /**
- * Configuration Drizzle Kit.
+ * Configuration Drizzle Kit (ADR-004, G5G-C).
  *
- * La variable DATABASE_URL est lue directement depuis l'environnement.
- * En local, utiliser le fichier .env (copié depuis .env.example) ou
- * docker-compose.yml (PostgreSQL + PostGIS).
+ * L'URL de migration est résolue par `resolveMigrationUrl` :
+ * - priorité à DATABASE_DIRECT_URL (endpoint direct Neon, sans pooler) ;
+ * - DATABASE_URL locale (localhost/127.0.0.1/::1) acceptée sans
+ *   DATABASE_DIRECT_URL (développement local historique) ;
+ * - DATABASE_URL distante sans DATABASE_DIRECT_URL → rejet fail-closed ;
+ * - DATABASE_DIRECT_URL contenant `-pooler` → rejet (les migrations doivent
+ *   utiliser l'endpoint direct) ;
+ * - fallback localhost explicite si aucune variable n'est fournie.
  *
- * Aucune migration métier n'est générée au Lot 0.
+ * L'application Web, le worker et les tests métier utilisent DATABASE_URL
+ * (connexion pooled côté Neon). DATABASE_DIRECT_URL est réservée aux
+ * migrations et opérations administratives explicites.
+ *
+ * Aucune URL, mot de passe ou credential n'est journalisé.
  */
 export default defineConfig({
   schema: './src/schema.ts',
   out: './drizzle',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? 'postgresql://uttily:uttily@localhost:5432/uttily',
+    url: resolveMigrationUrl(),
   },
   verbose: true,
   strict: true,

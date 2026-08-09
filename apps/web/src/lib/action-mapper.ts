@@ -1,4 +1,5 @@
-import { CatalogError, AuthorizationError } from '@uttily/core';
+import { CatalogError, AuthorizationError, FulfillmentError } from '@uttily/core';
+import type { FulfillmentErrorCode } from '@uttily/core';
 import type { ActionResult, ActionErrorCode } from '@uttily/contracts';
 
 /**
@@ -51,9 +52,74 @@ function mapError<T>(err: unknown): ActionResult<T> {
       : 'FORBIDDEN';
     return { ok: false, code, message: err.message };
   }
+  if (err instanceof FulfillmentError) {
+    return mapFulfillmentError<T>(err);
+  }
   if (err instanceof Error && err.message === 'UNAUTHENTICATED') {
     return { ok: false, code: 'UNAUTHENTICATED', message: 'Non authentifié.' };
   }
   // Erreur inattendue : ne pas exposer le message brut.
   return { ok: false, code: 'UNKNOWN', message: 'Une erreur inattendue est survenue.' };
+}
+
+/**
+ * Mappe un FulfillmentError vers un ActionResult.
+ *
+ * Mapping fermé (ADR-008, G4A) :
+ * - VALIDATION / INVALID_CONDITION → VALIDATION
+ * - BOOKING_NOT_FOUND / BOOKING_ITEM_NOT_FOUND → NOT_FOUND
+ * - ORGANIZATION_MISMATCH / FORBIDDEN → FORBIDDEN
+ * - IDEMPOTENCY_CONFLICT → CONFLICT_IDEMPOTENCY
+ * - INVALID_TRANSITION / TERMINAL_STATE / CONCURRENT_MODIFICATION / BOOKING_ITEM_MISMATCH → FULFILLMENT_INVALID_TRANSITION
+ * - REPORT_PHASE_NOT_ALLOWED / DAMAGE_REPORT_NOT_ALLOWED → FULFILLMENT_REPORT_NOT_ALLOWED
+ * - IDEMPOTENCY_REPLAY_INVALID / UNKNOWN → UNKNOWN
+ *
+ * Sanitisation UNKNOWN (G4A) : pour les codes mappés vers UNKNOWN, on ne
+ * JAMAIS exposer `err.message` (qui peut contenir fromStatus/toStatus,
+ * responseBody ou détails DB internes). On retourne un message générique
+ * fixe. Les codes métier attendus portent des messages publics contrôlés
+ * par le Core (pas de fuite DB). Ne jamais exposer fromStatus/toStatus.
+ */
+function mapFulfillmentError<T>(err: FulfillmentError): ActionResult<T> {
+  const code = fulfillmentErrorToActionCode(err.code);
+  // Sanitisation UNKNOWN : ne jamais exposer err.message, fromStatus, toStatus,
+  // responseBody ou détails DB. Les codes métier attendus portent des messages
+  // publics contrôlés par le Core (ADR-008, G4A).
+  if (code === 'UNKNOWN') {
+    return { ok: false, code, message: 'Une erreur inattendue est survenue.' };
+  }
+  return { ok: false, code, message: err.message };
+}
+
+function fulfillmentErrorToActionCode(code: FulfillmentErrorCode): ActionErrorCode {
+  switch (code) {
+    case 'VALIDATION':
+    case 'INVALID_CONDITION':
+      return 'VALIDATION';
+    case 'BOOKING_NOT_FOUND':
+    case 'BOOKING_ITEM_NOT_FOUND':
+      return 'NOT_FOUND';
+    case 'ORGANIZATION_MISMATCH':
+    case 'FORBIDDEN':
+      return 'FORBIDDEN';
+    case 'IDEMPOTENCY_CONFLICT':
+      return 'CONFLICT_IDEMPOTENCY';
+    case 'INVALID_TRANSITION':
+    case 'TERMINAL_STATE':
+    case 'CONCURRENT_MODIFICATION':
+    case 'BOOKING_ITEM_MISMATCH':
+      return 'FULFILLMENT_INVALID_TRANSITION';
+    case 'REPORT_PHASE_NOT_ALLOWED':
+    case 'DAMAGE_REPORT_NOT_ALLOWED':
+      return 'FULFILLMENT_REPORT_NOT_ALLOWED';
+    case 'IDEMPOTENCY_REPLAY_INVALID':
+    case 'UNKNOWN':
+      return 'UNKNOWN';
+    default: {
+      // Garde compile-time : si un nouveau FulfillmentErrorCode est ajouté sans
+      // être mappé, le typecheck échoue. Ne jamais exécuté à runtime.
+      const _exhaustive: never = code;
+      return _exhaustive;
+    }
+  }
 }

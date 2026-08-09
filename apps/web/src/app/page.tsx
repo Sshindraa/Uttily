@@ -6,6 +6,9 @@ export default function HomePage(): React.ReactElement {
       <h1>Uttily</h1>
       <p>Plateforme B2B2C de location d\u2019équipements.</p>
       <p>
+        <Link href="/fr/search">Rechercher un équipement</Link>
+      </p>
+      <p>
         <Link href="/sign-in">Se connecter</Link>
       </p>
     </main>

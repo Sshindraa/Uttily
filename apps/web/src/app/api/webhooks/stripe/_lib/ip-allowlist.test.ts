@@ -95,5 +95,12 @@ describe('checkWebhookIpAllowlist', () => {
       expect(result.allowed).toBe(true);
       expect(result.skipped).toBe(false);
     });
+
+    it('refusé si IP pas dans la liste (fail-closed)', () => {
+      process.env.STRIPE_WEBHOOK_IP_ALLOWLIST = '127.0.0.1,10.0.0.1';
+      const result = checkWebhookIpAllowlist(makeRequest({ 'x-forwarded-for': '192.168.1.1' }));
+      expect(result.allowed).toBe(false);
+      expect(result.skipped).toBe(false);
+    });
   });
 });

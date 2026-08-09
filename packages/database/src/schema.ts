@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   customType,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -93,6 +94,7 @@ export const organizations = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     legalName: text('legal_name').notNull(),
+    publicDisplayName: text('public_display_name'),
     slug: text('slug').notNull().unique(),
     status: organizationStatus('status').notNull().default('ACTIVE'),
     isProfessional: boolean('is_professional').notNull().default(true),
@@ -111,6 +113,105 @@ export const organizations = pgTable(
       'organizations_default_cancellation_policy_code_valid',
       sql`${t.defaultCancellationPolicyCode} IN ('FLEXIBLE', 'MODERATE', 'FIRM')`,
     ),
+    check(
+      'organizations_public_display_name_not_empty',
+      sql`${t.publicDisplayName} IS NULL OR length(btrim(${t.publicDisplayName})) > 0`,
+    ),
+  ],
+);
+
+export const countries = pgTable(
+  'countries',
+  {
+    countryCode: text('country_code').primaryKey(),
+    isActive: boolean('is_active').notNull().default(false),
+    defaultCurrency: text('default_currency').notNull(),
+    defaultLocale: text('default_locale').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('countries_country_code_format', sql`${t.countryCode} ~ '^[A-Z]{2}$'`),
+    check('countries_default_currency_iso', sql`${t.defaultCurrency} ~ '^[A-Z]{3}$'`),
+    check('countries_default_locale_format', sql`${t.defaultLocale} ~ '^[a-z]{2}(-[A-Z]{2})?$'`),
+    index('countries_is_active_index')
+      .on(t.isActive)
+      .where(sql`${t.isActive} = true`),
+  ],
+);
+
+export const destinations = pgTable(
+  'destinations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    publicId: uuid('public_id').notNull().unique().defaultRandom(),
+    slug: text('slug').notNull().unique(),
+    countryCode: text('country_code')
+      .notNull()
+      .references(() => countries.countryCode),
+    placeType: text('place_type').notNull(),
+    center: geometryPoint('center').notNull(),
+    bboxSouth: doublePrecision('bbox_south').notNull(),
+    bboxWest: doublePrecision('bbox_west').notNull(),
+    bboxNorth: doublePrecision('bbox_north').notNull(),
+    bboxEast: doublePrecision('bbox_east').notNull(),
+    isActive: boolean('is_active').notNull().default(false),
+    sortOrder: integer('sort_order').notNull().default(0),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('destinations_slug_format', sql`${t.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'`),
+    check(
+      'destinations_place_type_valid',
+      sql`${t.placeType} IN ('COUNTRY', 'REGION', 'CITY', 'LOCALITY', 'POINT_OF_INTEREST')`,
+    ),
+    check('destinations_sort_order_nonneg', sql`${t.sortOrder} >= 0`),
+    check('destinations_center_not_empty', sql`NOT ST_IsEmpty(${t.center})`),
+    check(
+      'destinations_center_longitude_range',
+      sql`ST_X(${t.center}) >= -180 AND ST_X(${t.center}) <= 180`,
+    ),
+    check(
+      'destinations_center_latitude_range',
+      sql`ST_Y(${t.center}) >= -90 AND ST_Y(${t.center}) <= 90`,
+    ),
+    check(
+      'destinations_bbox_lat_range',
+      sql`${t.bboxSouth} >= -90 AND ${t.bboxSouth} <= 90 AND ${t.bboxNorth} >= -90 AND ${t.bboxNorth} <= 90`,
+    ),
+    check(
+      'destinations_bbox_lon_range',
+      sql`${t.bboxWest} >= -180 AND ${t.bboxWest} <= 180 AND ${t.bboxEast} >= -180 AND ${t.bboxEast} <= 180`,
+    ),
+    // bbox_south < bbox_north (strictement). NE PAS imposer bbox_west <= bbox_east :
+    // une zone traversant l'antiméridien (ex. Pacifique) a bbox_west > bbox_east.
+    check('destinations_bbox_south_lt_north', sql`${t.bboxSouth} < ${t.bboxNorth}`),
+    check('destinations_active_not_deleted', sql`NOT ${t.isActive} OR ${t.deletedAt} IS NULL`),
+    index('destinations_active_by_country_type_order_index')
+      .on(t.countryCode, t.placeType, t.sortOrder)
+      .where(sql`${t.isActive} = true AND ${t.deletedAt} IS NULL`),
+  ],
+);
+
+export const destinationTranslations = pgTable(
+  'destination_translations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    destinationId: uuid('destination_id')
+      .notNull()
+      .references(() => destinations.id, { onDelete: 'cascade' }),
+    locale: text('locale').notNull(),
+    label: text('label').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('destination_translations_destination_locale_unique').on(t.destinationId, t.locale),
+    check('destination_translations_locale_format', sql`${t.locale} ~ '^[a-z]{2}(-[A-Z]{2})?$'`),
+    check('destination_translations_label_not_empty', sql`length(btrim(${t.label})) > 0`),
+    index('destination_translations_destination_locale_index').on(t.destinationId, t.locale),
   ],
 );
 
@@ -143,10 +244,12 @@ export const locations = pgTable(
   'locations',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    publicId: uuid('public_id').notNull().unique().defaultRandom(),
     organizationId: uuid('organization_id')
       .notNull()
       .references(() => organizations.id),
     name: text('name').notNull(),
+
     slug: text('slug').notNull(),
     timeZone: text('time_zone').notNull(),
     addressLine1: text('address_line1'),
@@ -157,18 +260,32 @@ export const locations = pgTable(
     // geometry(Point, 4326) via custom type Drizzle (PostGIS).
     geoPoint: geometryPoint('geo_point'),
     pickupEnabled: boolean('pickup_enabled').notNull().default(true),
+    isPubliclyListed: boolean('is_publicly_listed').notNull().default(false),
     prepBufferMinutes: integer('prep_buffer_minutes').notNull().default(30),
     cleanupBufferMinutes: integer('cleanup_buffer_minutes').notNull().default(30),
+    // Lot 7 G7P-A — devise opérationnelle du magasin (backfill depuis
+    // organizations.default_currency, migration 0032). Autorité finale pour les
+    // plans tarifaires locaux ; organizations.default_currency reste un défaut
+    // d'onboarding.
+    operatingCurrency: text('operating_currency').notNull(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     check('locations_slug_format', sql`${t.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'`),
+    check('locations_operating_currency_iso', sql`${t.operatingCurrency} ~ '^[A-Z]{3}$'`),
     // Slug unique par organisation (pas globalement). Cohérent avec migration 0005.
     unique('locations_organization_slug_unique').on(t.organizationId, t.slug),
     check('locations_prep_buffer_nonneg', sql`${t.prepBufferMinutes} >= 0`),
     check('locations_cleanup_buffer_nonneg', sql`${t.cleanupBufferMinutes} >= 0`),
+    check(
+      'locations_public_listing_requirements',
+      sql`NOT ${t.isPubliclyListed} OR (${t.pickupEnabled} AND ${t.geoPoint} IS NOT NULL AND ${t.deletedAt} IS NULL AND ${t.addressLine1} IS NOT NULL AND length(btrim(${t.addressLine1})) > 0 AND ${t.city} IS NOT NULL AND length(btrim(${t.city})) > 0 AND ${t.countryCode} IS NOT NULL AND ${t.countryCode} ~ '^[A-Z]{2}$')`,
+    ),
+    index('locations_publicly_listed_index')
+      .on(t.isPubliclyListed)
+      .where(sql`${t.isPubliclyListed} = true`),
   ],
 );
 
@@ -224,7 +341,9 @@ export const organizationInvitations = pgTable(
 
 export const auditLog = pgTable('audit_log', {
   id: uuid('id').primaryKey().defaultRandom(),
-  actorUserId: uuid('actor_user_id').references(() => users.id),
+  actorUserId: uuid('actor_user_id').references(() => users.id, {
+    onDelete: 'restrict',
+  }),
   action: text('action').notNull(),
   targetType: text('target_type').notNull(),
   targetId: uuid('target_id'),
@@ -369,6 +488,24 @@ export const refundStatus = pgEnum('refund_status', [
   'FAILED',
 ]);
 
+// Lot 6 — Fulfillment opérationnel (ADR-012).
+export const fulfillmentEventType = pgEnum('fulfillment_event_type', [
+  'PREPARED',
+  'PICKED_UP',
+  'RETURNED',
+  'CLOSED',
+]);
+
+export const conditionReportPhase = pgEnum('condition_report_phase', ['PICKUP', 'RETURN']);
+
+// Lot 7 G7P-A — plans tarifaires flexibles (ADR-018, migration 0032).
+export const pricingPlanType = pgEnum('pricing_plan_type', ['HOURLY', 'FIXED_DURATION', 'DAILY']);
+export const pricingLifecycleState = pgEnum('pricing_lifecycle_state', [
+  'DRAFT',
+  'ACTIVE',
+  'RETIRED',
+]);
+
 export const categories = pgTable(
   'categories',
   {
@@ -392,6 +529,7 @@ export const products = pgTable(
   'products',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    publicId: uuid('public_id').notNull().unique().defaultRandom(),
     organizationId: uuid('organization_id')
       .notNull()
       .references(() => organizations.id),
@@ -441,7 +579,7 @@ export const productVariants = pgTable(
       'product_variants_daily_price_max',
       sql`${t.dailyPriceAmountMinor} IS NULL OR ${t.dailyPriceAmountMinor} <= 9007199254740991`,
     ),
-    check('product_variants_currency_eur', sql`${t.currency} = 'EUR'`),
+    check('product_variants_currency_iso', sql`${t.currency} ~ '^[A-Z]{3}$'`),
   ],
 );
 
@@ -568,6 +706,13 @@ export const bookingDrafts = pgTable(
     expiresAt: timestamp('expires_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    // G7P-B2-A — colonnes de snapshot de prix flexible
+    pricingSnapshotVersion: text('pricing_snapshot_version').notNull().default('legacy-daily-v1'),
+    pricingAlgorithmVersion: text('pricing_algorithm_version'),
+    pricingRoundingRuleVersion: text('pricing_rounding_rule_version'),
+    pricingIntentType: text('pricing_intent_type'),
+    pricingIntentSnapshot: jsonb('pricing_intent_snapshot'),
+    pricingResolvedLocale: text('pricing_resolved_locale'),
   },
   (t) => [
     check('booking_drafts_customer_period_valid', sql`${t.customerEndAt} > ${t.customerStartAt}`),
@@ -609,7 +754,34 @@ export const bookingDrafts = pgTable(
       sql`${t.totalAmountMinor} = ${t.subtotalAmountMinor} + ${t.mandatoryFeesAmountMinor}`,
     ),
     check('booking_drafts_billable_count_positive', sql`${t.billableUnitCount} > 0`),
-    check('booking_drafts_billable_unit_day', sql`${t.billableUnit} = 'DAY'`),
+    check(
+      'booking_drafts_billable_unit_valid',
+      sql`${t.billableUnit} IN ('DAY', 'HOURLY', 'FIXED_DURATION', 'DAILY', 'MINUTE')`,
+    ),
+    check(
+      'booking_drafts_legacy_billable_unit_day',
+      sql`${t.pricingSnapshotVersion} <> 'legacy-daily-v1' OR ${t.billableUnit} = 'DAY'`,
+    ),
+    check(
+      'booking_drafts_flexible_billable_unit_by_intent',
+      sql`${t.pricingSnapshotVersion} <> 'flexible-pricing-v1' OR ((${t.pricingIntentType} <> 'TIME_RANGE' OR ${t.billableUnit} = 'MINUTE') AND (${t.pricingIntentType} <> 'DAY_RANGE' OR ${t.billableUnit} = 'DAY'))`,
+    ),
+    check(
+      'booking_drafts_pricing_snapshot_version_valid',
+      sql`${t.pricingSnapshotVersion} IN ('legacy-daily-v1', 'flexible-pricing-v1')`,
+    ),
+    check(
+      'booking_drafts_pricing_intent_type_valid',
+      sql`${t.pricingIntentType} IS NULL OR ${t.pricingIntentType} IN ('TIME_RANGE', 'DAY_RANGE')`,
+    ),
+    check(
+      'booking_drafts_flexible_metadata_exact',
+      sql`${t.pricingSnapshotVersion} <> 'flexible-pricing-v1' OR (${t.pricingAlgorithmVersion} = 'flexible-pricing-v1' AND ${t.pricingRoundingRuleVersion} = 'half-up-v1' AND ${t.pricingIntentType} IN ('TIME_RANGE', 'DAY_RANGE') AND ${t.pricingIntentSnapshot} IS NOT NULL AND jsonb_typeof(${t.pricingIntentSnapshot}) = 'object' AND length(btrim(${t.pricingResolvedLocale})) > 0)`,
+    ),
+    check(
+      'booking_drafts_legacy_metadata_null',
+      sql`${t.pricingSnapshotVersion} <> 'legacy-daily-v1' OR (${t.pricingAlgorithmVersion} IS NULL AND ${t.pricingRoundingRuleVersion} IS NULL AND ${t.pricingIntentType} IS NULL AND ${t.pricingIntentSnapshot} IS NULL AND ${t.pricingResolvedLocale} IS NULL AND ${t.billableUnit} = 'DAY')`,
+    ),
     check('booking_drafts_currency_eur', sql`${t.currency} = 'EUR'`),
     check(
       'booking_drafts_held_requires_expires_at',
@@ -647,6 +819,26 @@ export const bookingDraftLines = pgTable(
     currency: text('currency').notNull().default('EUR'),
     variantSnapshot: jsonb('variant_snapshot').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    // G7P-B2-A — colonnes de snapshot de prix flexible
+    // NOTE: DEFERRABLE INITIALLY DEFERRED is set in the migration SQL (0033).
+    // Drizzle's .references() API does not support DEFERRABLE options.
+    pricingPlanId: uuid('pricing_plan_id').references(() => pricingPlans.id),
+    pricingPlanVersion: integer('pricing_plan_version'),
+    pricingPlanType: text('pricing_plan_type'),
+    pricingPublicLabel: text('pricing_public_label'),
+    pricingRequestedDurationMinutes: integer('pricing_requested_duration_minutes'),
+    pricingBilledDurationMinutes: integer('pricing_billed_duration_minutes'),
+    pricingCoveredDurationMinutes: integer('pricing_covered_duration_minutes'),
+    pricingBilledDays: integer('pricing_billed_days'),
+    pricingSelectedWindow: jsonb('pricing_selected_window'),
+    pricingDiscountThresholdDays: integer('pricing_discount_threshold_days'),
+    pricingDiscountPercent: integer('pricing_discount_percent'),
+    pricingAmountBeforeDiscountMinor: bigint('pricing_amount_before_discount_minor', {
+      mode: 'number',
+    }),
+    pricingAmountAfterDiscountMinor: bigint('pricing_amount_after_discount_minor', {
+      mode: 'number',
+    }),
   },
   (t) => [
     check('booking_draft_lines_quantity_positive', sql`${t.quantity} > 0`),
@@ -661,7 +853,71 @@ export const bookingDraftLines = pgTable(
       'booking_draft_lines_unit_price_max_safe',
       sql`${t.unitPriceAmountMinor} <= 9007199254740991`,
     ),
-    check('booking_draft_lines_currency_eur', sql`${t.currency} = 'EUR'`),
+    // G7P-B2-A — contraintes CHECK de snapshot flexible
+    check(
+      'booking_draft_lines_pricing_plan_type_valid',
+      sql`${t.pricingPlanType} IS NULL OR ${t.pricingPlanType} IN ('HOURLY', 'FIXED_DURATION', 'DAILY')`,
+    ),
+    check(
+      'booking_draft_lines_pricing_amount_before_nonneg',
+      sql`${t.pricingAmountBeforeDiscountMinor} IS NULL OR ${t.pricingAmountBeforeDiscountMinor} >= 0`,
+    ),
+    check(
+      'booking_draft_lines_pricing_amount_before_max_safe',
+      sql`${t.pricingAmountBeforeDiscountMinor} IS NULL OR ${t.pricingAmountBeforeDiscountMinor} <= 9007199254740991`,
+    ),
+    check(
+      'booking_draft_lines_pricing_amount_after_nonneg',
+      sql`${t.pricingAmountAfterDiscountMinor} IS NULL OR ${t.pricingAmountAfterDiscountMinor} >= 0`,
+    ),
+    check(
+      'booking_draft_lines_pricing_amount_after_max_safe',
+      sql`${t.pricingAmountAfterDiscountMinor} IS NULL OR ${t.pricingAmountAfterDiscountMinor} <= 9007199254740991`,
+    ),
+    check(
+      'booking_draft_lines_pricing_amount_before_gte_after',
+      sql`${t.pricingAmountBeforeDiscountMinor} IS NULL OR ${t.pricingAmountAfterDiscountMinor} IS NULL OR ${t.pricingAmountBeforeDiscountMinor} >= ${t.pricingAmountAfterDiscountMinor}`,
+    ),
+    check(
+      'booking_draft_lines_pricing_discount_percent_range',
+      sql`${t.pricingDiscountPercent} IS NULL OR (${t.pricingDiscountPercent} >= 0 AND ${t.pricingDiscountPercent} <= 100)`,
+    ),
+    check(
+      'booking_draft_lines_pricing_discount_threshold_daily_only',
+      sql`${t.pricingDiscountThresholdDays} IS NULL OR ${t.pricingPlanType} = 'DAILY'`,
+    ),
+    check(
+      'booking_draft_lines_pricing_hourly_requires_billed',
+      sql`${t.pricingPlanType} <> 'HOURLY' OR ${t.pricingBilledDurationMinutes} IS NOT NULL`,
+    ),
+    check(
+      'booking_draft_lines_pricing_fixed_requires_covered',
+      sql`${t.pricingPlanType} <> 'FIXED_DURATION' OR ${t.pricingCoveredDurationMinutes} IS NOT NULL`,
+    ),
+    check(
+      'booking_draft_lines_pricing_daily_requires_days_and_amounts',
+      sql`${t.pricingPlanType} <> 'DAILY' OR (${t.pricingBilledDays} IS NOT NULL AND ${t.pricingAmountBeforeDiscountMinor} IS NOT NULL AND ${t.pricingAmountAfterDiscountMinor} IS NOT NULL)`,
+    ),
+    check(
+      'booking_draft_lines_pricing_billed_days_positive',
+      sql`${t.pricingBilledDays} IS NULL OR ${t.pricingBilledDays} > 0`,
+    ),
+    check(
+      'booking_draft_lines_pricing_billed_duration_positive',
+      sql`${t.pricingBilledDurationMinutes} IS NULL OR ${t.pricingBilledDurationMinutes} > 0`,
+    ),
+    check(
+      'booking_draft_lines_pricing_covered_duration_positive',
+      sql`${t.pricingCoveredDurationMinutes} IS NULL OR ${t.pricingCoveredDurationMinutes} > 0`,
+    ),
+    check(
+      'booking_draft_lines_pricing_requested_duration_positive',
+      sql`${t.pricingRequestedDurationMinutes} IS NULL OR ${t.pricingRequestedDurationMinutes} > 0`,
+    ),
+    check(
+      'booking_draft_lines_pricing_day_range_requires_daily',
+      sql`${t.pricingPlanType} IS NULL OR ${t.pricingPlanType} = 'DAILY' OR ${t.pricingDiscountThresholdDays} IS NULL`,
+    ),
   ],
 );
 
@@ -968,6 +1224,7 @@ export const bookings = pgTable(
     customerEndAt: timestamp('customer_end_at', { withTimezone: true }).notNull(),
     blockedStartAt: timestamp('blocked_start_at', { withTimezone: true }).notNull(),
     blockedEndAt: timestamp('blocked_end_at', { withTimezone: true }).notNull(),
+    timezone: text('timezone').notNull().default('UTC'),
     prepBufferMinutes: integer('prep_buffer_minutes').notNull(),
     cleanupBufferMinutes: integer('cleanup_buffer_minutes').notNull(),
     currency: text('currency').notNull().default('EUR'),
@@ -982,11 +1239,20 @@ export const bookings = pgTable(
     commissionAmountMinor: bigint('commission_amount_minor', { mode: 'number' }).notNull(),
     commissionRuleSnapshot: jsonb('commission_rule_snapshot'),
     totalAmountMinor: bigint('total_amount_minor', { mode: 'number' }).notNull(),
+    billableUnit: text('billable_unit').notNull().default('DAY'),
+    billableUnitCount: integer('billable_unit_count').notNull().default(1),
     cancellationPolicySnapshot: jsonb('cancellation_policy_snapshot').notNull(),
     termsAcceptanceSnapshot: jsonb('terms_acceptance_snapshot').notNull(),
     confirmedAt: timestamp('confirmed_at', { withTimezone: true }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    // G7P-B2-A — colonnes de snapshot de prix flexible
+    pricingSnapshotVersion: text('pricing_snapshot_version').notNull().default('legacy-daily-v1'),
+    pricingAlgorithmVersion: text('pricing_algorithm_version'),
+    pricingRoundingRuleVersion: text('pricing_rounding_rule_version'),
+    pricingIntentType: text('pricing_intent_type'),
+    pricingIntentSnapshot: jsonb('pricing_intent_snapshot'),
+    pricingResolvedLocale: text('pricing_resolved_locale'),
   },
   (t) => [
     check('bookings_currency_eur', sql`${t.currency} = 'EUR'`),
@@ -996,6 +1262,27 @@ export const bookings = pgTable(
     check('bookings_subtotal_nonneg', sql`${t.subtotalAmountMinor} >= 0`),
     check('bookings_mandatory_fees_nonneg', sql`${t.mandatoryFeesAmountMinor} >= 0`),
     check('bookings_tax_not_undetermined', sql`${t.taxStatus} <> 'UNDETERMINED'`),
+    // G7P-B2-A — contraintes CHECK de snapshot flexible
+    check(
+      'bookings_pricing_snapshot_version_valid',
+      sql`${t.pricingSnapshotVersion} IN ('legacy-daily-v1', 'flexible-pricing-v1')`,
+    ),
+    check(
+      'bookings_pricing_intent_type_valid',
+      sql`${t.pricingIntentType} IS NULL OR ${t.pricingIntentType} IN ('TIME_RANGE', 'DAY_RANGE')`,
+    ),
+    check(
+      'bookings_flexible_metadata_exact',
+      sql`${t.pricingSnapshotVersion} <> 'flexible-pricing-v1' OR (${t.pricingAlgorithmVersion} = 'flexible-pricing-v1' AND ${t.pricingRoundingRuleVersion} = 'half-up-v1' AND ${t.pricingIntentType} IN ('TIME_RANGE', 'DAY_RANGE') AND ${t.pricingIntentSnapshot} IS NOT NULL AND jsonb_typeof(${t.pricingIntentSnapshot}) = 'object' AND length(btrim(${t.pricingResolvedLocale})) > 0)`,
+    ),
+    check(
+      'bookings_legacy_metadata_null',
+      sql`${t.pricingSnapshotVersion} <> 'legacy-daily-v1' OR (${t.pricingAlgorithmVersion} IS NULL AND ${t.pricingRoundingRuleVersion} IS NULL AND ${t.pricingIntentType} IS NULL AND ${t.pricingIntentSnapshot} IS NULL AND ${t.pricingResolvedLocale} IS NULL AND ${t.billableUnit} = 'DAY')`,
+    ),
+    check(
+      'bookings_flexible_billable_unit_by_intent',
+      sql`${t.pricingSnapshotVersion} <> 'flexible-pricing-v1' OR ((${t.pricingIntentType} <> 'TIME_RANGE' OR ${t.billableUnit} = 'MINUTE') AND (${t.pricingIntentType} <> 'DAY_RANGE' OR ${t.billableUnit} = 'DAY'))`,
+    ),
     check(
       'bookings_tax_not_applicable_zero',
       sql`${t.taxStatus} <> 'NOT_APPLICABLE' OR ${t.taxAmountMinor} = 0`,
@@ -1038,8 +1325,31 @@ export const bookingLines = pgTable(
     currency: text('currency').notNull().default('EUR'),
     variantSnapshot: jsonb('variant_snapshot').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    // G7P-B2-A — colonnes de snapshot de prix flexible
+    // NOTE: DEFERRABLE INITIALLY DEFERRED is set in the migration SQL (0033).
+    // Drizzle's .references() API does not support DEFERRABLE options.
+    pricingPlanId: uuid('pricing_plan_id').references(() => pricingPlans.id),
+    pricingPlanVersion: integer('pricing_plan_version'),
+    pricingPlanType: text('pricing_plan_type'),
+    pricingPublicLabel: text('pricing_public_label'),
+    pricingRequestedDurationMinutes: integer('pricing_requested_duration_minutes'),
+    pricingBilledDurationMinutes: integer('pricing_billed_duration_minutes'),
+    pricingCoveredDurationMinutes: integer('pricing_covered_duration_minutes'),
+    pricingBilledDays: integer('pricing_billed_days'),
+    pricingSelectedWindow: jsonb('pricing_selected_window'),
+    pricingDiscountThresholdDays: integer('pricing_discount_threshold_days'),
+    pricingDiscountPercent: integer('pricing_discount_percent'),
+    pricingAmountBeforeDiscountMinor: bigint('pricing_amount_before_discount_minor', {
+      mode: 'number',
+    }),
+    pricingAmountAfterDiscountMinor: bigint('pricing_amount_after_discount_minor', {
+      mode: 'number',
+    }),
+    // G7P-B2-A — source de vérité explicite pour la copie draft -> booking
+    sourceDraftLineId: uuid('source_draft_line_id').references(() => bookingDraftLines.id),
   },
   (t) => [
+    unique('booking_lines_source_draft_line_id_unique').on(t.sourceDraftLineId),
     unique('booking_lines_booking_variant_unique').on(t.bookingId, t.variantId),
     check('booking_lines_quantity_positive', sql`${t.quantity} > 0`),
     check('booking_lines_billable_count_positive', sql`${t.billableUnitCount} > 0`),
@@ -1047,7 +1357,71 @@ export const bookingLines = pgTable(
     check('booking_lines_line_total_nonneg', sql`${t.lineTotalAmountMinor} >= 0`),
     check('booking_lines_line_total_max_safe', sql`${t.lineTotalAmountMinor} <= 9007199254740991`),
     check('booking_lines_unit_price_max_safe', sql`${t.unitPriceAmountMinor} <= 9007199254740991`),
-    check('booking_lines_currency_eur', sql`${t.currency} = 'EUR'`),
+    // G7P-B2-A — contraintes CHECK de snapshot flexible
+    check(
+      'booking_lines_pricing_plan_type_valid',
+      sql`${t.pricingPlanType} IS NULL OR ${t.pricingPlanType} IN ('HOURLY', 'FIXED_DURATION', 'DAILY')`,
+    ),
+    check(
+      'booking_lines_pricing_amount_before_nonneg',
+      sql`${t.pricingAmountBeforeDiscountMinor} IS NULL OR ${t.pricingAmountBeforeDiscountMinor} >= 0`,
+    ),
+    check(
+      'booking_lines_pricing_amount_before_max_safe',
+      sql`${t.pricingAmountBeforeDiscountMinor} IS NULL OR ${t.pricingAmountBeforeDiscountMinor} <= 9007199254740991`,
+    ),
+    check(
+      'booking_lines_pricing_amount_after_nonneg',
+      sql`${t.pricingAmountAfterDiscountMinor} IS NULL OR ${t.pricingAmountAfterDiscountMinor} >= 0`,
+    ),
+    check(
+      'booking_lines_pricing_amount_after_max_safe',
+      sql`${t.pricingAmountAfterDiscountMinor} IS NULL OR ${t.pricingAmountAfterDiscountMinor} <= 9007199254740991`,
+    ),
+    check(
+      'booking_lines_pricing_amount_before_gte_after',
+      sql`${t.pricingAmountBeforeDiscountMinor} IS NULL OR ${t.pricingAmountAfterDiscountMinor} IS NULL OR ${t.pricingAmountBeforeDiscountMinor} >= ${t.pricingAmountAfterDiscountMinor}`,
+    ),
+    check(
+      'booking_lines_pricing_discount_percent_range',
+      sql`${t.pricingDiscountPercent} IS NULL OR (${t.pricingDiscountPercent} >= 0 AND ${t.pricingDiscountPercent} <= 100)`,
+    ),
+    check(
+      'booking_lines_pricing_discount_threshold_daily_only',
+      sql`${t.pricingDiscountThresholdDays} IS NULL OR ${t.pricingPlanType} = 'DAILY'`,
+    ),
+    check(
+      'booking_lines_pricing_hourly_requires_billed',
+      sql`${t.pricingPlanType} <> 'HOURLY' OR ${t.pricingBilledDurationMinutes} IS NOT NULL`,
+    ),
+    check(
+      'booking_lines_pricing_fixed_requires_covered',
+      sql`${t.pricingPlanType} <> 'FIXED_DURATION' OR ${t.pricingCoveredDurationMinutes} IS NOT NULL`,
+    ),
+    check(
+      'booking_lines_pricing_daily_requires_days_and_amounts',
+      sql`${t.pricingPlanType} <> 'DAILY' OR (${t.pricingBilledDays} IS NOT NULL AND ${t.pricingAmountBeforeDiscountMinor} IS NOT NULL AND ${t.pricingAmountAfterDiscountMinor} IS NOT NULL)`,
+    ),
+    check(
+      'booking_lines_pricing_billed_days_positive',
+      sql`${t.pricingBilledDays} IS NULL OR ${t.pricingBilledDays} > 0`,
+    ),
+    check(
+      'booking_lines_pricing_billed_duration_positive',
+      sql`${t.pricingBilledDurationMinutes} IS NULL OR ${t.pricingBilledDurationMinutes} > 0`,
+    ),
+    check(
+      'booking_lines_pricing_covered_duration_positive',
+      sql`${t.pricingCoveredDurationMinutes} IS NULL OR ${t.pricingCoveredDurationMinutes} > 0`,
+    ),
+    check(
+      'booking_lines_pricing_requested_duration_positive',
+      sql`${t.pricingRequestedDurationMinutes} IS NULL OR ${t.pricingRequestedDurationMinutes} > 0`,
+    ),
+    check(
+      'booking_lines_pricing_day_range_requires_daily',
+      sql`${t.pricingPlanType} IS NULL OR ${t.pricingPlanType} = 'DAILY' OR ${t.pricingDiscountThresholdDays} IS NULL`,
+    ),
   ],
 );
 
@@ -1162,10 +1536,672 @@ export const refunds = pgTable(
   ],
 );
 
+export const bookingFulfillmentEvents = pgTable(
+  'booking_fulfillment_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    bookingId: uuid('booking_id')
+      .notNull()
+      .references(() => bookings.id),
+    eventType: fulfillmentEventType('event_type').notNull(),
+    previousStatus: bookingStatus('previous_status').notNull(),
+    nextStatus: bookingStatus('next_status').notNull(),
+    actorUserId: uuid('actor_user_id')
+      .notNull()
+      .references(() => users.id),
+    idempotencyKey: text('idempotency_key').notNull(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+    metadata: jsonb('metadata'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('booking_fulfillment_events_org_idempotency_key_unique').on(
+      t.organizationId,
+      t.idempotencyKey,
+    ),
+    check('booking_fulfillment_events_status_change', sql`${t.previousStatus} <> ${t.nextStatus}`),
+    check(
+      'booking_fulfillment_events_prepared',
+      sql`(${t.eventType} = 'PREPARED' AND ${t.previousStatus} = 'CONFIRMED' AND ${t.nextStatus} = 'READY_FOR_PICKUP') OR ${t.eventType} <> 'PREPARED'`,
+    ),
+    check(
+      'booking_fulfillment_events_picked_up',
+      sql`(${t.eventType} = 'PICKED_UP' AND ${t.previousStatus} = 'READY_FOR_PICKUP' AND ${t.nextStatus} = 'ACTIVE') OR ${t.eventType} <> 'PICKED_UP'`,
+    ),
+    check(
+      'booking_fulfillment_events_returned',
+      sql`(${t.eventType} = 'RETURNED' AND ${t.previousStatus} = 'ACTIVE' AND ${t.nextStatus} = 'RETURNED') OR ${t.eventType} <> 'RETURNED'`,
+    ),
+    check(
+      'booking_fulfillment_events_closed',
+      sql`(${t.eventType} = 'CLOSED' AND ${t.previousStatus} = 'RETURNED' AND ${t.nextStatus} = 'CLOSED') OR ${t.eventType} <> 'CLOSED'`,
+    ),
+    check(
+      'booking_fulfillment_events_idempotency_key_nonempty',
+      sql`length(btrim(${t.idempotencyKey})) > 0`,
+    ),
+    index('booking_fulfillment_events_org_booking_index').on(t.organizationId, t.bookingId),
+    index('booking_fulfillment_events_org_occurred_at_index').on(t.organizationId, t.occurredAt),
+  ],
+);
+
+export const conditionReports = pgTable(
+  'condition_reports',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    bookingId: uuid('booking_id')
+      .notNull()
+      .references(() => bookings.id),
+    bookingItemId: uuid('booking_item_id')
+      .notNull()
+      .references(() => bookingItems.id),
+    inventoryItemId: uuid('inventory_item_id')
+      .notNull()
+      .references(() => inventoryItems.id),
+    phase: conditionReportPhase('phase').notNull(),
+    condition: inventoryCondition('condition').notNull(),
+    notes: text('notes'),
+    reporterUserId: uuid('reporter_user_id')
+      .notNull()
+      .references(() => users.id),
+    idempotencyKey: text('idempotency_key').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('condition_reports_org_idempotency_key_unique').on(t.organizationId, t.idempotencyKey),
+    check(
+      'condition_reports_idempotency_key_nonempty',
+      sql`length(btrim(${t.idempotencyKey})) > 0`,
+    ),
+    index('condition_reports_org_booking_index').on(t.organizationId, t.bookingId),
+    index('condition_reports_org_booking_item_index').on(t.organizationId, t.bookingItemId),
+  ],
+);
+
+export const damageReports = pgTable(
+  'damage_reports',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    bookingId: uuid('booking_id')
+      .notNull()
+      .references(() => bookings.id),
+    bookingItemId: uuid('booking_item_id')
+      .notNull()
+      .references(() => bookingItems.id),
+    inventoryItemId: uuid('inventory_item_id')
+      .notNull()
+      .references(() => inventoryItems.id),
+    description: text('description').notNull(),
+    reporterUserId: uuid('reporter_user_id')
+      .notNull()
+      .references(() => users.id),
+    idempotencyKey: text('idempotency_key').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('damage_reports_org_idempotency_key_unique').on(t.organizationId, t.idempotencyKey),
+    check('damage_reports_description_nonempty', sql`length(btrim(${t.description})) > 0`),
+    check('damage_reports_idempotency_key_nonempty', sql`length(btrim(${t.idempotencyKey})) > 0`),
+    index('damage_reports_org_booking_index').on(t.organizationId, t.bookingId),
+    index('damage_reports_org_booking_item_index').on(t.organizationId, t.bookingItemId),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Lot 6 G5B — Documents transactionnels (ADR-013).
+// Enums et tables pour document_render_snapshots, documents, outbox_effects,
+// notification_deliveries. Aucune logique métier : schéma et contrats uniquement.
+// ---------------------------------------------------------------------------
+
+export const documentType = pgEnum('document_type', ['CONFIRMATION', 'CONTRACT', 'RECEIPT']);
+
+export const outboxEffectType = pgEnum('outbox_effect_type', [
+  'GENERATE_CONFIRMATION',
+  'GENERATE_CONTRACT',
+  'GENERATE_RECEIPT',
+  'SEND_EMAIL',
+]);
+
+export const outboxEffectStatus = pgEnum('outbox_effect_status', [
+  'PENDING',
+  'COMPLETED',
+  'FAILED',
+]);
+
+export const notificationDeliveryStatus = pgEnum('notification_delivery_status', [
+  'PENDING',
+  'SENT',
+  'FAILED',
+  'REQUIRES_MANUAL_REVIEW',
+]);
+
+export const documentProcessingFailureCode = pgEnum('document_processing_failure_code', [
+  'PAYLOAD_MALFORMED',
+  'STORAGE_PUT_FAILED',
+  'STORAGE_CHECKSUM_MISMATCH',
+  'STORAGE_NOT_FOUND',
+  'RENDER_FAILED',
+  'EMAIL_SEND_FAILED',
+  'LEASE_LOST',
+  'UNKNOWN_ERROR',
+  'PROVIDER_RESULT_UNCERTAIN',
+  'EMAIL_RETRY_WINDOW_EXPIRED',
+]);
+
+export const documentRenderSnapshots = pgTable(
+  'document_render_snapshots',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    outboxEventId: uuid('outbox_event_id')
+      .notNull()
+      .references(() => outboxEvents.id),
+    bookingId: uuid('booking_id')
+      .notNull()
+      .references(() => bookings.id),
+    snapshot: jsonb('snapshot').notNull(),
+    templateVersion: text('template_version').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('document_render_snapshots_outbox_event_id_unique').on(t.outboxEventId),
+    check(
+      'document_render_snapshots_template_version_nonempty',
+      sql`length(btrim(${t.templateVersion})) > 0`,
+    ),
+    check(
+      'document_render_snapshots_snapshot_is_object',
+      sql`jsonb_typeof(${t.snapshot}) = 'object'`,
+    ),
+    index('document_render_snapshots_org_outbox_event_index').on(t.organizationId, t.outboxEventId),
+  ],
+);
+
+export const documents = pgTable(
+  'documents',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    bookingId: uuid('booking_id')
+      .notNull()
+      .references(() => bookings.id),
+    type: documentType('type').notNull(),
+    version: integer('version').notNull(),
+    storageKey: text('storage_key').notNull(),
+    contentType: text('content_type').notNull(),
+    checksumSha256: text('checksum_sha256').notNull(),
+    sizeBytes: bigint('size_bytes', { mode: 'number' }).notNull(),
+    templateVersion: text('template_version').notNull(),
+    generatedAt: timestamp('generated_at', { withTimezone: true }).notNull(),
+    sourceOutboxEventId: uuid('source_outbox_event_id')
+      .notNull()
+      .references(() => outboxEvents.id),
+    renderSnapshotId: uuid('render_snapshot_id')
+      .notNull()
+      .references(() => documentRenderSnapshots.id),
+    idempotencyKey: text('idempotency_key').notNull().unique(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('documents_booking_type_version_unique').on(t.bookingId, t.type, t.version),
+    unique('documents_storage_key_unique').on(t.storageKey),
+    check('documents_version_positive', sql`${t.version} > 0`),
+    check('documents_size_bytes_nonneg', sql`${t.sizeBytes} >= 0`),
+    check('documents_size_bytes_max_safe', sql`${t.sizeBytes} <= 9007199254740991`),
+    check('documents_checksum_sha256_hex', sql`${t.checksumSha256} ~ '^[0-9a-f]{64}$'`),
+    check('documents_content_type_nonempty', sql`length(btrim(${t.contentType})) > 0`),
+    check('documents_template_version_nonempty', sql`length(btrim(${t.templateVersion})) > 0`),
+    check('documents_storage_key_nonempty', sql`length(btrim(${t.storageKey})) > 0`),
+    check('documents_idempotency_key_nonempty', sql`length(btrim(${t.idempotencyKey})) > 0`),
+    index('documents_org_booking_index').on(t.organizationId, t.bookingId),
+    index('documents_source_outbox_event_index').on(t.sourceOutboxEventId),
+  ],
+);
+
+export const outboxEffects = pgTable(
+  'outbox_effects',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    outboxEventId: uuid('outbox_event_id')
+      .notNull()
+      .references(() => outboxEvents.id),
+    effectType: outboxEffectType('effect_type').notNull(),
+    status: outboxEffectStatus('status').notNull().default('PENDING'),
+    documentId: uuid('document_id').references(() => documents.id),
+    storageKey: text('storage_key'),
+    idempotencyKey: text('idempotency_key').notNull().unique(),
+    attemptCount: integer('attempt_count').notNull().default(0),
+    failureCode: documentProcessingFailureCode('failure_code'),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('outbox_effects_outbox_event_effect_unique').on(t.outboxEventId, t.effectType),
+    check(
+      'outbox_effects_pending_invariants',
+      sql`${t.status} <> 'PENDING' OR (${t.documentId} IS NULL AND ${t.completedAt} IS NULL AND ${t.failureCode} IS NULL)`,
+    ),
+    check(
+      'outbox_effects_completed_invariants',
+      sql`${t.status} <> 'COMPLETED' OR (${t.completedAt} IS NOT NULL AND ${t.failureCode} IS NULL)`,
+    ),
+    check(
+      'outbox_effects_failed_invariants',
+      sql`${t.status} <> 'FAILED' OR (${t.completedAt} IS NOT NULL AND ${t.failureCode} IS NOT NULL)`,
+    ),
+    check(
+      'outbox_effects_send_email_invariants',
+      sql`${t.effectType} <> 'SEND_EMAIL' OR (${t.documentId} IS NULL AND ${t.storageKey} IS NULL)`,
+    ),
+    check(
+      'outbox_effects_generate_completed_invariants',
+      sql`${t.effectType} NOT IN ('GENERATE_CONFIRMATION', 'GENERATE_CONTRACT', 'GENERATE_RECEIPT') OR ${t.status} <> 'COMPLETED' OR (${t.documentId} IS NOT NULL AND ${t.storageKey} IS NOT NULL)`,
+    ),
+    check('outbox_effects_attempt_count_nonneg', sql`${t.attemptCount} >= 0`),
+    check('outbox_effects_idempotency_key_nonempty', sql`length(btrim(${t.idempotencyKey})) > 0`),
+    check(
+      'outbox_effects_storage_key_nonempty',
+      sql`${t.storageKey} IS NULL OR length(btrim(${t.storageKey})) > 0`,
+    ),
+    uniqueIndex('outbox_effects_storage_key_unique_partial')
+      .on(t.storageKey)
+      .where(sql`${t.storageKey} IS NOT NULL`),
+    index('outbox_effects_org_outbox_event_index').on(t.organizationId, t.outboxEventId),
+  ],
+);
+
+export const notificationDeliveries = pgTable(
+  'notification_deliveries',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    outboxEventId: uuid('outbox_event_id')
+      .notNull()
+      .references(() => outboxEvents.id),
+    outboxEffectId: uuid('outbox_effect_id')
+      .notNull()
+      .references(() => outboxEffects.id),
+    recipientEmail: text('recipient_email').notNull(),
+    templateKey: text('template_key').notNull(),
+    providerIdempotencyKey: text('provider_idempotency_key').notNull().unique(),
+    status: notificationDeliveryStatus('status').notNull().default('PENDING'),
+    providerMessageId: text('provider_message_id'),
+    failureCode: documentProcessingFailureCode('failure_code'),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    providerFirstAttemptStartedAt: timestamp('provider_first_attempt_started_at', {
+      withTimezone: true,
+    }),
+    idempotencyKey: text('idempotency_key').notNull().unique(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('notification_deliveries_outbox_effect_unique').on(t.outboxEffectId),
+    check(
+      'notification_deliveries_pending_invariants',
+      sql`${t.status} <> 'PENDING' OR (${t.providerMessageId} IS NULL AND ${t.sentAt} IS NULL AND ${t.failureCode} IS NULL)`,
+    ),
+    check(
+      'notification_deliveries_sent_invariants',
+      sql`${t.status} <> 'SENT' OR (length(btrim(${t.providerMessageId})) > 0 AND ${t.sentAt} IS NOT NULL AND ${t.failureCode} IS NULL)`,
+    ),
+    check(
+      'notification_deliveries_failed_invariants',
+      sql`${t.status} <> 'FAILED' OR (${t.failureCode} IS NOT NULL AND ${t.sentAt} IS NULL)`,
+    ),
+    check(
+      'notification_deliveries_requires_manual_review_invariants',
+      sql`${t.status} <> 'REQUIRES_MANUAL_REVIEW' OR (${t.providerMessageId} IS NULL AND ${t.sentAt} IS NULL AND ${t.failureCode} IS NOT NULL AND ${t.failureCode} IN ('PROVIDER_RESULT_UNCERTAIN', 'EMAIL_RETRY_WINDOW_EXPIRED'))`,
+    ),
+    check(
+      'notification_deliveries_recipient_email_nonempty',
+      sql`length(btrim(${t.recipientEmail})) > 0`,
+    ),
+    check(
+      'notification_deliveries_template_key_nonempty',
+      sql`length(btrim(${t.templateKey})) > 0`,
+    ),
+    check(
+      'notification_deliveries_provider_idempotency_key_nonempty',
+      sql`length(btrim(${t.providerIdempotencyKey})) > 0`,
+    ),
+    check(
+      'notification_deliveries_idempotency_key_nonempty',
+      sql`length(btrim(${t.idempotencyKey})) > 0`,
+    ),
+    index('notification_deliveries_org_outbox_event_index').on(t.organizationId, t.outboxEventId),
+    index('notification_deliveries_requires_manual_review_index')
+      .on(t.status)
+      .where(sql`${t.status} = 'REQUIRES_MANUAL_REVIEW'`),
+    index('notification_deliveries_provider_first_attempt_index')
+      .on(t.providerFirstAttemptStartedAt)
+      .where(sql`${t.providerFirstAttemptStartedAt} IS NOT NULL`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Lot 7 G7P-A — Plans tarifaires flexibles (ADR-018, migration 0032)
+// ---------------------------------------------------------------------------
+
+/**
+ * Plans tarifaires par variante. Chaque ligne représente un plan de type
+ * HOURLY, FIXED_DURATION ou DAILY avec une union discriminée stricte :
+ * - HOURLY : min/max/billing_duration_minutes > 0, included = NULL
+ * - FIXED_DURATION : included_duration_minutes > 0, min/max/billing = NULL
+ * - DAILY : tous les champs de durée = NULL
+ *
+ * Clé métier (business key) — exclut la version :
+ *   (product_variant_id, scope default/local, currency, plan_type,
+ *    included_duration_minutes pour FIXED_DURATION)
+ * Version = numéro de révision de la clé métier (entier > 0).
+ *
+ * Cycle de vie (lifecycle_state) : DRAFT → ACTIVE → RETIRED (cycle fermé).
+ * - DRAFT : plan modifiable librement. Peut être supprimé (hard delete).
+ * - ACTIVE : plan immuable (seuls lifecycle_state et updated_at changent).
+ * - RETIRED : plan immuable, ne peut plus être activé ni supprimé.
+ *
+ * Héritage default/local :
+ * - location_id NULL = plan par défaut (s'applique à tous les magasins de même
+ *   devise).
+ * - location_id non NULL = remplacement explicite pour ce magasin (doit utiliser
+ *   la devise opérationnelle du magasin).
+ *
+ * Un plan local remplace intégralement le plan par défaut portant la même clé
+ * fonctionnelle (variant, type, durée si applicable, devise). La résolution
+ * est indépendante du numéro de version.
+ *
+ * Traductions FR+EN requises pour l'activation (table pricing_plan_translations).
+ * Fenêtres et paliers gelés dans la version (mutations interdits si non-DRAFT).
+ */
+export const pricingPlans = pgTable(
+  'pricing_plans',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    productVariantId: uuid('product_variant_id')
+      .notNull()
+      .references(() => productVariants.id),
+    locationId: uuid('location_id').references(() => locations.id),
+    planType: pricingPlanType('plan_type').notNull(),
+    currency: text('currency').notNull(),
+    priceAmountMinor: bigint('price_amount_minor', { mode: 'number' }).notNull(),
+    minDurationMinutes: integer('min_duration_minutes'),
+    maxDurationMinutes: integer('max_duration_minutes'),
+    billingIncrementMinutes: integer('billing_increment_minutes'),
+    includedDurationMinutes: integer('included_duration_minutes'),
+    internalLabel: text('internal_label'),
+    priority: integer('priority').notNull().default(0),
+    lifecycleState: pricingLifecycleState('lifecycle_state').notNull().default('DRAFT'),
+    version: integer('version').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('pricing_plans_price_positive', sql`${t.priceAmountMinor} > 0`),
+    check('pricing_plans_price_max_safe', sql`${t.priceAmountMinor} <= 9007199254740991`),
+    check('pricing_plans_currency_iso', sql`${t.currency} ~ '^[A-Z]{3}$'`),
+    check('pricing_plans_version_positive', sql`${t.version} > 0`),
+    // Union discriminée stricte : HOURLY
+    check(
+      'pricing_plans_hourly_fields',
+      sql`(${t.planType} = 'HOURLY' AND ${t.minDurationMinutes} IS NOT NULL AND ${t.minDurationMinutes} > 0 AND ${t.maxDurationMinutes} IS NOT NULL AND ${t.maxDurationMinutes} >= ${t.minDurationMinutes} AND ${t.billingIncrementMinutes} IS NOT NULL AND ${t.billingIncrementMinutes} > 0 AND ${t.includedDurationMinutes} IS NULL) OR (${t.planType} <> 'HOURLY' AND ${t.minDurationMinutes} IS NULL AND ${t.maxDurationMinutes} IS NULL AND ${t.billingIncrementMinutes} IS NULL)`,
+    ),
+    // Union discriminée stricte : FIXED_DURATION
+    check(
+      'pricing_plans_fixed_duration_fields',
+      sql`(${t.planType} = 'FIXED_DURATION' AND ${t.includedDurationMinutes} IS NOT NULL AND ${t.includedDurationMinutes} > 0 AND ${t.minDurationMinutes} IS NULL AND ${t.maxDurationMinutes} IS NULL AND ${t.billingIncrementMinutes} IS NULL) OR (${t.planType} <> 'FIXED_DURATION' AND ${t.includedDurationMinutes} IS NULL)`,
+    ),
+    // Union discriminée stricte : DAILY
+    check(
+      'pricing_plans_daily_fields',
+      sql`(${t.planType} = 'DAILY' AND ${t.minDurationMinutes} IS NULL AND ${t.maxDurationMinutes} IS NULL AND ${t.billingIncrementMinutes} IS NULL AND ${t.includedDurationMinutes} IS NULL) OR (${t.planType} <> 'DAILY')`,
+    ),
+    // Index unique — au plus un plan ACTIVE par clé métier (exclut la version)
+    uniqueIndex('pricing_plans_active_business_key_unique')
+      .on(
+        t.productVariantId,
+        sql`COALESCE(${t.locationId}, '00000000-0000-0000-0000-000000000000'::uuid)`,
+        t.planType,
+        t.currency,
+        sql`COALESCE(${t.includedDurationMinutes}, -1)`,
+      )
+      .where(sql`${t.lifecycleState} = 'ACTIVE'`),
+    // Index unique — unicité historique de (clé métier, version)
+    uniqueIndex('pricing_plans_business_key_version_unique').on(
+      t.productVariantId,
+      sql`COALESCE(${t.locationId}, '00000000-0000-0000-0000-000000000000'::uuid)`,
+      t.planType,
+      t.currency,
+      sql`COALESCE(${t.includedDurationMinutes}, -1)`,
+      t.version,
+    ),
+    // Index de performance
+    index('pricing_plans_variant_active_index')
+      .on(t.productVariantId)
+      .where(sql`${t.lifecycleState} = 'ACTIVE'`),
+    index('pricing_plans_location_index')
+      .on(t.locationId)
+      .where(sql`${t.locationId} IS NOT NULL`),
+  ],
+);
+
+/**
+ * Fenêtres commerciales d'un plan tarifaire, rattachées à un magasin (pour le
+ * fuseau IANA). Permet de modéliser plusieurs plages pour un même plan (ex.
+ * demi-journée matin 9 h–13 h, après-midi 13 h–17 h).
+ *
+ * Décision conservatrice : les forfaits traversant minuit ne sont PAS autorisés
+ * (end_time > start_time, pas de wraparound). ADR-018 n'autorise pas
+ * explicitement les intervalles traversant minuit.
+ */
+export const pricingPlanWindows = pgTable(
+  'pricing_plan_windows',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    pricingPlanId: uuid('pricing_plan_id')
+      .notNull()
+      .references(() => pricingPlans.id, { onDelete: 'cascade' }),
+    locationId: uuid('location_id')
+      .notNull()
+      .references(() => locations.id),
+    weekdayMask: integer('weekday_mask').notNull(),
+    startTime: time('start_time').notNull(),
+    endTime: time('end_time').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Pas de wraparound minuit (décision conservatrice).
+    check('pricing_plan_windows_time_order', sql`${t.endTime} > ${t.startTime}`),
+    check(
+      'pricing_plan_windows_weekday_mask_range',
+      sql`${t.weekdayMask} >= 1 AND ${t.weekdayMask} <= 127`,
+    ),
+    index('pricing_plan_windows_plan_index').on(t.pricingPlanId),
+  ],
+);
+
+/**
+ * Paliers de réduction multi-jours rattachés à un plan DAILY. Le seuil est en
+ * nombre de jours, le pourcentage est strictement supérieur à 0 et strictement
+ * inférieur à 100. Un seul palier actif par (plan, seuil).
+ *
+ * Les paliers d'un plan DAILY local remplacent intégralement ceux du plan
+ * DAILY par défaut (pas de fusion implicite).
+ */
+export const multiDayDiscountTiers = pgTable(
+  'multi_day_discount_tiers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    pricingPlanId: uuid('pricing_plan_id')
+      .notNull()
+      .references(() => pricingPlans.id, { onDelete: 'cascade' }),
+    thresholdDays: integer('threshold_days').notNull(),
+    discountPercent: integer('discount_percent').notNull(),
+    active: boolean('active').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('multi_day_discount_tiers_threshold_min', sql`${t.thresholdDays} >= 2`),
+    check(
+      'multi_day_discount_tiers_discount_range',
+      sql`${t.discountPercent} > 0 AND ${t.discountPercent} < 100`,
+    ),
+    uniqueIndex('multi_day_discount_tiers_plan_threshold_unique')
+      .on(t.pricingPlanId, t.thresholdDays)
+      .where(sql`${t.active} = true`),
+    index('multi_day_discount_tiers_plan_active_index')
+      .on(t.pricingPlanId)
+      .where(sql`${t.active} = true`),
+  ],
+);
+
+/**
+ * Traductions des libellés publics des plans tarifaires par locale.
+ * Un plan doit posséder au moins les traductions 'fr' et 'en' pour pouvoir
+ * être activé (passer à ACTIVE). Les traductions sont gelées (INSERT/UPDATE/
+ * DELETE interdits) quand le plan est ACTIVE ou RETIRED.
+ */
+export const pricingPlanTranslations = pgTable(
+  'pricing_plan_translations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    pricingPlanId: uuid('pricing_plan_id')
+      .notNull()
+      .references(() => pricingPlans.id, { onDelete: 'cascade' }),
+    locale: text('locale').notNull(),
+    publicLabel: text('public_label').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('pricing_plan_translations_plan_locale_unique').on(t.pricingPlanId, t.locale),
+    check('pricing_plan_translations_locale_format', sql`${t.locale} ~ '^[a-z]{2}(-[A-Z]{2})?$'`),
+    check('pricing_plan_translations_label_not_empty', sql`length(btrim(${t.publicLabel})) > 0`),
+    index('pricing_plan_translations_plan_locale_index').on(t.pricingPlanId, t.locale),
+  ],
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G7F-A2 — Photos produit et gate de publication (ADR-020, migration 0034).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const productPhotoFileState = pgEnum('product_photo_file_state', [
+  'PENDING_UPLOAD',
+  'AVAILABLE',
+  'REJECTED',
+  'DELETED',
+]);
+
+export const productPhotos = pgTable(
+  'product_photos',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'restrict' }),
+    productId: uuid('product_id').notNull(),
+    // NOTE : FK composite (product_id, organization_id) → products(id, organization_id)
+    // non représentée ici car Drizzle ne supporte pas facilement les FK composites.
+    // La FK composite est créée dans la migration SQL 0034 et garantit la cohérence
+    // multi-tenant au niveau PostgreSQL, même par SQL direct.
+    storageKey: text('storage_key').notNull(),
+    contentType: text('content_type'),
+    byteSize: bigint('byte_size', { mode: 'number' }),
+    widthPx: integer('width_px'),
+    heightPx: integer('height_px'),
+    checksumSha256: text('checksum_sha256'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    fileState: productPhotoFileState('file_state').notNull(),
+    rejectionReason: text('rejection_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (t) => [
+    // Invariant d'état exhaustif : nullabilité selon file_state.
+    check(
+      'product_photos_state_invariants',
+      sql`CASE
+        WHEN ${t.fileState} = 'PENDING_UPLOAD' THEN
+          ${t.deletedAt} IS NULL AND ${t.rejectionReason} IS NULL
+        WHEN ${t.fileState} = 'AVAILABLE' THEN
+          ${t.contentType} IS NOT NULL AND ${t.byteSize} IS NOT NULL
+          AND ${t.widthPx} IS NOT NULL AND ${t.heightPx} IS NOT NULL
+          AND ${t.checksumSha256} IS NOT NULL
+          AND ${t.deletedAt} IS NULL AND ${t.rejectionReason} IS NULL
+        WHEN ${t.fileState} = 'REJECTED' THEN
+          ${t.rejectionReason} IS NOT NULL AND ${t.deletedAt} IS NULL
+        WHEN ${t.fileState} = 'DELETED' THEN
+          ${t.deletedAt} IS NOT NULL
+        ELSE FALSE
+      END`,
+    ),
+    check(
+      'product_photos_content_type_valid',
+      sql`${t.contentType} IS NULL OR ${t.contentType} IN ('image/jpeg', 'image/png', 'image/webp')`,
+    ),
+    check(
+      'product_photos_byte_size_valid',
+      sql`${t.byteSize} IS NULL OR (${t.byteSize} > 0 AND ${t.byteSize} <= 10485760)`,
+    ),
+    check(
+      'product_photos_dimensions_valid',
+      sql`(${t.widthPx} IS NULL OR (${t.widthPx} >= 200 AND ${t.widthPx} <= 8000))
+           AND (${t.heightPx} IS NULL OR (${t.heightPx} >= 200 AND ${t.heightPx} <= 8000))`,
+    ),
+    check('product_photos_sort_order_non_negative', sql`${t.sortOrder} >= 0`),
+    check('product_photos_storage_key_not_empty', sql`length(${t.storageKey}) > 0`),
+    check('product_photos_storage_key_prefix', sql`${t.storageKey} ~ '^product-photos/'`),
+    check(
+      'product_photos_checksum_format',
+      sql`${t.checksumSha256} IS NULL OR ${t.checksumSha256} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      'product_photos_rejection_reason_not_empty',
+      sql`${t.rejectionReason} IS NULL OR btrim(${t.rejectionReason}) <> ''`,
+    ),
+    index('product_photos_product_id_deleted_at_idx').on(t.productId, t.deletedAt),
+    index('product_photos_organization_id_deleted_at_idx').on(t.organizationId, t.deletedAt),
+    index('product_photos_product_id_file_state_deleted_at_idx').on(
+      t.productId,
+      t.fileState,
+      t.deletedAt,
+    ),
+    uniqueIndex('product_photos_storage_key_unique').on(t.storageKey),
+  ],
+);
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
+export type Country = typeof countries.$inferSelect;
+export type NewCountry = typeof countries.$inferInsert;
+export type Destination = typeof destinations.$inferSelect;
+export type NewDestination = typeof destinations.$inferInsert;
+export type DestinationTranslation = typeof destinationTranslations.$inferSelect;
+export type NewDestinationTranslation = typeof destinationTranslations.$inferInsert;
 export type OrganizationMembership = typeof organizationMemberships.$inferSelect;
 export type NewOrganizationMembership = typeof organizationMemberships.$inferInsert;
 export type Location = typeof locations.$inferSelect;
@@ -1214,3 +2250,27 @@ export type OutboxEvent = typeof outboxEvents.$inferSelect;
 export type NewOutboxEvent = typeof outboxEvents.$inferInsert;
 export type Refund = typeof refunds.$inferSelect;
 export type NewRefund = typeof refunds.$inferInsert;
+export type BookingFulfillmentEvent = typeof bookingFulfillmentEvents.$inferSelect;
+export type NewBookingFulfillmentEvent = typeof bookingFulfillmentEvents.$inferInsert;
+export type ConditionReport = typeof conditionReports.$inferSelect;
+export type NewConditionReport = typeof conditionReports.$inferInsert;
+export type DamageReport = typeof damageReports.$inferSelect;
+export type NewDamageReport = typeof damageReports.$inferInsert;
+export type DocumentRenderSnapshot = typeof documentRenderSnapshots.$inferSelect;
+export type NewDocumentRenderSnapshot = typeof documentRenderSnapshots.$inferInsert;
+export type Document = typeof documents.$inferSelect;
+export type NewDocument = typeof documents.$inferInsert;
+export type OutboxEffect = typeof outboxEffects.$inferSelect;
+export type NewOutboxEffect = typeof outboxEffects.$inferInsert;
+export type NotificationDelivery = typeof notificationDeliveries.$inferSelect;
+export type NewNotificationDelivery = typeof notificationDeliveries.$inferInsert;
+export type PricingPlan = typeof pricingPlans.$inferSelect;
+export type NewPricingPlan = typeof pricingPlans.$inferInsert;
+export type PricingPlanWindow = typeof pricingPlanWindows.$inferSelect;
+export type NewPricingPlanWindow = typeof pricingPlanWindows.$inferInsert;
+export type MultiDayDiscountTier = typeof multiDayDiscountTiers.$inferSelect;
+export type NewMultiDayDiscountTier = typeof multiDayDiscountTiers.$inferInsert;
+export type PricingPlanTranslation = typeof pricingPlanTranslations.$inferSelect;
+export type NewPricingPlanTranslation = typeof pricingPlanTranslations.$inferInsert;
+export type ProductPhotoRecord = typeof productPhotos.$inferSelect;
+export type NewProductPhotoRecord = typeof productPhotos.$inferInsert;
