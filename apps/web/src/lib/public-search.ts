@@ -160,7 +160,10 @@ export function parsePublicSearchParams(
   return { kind: 'VALID', values, input };
 }
 
-function readSingleParam(params: URLSearchParams, name: string): {
+function readSingleParam(
+  params: URLSearchParams,
+  name: string,
+): {
   value: string | null;
   duplicate: boolean;
 } {

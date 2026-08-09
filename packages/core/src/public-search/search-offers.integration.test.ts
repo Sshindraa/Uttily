@@ -9,10 +9,7 @@ import {
   type IntegrationTestContext,
 } from '../integration/setup';
 import { searchPublicOffers as searchPublicOffersImpl } from './search-offers';
-import {
-  createPublicSearchCursorCodec,
-  PUBLIC_SEARCH_CONTRACT_VERSION,
-} from './cursor';
+import { createPublicSearchCursorCodec, PUBLIC_SEARCH_CONTRACT_VERSION } from './cursor';
 import { PublicSearchError } from './errors';
 import type {
   PublicSearchIntent,
@@ -797,9 +794,7 @@ describe.skipIf(shouldSkipIntegrationTests())('searchPublicOffers — intégrati
     });
 
     const exactSearch = await testSearch(db, searchInput(dest.publicId, DAY_RANGE_10_12));
-    expect(exactSearch.items.map((item) => item.publicProductId)).toEqual([
-      exact.publicProductId,
-    ]);
+    expect(exactSearch.items.map((item) => item.publicProductId)).toEqual([exact.publicProductId]);
     expect(exactSearch.items[0]!.geographicMatch).toBe('EXACT');
 
     const viewportSearch = await testSearch(

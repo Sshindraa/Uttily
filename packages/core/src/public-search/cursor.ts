@@ -14,10 +14,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { PublicSearchIntent, KeysetTuple, PublicSearchViewport } from './types';
 import { PublicSearchError } from './errors';
-import {
-  isValidPublicSearchViewport,
-  normalizePublicSearchViewport,
-} from './geo';
+import { isValidPublicSearchViewport, normalizePublicSearchViewport } from './geo';
 
 /** Version courante du contrat de recherche publique. */
 export const PUBLIC_SEARCH_CONTRACT_VERSION = 2;
@@ -298,10 +295,7 @@ function fingerprintMatches(a: CursorFingerprint, b: CursorFingerprint): boolean
   return false;
 }
 
-function sameViewport(
-  a: PublicSearchViewport | null,
-  b: PublicSearchViewport | null,
-): boolean {
+function sameViewport(a: PublicSearchViewport | null, b: PublicSearchViewport | null): boolean {
   if (a === null || b === null) return a === b;
   const normalizedA = normalizePublicSearchViewport(a);
   const normalizedB = normalizePublicSearchViewport(b);
