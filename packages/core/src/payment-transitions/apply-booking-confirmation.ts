@@ -28,6 +28,11 @@ import type { PaymentIntentEventData, ResolvedAttempt } from '../webhook-handler
 import { WebhookHandlerError } from '../webhook-handler/errors';
 import { validateWebhookAuthority } from '../webhook-handler/validate-authority';
 import { isDraftTerminalForConversion } from '../webhook-handler/confirm-booking';
+import {
+  safeRecordAnalyticsEventInTransaction,
+  resolveAnalyticsEnvironmentFromProcessEnv,
+  type ResolvedAnalyticsEnvironment,
+} from '../product-analytics';
 import type { LockedBusinessRows } from './types';
 
 /** Résultat de la confirmation. */
@@ -56,6 +61,9 @@ export interface ApplyBookingConfirmationResult {
  * @param piData Données du PaymentIntent.
  * @param environment Environnement Stripe (TEST/LIVE).
  * @param lockedRows Lignes métier déjà verrouillées par lockFullBusinessRows.
+ * @param analyticsEnvironment Environnement analytics résolu (optionnel).
+ *   Si non fourni, lu depuis process.env.PRODUCT_ANALYTICS_ENVIRONMENT.
+ *   PRODUCTION est toujours DISABLED dans G7H-B.
  * @returns { bookingId }.
  * @throws WebhookHandlerError sur invariant failure.
  */
@@ -65,8 +73,10 @@ export async function applyBookingConfirmation(
   piData: PaymentIntentEventData,
   environment: 'TEST' | 'LIVE',
   lockedRows: LockedBusinessRows,
+  analyticsEnvironment?: ResolvedAnalyticsEnvironment,
 ): Promise<ApplyBookingConfirmationResult> {
   const { draft, blocks, allocs, payment, attemptRow } = lockedRows;
+  const resolvedEnv = analyticsEnvironment ?? resolveAnalyticsEnvironmentFromProcessEnv();
 
   // 6a. Statut du brouillon : doit être strictement PAYMENT_PROCESSING.
   if (draft.status !== 'PAYMENT_PROCESSING') {
@@ -294,9 +304,10 @@ export async function applyBookingConfirmation(
       pricingIntentSnapshot: draft.pricingIntentSnapshot,
       pricingResolvedLocale: draft.pricingResolvedLocale,
     })
-    .returning({ id: bookings.id });
+    .returning({ id: bookings.id, confirmedAt: bookings.confirmedAt });
 
   const bookingId = booking!.id;
+  const confirmedAt = booking!.confirmedAt;
 
   // Créer booking_lines (copie des booking_draft_lines avec variant_snapshot).
   // G7P-B2-C — Copie exacte du snapshot de prix flexible. Les champs pricing_*
@@ -438,6 +449,21 @@ export async function applyBookingConfirmation(
     .onConflictDoNothing({
       target: [outboxEvents.idempotencyKey],
     });
+
+  // G7H-B — Émettre BOOKING_CONFIRMED après la création du booking et l'insertion
+  // outbox BOOKING_CONFIRMED.v1, avant le retour. L'écriture analytics est isolée
+  // par un savepoint : une erreur analytics annule uniquement le savepoint,
+  // JAMAIS la confirmation métier. sourceId = bookingId, occurredAt = confirmedAt
+  // retourné par PostgreSQL lors de l'INSERT du booking.
+  await safeRecordAnalyticsEventInTransaction(
+    tx,
+    {
+      eventType: 'BOOKING_CONFIRMED',
+      sourceId: bookingId,
+      occurredAt: confirmedAt,
+    },
+    resolvedEnv,
+  );
 
   return { bookingId };
 }

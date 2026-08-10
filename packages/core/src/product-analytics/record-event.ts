@@ -14,7 +14,7 @@
  */
 
 import { and, eq } from 'drizzle-orm';
-import type { DatabaseClient } from '@uttily/database';
+import type { DbExecutor } from '@uttily/database';
 import { productAnalyticsEvents } from '@uttily/database';
 import { ProductAnalyticsError } from './errors';
 import type { RecordProductAnalyticsEventInput } from './types';
@@ -37,7 +37,7 @@ import {
  *   INVALID_EVENT_TYPE, DUPLICATE_CONFLICT, ANALYTICS_UNAVAILABLE.
  */
 export async function recordProductAnalyticsEvent(
-  db: DatabaseClient,
+  db: DbExecutor,
   input: RecordProductAnalyticsEventInput,
 ): Promise<{ id: string } | { kind: 'DUPLICATE' }> {
   // 1. Validation des champs communs.

@@ -15,3 +15,17 @@ export { recordProductAnalyticsEvent } from './record-event';
 export { aggregateProductAnalyticsDays } from './aggregate';
 export { purgeExpiredProductAnalytics } from './purge';
 export { getProductAnalyticsSummary } from './summary';
+export {
+  resolveAnalyticsEnvironment,
+  resolveAnalyticsEnvironmentWithDiagnostic,
+  resolveAnalyticsEnvironmentFromProcessEnv,
+  type AnalyticsEnvironmentConfig,
+  type ResolvedAnalyticsEnvironment,
+  type ResolvedAnalyticsEnvironmentResult,
+} from './runtime';
+// AnalyticsEnvironment is re-exported from ./types above.
+export {
+  safeRecordAnalyticsEvent,
+  safeRecordAnalyticsEventInTransaction,
+  type SafeRecordResult,
+} from './safe-record';

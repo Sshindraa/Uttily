@@ -21,6 +21,18 @@ export type RecordProductAnalyticsEventInput =
   | (RecordEventCommon & { eventType: 'BOOKING_ATTEMPTED' })
   | (RecordEventCommon & { eventType: 'BOOKING_CONFIRMED' });
 
+/**
+ * Entree d'enregistrement sans environnement (G7H-B).
+ * L'environnement est ajoute par le safe recorder a partir du resolveur.
+ */
+export type SafeRecordEventInput =
+  | (Omit<RecordEventCommon, 'environment'> & {
+      eventType: 'PUBLIC_SEARCH_PERFORMED';
+      hasResults: boolean;
+    })
+  | (Omit<RecordEventCommon, 'environment'> & { eventType: 'BOOKING_ATTEMPTED' })
+  | (Omit<RecordEventCommon, 'environment'> & { eventType: 'BOOKING_CONFIRMED' });
+
 export interface AggregateProductAnalyticsDaysOptions {
   fromDay: string; // YYYY-MM-DD inclusive
   toDayExclusive: string; // YYYY-MM-DD exclusive

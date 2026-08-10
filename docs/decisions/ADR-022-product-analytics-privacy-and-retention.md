@@ -149,6 +149,124 @@ Les compteurs compactés ne sont pas exposés dans le read model : la fonction
 Aucune collecte active dans les parcours applicatifs à ce stade. Production
 désactivée jusqu'à validation privacy/juridique.
 
+### 2.8 G7H-B — Cablage des trois evenements analytics (amendement)
+
+G7H-B cable trois evenements analytics dans les parcours applicatifs reels,
+en reutilisant le ledger PostgreSQL de G7H-A. Aucune nouvelle table, aucune
+migration, aucun provider externe n'est introduit.
+
+#### Definition exacte de BOOKING_ATTEMPTED
+
+La mesure `BOOKING_ATTEMPTED` compte chaque requete :
+
+- qui a passe la validation applicative ;
+- qui a obtenu une reservation de cle d'idempotence (`reserveKey`) ;
+- meme si le pricing, l'allocation ou la disponibilite echouent ensuite.
+
+Un conflit de cle d'idempotence avec un payload different (`CONFLICT`) ne
+compte **pas** : c'est une reutilisation de cle invalide, pas une tentative
+legitime.
+
+L'evenement est emis **apres** `reserveKey` et **avant** la transaction
+metier. Pour les chemins `ACQUIRED`, `PENDING` et `REPLAY`, le meme
+evenement stable est tente : le ledger deduplique les replays et la
+concurrence via la contrainte unique `(event_type, environment, source_id)`.
+
+- `sourceId = reservation.record.id` (UUID de l'enregistrement
+  d'idempotence).
+- `occurredAt = reservation.record.createdAt`.
+- **Jamais** `input.idempotencyKey` comme `sourceId` : ce n'est pas garanti
+  d'etre un UUID.
+
+La meme regle s'applique aux chemins LEGACY et FLEXIBLE via une fonction
+helper partagee (`emitBookingAttempted`).
+
+#### sourceId stable par evenement
+
+Chaque evenement a un `sourceId` technique stable qui assure la
+deduplication :
+
+| Evenement | sourceId | occurredAt |
+| --- | --- | --- |
+| `BOOKING_ATTEMPTED` | `reservation.record.id` (UUID idempotence) | `reservation.record.createdAt` |
+| `BOOKING_CONFIRMED` | `bookingId` (UUID du booking) | `confirmedAt` retourne par PostgreSQL |
+| `PUBLIC_SEARCH_PERFORMED` | `crypto.randomUUID()` (capture une fois) | `new Date()` (capture une fois) |
+
+#### Chaque recherche serveur reussie compte separement
+
+Chaque execution serveur reussie de la recherche publique constitue une
+recherche distincte. `sourceId` et `occurredAt` sont captures une fois par
+execution apres le succes de la recherche et avant l'ecriture analytics. Un
+reel repeat de la meme recherche par un utilisateur doit compter a nouveau.
+Aucun hashage des parametres, aucun identifiant de session, IP, user-agent
+ou header de requete n'est collecte.
+
+#### Strategie de savepoint pour BOOKING_CONFIRMED
+
+L'evenement `BOOKING_CONFIRMED` est emis dans la transaction de confirmation
+**apres** la creation du booking et l'insertion outbox
+`BOOKING_CONFIRMED.v1`, **avant** le retour. L'ecriture analytics est isolee
+par une nested transaction (savepoint) via `tx.transaction()` :
+
+- Si l'INSERT analytics echoue, le savepoint est annule (ROLLBACK TO
+  SAVEPOINT) mais la transaction externe reste utilisable.
+- La confirmation metier (booking, outbox, conversions) n'est **jamais**
+  rollbackee par une erreur analytics.
+- `confirmedAt` est retourne par PostgreSQL via la clause `.returning()` de
+  l'INSERT du booking, pas par `new Date()`.
+
+Le comportement est identique pour la confirmation webhook et la
+reconciliation car elles partagent `applyBookingConfirmation`.
+
+#### Configuration DEVELOPMENT / TEST
+
+La collecte est controlee par la variable d'environnement explicite
+`PRODUCT_ANALYTICS_ENVIRONMENT` :
+
+- `DEVELOPMENT` : collecte autorisee.
+- `TEST` : collecte autorisee.
+- `PRODUCTION` : **toujours DISABLED** dans G7H-B.
+- Valeur absente : `DISABLED`.
+- Valeur invalide : `DISABLED` avec diagnostic normalise.
+
+Aucun mapping automatique depuis `NODE_ENV`. Aucun mapping global depuis
+`STRIPE_ENVIRONMENT`. Aucun flag `PRODUCT_ANALYTICS_PRODUCTION_ENABLED`. La
+resolution est pure et injectable dans les tests
+(`resolveAnalyticsEnvironment`).
+
+#### Production impossible a activer dans G7H-B
+
+Aucun flag, aucune configuration, aucune valeur ne peut activer la collecte
+`PRODUCTION` dans G7H-B. Le resolveur retourne systematiquement `DISABLED`
+pour `PRODUCTION`. Cette restriction est codee en dur dans
+`resolveAnalyticsEnvironment` et ne peut etre contournee par une variable
+d'environnement ou un flag.
+
+#### Isolation d'erreur (best-effort)
+
+Un primitive Core `safeRecordAnalyticsEvent` / `safeRecordAnalyticsEventInTransaction`
+retourne une union fermee :
+
+- `RECORDED` : l'insert a reussi.
+- `DUPLICATE` : un evenement identique existait deja.
+- `DISABLED` : l'environnement est `DISABLED`, aucun appel DB.
+- `FAILED` : une erreur a ete catchee et loggee, mais jamais relancee.
+
+Un simple try/catch autour d'un INSERT qui echoue dans une transaction
+PostgreSQL est **interdit** : la transaction resterait aborted. Le savepoint
+garantit que la transaction externe reste utilisable.
+
+Les logs sont structures et bornes : `eventType` et un code d'erreur
+normalise uniquement. **Jamais** `sourceId`, parametres de recherche,
+identifiants metier, message PostgreSQL ou donnees personnelles.
+
+#### Aucune affirmation de conformite juridique
+
+Aucune qualification juridique d'anonymat, de conformite au RGPD ou a toute
+autre regulation n'est affirmee par G7H-B. Le `source_id` reste une donnee
+pseudonyme potentielle jusqu'a sa purge (90 jours). L'activation production
+reste soumise a validation privacy et juridique separee (G7B-R3).
+
 ## 3. Conséquences
 
 - Migration `0035_g7h_analytics_foundations.sql` introduit les deux tables, l'enum
@@ -157,9 +275,12 @@ désactivée jusqu'à validation privacy/juridique.
 - Le module `packages/core/src/product-analytics/` expose les fonctions
   `recordProductAnalyticsEvent`, `aggregateProductAnalyticsDays`,
   `purgeExpiredProductAnalytics` et `getProductAnalyticsSummary`.
+- G7H-B ajoute `resolveAnalyticsEnvironment`, `safeRecordAnalyticsEvent` et
+  `safeRecordAnalyticsEventInTransaction` au meme module.
 - L'activation production (envoi d'événements `PRODUCTION`) reste bloquée jusqu'à
   résolution de la question ouverte G7B-R3.
 - Aucun provider externe, aucun SDK client, aucun cookie analytics n'est
   introduit par cette décision.
-- G7H reste incomplet tant que G7H-B (activation production, collecte dans les
-  parcours applicatifs) n'est pas implémenté.
+- G7H-B cable trois evenements dans les parcours applicatifs (recherche
+  publique, creation de brouillon, confirmation de reservation) avec
+  isolation d'erreur best-effort et savepoint pour la confirmation.
