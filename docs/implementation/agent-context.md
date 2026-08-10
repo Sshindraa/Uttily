@@ -201,4 +201,22 @@ Une tâche est terminée lorsque :
   de signaux avec le fuseau IANA et un lien vers le détail inventaire. Tests
   unitaires et intégration PostgreSQL dédiés ajoutés ; aucun workflow de
   maintenance ou changement de schéma n'est introduit.
+- G7H-A (fondations analytics produit) : implémenté le 2026-08-10. Migration
+  0035 introduit `product_analytics_events` (raw ledger append-only, rétention
+  90 jours via trigger PostgreSQL) et `product_analytics_daily` (agrégats
+  quotidiens ne contenant que des compteurs sans identifiant source, soumis à
+  validation privacy, rétention 24 mois). Modèle de compaction : compteurs
+  compactés accumulent les événements supprimés, compteurs totaux (publics) =
+  compacted + raw restant. Advisory lock `pg_advisory_xact_lock` par (day,
+  environment) partagé entre agrégation et purge. Décodeur bigint runtime
+  (`decodeNonNegativeBigInt`) valide les valeurs avant conversion. Le module Core
+  `packages/core/src/product-analytics/` expose `recordProductAnalyticsEvent`,
+  `aggregateProductAnalyticsDays`, `purgeExpiredProductAnalytics` et
+  `getProductAnalyticsSummary`. Quatre mesures : `searches`,
+  `searchesWithResults`, `bookingAttempts`, `bookingsConfirmed`. Tests
+  unitaires et intégration PostgreSQL dédiés (incluant concurrence réelle à
+  deux connexions). ADR-022 Accepted. Activation
+  production bloquée par question ouverte G7B-R3 (consentement, validation
+  privacy/juridique). Voir
+  `docs/implementation/g7h-a-analytics-foundations.md`.
 - ADR-017 Accepted (révisé 2026-08-07, G7C-R3 terminé le 2026-08-07). ADR-018 Accepted (G7P-A Round 2 terminé le 2026-08-07, schéma uniquement ; G7P-B2-A terminé, G7P-B2-B Round 2 terminé et validé, G7P-B2-C implanté le 2026-08-08).

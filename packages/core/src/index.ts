@@ -136,3 +136,6 @@ export * from './photos';
 
 // G7G — Projection read-only des signaux maintenance du dashboard.
 export * from './dashboard';
+
+// G7H-A — Fondations analytics first-party privacy-first.
+export * from './product-analytics';
