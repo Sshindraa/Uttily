@@ -125,6 +125,18 @@ dupliquer la logique métier.
   déterministe, auditable et figé dans le snapshot. Le modèle daily-only
   actuel reste en place tant que la migration tarifaire future n'est pas
   livrée.
+- Modifications financières append-only des réservations (ADR-023, conception
+  approuvée, implémentation non commencée) : les amendements d'une réservation
+  `CONFIRMED` (changement de dates, durée, quantité, variantes, allocations)
+  sont tracés dans des tables append-only dédiées (`booking_amendments`,
+  `booking_amendment_lines`, `booking_amendment_allocations`,
+  `booking_amendment_segments`). Trois types : `NEUTRAL` (prix inchangé),
+  `SUPPLEMENT` (paiement client supplémentaire via Stripe Elements, hold
+  delta-segment 10 min), `REFUND` (remboursement sur le moyen de paiement
+  d'origine). La projection canonique `getEffectiveBooking` est l'autorité de
+  l'état effectif. Les snapshots originaux ne sont jamais mutés. Aucune
+  modification à partir de `READY_FOR_PICKUP`. OWNER/ADMIN/MANAGER uniquement.
+  EUR uniquement.
 
 ## Activation pays progressive
 

@@ -22,6 +22,10 @@ Permettre à un client de trouver et réserver un équipement réellement dispon
 7. Paiement pour un seul loueur par panier.
 8. Confirmation, contrat simple et emails transactionnels.
 9. Retrait, retour, état du matériel et signalement de dommages.
+10. Modifications financières d'une réservation confirmée avant retrait
+    (amendements append-only : changement de dates, durée, quantité, variantes
+    et allocations ; supplément via Stripe Elements, remboursement sur le moyen
+    d'origine ; ADR-023, conception approuvée, implémentation non commencée).
 
 ## Explicitement hors MVP
 
