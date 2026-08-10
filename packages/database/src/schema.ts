@@ -3,12 +3,14 @@ import {
   boolean,
   check,
   customType,
+  date,
   doublePrecision,
   index,
   integer,
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   smallint,
   text,
   time,
@@ -2274,3 +2276,116 @@ export type PricingPlanTranslation = typeof pricingPlanTranslations.$inferSelect
 export type NewPricingPlanTranslation = typeof pricingPlanTranslations.$inferInsert;
 export type ProductPhotoRecord = typeof productPhotos.$inferSelect;
 export type NewProductPhotoRecord = typeof productPhotos.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G7H-A — Fondations analytics first-party privacy-first (ADR-022, migration 0035).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const analyticsEventType = pgEnum('analytics_event_type', [
+  'PUBLIC_SEARCH_PERFORMED',
+  'BOOKING_ATTEMPTED',
+  'BOOKING_CONFIRMED',
+]);
+
+export const analyticsEnvironment = pgEnum('analytics_environment', [
+  'DEVELOPMENT',
+  'TEST',
+  'PRODUCTION',
+]);
+
+export const productAnalyticsEvents = pgTable(
+  'product_analytics_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    eventType: analyticsEventType('event_type').notNull(),
+    environment: analyticsEnvironment('environment').notNull(),
+    sourceId: uuid('source_id').notNull(),
+    hasResults: boolean('has_results'),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('product_analytics_events_dedup_unique').on(t.eventType, t.environment, t.sourceId),
+    check(
+      'product_analytics_events_has_results_invariants',
+      sql`CASE
+        WHEN ${t.eventType} = 'PUBLIC_SEARCH_PERFORMED' THEN ${t.hasResults} IS NOT NULL
+        WHEN ${t.eventType} IN ('BOOKING_ATTEMPTED', 'BOOKING_CONFIRMED') THEN ${t.hasResults} IS NULL
+        ELSE FALSE
+      END`,
+    ),
+    index('product_analytics_events_env_occurred_type_idx').on(
+      t.environment,
+      t.occurredAt,
+      t.eventType,
+    ),
+  ],
+);
+
+export const productAnalyticsDaily = pgTable(
+  'product_analytics_daily',
+  {
+    day: date('day').notNull(),
+    environment: analyticsEnvironment('environment').notNull(),
+    searches: bigint('searches', { mode: 'bigint' }).notNull(),
+    searchesWithResults: bigint('searches_with_results', { mode: 'bigint' }).notNull(),
+    bookingAttempts: bigint('booking_attempts', { mode: 'bigint' }).notNull(),
+    bookingsConfirmed: bigint('bookings_confirmed', { mode: 'bigint' }).notNull(),
+    compactedSearches: bigint('compacted_searches', { mode: 'bigint' }).notNull().default(0n),
+    compactedSearchesWithResults: bigint('compacted_searches_with_results', {
+      mode: 'bigint',
+    })
+      .notNull()
+      .default(0n),
+    compactedBookingAttempts: bigint('compacted_booking_attempts', { mode: 'bigint' })
+      .notNull()
+      .default(0n),
+    compactedBookingsConfirmed: bigint('compacted_bookings_confirmed', { mode: 'bigint' })
+      .notNull()
+      .default(0n),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ name: 'product_analytics_daily_pkey', columns: [t.day, t.environment] }),
+    check('product_analytics_daily_searches_non_negative', sql`${t.searches} >= 0`),
+    check(
+      'product_analytics_daily_searches_with_results_non_negative',
+      sql`${t.searchesWithResults} >= 0`,
+    ),
+    check('product_analytics_daily_booking_attempts_non_negative', sql`${t.bookingAttempts} >= 0`),
+    check(
+      'product_analytics_daily_bookings_confirmed_non_negative',
+      sql`${t.bookingsConfirmed} >= 0`,
+    ),
+    check(
+      'product_analytics_daily_searches_with_results_le_searches',
+      sql`${t.searchesWithResults} <= ${t.searches}`,
+    ),
+    check('product_analytics_daily_compacted_s_nn', sql`${t.compactedSearches} >= 0`),
+    check('product_analytics_daily_compacted_swr_nn', sql`${t.compactedSearchesWithResults} >= 0`),
+    check('product_analytics_daily_compacted_ba_nn', sql`${t.compactedBookingAttempts} >= 0`),
+    check('product_analytics_daily_compacted_bc_nn', sql`${t.compactedBookingsConfirmed} >= 0`),
+    check('product_analytics_daily_compacted_s_le_s', sql`${t.compactedSearches} <= ${t.searches}`),
+    check(
+      'product_analytics_daily_compacted_swr_le_swr',
+      sql`${t.compactedSearchesWithResults} <= ${t.searchesWithResults}`,
+    ),
+    check(
+      'product_analytics_daily_compacted_ba_le_ba',
+      sql`${t.compactedBookingAttempts} <= ${t.bookingAttempts}`,
+    ),
+    check(
+      'product_analytics_daily_compacted_bc_le_bc',
+      sql`${t.compactedBookingsConfirmed} <= ${t.bookingsConfirmed}`,
+    ),
+    check(
+      'product_analytics_daily_compacted_swr_le_cs',
+      sql`${t.compactedSearchesWithResults} <= ${t.compactedSearches}`,
+    ),
+  ],
+);
+
+export type ProductAnalyticsEvent = typeof productAnalyticsEvents.$inferSelect;
+export type NewProductAnalyticsEvent = typeof productAnalyticsEvents.$inferInsert;
+export type ProductAnalyticsDaily = typeof productAnalyticsDaily.$inferSelect;
+export type NewProductAnalyticsDaily = typeof productAnalyticsDaily.$inferInsert;

@@ -27,7 +27,7 @@ import { runMigrations, assertLocalhost } from '../src/index';
  * - La retraite plan sans effet sur le snapshot.
  * - Les transitions de statut autorisées.
  * - La concurrence (insertion de brouillon vs retraite de plan).
- * - Le journal de migrations (34 entrées).
+ * - Le journal de migrations (35 entrées).
  */
 
 const TEST_DB_NAME = 'uttily_test_g7p_b2_snapshots';
@@ -1466,18 +1466,18 @@ describe.skipIf(shouldSkipIntegrationTests())('G7P-B2-A — Pricing snapshot fou
 
   // J. Migration journal
 
-  it('J1 — journal de migrations : __drizzle_migrations a 34 entrées, _journal.json a 34 entrées', async () => {
+  it('J1 — journal de migrations : __drizzle_migrations a 35 entrées, _journal.json a 35 entrées', async () => {
     if (!testUrl) return;
     const sql = postgres(testUrl, { max: 1 });
     try {
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(34);
+      expect(rows.length).toBe(35);
 
       // Vérifier le _journal.json
       const __dirname = dirname(fileURLToPath(import.meta.url));
       const journalPath = join(__dirname, '..', 'drizzle', 'meta', '_journal.json');
       const journal = JSON.parse(readFileSync(journalPath, 'utf-8'));
-      expect(journal.entries.length).toBe(34);
+      expect(journal.entries.length).toBe(35);
       expect(journal.entries[32]!.tag).toBe('0033_g7p_b2_pricing_snapshots');
       expect(journal.entries[32]!.idx).toBe(32);
     } finally {

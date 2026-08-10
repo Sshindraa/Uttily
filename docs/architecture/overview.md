@@ -64,6 +64,20 @@ bornée des exemplaires `BROKEN` et des blocs `MAINTENANCE` actifs ou à venir d
 les 24 heures, avec isolation par organisation, ordre déterministe et fuseau
 IANA de l'établissement.
 
+### Analytics produit (G7H-A)
+
+G7H-A est implémenté : un ledger analytics first-party et privacy-first stocke
+quatre mesures produit (`searches`, `searchesWithResults`, `bookingAttempts`,
+`bookingsConfirmed`) dans PostgreSQL. Les événements bruts (rétention 90 jours,
+append-only via trigger) sont agrégés en compteurs quotidiens sans identifiant source
+(rétention 24 mois). Un modèle de compaction garantit que les purges bornées
+successives ne perdent pas d'événements : les compteurs compactés accumulent les
+contributions des événements supprimés, et les compteurs totaux (publics) égalent
+`compacted + raw_still_present`. Un advisory lock par `(day, environment)` sérialise
+l'agrégation et la purge. Aucun provider externe, aucune donnée directement identifiante ; `source_id` est un UUID technique pseudonyme potentiel, purgé après 90 jours. L'activation production
+reste soumise à validation privacy et juridique (ADR-022, question ouverte
+G7B-R3).
+
 ## Évolution prévue
 
 Une API NestJS est ajoutée uniquement lorsqu'une API publique, une application mobile, des partenaires ou des cycles de déploiement indépendants le justifient. AWS complet, SQS, Redis managé et OpenTelemetry arrivent lorsque la charge ou l'équipe le nécessite.

@@ -147,7 +147,7 @@ Critères d'acceptation :
 | G7F-A — Métadonnées photo et gating trois photos | table/colonnes photos, contrainte 3 photos obligatoires, gating publication et requête publique — **Terminé (G7F-A2)** | G7C-R3 | UI guidée, upload réel, CDN |
 | G7F-B — UI guidée photos | tutoriel par catégorie, upload, fallback | G7F-A, politique image | CDN imposé |
 | G7G — Dashboard | signal minimal maintenance/BROKEN, fuseaux — **Implémenté le 2026-08-09 : projection Core bornée, isolation PostgreSQL, bornes temporelles exactes, UI dashboard et tests dédiés** | G7B-R3 | workflow complet |
-| G7H — Analytics | ledger first-party, 4 mesures, privacy-gated | G7B-R3, validation privacy | provider externe, collecte avant validation |
+| G7H — Analytics | ledger first-party, 4 mesures, privacy-gated — **G7H-A terminé (fondations techniques : migration 0035, module Core product-analytics, tests unitaires et intégration PostgreSQL, ADR-022) ; activation production bloquée par question ouverte G7B-R3** | G7B-R3, validation privacy | provider externe, collecte avant validation |
 | G7I — Validation transversale | e2e, a11y, performance, concurrence, DST, snapshots | G7C-R3–G7H | réouverture Lot 6 |
 
 Dépendances explicites : G7C-R3 dépend de G7B-R3 ; G7P-A dépend de G7B-R3 ;
