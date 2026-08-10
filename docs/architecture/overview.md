@@ -64,7 +64,7 @@ bornée des exemplaires `BROKEN` et des blocs `MAINTENANCE` actifs ou à venir d
 les 24 heures, avec isolation par organisation, ordre déterministe et fuseau
 IANA de l'établissement.
 
-### Analytics produit (G7H-A)
+### Analytics produit (G7H-A, G7H-B)
 
 G7H-A est implémenté : un ledger analytics first-party et privacy-first stocke
 quatre mesures produit (`searches`, `searchesWithResults`, `bookingAttempts`,
@@ -77,6 +77,14 @@ contributions des événements supprimés, et les compteurs totaux (publics) ég
 l'agrégation et la purge. Aucun provider externe, aucune donnée directement identifiante ; `source_id` est un UUID technique pseudonyme potentiel, purgé après 90 jours. L'activation production
 reste soumise à validation privacy et juridique (ADR-022, question ouverte
 G7B-R3).
+
+G7H-B est implémenté : trois événements analytics sont câblés dans les parcours
+applicatifs réels (`PUBLIC_SEARCH_PERFORMED`, `BOOKING_ATTEMPTED`,
+`BOOKING_CONFIRMED`) via un enregistreur best-effort avec isolation d'erreur
+(savepoint pour la confirmation). La collecte est contrôlée par
+`PRODUCT_ANALYTICS_ENVIRONMENT` (DEVELOPMENT/TEST autorisés, PRODUCTION
+toujours DISABLED, aucun flag ne peut l'activer). Aucune donnée sensible
+(paramètres de recherche, identifiants client, IP, session) n'est collectée.
 
 ## Évolution prévue
 

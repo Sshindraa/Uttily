@@ -49,7 +49,7 @@ beforeEach(async () => {
   if (!ctx || !db) return;
   await db.execute(
     (await import('drizzle-orm'))
-      .sql`TRUNCATE TABLE allocations, booking_draft_lines, booking_drafts, inventory_blocks, inventory_movements, inventory_items, product_variants, products, location_opening_hours, pricing_plan_translations, pricing_plan_windows, multi_day_discount_tiers, pricing_plans, locations, organization_memberships, organizations, users, idempotency_records RESTART IDENTITY CASCADE`,
+      .sql`TRUNCATE TABLE allocations, booking_draft_lines, booking_drafts, inventory_blocks, inventory_movements, inventory_items, product_variants, products, location_opening_hours, pricing_plan_translations, pricing_plan_windows, multi_day_discount_tiers, pricing_plans, locations, organization_memberships, organizations, users, idempotency_records, product_analytics_events RESTART IDENTITY CASCADE`,
   );
 });
 
@@ -2329,6 +2329,130 @@ describe.skipIf(shouldSkipIntegrationTests())(
       // Verify a draft was actually created
       const drafts = await rawSql`SELECT count(*)::int AS n FROM booking_drafts`;
       expect(drafts[0]!.n).toBe(1);
+    });
+
+    // ── G7H-B — Analytics assertions for FLEXIBLE mode ──────────────────
+    // NOTE: These tests must run BEFORE test 75 which drops pricing tables.
+
+    describe('G7H-B — analytics BOOKING_ATTEMPTED (FLEXIBLE)', () => {
+      it('valid FLEXIBLE request → BOOKING_ATTEMPTED emitted', async () => {
+        if (!db || !rawSql) return;
+        const ids = await seedBaseData();
+        await seedDailyPlan(ids);
+        await seedOpeningHours(ids.locationId);
+        const input = makeFlexibleDayRangeInput(ids, '2026-02-10', '2026-02-12', {
+          idempotencyKey: 'flex-analytics-' + SUFFIX(),
+        });
+        const result = await createBookingDraftWithHold(db, input, 'DEVELOPMENT');
+        expectSuccess(result);
+
+        const events =
+          await rawSql`SELECT event_type, environment, source_id, occurred_at FROM product_analytics_events WHERE event_type = 'BOOKING_ATTEMPTED'`;
+        expect(events.length).toBe(1);
+        expect(events[0]!.environment).toBe('DEVELOPMENT');
+      });
+
+      it('sourceId = idempotency_records.id et occurredAt = idempotency_records.created_at', async () => {
+        if (!db || !rawSql) return;
+        const ids = await seedBaseData();
+        await seedDailyPlan(ids);
+        await seedOpeningHours(ids.locationId);
+        const key = 'flex-analytics-ids-' + SUFFIX();
+        const input = makeFlexibleDayRangeInput(ids, '2026-02-10', '2026-02-12', {
+          idempotencyKey: key,
+        });
+        const result = await createBookingDraftWithHold(db, input, 'DEVELOPMENT');
+        expectSuccess(result);
+
+        const idempotencyRecord =
+          await rawSql`SELECT id, created_at FROM idempotency_records WHERE key = ${key}`.then(
+            (r) => r[0]!,
+          );
+        const events =
+          await rawSql`SELECT source_id, occurred_at FROM product_analytics_events WHERE event_type = 'BOOKING_ATTEMPTED'`;
+        expect(events.length).toBe(1);
+        expect(events[0]!.source_id).toBe(idempotencyRecord.id);
+        expect(events[0]!.occurred_at.getTime()).toBe(idempotencyRecord.created_at.getTime());
+      });
+
+      it('FLEXIBLE replay → still a single event', async () => {
+        if (!db || !rawSql) return;
+        const ids = await seedBaseData();
+        await seedDailyPlan(ids);
+        await seedOpeningHours(ids.locationId);
+        const key = 'flex-analytics-replay-' + SUFFIX();
+        const input = makeFlexibleDayRangeInput(ids, '2026-02-10', '2026-02-12', {
+          idempotencyKey: key,
+        });
+
+        // Premier appel : SUCCESS.
+        const result1 = await createBookingDraftWithHold(db, input, 'DEVELOPMENT');
+        expectSuccess(result1);
+
+        // Deuxieme appel avec la meme cle : REPLAY.
+        const result2 = await createBookingDraftWithHold(db, input, 'DEVELOPMENT');
+        expectSuccess(result2);
+
+        // Un seul evenement BOOKING_ATTEMPTED (deduplication par sourceId).
+        const events =
+          await rawSql`SELECT COUNT(*)::int AS cnt FROM product_analytics_events WHERE event_type = 'BOOKING_ATTEMPTED'`;
+        expect(events[0]!.cnt).toBe(1);
+      });
+
+      it('FLEXIBLE business failure after reserveKey → event already present', async () => {
+        if (!db || !rawSql) return;
+        const ids = await seedBaseData();
+        await seedDailyPlan(ids);
+        await seedOpeningHours(ids.locationId);
+        // Declencher un VRAI echec metier (availability conflict) apres reserveKey :
+        // quantity 4 > 3 exemplaires disponibles → CONFLICT_BLOCK.
+        // Utiliser un DAY_RANGE valide avec un plan DAILY.
+        const input = makeFlexibleDayRangeInput(ids, '2026-02-10', '2026-02-12', {
+          idempotencyKey: 'flex-analytics-fail-' + SUFFIX(),
+          lines: [{ variantId: ids.variantId, quantity: 4 }],
+        });
+        // L'appel doit retourner FAILURE (pas throw) — l'echec metier est persiste
+        // via failKey et retourne comme union FAILURE.
+        const result = await createBookingDraftWithHold(db, input, 'DEVELOPMENT');
+        // Le test doit FAIL si l'operation retourne SUCCESS.
+        expect(result.kind).toBe('FAILURE');
+        if (result.kind !== 'FAILURE') return; // type narrowing
+        expect(result.statusCode).toBe(409);
+        expect(result.body.error).toBe('CONFLICT_BLOCK');
+
+        // Verifier que l'enregistrement d'idempotence existe en status FAILED.
+        const idempotencyRecord = await rawSql`
+          SELECT id, created_at, status FROM idempotency_records
+          WHERE key = ${input.idempotencyKey}
+        `.then((r) => r[0]!);
+        expect(idempotencyRecord.status).toBe('FAILED');
+
+        // Verifier BOOKING_ATTEMPTED existe avec exact sourceId/occurredAt.
+        const events = await rawSql`
+          SELECT id, event_type, environment, source_id, occurred_at
+          FROM product_analytics_events
+          WHERE event_type = 'BOOKING_ATTEMPTED' AND environment = 'DEVELOPMENT'
+        `;
+        expect(events).toHaveLength(1);
+        const event = events[0]!;
+        expect(event.source_id).toBe(idempotencyRecord.id);
+        expect(event.occurred_at.getTime()).toBe(idempotencyRecord.created_at.getTime());
+      });
+
+      it('FLEXIBLE DISABLED → aucun evenement analytics', async () => {
+        if (!db || !rawSql) return;
+        const ids = await seedBaseData();
+        await seedDailyPlan(ids);
+        await seedOpeningHours(ids.locationId);
+        const input = makeFlexibleDayRangeInput(ids, '2026-02-10', '2026-02-12', {
+          idempotencyKey: 'flex-analytics-disabled-' + SUFFIX(),
+        });
+        const result = await createBookingDraftWithHold(db, input, 'DISABLED');
+        expectSuccess(result);
+
+        const events = await rawSql`SELECT COUNT(*)::int AS cnt FROM product_analytics_events`;
+        expect(events[0]!.cnt).toBe(0);
+      });
     });
 
     // ── G7P-B2-B Round 2 — Defect 7 : DB error isolation ─────────────────

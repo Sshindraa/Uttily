@@ -26,6 +26,7 @@ import type {
   FlexibleIdempotentPayload,
   FlexibleIntentCanonical,
   IdempotentPayload,
+  IdempotencyReservation,
 } from '../idempotency';
 import { calculateBillableCivilDays } from '../pricing/civil-days';
 import { calculatePrice } from '../pricing/calculate-price';
@@ -41,6 +42,11 @@ import {
 } from '../pricing-plans/local-to-utc';
 import type { LocalDateTime } from '../pricing-plans/local-to-utc';
 import { BookingDraftError } from './errors';
+import {
+  safeRecordAnalyticsEvent,
+  resolveAnalyticsEnvironmentFromProcessEnv,
+  type ResolvedAnalyticsEnvironment,
+} from '../product-analytics';
 import type {
   BookingDraftAllocation,
   BookingDraftFailureBody,
@@ -305,27 +311,91 @@ function normalizeFlexiblePricingError(error: FlexiblePricingError): BookingDraf
  *
  * @param db client base de données (DatabaseClient)
  * @param input entrée sémantique fournie par le client
+ * @param analyticsEnvironment environnement analytics résolu (optionnel).
+ *   Si non fourni, lu depuis process.env.PRODUCT_ANALYTICS_ENVIRONMENT.
+ *   PRODUCTION est toujours DISABLED dans G7H-B.
  * @returns résultat (union discriminée SUCCESS | FAILED) — 201 en cas de
  *   succès, 4xx en cas d'erreur métier persistée.
  */
 export async function createBookingDraftWithHold(
   db: DatabaseClient,
   input: CreateBookingDraftInput,
+  analyticsEnvironment?: ResolvedAnalyticsEnvironment,
 ): Promise<CreateBookingDraftResult> {
+  const resolvedEnv = analyticsEnvironment ?? resolveAnalyticsEnvironmentFromProcessEnv();
   // ── Discrimination du chemin (LEGACY vs FLEXIBLE) ──────────────────────
   // G7P-B2-B Round 2 — Defect 6 : dispatch fermé, aucun fallback silencieux.
   // La validation doit avoir lieu AVANT reserveKey — aucune mutation DB, aucun
   // enregistrement d'idempotence pour un mode invalide.
   if (input.pricingMode === 'FLEXIBLE') {
-    return executeFlexiblePath(db, input);
+    return executeFlexiblePath(db, input, resolvedEnv);
   }
   if (input.pricingMode === 'LEGACY' || input.pricingMode === undefined) {
-    return executeLegacyPath(db, input);
+    return executeLegacyPath(db, input, resolvedEnv);
   }
   throw new BookingDraftError(
     'VALIDATION',
     `Mode de pricing invalide: ${String(input.pricingMode)}`,
   );
+}
+
+/**
+ * Émet l'événement analytics BOOKING_ATTEMPTED après reserveKey et avant la
+ * transaction métier. Partagé entre les chemins LEGACY et FLEXIBLE pour éviter
+ * la duplication de logique.
+ *
+ * Règles (G7H-B) :
+ * - sourceId = reservation.record.id (UUID de l'enregistrement d'idempotence).
+ * - occurredAt = reservation.record.createdAt.
+ * - JAMAIS input.idempotencyKey comme sourceId (non garanti UUID).
+ * - Pour ACQUIRED, PENDING et REPLAY, tente le même événement stable.
+ *   Le ledger déduplique les replays et la concurrence.
+ * - Pour CONFLICT, n'émet PAS (payload différent avec même clé = tentative invalide).
+ * - L'écriture analytics est best-effort : une erreur analytics ne doit JAMAIS
+ *   affecter le chemin métier.
+ *
+ * @param db Client de base de données (hors transaction).
+ * @param reservation Résultat de reserveKey.
+ * @param environment Environnement analytics résolu.
+ */
+async function emitBookingAttempted(
+  db: DatabaseClient,
+  reservation: IdempotencyReservation,
+  environment: ResolvedAnalyticsEnvironment,
+): Promise<void> {
+  // Exhaustive switch sur le kind de la reservation. Chaque membre de l'union
+  // est traite explicitement. Un futur membre de l'union declencherait une
+  // erreur de compilation (never check) au lieu d'etre silently ignore.
+  switch (reservation.kind) {
+    case 'CONFLICT': {
+      // Cle d'idempotence reutilisee avec un payload different.
+      // Ne compte pas comme une tentative valide.
+      return;
+    }
+    case 'ACQUIRED':
+    case 'PENDING':
+    case 'REPLAY': {
+      // Tente l'evenement stable. Le ledger deduplique les replays
+      // (meme sourceId = meme evenement).
+      await safeRecordAnalyticsEvent(
+        db,
+        {
+          eventType: 'BOOKING_ATTEMPTED',
+          sourceId: reservation.record.id,
+          occurredAt: reservation.record.createdAt,
+        },
+        environment,
+      );
+      return;
+    }
+    default: {
+      // Future member — do not emit. Le never check garantit que ce branch
+      // est inaccessible a l'execution et declenche une erreur de compilation
+      // si un nouveau membre est ajoute a IdempotencyReservation.
+      const _exhaustive: never = reservation;
+      return _exhaustive;
+    }
+  }
 }
 
 /**
@@ -335,6 +405,7 @@ export async function createBookingDraftWithHold(
 async function executeLegacyPath(
   db: DatabaseClient,
   input: LegacyCreateBookingDraftInput,
+  analyticsEnvironment: ResolvedAnalyticsEnvironment,
 ): Promise<CreateBookingDraftResult> {
   // ── Étape A — Validation initiale (avant la base) ──────────────────────
   validateInput(input);
@@ -373,6 +444,11 @@ async function executeLegacyPath(
     key: input.idempotencyKey,
     requestFingerprint: fingerprint,
   });
+
+  // G7H-B — Émettre BOOKING_ATTEMPTED après reserveKey, avant la transaction.
+  // ACQUIRED, PENDING et REPLAY tentent le même événement stable (déduplication).
+  // CONFLICT n'émet pas (payload différent = tentative invalide).
+  await emitBookingAttempted(db, reservation, analyticsEnvironment);
 
   if (reservation.kind === 'REPLAY') {
     return extractReplayResult(reservation.record);
@@ -434,6 +510,7 @@ async function executeLegacyPath(
 async function executeFlexiblePath(
   db: DatabaseClient,
   input: FlexibleCreateBookingDraftInput,
+  analyticsEnvironment: ResolvedAnalyticsEnvironment,
 ): Promise<CreateBookingDraftResult> {
   // ── Étape A — Validation initiale (avant la base) ──────────────────────
   validateFlexibleInput(input);
@@ -474,6 +551,11 @@ async function executeFlexiblePath(
     key: input.idempotencyKey,
     requestFingerprint: fingerprint,
   });
+
+  // G7H-B — Émettre BOOKING_ATTEMPTED après reserveKey, avant la transaction.
+  // ACQUIRED, PENDING et REPLAY tentent le même événement stable (déduplication).
+  // CONFLICT n'émet pas (payload différent = tentative invalide).
+  await emitBookingAttempted(db, reservation, analyticsEnvironment);
 
   if (reservation.kind === 'REPLAY') {
     return extractReplayResult(reservation.record);

@@ -219,4 +219,19 @@ Une tâche est terminée lorsque :
   production bloquée par question ouverte G7B-R3 (consentement, validation
   privacy/juridique). Voir
   `docs/implementation/g7h-a-analytics-foundations.md`.
+- G7H-B (cablage des evenements analytics) : implante le 2026-08-10. Trois
+  evenements cables dans les parcours applicatifs reels :
+  `PUBLIC_SEARCH_PERFORMED` (apres une recherche publique reussie, sourceId =
+  `crypto.randomUUID()` capture une fois par execution),
+  `BOOKING_ATTEMPTED` (apres `reserveKey` et avant la transaction metier,
+  sourceId = `reservation.record.id`, partage LEGACY/FLEXIBLE via helper),
+  `BOOKING_CONFIRMED` (dans la transaction de confirmation apres outbox, isole
+  par savepoint, sourceId = `bookingId`, occurredAt = `confirmedAt` retourne
+  par PostgreSQL). Enregistreur best-effort `safeRecordAnalyticsEvent` /
+  `safeRecordAnalyticsEventInTransaction` avec union fermee
+  RECORDED/DUPLICATE/DISABLED/FAILED, jamais de rethrow. Resolveur d'environnement
+  pur `resolveAnalyticsEnvironment` : DEVELOPMENT/TEST autorises, PRODUCTION
+  toujours DISABLED, aucun flag ne peut l'activer. Aucune donnee sensible
+  collectee. ADR-022 amende (section 2.8). Voir
+  `docs/implementation/g7h-b-analytics-wiring.md`.
 - ADR-017 Accepted (révisé 2026-08-07, G7C-R3 terminé le 2026-08-07). ADR-018 Accepted (G7P-A Round 2 terminé le 2026-08-07, schéma uniquement ; G7P-B2-A terminé, G7P-B2-B Round 2 terminé et validé, G7P-B2-C implanté le 2026-08-08).
