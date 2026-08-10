@@ -247,3 +247,47 @@ réservation.
   (`pricing_plans`, `pricing_plan_translations`, `locations`) : un plan
   `RETIRED`, un plan local activé postérieurement ou une traduction modifiée
   n'ont aucun effet sur la confirmation.
+
+### Modifications financières append-only (ADR-023, conception approuvée)
+
+> ADR-023 (2026-08-10, Accepted — conception approuvée, implémentation non
+> commencée). Voir
+> `docs/decisions/ADR-023-booking-financial-amendments.md`.
+
+Les modifications d'une réservation `CONFIRMED` (dates, durée, quantité,
+variantes, allocations) sont tracées dans des tables append-only dédiées et ne
+mutent jamais les snapshots originaux (`bookings`, `booking_lines`,
+`booking_items`). Trois types d'amendement :
+
+- **NEUTRAL** (prix inchangé) : application PostgreSQL atomique directe, sans
+  hold ni attente fournisseur.
+- **SUPPLEMENT** (prix augmente) : hold delta-segment de 10 minutes sur les
+  segments supplémentaires uniquement, paiement client via Stripe Elements
+  (réutilisation de `PaymentElement` et `stripe.confirmPayment`), application
+  atomique après webhook `payment_intent.succeeded`.
+- **REFUND** (prix diminue) : application PostgreSQL atomique directe +
+  obligation de remboursement `PENDING` + outbox dans la même transaction ;
+  Stripe `createRefund` exécuté ensuite par worker.
+
+**Règle delta** : `delta = nouvelle plage − plages BOOKING déjà détenues par
+cette réservation pour le même item`. Seuls les segments delta sont placés en
+`HOLD/ACTIVE`, respectant la contrainte `no_overlapping_blocks` qui est aveugle
+à `source_id`.
+
+**Projection canonique** : `getEffectiveBooking(bookingId)` est l'autorité de
+l'état effectif — booking original si aucun amendement `APPLIED`, dernier
+snapshot complet `APPLIED` sinon.
+
+**Fulfillment** : la transition vers `READY_FOR_PICKUP` refuse tout amendement
+actif ; la création d'un amendement refuse tout booking différent de
+`CONFIRMED`.
+
+**Invariants financiers** :
+`encaissé_brut − remboursé_réussi − règlement_hors_plateforme − remboursement_encore_dû = total_contractuel_effectif`.
+Un remboursement définitivement échoué (`FAILED_REQUIRES_MANUAL_ACTION`) reste
+une dette visible, résoluble par intervention manuelle auditée
+(`SETTLED_OFF_PLATFORM`). Aucune annulation rétroactive de l'amendement.
+
+**Autorisation** : OWNER/ADMIN/MANAGER pour l'initiation ; client authentifié
+lié à la réservation pour le paiement du supplément. EUR uniquement. Aucune
+modification à partir de `READY_FOR_PICKUP`.

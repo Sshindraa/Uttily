@@ -174,6 +174,103 @@ NO_DEPOSIT
 
 `FinancialLedgerEntry` est append-only : les corrections sont de nouvelles écritures, jamais une modification destructive de l'historique.
 
+### Modifications financières append-only (ADR-023, conception approuvée)
+
+> ADR-023 (2026-08-10, Accepted — conception approuvée, implémentation non
+> commencée). Voir
+> `docs/decisions/ADR-023-booking-financial-amendments.md`.
+
+Les modifications d'une réservation `CONFIRMED` sont tracées dans des tables
+append-only dédiées. Les snapshots originaux (`bookings`, `booking_lines`,
+`booking_items`) ne sont jamais mutés par un amendement.
+
+```text
+BookingAmendment
+  - id (UUID PK)
+  - organization_id (FK organizations)
+  - booking_id (FK bookings)
+  - amendment_number (INTEGER, monotone par booking)
+  - type (NEUTRAL | SUPPLEMENT | REFUND)
+  - status (HOLD_PENDING | READY_TO_APPLY | APPLIED | EXPIRED | CANCELLED | FAILED)
+  - financial_snapshot_before (JSONB, immutable)
+  - financial_snapshot_after (JSONB, immutable)
+  - new_customer_start_at, new_customer_end_at
+  - new_blocked_start_at, new_blocked_end_at
+  - hold_deadline (timestamptz, nullable — SUPPLEMENT uniquement)
+  - created_by (FK users)
+  - created_at, updated_at, applied_at, expired_at
+
+BookingAmendmentLine
+  - id (UUID PK)
+  - amendment_id (FK booking_amendments)
+  - logical_line_id (UUID NOT NULL — identité stable entre amendements)
+  - origin_type (ORIGINAL | AMENDMENT)
+  - source_booking_line_id (FK booking_lines, nullable — ORIGINAL uniquement)
+  - variant_id (FK product_variants)
+  - action (ADD | MODIFY | REMOVE | UNCHANGED)
+  - before_/after_ quantity, unit_price_amount_minor, line_total_amount_minor
+  - pricing_snapshot, variant_snapshot (JSONB, immutable)
+  - UNIQUE(amendment_id, logical_line_id), UNIQUE(amendment_id, variant_id)
+
+BookingAmendmentAllocation
+  - id (UUID PK)
+  - amendment_id (FK booking_amendments)
+  - amendment_line_id (FK booking_amendment_lines)
+  - inventory_item_id (FK inventory_items)
+  - action (RETAIN | ADD | REMOVE | REPLACE)
+  - source_booking_block_id (FK inventory_blocks, nullable)
+  - applied_booking_block_id (FK inventory_blocks, nullable)
+  - status (PROPOSED | CONVERTED | RELEASED | EXPIRED)
+  - effective_customer/blocked_start_at, end_at
+  - UNIQUE(amendment_id, inventory_item_id)
+
+BookingAmendmentSegment
+  - id (UUID PK)
+  - allocation_id (FK booking_amendment_allocations)
+  - inventory_item_id (FK inventory_items)
+  - hold_block_id (FK inventory_blocks, UNIQUE)
+  - delta_start_at, delta_end_at
+  - status (PROPOSED | CONVERTED | RELEASED | EXPIRED)
+
+AmendmentPayment
+  - id (UUID PK)
+  - booking_id (FK bookings)
+  - amendment_id (FK booking_amendments)
+  - amount_minor, currency
+  - status (PENDING_PROVIDER | REQUIRES_PAYMENT_METHOD | REQUIRES_ACTION | PROCESSING | SUCCEEDED | FAILED | CANCELLED)
+  - provider_payment_intent_id, provider_idempotency_key
+
+AmendmentPaymentAttempt
+  - id (UUID PK)
+  - amendment_payment_id (FK amendment_payments)
+  - provider_payment_intent_id, provider_status, provider_idempotency_key
+```
+
+**Identité logique stable** : `logical_line_id` est conservé entre snapshots.
+Pour une ligne originale, `logical_line_id = booking_line.id`. Pour une ligne
+ajoutée, `logical_line_id = gen_random_uuid()` ; cet UUID est conservé par tous
+les amendements suivants. Une ligne d'origine `AMENDMENT` peut être
+`UNCHANGED`, `MODIFY` ou `REMOVE` sans `source_booking_line_id`.
+
+**Projection canonique** : `getEffectiveBooking(bookingId)` est l'autorité de
+l'état effectif — booking original si aucun amendement `APPLIED`, dernier
+snapshot complet `APPLIED` sinon.
+
+**Extension des refunds** : `refund_reason` étendu avec `BOOKING_MODIFICATION`
+et `AMENDMENT_COMPENSATION` ; `refund_status` étendu avec
+`FAILED_REQUIRES_MANUAL_ACTION` et `SETTLED_OFF_PLATFORM` ; colonnes
+`settled_off_platform_at`, `settled_off_platform_by`, `settlement_notes` sur
+`refunds`. `refunds.payment_id` devient nullable, `refunds.amendment_payment_id`
+est ajouté (nullable, FK vers `amendment_payments.id`), contrainte CHECK XOR
+(exactement une origine non-null). `BOOKING_MODIFICATION` référence le paiement
+initial (`payment_id`) ; `AMENDMENT_COMPENSATION` référence le paiement de
+supplément (`amendment_payment_id`). Triggers de cohérence organisation,
+devise, environnement et montant entre le refund et son origine.
+
+**Adaptation condition_reports/damage_reports** : `booking_item_id` devient
+nullable, `amendment_allocation_id` est ajouté avec CHECK "exactement une
+référence non-null".
+
 ## Opérations
 
 ```text
