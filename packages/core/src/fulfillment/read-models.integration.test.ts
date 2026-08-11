@@ -696,6 +696,51 @@ describeIntegration('fulfillment read-models — getOperationalBookingDetails', 
     expect(events[0]!.occurredAt.getTime()).toBeLessThan(events[1]!.occurredAt.getTime());
     expect(events[1]!.occurredAt.getTime()).toBeLessThan(events[2]!.occurredAt.getTime());
   });
+
+  // G7M-A : les rapports historiques (booking_item_id set, sans
+  // amendment_allocation_id) restent projetés correctement malgré le filtre
+  // transitoire isNotNull(bookingItemId).
+  it('G7M-A : rapports historiques (booking_item_id set) projetés correctement malgré le filtre isNotNull', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData();
+    const booking = await seedConfirmedBooking(ids, 2);
+    const staffId = await seedStaffUser(ids);
+
+    // Insérer un condition report et un damage report avec booking_item_id set.
+    const crId = await insertConditionReport(
+      ids,
+      booking,
+      'PICKUP',
+      'GOOD',
+      staffId,
+      '2026-02-15 10:00:00+00',
+    );
+    const drId = await insertDamageReport(
+      ids,
+      booking,
+      'Rayure coque',
+      staffId,
+      '2026-02-15 10:05:00+00',
+    );
+
+    const details = await getOperationalBookingDetails(db, ids.orgId, booking.bookingId);
+    expect(details).not.toBeNull();
+
+    // Les condition reports sont retournés avec leur bookingItemId.
+    expect(details!.conditionReports).toHaveLength(1);
+    const cr = details!.conditionReports[0]!;
+    expect(cr.id).toBe(crId);
+    expect(cr.bookingItemId).toBe(booking.bookingItemId);
+    expect(cr.phase).toBe('PICKUP');
+    expect(cr.condition).toBe('GOOD');
+
+    // Les damage reports sont retournés avec leur bookingItemId.
+    expect(details!.damageReports).toHaveLength(1);
+    const dr = details!.damageReports[0]!;
+    expect(dr.id).toBe(drId);
+    expect(dr.bookingItemId).toBe(booking.bookingItemId);
+    expect(dr.description).toBe('Rayure coque');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

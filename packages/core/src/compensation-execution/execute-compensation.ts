@@ -93,10 +93,20 @@ export async function executeCompensation(
           'REFUND_ALREADY_FAILED',
           `Le refund ${refund.id} est déjà FAILED — remboursement non abouti`,
         );
+      case 'FAILED_REQUIRES_MANUAL_ACTION':
+        throw new CompensationError(
+          'REFUND_ALREADY_FAILED',
+          `Le refund ${refund.id} est FAILED_REQUIRES_MANUAL_ACTION — intervention manuelle requise`,
+        );
+      case 'SETTLED_OFF_PLATFORM':
+        throw new CompensationError(
+          'REFUND_ALREADY_SUBMITTED',
+          `Le refund ${refund.id} est SETTLED_OFF_PLATFORM — résolu hors plateforme`,
+        );
       default: {
         // Invariant explicite : l'union TypeScript refund_status est fermée
-        // (PENDING/SUBMITTED/SUCCEEDED/FAILED) — tout autre statut est une
-        // anomalie d'intégrité, jamais un cas à traiter silencieusement.
+        // — tout autre statut est une anomalie d'intégrité, jamais un cas à
+        // traiter silencieusement.
         const unexpected: never = refund.status;
         throw new Error(`Statut refund inattendu (invariant violé): ${String(unexpected)}`);
       }

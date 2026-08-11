@@ -1485,6 +1485,14 @@ async function projectRefundStatus(
             );
             throw new RefundProjectionError('REFUND_PI_MISSING');
           }
+          // G7M-A : un refund d'origine amendement (amendment_payment_id) a
+          // payment_id NULL. Le projecteur legacy ne sait pas encore résoudre
+          // amendment_payment_id — la branche webhook complète pour les origines
+          // d'amendement est différée au lot webhook G7M. On fail-closed pour
+          // éviter une JOIN incorrecte ou une projection silencieuse.
+          if (existingRow.paymentId === null) {
+            throw new RefundProjectionError('REFUND_PI_MISSING');
+          }
           // Vérifier la correspondance du payment_intent.
           const existingPayment = await sp
             .select({ id: payments.id, connectedAccountId: payments.connectedAccountId })
