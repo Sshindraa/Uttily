@@ -59,10 +59,3 @@ Avant toute tâche, lire dans cet ordre :
 ## En cas d'ambiguïté
 
 Ne pas inventer une règle métier. Ajouter la question dans `docs/implementation/open-questions.md` ou demander une décision au porteur de produit.
-
-## Orchestration Sol Advisor
-
-- Pour toute demande de modification, de construction ou de correction de code, invoquer `sol-advisor:orchestration` avant toute implémentation.
-- Utiliser par défaut la task lane Luna/Max enregistrée pour ce projet ; la tâche principale garde la planification, la vérification du diff, les tests et l'acceptation finale.
-- Ne pas demander à l'utilisateur d'ajouter un préfixe spécial et ne pas remplacer silencieusement Luna/Max par un autre modèle. En cas de lane indisponible, arrêter et signaler le blocage.
-- Pour une demande d'explication, de diagnostic ou de revue sans modification, rester en lecture seule sauf demande explicite d'implémentation.
