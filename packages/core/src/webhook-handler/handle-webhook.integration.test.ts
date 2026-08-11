@@ -5476,4 +5476,244 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
     expect(refundRows[0]!.provider_refund_id).toBeNull();
     expect(refundRows[0]!.status).toBe('PENDING');
   });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // G7M-A : Tests de compatibilité — refund historique (payment_id) et
+  // refund d'origine amendement (amendment_payment_id, payment_id NULL).
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // G7M-A-1. Refund historique avec payment_id : la projection webhook continue
+  // de fonctionner (le guard paymentId === null ne casse pas les refunds existants).
+  it('G7M-A-1. refund historique avec payment_id → refund.updated projette le statut correctement', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('g7m-a-historical');
+    await seedPaymentAccount(ids);
+    const draftId = await createHeldDraft(ids, 'g7m-a-historical');
+
+    const initDeps = makeInitDeps();
+    const initResult = await initiatePayment(
+      initDeps,
+      makeInitiateInput(ids, draftId, 'g7m-a-historical'),
+    );
+    expect(initResult.kind).toBe('SUCCESS');
+    if (initResult.kind !== 'SUCCESS') return;
+
+    const piId = initResult.providerPaymentIntentId;
+    const paymentId = await getPaymentId(draftId);
+    const amount = await getPaymentAmount(draftId);
+    const deps = makeDeps();
+
+    // 1. Confirmer la réservation.
+    const bodySucceeded = makeWebhookPayload('payment_intent.succeeded', piId, amount, {
+      payment_id: paymentId,
+      payment_attempt_id: initResult.paymentAttemptId,
+      draft_id: draftId,
+      organization_id: ids.orgId,
+      protocol_version: 'v1',
+    });
+    await handleWebhook(deps, makeWebhookInput(bodySucceeded, deps.adapter));
+
+    // 2. Créer un refund PENDING via charge.refunded (refund historique avec payment_id).
+    const refundId = 're_g7m_a_historical';
+    const t1 = Math.floor(Date.now() / 1000);
+    const bodyRefund1 = JSON.stringify({
+      id: `evt_g7m_a_hist_create_${Math.random().toString(36).slice(2, 12)}`,
+      type: 'charge.refunded',
+      created: t1,
+      api_version: '2026-06-24.dahlia',
+      data: {
+        object: {
+          id: 'ch_g7m_a_hist',
+          object: 'charge',
+          payment_intent: piId,
+          amount_refunded: amount,
+          refunds: {
+            object: 'list',
+            data: [
+              {
+                id: refundId,
+                object: 'refund',
+                status: 'pending',
+                amount,
+                payment_intent: piId,
+                currency: 'eur',
+              },
+            ],
+            has_more: false,
+          },
+        },
+      },
+    });
+    await handleWebhook(deps, makeWebhookInput(bodyRefund1, deps.adapter));
+
+    // Vérifier que le refund est PENDING avec payment_id non-null.
+    const refund1 =
+      await rawSql`SELECT status, payment_id FROM refunds WHERE provider_refund_id = ${refundId}`;
+    expect(refund1.length).toBe(1);
+    expect(refund1[0]!.status).toBe('PENDING');
+    expect(refund1[0]!.payment_id).not.toBeNull();
+
+    // 3. Envoyer refund.updated avec statut 'succeeded' (transition PENDING → SUCCEEDED).
+    const t2 = t1 + 100;
+    const evtId2 = `evt_g7m_a_hist_update_${Math.random().toString(36).slice(2, 12)}`;
+    const bodyRefund2 = JSON.stringify({
+      id: evtId2,
+      type: 'refund.updated',
+      created: t2,
+      api_version: '2026-06-24.dahlia',
+      data: {
+        object: {
+          id: refundId,
+          object: 'refund',
+          status: 'succeeded',
+          amount,
+          payment_intent: piId,
+          currency: 'eur',
+        },
+      },
+    });
+    const result2 = await handleWebhook(deps, makeWebhookInput(bodyRefund2, deps.adapter));
+    expect(result2.kind).toBe('SUCCESS');
+
+    // 4. Le refund doit être SUCCEEDED (projection correcte, pas bloqué par le guard).
+    const refund2 =
+      await rawSql`SELECT status, payment_id FROM refunds WHERE provider_refund_id = ${refundId}`;
+    expect(refund2[0]!.status).toBe('SUCCEEDED');
+    expect(refund2[0]!.payment_id).not.toBeNull();
+
+    // L'événement est PROCESSED.
+    const evt2 =
+      await rawSql`SELECT status FROM payment_webhook_events WHERE provider_event_id = ${evtId2}`;
+    expect(evt2[0]!.status).toBe('PROCESSED');
+  });
+
+  // G7M-A-2. Refund d'origine amendement (payment_id NULL, amendment_payment_id set) :
+  // le guard fail-closed lève RefundProjectionError(REFUND_PI_MISSING) — pas de
+  // type crash, pas de bad JOIN, pas de silent failure.
+  it("G7M-A-2. refund d'origine amendement (payment_id NULL) → REFUND_PI_MISSING (fail-closed)", async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('g7m-a-amendment');
+    await seedPaymentAccount(ids);
+    const draftId = await createHeldDraft(ids, 'g7m-a-amendment');
+
+    const initDeps = makeInitDeps();
+    const initResult = await initiatePayment(
+      initDeps,
+      makeInitiateInput(ids, draftId, 'g7m-a-amendment'),
+    );
+    expect(initResult.kind).toBe('SUCCESS');
+    if (initResult.kind !== 'SUCCESS') return;
+
+    const piId = initResult.providerPaymentIntentId;
+    const paymentId = await getPaymentId(draftId);
+    const amount = await getPaymentAmount(draftId);
+    const deps = makeDeps();
+
+    // 1. Confirmer la réservation pour obtenir un booking.
+    const bodySucceeded = makeWebhookPayload('payment_intent.succeeded', piId, amount, {
+      payment_id: paymentId,
+      payment_attempt_id: initResult.paymentAttemptId,
+      draft_id: draftId,
+      organization_id: ids.orgId,
+      protocol_version: 'v1',
+    });
+    await handleWebhook(deps, makeWebhookInput(bodySucceeded, deps.adapter));
+
+    const booking = await rawSql`SELECT id FROM bookings WHERE draft_id = ${draftId}`.then(
+      (r) => r[0]!,
+    );
+
+    // 2. Insérer la chaîne complète d'amendement via raw SQL :
+    //    booking_amendment (SUPPLEMENT) : INSERT en HOLD_PENDING (requis par le trigger),
+    //    puis transition HOLD_PENDING → READY_TO_APPLY → APPLIED.
+    const amendment = await rawSql`
+      INSERT INTO "booking_amendments" (
+        "organization_id", "booking_id", "amendment_number", "type", "status",
+        "financial_snapshot_before", "financial_snapshot_after",
+        "new_customer_start_at", "new_customer_end_at",
+        "new_blocked_start_at", "new_blocked_end_at",
+        "hold_deadline", "created_by"
+      ) VALUES (
+        ${ids.orgId}, ${booking.id}, 1, 'SUPPLEMENT', 'HOLD_PENDING',
+        ${rawSql.json({ total: amount })}, ${rawSql.json({ total: amount + 2000 })},
+        '2026-02-10 09:00:00+00', '2026-02-12 17:00:00+00',
+        '2026-02-10 08:30:00+00', '2026-02-12 17:30:00+00',
+        now() + interval '10 minutes', ${ids.userId}
+      )
+      RETURNING "id"
+    `.then((r) => r[0]!);
+    await rawSql`UPDATE "booking_amendments" SET "status" = 'READY_TO_APPLY' WHERE "id" = ${amendment.id}`;
+    await rawSql`UPDATE "booking_amendments" SET "status" = 'APPLIED', "applied_at" = now() WHERE "id" = ${amendment.id}`;
+
+    const amendmentPayment = await rawSql`
+      INSERT INTO "amendment_payments" (
+        "organization_id", "booking_id", "amendment_id", "customer_user_id",
+        "amount_minor", "currency", "environment",
+        "connected_account_id", "charge_model", "settlement_merchant_mode",
+        "status"
+      ) VALUES (
+        ${ids.orgId}, ${booking.id}, ${amendment.id}, ${ids.userId},
+        2000, 'EUR', 'TEST',
+        'acct_test_123', 'DESTINATION', 'PLATFORM',
+        'PENDING_PROVIDER'
+      )
+      RETURNING "id"
+    `.then((r) => r[0]!);
+    await rawSql`UPDATE "amendment_payments" SET "status" = 'PROCESSING' WHERE "id" = ${amendmentPayment.id}`;
+    await rawSql`UPDATE "amendment_payments" SET "status" = 'SUCCEEDED', "succeeded_at" = now() WHERE "id" = ${amendmentPayment.id}`;
+
+    // 3. Insérer un refund AMENDMENT_COMPENSATION avec payment_id NULL et
+    //    amendment_payment_id set (XOR satisfait), provider_refund_id set,
+    //    statut PENDING.
+    const refundId = 're_g7m_a_amendment';
+    const refundIdempotencyKey = `refund_amendment_${amendmentPayment.id}`;
+    await rawSql`
+      INSERT INTO "refunds" (
+        "organization_id", "payment_id", "amendment_payment_id", "reason", "status",
+        "amount_minor", "currency", "provider_idempotency_key", "provider_refund_id",
+        "reverse_transfer", "refund_application_fee", "requested_at"
+      ) VALUES (
+        ${ids.orgId}, NULL, ${amendmentPayment.id}, 'AMENDMENT_COMPENSATION', 'PENDING',
+        2000, 'EUR', ${refundIdempotencyKey}, ${refundId},
+        true, true, now()
+      )
+    `;
+
+    // 4. Envoyer refund.updated avec payment_intent pour ce refund.
+    //    Le guard existingRow.paymentId === null doit lever REFUND_PI_MISSING.
+    const evtId = `evt_g7m_a_amendment_update_${Math.random().toString(36).slice(2, 12)}`;
+    const bodyRefund = JSON.stringify({
+      id: evtId,
+      type: 'refund.updated',
+      created: Math.floor(Date.now() / 1000),
+      api_version: '2026-06-24.dahlia',
+      data: {
+        object: {
+          id: refundId,
+          object: 'refund',
+          status: 'succeeded',
+          amount: 2000,
+          payment_intent: piId,
+          currency: 'eur',
+        },
+      },
+    });
+    const result = await handleWebhook(deps, makeWebhookInput(bodyRefund, deps.adapter));
+    expect(result.kind).toBe('SUCCESS');
+
+    // 5. L'événement doit être FAILED avec REFUND_PI_MISSING (fail-closed explicite).
+    const evt =
+      await rawSql`SELECT status, failure_code FROM payment_webhook_events WHERE provider_event_id = ${evtId}`;
+    expect(evt.length).toBe(1);
+    expect(evt[0]!.status).toBe('FAILED');
+    expect(evt[0]!.failure_code).toBe('REFUND_PI_MISSING');
+
+    // 6. Le refund reste PENDING (pas de mutation, pas de bad JOIN).
+    const refund =
+      await rawSql`SELECT status, payment_id, amendment_payment_id FROM refunds WHERE provider_refund_id = ${refundId}`;
+    expect(refund.length).toBe(1);
+    expect(refund[0]!.status).toBe('PENDING');
+    expect(refund[0]!.payment_id).toBeNull();
+    expect(refund[0]!.amendment_payment_id).not.toBeNull();
+  });
 });

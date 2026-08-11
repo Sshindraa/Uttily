@@ -21,7 +21,7 @@ import { analyticsEventType, analyticsEnvironment, productAnalyticsDaily } from 
  * - La protection DELETE : événements récents rejetés, événements anciens autorisés.
  * - La borne exacte 90 jours (non supprimable).
  * - Les agrégats quotidiens : PK, contraintes >= 0, searches_with_results <= searches.
- * - Le journal de migrations (35 entrées, 0035 à idx 34).
+ * - Le journal de migrations (36 entrées, 0035 à idx 34).
  */
 
 const TEST_DB_NAME = 'uttily_test_g7h_analytics';
@@ -239,17 +239,17 @@ describe.skipIf(shouldSkipIntegrationTests())('G7H-A — Fondations analytics', 
       }
     });
 
-    it('A5 — journal de migrations : __drizzle_migrations a 35 entrées, _journal.json a 35 entrées', async () => {
+    it('A5 — journal de migrations : __drizzle_migrations a 36 entrées, _journal.json a 36 entrées', async () => {
       if (!testUrl) return;
       const sql = postgres(testUrl, { max: 1 });
       try {
         const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-        expect(rows.length).toBe(35);
+        expect(rows.length).toBe(36);
 
         const __dirname = dirname(fileURLToPath(import.meta.url));
         const journalPath = join(__dirname, '..', 'drizzle', 'meta', '_journal.json');
         const journal = JSON.parse(readFileSync(journalPath, 'utf-8'));
-        expect(journal.entries.length).toBe(35);
+        expect(journal.entries.length).toBe(36);
         expect(journal.entries[34]!.tag).toBe('0035_g7h_analytics_foundations');
         expect(journal.entries[34]!.idx).toBe(34);
       } finally {

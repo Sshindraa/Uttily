@@ -246,6 +246,13 @@
       "when": 1785546181798,
       "tag": "0035_g7h_analytics_foundations",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1785546181799,
+      "tag": "0036_g7m_a_amendment_schema",
+      "breakpoints": true
     }
   ]
 }

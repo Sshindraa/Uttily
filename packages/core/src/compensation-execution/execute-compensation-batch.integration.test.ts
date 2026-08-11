@@ -1760,5 +1760,87 @@ describe.skipIf(shouldSkipIntegrationTests())(
       expect(event[0]!.attempt_count).toBe(MAX_ATTEMPTS);
       expect(new Date(event[0]!.lease_until).getTime()).toBeLessThan(Date.now());
     });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // G7M-A : Tests 33-34 — Nouveaux statuts refund FAILED_REQUIRES_MANUAL_ACTION
+    // et SETTLED_OFF_PLATFORM (compatibilité execute-compensation).
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // 33. G7M-A : FAILED_REQUIRES_MANUAL_ACTION → REFUND_ALREADY_FAILED
+    it('33. G7M-A : refund FAILED_REQUIRES_MANUAL_ACTION → REFUND_ALREADY_FAILED, createRefund JAMAIS appelé', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const adapter = new FakeStripeAdapter({ environment: 'TEST' });
+      const seed = await seedCompensation(ids, 'g7m-a-failed-manual-action', {
+        overrideRefundStatus: 'FAILED_REQUIRES_MANUAL_ACTION',
+      });
+      const createRefundSpy = vi.spyOn(adapter, 'createRefund');
+
+      const result = await executeCompensationBatch(makeDeps(adapter), { environment: 'TEST' });
+      expect(result.claimedCount).toBe(1);
+      // FAILED_REQUIRES_MANUAL_ACTION est traité comme un échec durable.
+      expect(result.submittedCount).toBe(0);
+      expect(result.failedCount).toBe(1);
+      expect(result.anomalies.length).toBe(1);
+      expect(result.anomalies[0]!.code).toBe('REFUND_ALREADY_FAILED');
+      // Le provider n'a JAMAIS été appelé.
+      expect(createRefundSpy).not.toHaveBeenCalled();
+
+      // L'outbox est FAILED.
+      const outbox =
+        await rawSql`SELECT status FROM outbox_events WHERE id = ${seed.outboxEventId}`;
+      expect(outbox[0]!.status).toBe('FAILED');
+
+      // Le refund reste FAILED_REQUIRES_MANUAL_ACTION (pas de mutation).
+      const refund = await rawSql`SELECT status FROM refunds WHERE id = ${seed.refundId}`;
+      expect(refund[0]!.status).toBe('FAILED_REQUIRES_MANUAL_ACTION');
+    });
+
+    // 34. G7M-A : SETTLED_OFF_PLATFORM → REFUND_ALREADY_SUBMITTED
+    it('34. G7M-A : refund SETTLED_OFF_PLATFORM → REFUND_ALREADY_SUBMITTED, createRefund JAMAIS appelé', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const adapter = new FakeStripeAdapter({ environment: 'TEST' });
+      // Seeder un refund PENDING normalement, puis le passer en
+      // SETTLED_OFF_PLATFORM via UPDATE. Le trigger before_check_refund_transition
+      // n'autorise la transition vers SETTLED_OFF_PLATFORM que depuis
+      // FAILED_REQUIRES_MANUAL_ACTION : on transite donc d'abord par
+      // FAILED_REQUIRES_MANUAL_ACTION, puis vers SETTLED_OFF_PLATFORM (requiert
+      // settled_off_platform_at, settled_off_platform_by et settlement_notes —
+      // CHECK constraint refunds_settled_off_platform_invariants).
+      const seed = await seedCompensation(ids, 'g7m-a-settled-off-platform');
+      const createRefundSpy = vi.spyOn(adapter, 'createRefund');
+
+      await rawSql`
+        UPDATE "refunds"
+        SET "status" = 'FAILED_REQUIRES_MANUAL_ACTION'
+        WHERE "id" = ${seed.refundId}
+      `;
+      await rawSql`
+        UPDATE "refunds"
+        SET "status" = 'SETTLED_OFF_PLATFORM',
+            "settled_off_platform_at" = now(),
+            "settled_off_platform_by" = ${ids.userId},
+            "settlement_notes" = 'manual settlement'
+        WHERE "id" = ${seed.refundId}
+      `;
+
+      const result = await executeCompensationBatch(makeDeps(adapter), { environment: 'TEST' });
+      expect(result.claimedCount).toBe(1);
+      // SETTLED_OFF_PLATFORM est traité comme déjà soumis (résolu hors plateforme).
+      expect(result.submittedCount).toBe(1);
+      expect(result.failedCount).toBe(0);
+      // Le provider n'a JAMAIS été appelé.
+      expect(createRefundSpy).not.toHaveBeenCalled();
+
+      // L'outbox est PROCESSED (REFUND_ALREADY_SUBMITTED → PROCESSED comme SUBMITTED).
+      const outbox =
+        await rawSql`SELECT status FROM outbox_events WHERE id = ${seed.outboxEventId}`;
+      expect(outbox[0]!.status).toBe('PROCESSED');
+
+      // Le refund reste SETTLED_OFF_PLATFORM (pas de mutation).
+      const refund = await rawSql`SELECT status FROM refunds WHERE id = ${seed.refundId}`;
+      expect(refund[0]!.status).toBe('SETTLED_OFF_PLATFORM');
+    });
   },
 );

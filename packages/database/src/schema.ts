@@ -481,13 +481,20 @@ export const outboxEventStatus = pgEnum('outbox_event_status', [
   'FAILED',
 ]);
 
-export const refundReason = pgEnum('refund_reason', ['LATE_PAYMENT_NO_BOOKING', 'EXTERNAL_REFUND']);
+export const refundReason = pgEnum('refund_reason', [
+  'LATE_PAYMENT_NO_BOOKING',
+  'EXTERNAL_REFUND',
+  'BOOKING_MODIFICATION',
+  'AMENDMENT_COMPENSATION',
+]);
 
 export const refundStatus = pgEnum('refund_status', [
   'PENDING',
   'SUBMITTED',
   'SUCCEEDED',
   'FAILED',
+  'FAILED_REQUIRES_MANUAL_ACTION',
+  'SETTLED_OFF_PLATFORM',
 ]);
 
 // Lot 6 — Fulfillment opérationnel (ADR-012).
@@ -1499,9 +1506,11 @@ export const refunds = pgTable(
     organizationId: uuid('organization_id')
       .notNull()
       .references(() => organizations.id),
-    paymentId: uuid('payment_id')
-      .notNull()
-      .references(() => payments.id),
+    // G7M-A : payment_id devient nullable pour supporter les refunds
+    // d'amendement (AMENDMENT_COMPENSATION référence amendment_payment_id).
+    // Contrainte XOR : exactement une origine non-null (CHECK en migration).
+    paymentId: uuid('payment_id').references(() => payments.id),
+    amendmentPaymentId: uuid('amendment_payment_id').references(() => amendmentPayments.id),
     reason: refundReason('reason').notNull(),
     status: refundStatus('status').notNull().default('PENDING'),
     amountMinor: bigint('amount_minor', { mode: 'number' }).notNull(),
@@ -1516,6 +1525,10 @@ export const refunds = pgTable(
     failedAt: timestamp('failed_at', { withTimezone: true }),
     failureCode: text('failure_code'),
     providerEventCreatedAt: bigint('provider_event_created_at', { mode: 'number' }),
+    // G7M-A : colonnes de résolution manuelle auditée (ADR-023 §10.7).
+    settledOffPlatformAt: timestamp('settled_off_platform_at', { withTimezone: true }),
+    settledOffPlatformBy: uuid('settled_off_platform_by').references(() => users.id),
+    settlementNotes: text('settlement_notes'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1533,6 +1546,36 @@ export const refunds = pgTable(
     check(
       'refunds_late_payment_refund_application_fee',
       sql`${t.reason} <> 'LATE_PAYMENT_NO_BOOKING' OR ${t.refundApplicationFee} = true`,
+    ),
+    // G7M-A : XOR — exactement une origine de paiement non-null.
+    check(
+      'refunds_payment_origin_xor',
+      sql`(${t.paymentId} IS NOT NULL AND ${t.amendmentPaymentId} IS NULL) OR (${t.paymentId} IS NULL AND ${t.amendmentPaymentId} IS NOT NULL)`,
+    ),
+    // G7M-A : BOOKING_MODIFICATION référence le paiement initial.
+    check(
+      'refunds_booking_modification_payment_id',
+      sql`${t.reason} <> 'BOOKING_MODIFICATION' OR ${t.paymentId} IS NOT NULL`,
+    ),
+    // G7M-A : AMENDMENT_COMPENSATION référence le paiement de supplément.
+    check(
+      'refunds_amendment_compensation_amendment_payment_id',
+      sql`${t.reason} <> 'AMENDMENT_COMPENSATION' OR ${t.amendmentPaymentId} IS NOT NULL`,
+    ),
+    // G7M-A : LATE_PAYMENT_NO_BOOKING et EXTERNAL_REFUND requièrent payment_id
+    // (raisons historiques qui ne peuvent pas référencer un paiement de supplément).
+    check(
+      'refunds_late_payment_requires_payment_id',
+      sql`${t.reason} <> 'LATE_PAYMENT_NO_BOOKING' OR ${t.paymentId} IS NOT NULL`,
+    ),
+    check(
+      'refunds_external_refund_requires_payment_id',
+      sql`${t.reason} <> 'EXTERNAL_REFUND' OR ${t.paymentId} IS NOT NULL`,
+    ),
+    // G7M-A : SETTLED_OFF_PLATFORM requiert les colonnes de résolution.
+    check(
+      'refunds_settled_off_platform_invariants',
+      sql`${t.status} <> 'SETTLED_OFF_PLATFORM' OR (${t.settledOffPlatformAt} IS NOT NULL AND ${t.settledOffPlatformBy} IS NOT NULL)`,
     ),
     index('refunds_status_requested_at_index').on(t.status, t.requestedAt),
   ],
@@ -1600,9 +1643,12 @@ export const conditionReports = pgTable(
     bookingId: uuid('booking_id')
       .notNull()
       .references(() => bookings.id),
-    bookingItemId: uuid('booking_item_id')
-      .notNull()
-      .references(() => bookingItems.id),
+    // G7M-A : booking_item_id devient nullable pour supporter les rapports
+    // sur une allocation d'amendement. XOR avec amendment_allocation_id.
+    bookingItemId: uuid('booking_item_id').references(() => bookingItems.id),
+    amendmentAllocationId: uuid('amendment_allocation_id').references(
+      () => bookingAmendmentAllocations.id,
+    ),
     inventoryItemId: uuid('inventory_item_id')
       .notNull()
       .references(() => inventoryItems.id),
@@ -1621,6 +1667,11 @@ export const conditionReports = pgTable(
       'condition_reports_idempotency_key_nonempty',
       sql`length(btrim(${t.idempotencyKey})) > 0`,
     ),
+    // G7M-A : XOR — exactement une référence d'item non-null.
+    check(
+      'condition_reports_item_origin_xor',
+      sql`(${t.bookingItemId} IS NOT NULL AND ${t.amendmentAllocationId} IS NULL) OR (${t.bookingItemId} IS NULL AND ${t.amendmentAllocationId} IS NOT NULL)`,
+    ),
     index('condition_reports_org_booking_index').on(t.organizationId, t.bookingId),
     index('condition_reports_org_booking_item_index').on(t.organizationId, t.bookingItemId),
   ],
@@ -1636,9 +1687,12 @@ export const damageReports = pgTable(
     bookingId: uuid('booking_id')
       .notNull()
       .references(() => bookings.id),
-    bookingItemId: uuid('booking_item_id')
-      .notNull()
-      .references(() => bookingItems.id),
+    // G7M-A : booking_item_id devient nullable pour supporter les rapports
+    // sur une allocation d'amendement. XOR avec amendment_allocation_id.
+    bookingItemId: uuid('booking_item_id').references(() => bookingItems.id),
+    amendmentAllocationId: uuid('amendment_allocation_id').references(
+      () => bookingAmendmentAllocations.id,
+    ),
     inventoryItemId: uuid('inventory_item_id')
       .notNull()
       .references(() => inventoryItems.id),
@@ -1653,6 +1707,11 @@ export const damageReports = pgTable(
     unique('damage_reports_org_idempotency_key_unique').on(t.organizationId, t.idempotencyKey),
     check('damage_reports_description_nonempty', sql`length(btrim(${t.description})) > 0`),
     check('damage_reports_idempotency_key_nonempty', sql`length(btrim(${t.idempotencyKey})) > 0`),
+    // G7M-A : XOR — exactement une référence d'item non-null.
+    check(
+      'damage_reports_item_origin_xor',
+      sql`(${t.bookingItemId} IS NOT NULL AND ${t.amendmentAllocationId} IS NULL) OR (${t.bookingItemId} IS NULL AND ${t.amendmentAllocationId} IS NOT NULL)`,
+    ),
     index('damage_reports_org_booking_index').on(t.organizationId, t.bookingId),
     index('damage_reports_org_booking_item_index').on(t.organizationId, t.bookingItemId),
   ],
@@ -2389,3 +2448,496 @@ export type ProductAnalyticsEvent = typeof productAnalyticsEvents.$inferSelect;
 export type NewProductAnalyticsEvent = typeof productAnalyticsEvents.$inferInsert;
 export type ProductAnalyticsDaily = typeof productAnalyticsDaily.$inferSelect;
 export type NewProductAnalyticsDaily = typeof productAnalyticsDaily.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G7M-A — Fondations PostgreSQL append-only des amendements financiers (ADR-023,
+// migration 0036). Schéma, triggers et contraintes uniquement. Aucun flux
+// métier, Stripe, webhook, worker, API ou UI.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const amendmentType = pgEnum('amendment_type', ['NEUTRAL', 'SUPPLEMENT', 'REFUND']);
+
+export const amendmentStatus = pgEnum('amendment_status', [
+  'HOLD_PENDING',
+  'READY_TO_APPLY',
+  'APPLIED',
+  'EXPIRED',
+  'CANCELLED',
+  'FAILED',
+]);
+
+export const amendmentLineOriginType = pgEnum('amendment_line_origin_type', [
+  'ORIGINAL',
+  'AMENDMENT',
+]);
+
+export const amendmentLineAction = pgEnum('amendment_line_action', [
+  'ADD',
+  'MODIFY',
+  'REMOVE',
+  'UNCHANGED',
+]);
+
+export const amendmentAllocationAction = pgEnum('amendment_allocation_action', [
+  'RETAIN',
+  'ADD',
+  'REMOVE',
+  'REPLACE',
+]);
+
+export const amendmentAllocationStatus = pgEnum('amendment_allocation_status', [
+  'PROPOSED',
+  'CONVERTED',
+  'RELEASED',
+  'EXPIRED',
+]);
+
+export const amendmentSegmentStatus = pgEnum('amendment_segment_status', [
+  'PROPOSED',
+  'CONVERTED',
+  'RELEASED',
+  'EXPIRED',
+]);
+
+export const amendmentPaymentStatus = pgEnum('amendment_payment_status', [
+  'PENDING_PROVIDER',
+  'REQUIRES_PAYMENT_METHOD',
+  'REQUIRES_ACTION',
+  'PROCESSING',
+  'SUCCEEDED',
+  'FAILED',
+  'CANCELLED',
+]);
+
+export const amendmentPaymentAttemptStatus = pgEnum('amendment_payment_attempt_status', [
+  'PENDING_PROVIDER',
+  'REQUIRES_PAYMENT_METHOD',
+  'REQUIRES_ACTION',
+  'PROCESSING',
+  'SUCCEEDED',
+  'FAILED',
+  'CANCELLED',
+]);
+
+export const bookingAmendments = pgTable(
+  'booking_amendments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    bookingId: uuid('booking_id')
+      .notNull()
+      .references(() => bookings.id),
+    amendmentNumber: integer('amendment_number').notNull(),
+    type: amendmentType('type').notNull(),
+    status: amendmentStatus('status').notNull().default('HOLD_PENDING'),
+    financialSnapshotBefore: jsonb('financial_snapshot_before').notNull(),
+    financialSnapshotAfter: jsonb('financial_snapshot_after').notNull(),
+    newCustomerStartAt: timestamp('new_customer_start_at', { withTimezone: true }).notNull(),
+    newCustomerEndAt: timestamp('new_customer_end_at', { withTimezone: true }).notNull(),
+    newBlockedStartAt: timestamp('new_blocked_start_at', { withTimezone: true }).notNull(),
+    newBlockedEndAt: timestamp('new_blocked_end_at', { withTimezone: true }).notNull(),
+    holdDeadline: timestamp('hold_deadline', { withTimezone: true }),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    appliedAt: timestamp('applied_at', { withTimezone: true }),
+    expiredAt: timestamp('expired_at', { withTimezone: true }),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+    failedAt: timestamp('failed_at', { withTimezone: true }),
+  },
+  (t) => [
+    unique('booking_amendments_booking_number_unique').on(t.bookingId, t.amendmentNumber),
+    check('booking_amendments_number_positive', sql`${t.amendmentNumber} > 0`),
+    check(
+      'booking_amendments_customer_period_valid',
+      sql`${t.newCustomerEndAt} > ${t.newCustomerStartAt}`,
+    ),
+    check(
+      'booking_amendments_blocked_includes_customer',
+      sql`${t.newBlockedStartAt} <= ${t.newCustomerStartAt} AND ${t.newBlockedEndAt} >= ${t.newCustomerEndAt}`,
+    ),
+    // hold_deadline obligatoire uniquement pour SUPPLEMENT en état actif.
+    check(
+      'booking_amendments_supplement_hold_deadline',
+      sql`${t.type} <> 'SUPPLEMENT' OR ${t.holdDeadline} IS NOT NULL`,
+    ),
+    // hold_deadline interdit pour NEUTRAL et REFUND.
+    check(
+      'booking_amendments_non_supplement_no_hold_deadline',
+      sql`${t.type} = 'SUPPLEMENT' OR ${t.holdDeadline} IS NULL`,
+    ),
+    // APPLIED requiert appliedAt.
+    check(
+      'booking_amendments_applied_has_timestamp',
+      sql`${t.status} <> 'APPLIED' OR ${t.appliedAt} IS NOT NULL`,
+    ),
+    // EXPIRED requiert expiredAt.
+    check(
+      'booking_amendments_expired_has_timestamp',
+      sql`${t.status} <> 'EXPIRED' OR ${t.expiredAt} IS NOT NULL`,
+    ),
+    // CANCELLED requiert cancelledAt.
+    check(
+      'booking_amendments_cancelled_has_timestamp',
+      sql`${t.status} <> 'CANCELLED' OR ${t.cancelledAt} IS NOT NULL`,
+    ),
+    // FAILED requiert failedAt.
+    check(
+      'booking_amendments_failed_has_timestamp',
+      sql`${t.status} <> 'FAILED' OR ${t.failedAt} IS NOT NULL`,
+    ),
+    // Un seul amendement actif par booking (index partiel).
+    uniqueIndex('booking_amendments_single_active_per_booking')
+      .on(t.bookingId)
+      .where(sql`${t.status} IN ('HOLD_PENDING', 'READY_TO_APPLY')`),
+    index('booking_amendments_organization_booking_status_index').on(
+      t.organizationId,
+      t.bookingId,
+      t.status,
+    ),
+  ],
+);
+
+export const bookingAmendmentLines = pgTable(
+  'booking_amendment_lines',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    amendmentId: uuid('amendment_id')
+      .notNull()
+      .references(() => bookingAmendments.id),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    logicalLineId: uuid('logical_line_id').notNull(),
+    originType: amendmentLineOriginType('origin_type').notNull(),
+    sourceBookingLineId: uuid('source_booking_line_id').references(() => bookingLines.id),
+    variantId: uuid('variant_id')
+      .notNull()
+      .references(() => productVariants.id),
+    action: amendmentLineAction('action').notNull(),
+    beforeQuantity: integer('before_quantity').notNull(),
+    beforeUnitPriceAmountMinor: bigint('before_unit_price_amount_minor', {
+      mode: 'number',
+    }).notNull(),
+    beforeLineTotalAmountMinor: bigint('before_line_total_amount_minor', {
+      mode: 'number',
+    }).notNull(),
+    afterQuantity: integer('after_quantity').notNull(),
+    afterUnitPriceAmountMinor: bigint('after_unit_price_amount_minor', {
+      mode: 'number',
+    }).notNull(),
+    afterLineTotalAmountMinor: bigint('after_line_total_amount_minor', {
+      mode: 'number',
+    }).notNull(),
+    pricingSnapshot: jsonb('pricing_snapshot').notNull(),
+    variantSnapshot: jsonb('variant_snapshot').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('booking_amendment_lines_amendment_logical_line_unique').on(
+      t.amendmentId,
+      t.logicalLineId,
+    ),
+    unique('booking_amendment_lines_amendment_variant_unique').on(t.amendmentId, t.variantId),
+    // ORIGINAL requiert source_booking_line_id ; AMENDMENT l'interdit.
+    check(
+      'booking_amendment_lines_original_has_source',
+      sql`${t.originType} <> 'ORIGINAL' OR ${t.sourceBookingLineId} IS NOT NULL`,
+    ),
+    check(
+      'booking_amendment_lines_amendment_no_source',
+      sql`${t.originType} <> 'AMENDMENT' OR ${t.sourceBookingLineId} IS NULL`,
+    ),
+    // ADD : before = 0, after > 0.
+    check(
+      'booking_amendment_lines_add_before_zero_after_positive',
+      sql`${t.action} <> 'ADD' OR (${t.beforeQuantity} = 0 AND ${t.afterQuantity} > 0)`,
+    ),
+    // MODIFY : before > 0, after > 0.
+    check(
+      'booking_amendment_lines_modify_before_after_positive',
+      sql`${t.action} <> 'MODIFY' OR (${t.beforeQuantity} > 0 AND ${t.afterQuantity} > 0)`,
+    ),
+    // REMOVE : before > 0, after = 0.
+    check(
+      'booking_amendment_lines_remove_before_positive_after_zero',
+      sql`${t.action} <> 'REMOVE' OR (${t.beforeQuantity} > 0 AND ${t.afterQuantity} = 0)`,
+    ),
+    // UNCHANGED : before et after identiques.
+    check(
+      'booking_amendment_lines_unchanged_before_after_equal',
+      sql`${t.action} <> 'UNCHANGED' OR (${t.beforeQuantity} = ${t.afterQuantity} AND ${t.beforeUnitPriceAmountMinor} = ${t.afterUnitPriceAmountMinor} AND ${t.beforeLineTotalAmountMinor} = ${t.afterLineTotalAmountMinor})`,
+    ),
+    // Montants non-négatifs et safe integer.
+    check('booking_amendment_lines_before_qty_nonneg', sql`${t.beforeQuantity} >= 0`),
+    check('booking_amendment_lines_after_qty_nonneg', sql`${t.afterQuantity} >= 0`),
+    check(
+      'booking_amendment_lines_before_unit_price_nonneg',
+      sql`${t.beforeUnitPriceAmountMinor} >= 0`,
+    ),
+    check(
+      'booking_amendment_lines_after_unit_price_nonneg',
+      sql`${t.afterUnitPriceAmountMinor} >= 0`,
+    ),
+    check(
+      'booking_amendment_lines_before_line_total_nonneg',
+      sql`${t.beforeLineTotalAmountMinor} >= 0`,
+    ),
+    check(
+      'booking_amendment_lines_after_line_total_nonneg',
+      sql`${t.afterLineTotalAmountMinor} >= 0`,
+    ),
+    check(
+      'booking_amendment_lines_before_line_total_max_safe',
+      sql`${t.beforeLineTotalAmountMinor} <= 9007199254740991`,
+    ),
+    check(
+      'booking_amendment_lines_after_line_total_max_safe',
+      sql`${t.afterLineTotalAmountMinor} <= 9007199254740991`,
+    ),
+    check(
+      'booking_amendment_lines_before_unit_price_max_safe',
+      sql`${t.beforeUnitPriceAmountMinor} <= 9007199254740991`,
+    ),
+    check(
+      'booking_amendment_lines_after_unit_price_max_safe',
+      sql`${t.afterUnitPriceAmountMinor} <= 9007199254740991`,
+    ),
+    index('booking_amendment_lines_amendment_id_index').on(t.amendmentId),
+    index('booking_amendment_lines_org_amendment_index').on(t.organizationId, t.amendmentId),
+  ],
+);
+
+export const bookingAmendmentAllocations = pgTable(
+  'booking_amendment_allocations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    amendmentId: uuid('amendment_id')
+      .notNull()
+      .references(() => bookingAmendments.id),
+    amendmentLineId: uuid('amendment_line_id')
+      .notNull()
+      .references(() => bookingAmendmentLines.id),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    inventoryItemId: uuid('inventory_item_id')
+      .notNull()
+      .references(() => inventoryItems.id),
+    action: amendmentAllocationAction('action').notNull(),
+    sourceBookingBlockId: uuid('source_booking_block_id').references(() => inventoryBlocks.id),
+    appliedBookingBlockId: uuid('applied_booking_block_id').references(() => inventoryBlocks.id),
+    status: amendmentAllocationStatus('status').notNull().default('PROPOSED'),
+    effectiveCustomerStartAt: timestamp('effective_customer_start_at', {
+      withTimezone: true,
+    }).notNull(),
+    effectiveCustomerEndAt: timestamp('effective_customer_end_at', {
+      withTimezone: true,
+    }).notNull(),
+    effectiveBlockedStartAt: timestamp('effective_blocked_start_at', {
+      withTimezone: true,
+    }).notNull(),
+    effectiveBlockedEndAt: timestamp('effective_blocked_end_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('booking_amendment_allocations_amendment_item_unique').on(
+      t.amendmentId,
+      t.inventoryItemId,
+    ),
+    check(
+      'booking_amendment_allocations_customer_period_valid',
+      sql`${t.effectiveCustomerEndAt} > ${t.effectiveCustomerStartAt}`,
+    ),
+    check(
+      'booking_amendment_allocations_blocked_includes_customer',
+      sql`${t.effectiveBlockedStartAt} <= ${t.effectiveCustomerStartAt} AND ${t.effectiveBlockedEndAt} >= ${t.effectiveCustomerEndAt}`,
+    ),
+    // RETAIN et REPLACE requièrent source_booking_block_id ; ADD l'interdit.
+    check(
+      'booking_amendment_allocations_retain_has_source',
+      sql`${t.action} <> 'RETAIN' OR ${t.sourceBookingBlockId} IS NOT NULL`,
+    ),
+    check(
+      'booking_amendment_allocations_replace_has_source',
+      sql`${t.action} <> 'REPLACE' OR ${t.sourceBookingBlockId} IS NOT NULL`,
+    ),
+    check(
+      'booking_amendment_allocations_add_no_source',
+      sql`${t.action} <> 'ADD' OR ${t.sourceBookingBlockId} IS NULL`,
+    ),
+    // REMOVE interdit applied_booking_block_id.
+    check(
+      'booking_amendment_allocations_remove_no_applied_block',
+      sql`${t.action} <> 'REMOVE' OR ${t.appliedBookingBlockId} IS NULL`,
+    ),
+    // applied_booking_block_id non-null uniquement si CONVERTED.
+    check(
+      'booking_amendment_allocations_applied_block_converted_only',
+      sql`${t.appliedBookingBlockId} IS NULL OR ${t.status} = 'CONVERTED'`,
+    ),
+    index('booking_amendment_allocations_amendment_id_index').on(t.amendmentId),
+    index('booking_amendment_allocations_org_amendment_index').on(t.organizationId, t.amendmentId),
+  ],
+);
+
+export const bookingAmendmentSegments = pgTable(
+  'booking_amendment_segments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    allocationId: uuid('allocation_id')
+      .notNull()
+      .references(() => bookingAmendmentAllocations.id),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    inventoryItemId: uuid('inventory_item_id')
+      .notNull()
+      .references(() => inventoryItems.id),
+    holdBlockId: uuid('hold_block_id')
+      .notNull()
+      .unique()
+      .references(() => inventoryBlocks.id),
+    deltaStartAt: timestamp('delta_start_at', { withTimezone: true }).notNull(),
+    deltaEndAt: timestamp('delta_end_at', { withTimezone: true }).notNull(),
+    status: amendmentSegmentStatus('status').notNull().default('PROPOSED'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check(
+      'booking_amendment_segments_delta_period_valid',
+      sql`${t.deltaEndAt} > ${t.deltaStartAt}`,
+    ),
+    index('booking_amendment_segments_allocation_id_index').on(t.allocationId),
+    index('booking_amendment_segments_org_allocation_index').on(t.organizationId, t.allocationId),
+  ],
+);
+
+export const amendmentPayments = pgTable(
+  'amendment_payments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    bookingId: uuid('booking_id')
+      .notNull()
+      .references(() => bookings.id),
+    amendmentId: uuid('amendment_id')
+      .notNull()
+      .unique()
+      .references(() => bookingAmendments.id),
+    customerUserId: uuid('customer_user_id')
+      .notNull()
+      .references(() => users.id),
+    amountMinor: bigint('amount_minor', { mode: 'number' }).notNull(),
+    currency: text('currency').notNull().default('EUR'),
+    environment: paymentEnvironment('environment').notNull(),
+    // G7M-A corrections : colonnes de snapshot Stripe minimales pour l'appel
+    // Stripe futur et la réconciliation (sous-ensemble de la table payments).
+    connectedAccountId: text('connected_account_id').notNull(),
+    onBehalfOfAccountId: text('on_behalf_of_account_id'),
+    chargeModel: chargeModel('charge_model').notNull(),
+    settlementMerchantMode: settlementMerchantMode('settlement_merchant_mode').notNull(),
+    processingStartedAt: timestamp('processing_started_at', { withTimezone: true }),
+    processingDeadlineAt: timestamp('processing_deadline_at', { withTimezone: true }),
+    status: amendmentPaymentStatus('status').notNull().default('PENDING_PROVIDER'),
+    succeededAt: timestamp('succeeded_at', { withTimezone: true }),
+    failedAt: timestamp('failed_at', { withTimezone: true }),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check('amendment_payments_currency_eur', sql`${t.currency} = 'EUR'`),
+    check('amendment_payments_amount_positive', sql`${t.amountMinor} > 0`),
+    check('amendment_payments_amount_max_safe', sql`${t.amountMinor} <= 9007199254740991`),
+    check(
+      'amendment_payments_succeeded_has_timestamp',
+      sql`${t.status} <> 'SUCCEEDED' OR ${t.succeededAt} IS NOT NULL`,
+    ),
+    check(
+      'amendment_payments_failed_has_timestamp',
+      sql`${t.status} <> 'FAILED' OR ${t.failedAt} IS NOT NULL`,
+    ),
+    check(
+      'amendment_payments_cancelled_has_timestamp',
+      sql`${t.status} <> 'CANCELLED' OR ${t.cancelledAt} IS NOT NULL`,
+    ),
+    check('amendment_payments_environment_check', sql`${t.environment} IN ('TEST', 'LIVE')`),
+    index('amendment_payments_organization_status_index').on(t.organizationId, t.status),
+    index('amendment_payments_booking_id_index').on(t.bookingId),
+  ],
+);
+
+export const amendmentPaymentAttempts = pgTable(
+  'amendment_payment_attempts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    amendmentPaymentId: uuid('amendment_payment_id')
+      .notNull()
+      .references(() => amendmentPayments.id),
+    attemptNumber: integer('attempt_number').notNull(),
+    status: amendmentPaymentAttemptStatus('status').notNull(),
+    providerPaymentIntentId: text('provider_payment_intent_id').unique(),
+    providerStatus: text('provider_status'),
+    providerIdempotencyKey: text('provider_idempotency_key').notNull().unique(),
+    lastProviderErrorCode: text('last_provider_error_code'),
+    reconcileAfter: timestamp('reconcile_after', { withTimezone: true }),
+    reconcileLeaseUntil: timestamp('reconcile_lease_until', { withTimezone: true }),
+    reconcileLeaseToken: uuid('reconcile_lease_token'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('amendment_payment_attempts_payment_attempt_number_unique').on(
+      t.amendmentPaymentId,
+      t.attemptNumber,
+    ),
+    check('amendment_payment_attempts_attempt_number_positive', sql`${t.attemptNumber} > 0`),
+    check(
+      'amendment_payment_attempts_idempotency_key_nonempty',
+      sql`length(btrim(${t.providerIdempotencyKey})) > 0`,
+    ),
+    check(
+      'amendment_payment_attempts_provider_status_with_intent',
+      sql`${t.providerPaymentIntentId} IS NULL OR ${t.providerStatus} IS NOT NULL`,
+    ),
+    check(
+      'amendment_payment_attempts_lease_token_lease_until_consistent',
+      sql`(${t.reconcileLeaseToken} IS NULL AND ${t.reconcileLeaseUntil} IS NULL) OR (${t.reconcileLeaseToken} IS NOT NULL AND ${t.reconcileLeaseUntil} IS NOT NULL)`,
+    ),
+    // Un seul attempt non-terminal par amendment_payment.
+    uniqueIndex('amendment_payment_attempts_single_non_terminal_attempt')
+      .on(t.amendmentPaymentId)
+      .where(
+        sql`${t.status} IN ('PENDING_PROVIDER', 'REQUIRES_PAYMENT_METHOD', 'REQUIRES_ACTION', 'PROCESSING')`,
+      ),
+    index('amendment_payment_attempts_payment_id_status_index').on(t.amendmentPaymentId, t.status),
+    index('amendment_payment_attempts_reconcile_index')
+      .on(t.status, t.reconcileAfter, t.reconcileLeaseUntil)
+      .where(
+        sql`${t.status} IN ('PENDING_PROVIDER', 'REQUIRES_PAYMENT_METHOD', 'REQUIRES_ACTION', 'PROCESSING')`,
+      ),
+  ],
+);
+
+export type BookingAmendment = typeof bookingAmendments.$inferSelect;
+export type NewBookingAmendment = typeof bookingAmendments.$inferInsert;
+export type BookingAmendmentLine = typeof bookingAmendmentLines.$inferSelect;
+export type NewBookingAmendmentLine = typeof bookingAmendmentLines.$inferInsert;
+export type BookingAmendmentAllocation = typeof bookingAmendmentAllocations.$inferSelect;
+export type NewBookingAmendmentAllocation = typeof bookingAmendmentAllocations.$inferInsert;
+export type BookingAmendmentSegment = typeof bookingAmendmentSegments.$inferSelect;
+export type NewBookingAmendmentSegment = typeof bookingAmendmentSegments.$inferInsert;
+export type AmendmentPayment = typeof amendmentPayments.$inferSelect;
+export type NewAmendmentPayment = typeof amendmentPayments.$inferInsert;
+export type AmendmentPaymentAttempt = typeof amendmentPaymentAttempts.$inferSelect;
+export type NewAmendmentPaymentAttempt = typeof amendmentPaymentAttempts.$inferInsert;

@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gte, inArray, lte, max } from 'drizzle-orm';
+import { and, asc, count, eq, gte, inArray, isNotNull, lte, max } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import {
   bookings,
@@ -267,6 +267,10 @@ export async function getOperationalBookingDetails(
       and(
         eq(conditionReports.organizationId, organizationId),
         eq(conditionReports.bookingId, bookingId),
+        // G7M-A : filtre transitoire booking_item_id IS NOT NULL jusqu'à
+        // l'implémentation de getEffectiveBooking. Les rapports d'allocation
+        // d'amendement ne sont ni supportés ni exposés en G7M-A.
+        isNotNull(conditionReports.bookingItemId),
       ),
     )
     .orderBy(asc(conditionReports.createdAt), asc(conditionReports.id));
@@ -283,7 +287,14 @@ export async function getOperationalBookingDetails(
     })
     .from(damageReports)
     .where(
-      and(eq(damageReports.organizationId, organizationId), eq(damageReports.bookingId, bookingId)),
+      and(
+        eq(damageReports.organizationId, organizationId),
+        eq(damageReports.bookingId, bookingId),
+        // G7M-A : filtre transitoire booking_item_id IS NOT NULL jusqu'à
+        // l'implémentation de getEffectiveBooking. Les rapports d'allocation
+        // d'amendement ne sont ni supportés ni exposés en G7M-A.
+        isNotNull(damageReports.bookingItemId),
+      ),
     )
     .orderBy(asc(damageReports.createdAt), asc(damageReports.id));
 
@@ -325,7 +336,9 @@ export async function getOperationalBookingDetails(
     })),
     conditionReports: conditionRows.map((r): OperationalConditionReport => ({
       id: r.id,
-      bookingItemId: r.bookingItemId,
+      // G7M-A : bookingItemId filtré IS NOT NULL en requête (filtre
+      // transitoire — voir commentaire de la requête).
+      bookingItemId: r.bookingItemId!,
       inventoryItemId: r.inventoryItemId,
       phase: r.phase,
       condition: r.condition,
@@ -335,7 +348,9 @@ export async function getOperationalBookingDetails(
     })),
     damageReports: damageRows.map((r): OperationalDamageReport => ({
       id: r.id,
-      bookingItemId: r.bookingItemId,
+      // G7M-A : bookingItemId filtré IS NOT NULL en requête (filtre
+      // transitoire — voir commentaire de la requête).
+      bookingItemId: r.bookingItemId!,
       inventoryItemId: r.inventoryItemId,
       description: r.description,
       reporterUserId: r.reporterUserId,

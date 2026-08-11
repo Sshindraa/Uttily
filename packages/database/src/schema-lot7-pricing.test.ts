@@ -226,12 +226,12 @@ async function activatePlan(
 describe.skipIf(shouldSkipIntegrationTests())(
   'Schéma Lot 7 G7P-A Round 3 — migration et existence',
   () => {
-    it('__drizzle_migrations a 35 entrées', async () => {
+    it('__drizzle_migrations a 36 entrées', async () => {
       if (!testUrl) return;
       const sql = postgres(testUrl, { max: 1 });
       try {
         const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-        expect(rows.length).toBe(35);
+        expect(rows.length).toBe(36);
       } finally {
         await sql.end();
       }
@@ -243,7 +243,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
       const sql = postgres(testUrl, { max: 1 });
       try {
         const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-        expect(rows.length).toBe(35);
+        expect(rows.length).toBe(36);
       } finally {
         await sql.end();
       }
