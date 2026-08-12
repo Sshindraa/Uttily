@@ -15,7 +15,7 @@ import {
   pricingPlanTranslations,
   productVariants,
   products,
-  type DatabaseClient,
+  type DbExecutor,
 } from '@uttily/database';
 import type {
   OpeningHour,
@@ -46,7 +46,7 @@ import { localDateTimeStringToUtc } from './local-to-utc';
  *   est supprimée, ou n'appartient pas à l'organisation.
  */
 export async function loadPricingContext(
-  db: DatabaseClient,
+  db: DbExecutor,
   input: QuoteFlexiblePricingInput,
 ): Promise<PricingContext> {
   // 1. Charger la location.

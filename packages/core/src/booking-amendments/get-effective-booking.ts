@@ -376,6 +376,8 @@ async function loadOriginalLines(db: DbExecutor, bookingId: string): Promise<Eff
     logicalLineId: r.id, // Pour une ligne originale, logical_line_id = booking_line.id (ADR §3.5)
     variantId: r.variantId,
     action: 'UNCHANGED' as const,
+    originType: 'ORIGINAL' as const,
+    sourceBookingLineId: r.id,
     quantity: r.quantity,
     unitPriceAmountMinor: r.unitPriceAmountMinor,
     lineTotalAmountMinor: r.lineTotalAmountMinor,
@@ -452,6 +454,8 @@ async function loadAmendmentLines(
     .select({
       id: bookingAmendmentLines.id,
       logicalLineId: bookingAmendmentLines.logicalLineId,
+      originType: bookingAmendmentLines.originType,
+      sourceBookingLineId: bookingAmendmentLines.sourceBookingLineId,
       variantId: bookingAmendmentLines.variantId,
       action: bookingAmendmentLines.action,
       afterQuantity: bookingAmendmentLines.afterQuantity,
@@ -474,6 +478,8 @@ async function loadAmendmentLines(
     logicalLineId: r.logicalLineId,
     variantId: r.variantId,
     action: r.action as 'ADD' | 'MODIFY' | 'UNCHANGED',
+    originType: r.originType as 'ORIGINAL' | 'AMENDMENT',
+    sourceBookingLineId: r.sourceBookingLineId,
     quantity: r.afterQuantity,
     unitPriceAmountMinor: r.afterUnitPriceAmountMinor,
     lineTotalAmountMinor: r.afterLineTotalAmountMinor,

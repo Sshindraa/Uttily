@@ -20,6 +20,8 @@ export interface EffectiveLine {
   readonly logicalLineId: string;
   readonly variantId: string;
   readonly action: 'ADD' | 'MODIFY' | 'UNCHANGED';
+  readonly originType: 'ORIGINAL' | 'AMENDMENT';
+  readonly sourceBookingLineId: string | null;
   readonly quantity: number;
   readonly unitPriceAmountMinor: number;
   readonly lineTotalAmountMinor: number;

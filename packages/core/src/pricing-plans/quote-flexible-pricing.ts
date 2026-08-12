@@ -8,7 +8,7 @@
  * L'erreur originale est préservée via `cause` pour le logging/debug.
  */
 
-import type { DatabaseClient } from '@uttily/database';
+import type { DbExecutor } from '@uttily/database';
 import type { QuoteFlexiblePricingInput, QuoteFlexiblePricingResult } from './types';
 import { FlexiblePricingError } from './errors';
 import { loadPricingContext } from './load-pricing-context';
@@ -61,7 +61,7 @@ function wrapInfrastructureError(err: unknown): FlexiblePricingError {
  *     PRICING_CONTEXT_UNAVAILABLE avec un message générique (pas de leak).
  */
 export async function quoteFlexiblePricing(
-  db: DatabaseClient,
+  db: DbExecutor,
   input: QuoteFlexiblePricingInput,
 ): Promise<QuoteFlexiblePricingResult> {
   // 1. Validation de base.
