@@ -139,3 +139,6 @@ export * from './dashboard';
 
 // G7H-A — Fondations analytics first-party privacy-first.
 export * from './product-analytics';
+
+// G7M-B1 — Projection canonique getEffectiveBooking (ADR-023 §4.1, read-only).
+export * from './booking-amendments';
