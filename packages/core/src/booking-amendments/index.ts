@@ -1,16 +1,14 @@
 /**
- * @uttily/core — Module booking-amendments (G7M-B1).
+ * @uttily/core — Module booking-amendments (G7M-B1, G7M-B2-A).
  *
- * Projection canonique read-only de l'état effectif d'une réservation.
+ * Projection canonique read-only de l'état effectif d'une réservation (G7M-B1)
+ * et mutation transactionnelle idempotente d'amendement NEUTRAL (G7M-B2-A).
  *
- * Exports publics : getEffectiveBooking, EffectiveBookingError,
- * EffectiveBookingErrorCode, et les types nécessaires à la consommation de la
- * projection (EffectiveBooking, EffectiveLine, EffectiveAllocation,
- * EffectiveFinancials, AmendmentSummary, GetEffectiveBookingResult).
- *
- * Les helpers internes (parseFinancialSnapshot, normalizeAggregateAmount,
- * assertFinancialInvariant, isEffectiveBookingErrorCode, FinancialSnapshot,
- * loaders) ne sont pas exposés depuis ce barrel.
+ * Exports publics :
+ * - getEffectiveBooking, EffectiveBookingError, EffectiveBookingErrorCode,
+ *   et les types nécessaires à la consommation de la projection.
+ * - createNeutralBookingAmendment, NeutralAmendmentError,
+ *   NeutralAmendmentErrorCode, et les types de commande/résultat.
  */
 
 export { getEffectiveBooking } from './get-effective-booking';
@@ -24,3 +22,13 @@ export type {
   AmendmentSummary,
   GetEffectiveBookingResult,
 } from './types';
+
+export { createNeutralBookingAmendment } from './create-neutral-booking-amendment';
+export { NeutralAmendmentError } from './types-amendment';
+export type { NeutralAmendmentErrorCode } from './types-amendment';
+export type {
+  NeutralAmendmentCommand,
+  NeutralAmendmentDesiredLine,
+  NeutralAmendmentIntent,
+  NeutralAmendmentResult,
+} from './types-amendment';
