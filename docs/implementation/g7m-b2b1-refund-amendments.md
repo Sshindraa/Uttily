@@ -13,8 +13,8 @@ Dans ce lot (livré en B2-B1) :
 - En cas d'échec lors du commit métier/outbox, la transaction PostgreSQL annule tous les effets métier et outbox, tandis que l'enregistrement de réservation de clé idempotente conserve le statut `PENDING` jusqu'à son expiration.
 
 Statut : **G7M-B2-B1 livré ; moteur Core G7M-B2-B2A livré et validé dans
-`docs/implementation/g7m-b2b2a-refund-execution.md` ; wiring worker/cron
-G7M-B2-B2B pending**.
+`docs/implementation/g7m-b2b2a-refund-execution.md` ; wiring route/cron
+G7M-B2-B2B livré dans `docs/implementation/g7m-b2b2b-refund-cron.md`**.
 
 ## API Publique `@uttily/core`
 

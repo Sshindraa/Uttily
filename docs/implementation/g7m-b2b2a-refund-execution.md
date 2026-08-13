@@ -108,5 +108,5 @@ Core n'est déduit après l'ajout de ce test.
 
 ## Suite
 
-G7M-B2-B2B reste explicitement pending : création de `apps/worker`, cron,
-wiring de production, supervision et déploiement.
+G7M-B2-B2B est livré par une route Web server-side et Vercel Cron ; aucun
+`apps/worker` n'est créé. Voir `docs/implementation/g7m-b2b2b-refund-cron.md`.
