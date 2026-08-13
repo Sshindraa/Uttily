@@ -24,11 +24,14 @@ export type {
 } from './types';
 
 export { createNeutralBookingAmendment } from './create-neutral-booking-amendment';
-export { NeutralAmendmentError } from './types-amendment';
-export type { NeutralAmendmentErrorCode } from './types-amendment';
+export { createRefundBookingAmendment } from './create-refund-booking-amendment';
+export { NeutralAmendmentError, RefundAmendmentError } from './types-amendment';
+export type { NeutralAmendmentErrorCode, RefundAmendmentErrorCode } from './types-amendment';
 export type {
   NeutralAmendmentCommand,
   NeutralAmendmentDesiredLine,
   NeutralAmendmentIntent,
   NeutralAmendmentResult,
+  RefundAmendmentCommand,
+  RefundAmendmentResult,
 } from './types-amendment';
