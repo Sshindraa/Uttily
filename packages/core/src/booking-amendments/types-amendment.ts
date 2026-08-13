@@ -122,3 +122,65 @@ export class NeutralAmendmentError extends Error {
     this.code = code;
   }
 }
+
+/**
+ * Commande d'amendement de type REFUND (G7M-B2-B1).
+ */
+export type RefundAmendmentCommand = NeutralAmendmentCommand;
+
+/**
+ * Résultat fermé de createRefundBookingAmendment (G7M-B2-B1).
+ */
+export type RefundAmendmentResult =
+  | {
+      readonly kind: 'SUCCESS';
+      readonly amendmentId: string;
+      readonly amendmentNumber: number;
+      readonly refundId: string;
+      readonly refundAmountMinor: number;
+    }
+  | {
+      readonly kind: 'REPLAY';
+      readonly amendmentId: string;
+      readonly amendmentNumber: number;
+      readonly refundId: string;
+      readonly refundAmountMinor: number;
+    }
+  | { readonly kind: 'NOT_FOUND' }
+  | { readonly kind: 'FORBIDDEN' }
+  | { readonly kind: 'BOOKING_NOT_CONFIRMED' }
+  | { readonly kind: 'ACTIVE_AMENDMENT_EXISTS' }
+  | { readonly kind: 'STALE_EFFECTIVE_BOOKING'; readonly expected: number; readonly actual: number }
+  | { readonly kind: 'INVALID_INPUT'; readonly message: string }
+  | { readonly kind: 'AVAILABILITY_CONFLICT'; readonly message: string }
+  | {
+      readonly kind: 'FINANCIAL_ACTION_REQUIRED';
+      readonly classification: 'NEUTRAL' | 'SUPPLEMENT';
+      readonly deltaMinor: number;
+    }
+  | { readonly kind: 'IDEMPOTENCY_CONFLICT' };
+
+/**
+ * Codes d'erreur fermés pour RefundAmendmentError.
+ */
+export type RefundAmendmentErrorCode = 'VALIDATION' | 'INTERNAL';
+
+export function isRefundAmendmentErrorCode(value: unknown): value is RefundAmendmentErrorCode {
+  return (
+    typeof value === 'string' &&
+    (NEUTRAL_AMENDMENT_ERROR_CODES as readonly string[]).includes(value)
+  );
+}
+
+/**
+ * Erreur typée pour createRefundBookingAmendment.
+ */
+export class RefundAmendmentError extends Error {
+  readonly code: RefundAmendmentErrorCode;
+
+  constructor(code: RefundAmendmentErrorCode, message: string) {
+    super(message);
+    this.name = 'RefundAmendmentError';
+    this.code = code;
+  }
+}
