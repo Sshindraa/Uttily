@@ -53,6 +53,9 @@ export * from './payment-reconciliation';
 // Phase 8 — Exécution idempotente des compensations (ADR-010 §13).
 export * from './compensation-execution';
 
+// G7M-B2-B2 — Exécution worker des refunds d'amendement REFUND.
+export * from './refund-request-execution';
+
 // G5D — Module commun de revendication d'événements outbox (ADR-013 §7).
 export {
   type KnownHandlerSelection,
@@ -65,6 +68,7 @@ export {
   validateClaimEligibility,
   validateBatchLimit as validateOutboxBatchLimit,
   BOOKING_CONFIRMED_SELECTION,
+  REFUND_REQUEST_SELECTION,
   MAX_BATCH_LIMIT as OUTBOX_MAX_BATCH_LIMIT,
   DEFAULT_BATCH_LIMIT as OUTBOX_DEFAULT_BATCH_LIMIT,
   MAX_ATTEMPTS as OUTBOX_MAX_ATTEMPTS,

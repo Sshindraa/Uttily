@@ -819,6 +819,27 @@ describe('StripeAdapter', () => {
       expect(options.idempotencyKey).toBe('idem_refund_abc');
     });
 
+    it('envoie la metadata B2-B2A exacte et rejette un UUID/protocole invalide', async () => {
+      mockRefundsCreate.mockResolvedValue(makeMockRefund());
+      const metadata = {
+        refund_id: '11111111-1111-4111-8111-111111111111',
+        organization_id: '22222222-2222-4222-8222-222222222222',
+        protocol_version: 'refund-requested-v1' as const,
+      };
+      await adapter.createRefund(baseCreateRefundParams({ metadata }));
+      const [createParams] = mockRefundsCreate.mock.calls[0]!;
+      expect(createParams.metadata).toEqual(metadata);
+
+      await expect(
+        adapter.createRefund(
+          baseCreateRefundParams({
+            idempotencyKey: 'invalid_refund_metadata',
+            metadata: { ...metadata, refund_id: 'not-a-uuid' },
+          }),
+        ),
+      ).rejects.toMatchObject({ code: 'VALIDATION', providerErrorCode: 'invalid_metadata' });
+    });
+
     it('mappe correctement le statut pending', async () => {
       const mockRefund = makeMockRefund({ status: 'pending' });
       mockRefundsCreate.mockResolvedValue(mockRefund);

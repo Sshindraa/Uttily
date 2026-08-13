@@ -305,6 +305,29 @@ describe('FakeStripeAdapter', () => {
   });
 
   describe('createRefund', () => {
+    it('accepte uniquement la metadata refund B2-B2A exacte', async () => {
+      const created = await fake.createPaymentIntent(baseCreatePaymentIntentParams());
+      fake.simulatePaymentIntentStatus(created.id, 'succeeded');
+      const metadata = {
+        refund_id: '11111111-1111-4111-8111-111111111111',
+        organization_id: '22222222-2222-4222-8222-222222222222',
+        protocol_version: 'refund-requested-v1' as const,
+      };
+
+      await expect(
+        fake.createRefund(baseCreateRefundParams({ paymentIntentId: created.id, metadata })),
+      ).resolves.toBeDefined();
+      await expect(
+        fake.createRefund(
+          baseCreateRefundParams({
+            paymentIntentId: created.id,
+            idempotencyKey: 'invalid_refund_metadata',
+            metadata: { ...metadata, protocol_version: 'v2' as 'refund-requested-v1' },
+          }),
+        ),
+      ).rejects.toThrow(PaymentProviderError);
+    });
+
     it("génère un ID déterministe depuis la clé d'idempotence", async () => {
       // Créer un PI succeeded d'abord.
       const created = await fake.createPaymentIntent(baseCreatePaymentIntentParams());
@@ -669,6 +692,83 @@ describe('FakeStripeAdapter', () => {
         expect(refundList).toHaveLength(2);
         expect(refundList[0]).not.toBeNull();
         expect(refundList[1]).toBeNull();
+      }
+    });
+
+    it('conserve les trois champs metadata refund autorisés sur les objets directs et imbriqués', async () => {
+      const metadata = {
+        refund_id: '11111111-1111-4111-8111-111111111111',
+        organization_id: '22222222-2222-4222-8222-222222222222',
+        protocol_version: 'refund-requested-v1',
+        payment_id: 'must-not-leak',
+        extra: 'must-not-leak',
+      };
+      const directBody = JSON.stringify({
+        id: 'evt_refund_metadata_direct',
+        type: 'refund.created',
+        created: Math.floor(Date.now() / 1000),
+        data: {
+          object: {
+            id: 're_direct',
+            status: 'pending',
+            amount: 100,
+            currency: 'eur',
+            payment_intent: 'pi_test',
+            metadata,
+          },
+        },
+      });
+      const direct = await fake.verifyWebhook({
+        rawBody: directBody,
+        signature: fake.generateValidSignature(directBody, 'platform'),
+        endpoint: 'platform',
+        environment: 'TEST',
+      });
+      expect(direct.valid).toBe(true);
+      if (direct.valid) {
+        expect(direct.event.data.metadata).toEqual({
+          refund_id: metadata.refund_id,
+          organization_id: metadata.organization_id,
+          protocol_version: metadata.protocol_version,
+        });
+      }
+
+      const nestedBody = JSON.stringify({
+        id: 'evt_refund_metadata_nested',
+        type: 'charge.refunded',
+        created: Math.floor(Date.now() / 1000),
+        data: {
+          object: {
+            id: 'ch_nested',
+            refunds: {
+              data: [
+                {
+                  id: 're_nested',
+                  status: 'pending',
+                  amount: 100,
+                  currency: 'eur',
+                  payment_intent: 'pi_test',
+                  metadata,
+                },
+              ],
+            },
+          },
+        },
+      });
+      const nested = await fake.verifyWebhook({
+        rawBody: nestedBody,
+        signature: fake.generateValidSignature(nestedBody, 'platform'),
+        endpoint: 'platform',
+        environment: 'TEST',
+      });
+      expect(nested.valid).toBe(true);
+      if (nested.valid) {
+        const data = nested.event.data.refunds as { data: Array<Record<string, unknown>> };
+        expect(data.data[0]!.metadata).toEqual({
+          refund_id: metadata.refund_id,
+          organization_id: metadata.organization_id,
+          protocol_version: metadata.protocol_version,
+        });
       }
     });
   });

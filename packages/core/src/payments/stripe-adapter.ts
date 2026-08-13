@@ -28,6 +28,7 @@ import type {
   PaymentIntentStatus,
   PaymentMetadata,
   PaymentProviderAdapter,
+  RefundMetadata,
   RefundResult,
   RefundStatus,
   StripeErrorCode,
@@ -328,6 +329,7 @@ function extractObjectId(event: Stripe.Event): string {
  */
 function normalizeEventData(event: Stripe.Event): Record<string, unknown> {
   const obj = event.data.object as unknown as Record<string, unknown>;
+  const isRefundEvent = event.type.startsWith('refund.');
   // Allow-list : on ne conserve que les champs non sensibles et utiles.
   const allowed: Record<string, unknown> = {};
   if (typeof obj?.id === 'string') {
@@ -348,13 +350,9 @@ function normalizeEventData(event: Stripe.Event): Record<string, unknown> {
   if (obj?.metadata !== undefined && typeof obj.metadata === 'object') {
     const rawMetadata = obj.metadata as Record<string, unknown>;
     const filteredMetadata: Record<string, string> = {};
-    const allowedKeys: (keyof PaymentMetadata)[] = [
-      'payment_id',
-      'payment_attempt_id',
-      'draft_id',
-      'organization_id',
-      'protocol_version',
-    ];
+    const allowedKeys: (keyof PaymentMetadata | keyof RefundMetadata)[] = isRefundEvent
+      ? ['refund_id', 'organization_id', 'protocol_version']
+      : ['payment_id', 'payment_attempt_id', 'draft_id', 'organization_id', 'protocol_version'];
     for (const key of allowedKeys) {
       if (typeof rawMetadata[key] === 'string') {
         filteredMetadata[key] = rawMetadata[key] as string;
@@ -402,6 +400,7 @@ function normalizeEventData(event: Stripe.Event): Record<string, unknown> {
           amount: refund.amount,
           payment_intent: refund.payment_intent,
           currency: refund.currency,
+          metadata: normalizeRefundMetadata(refund.metadata),
         };
       });
       allowed.refunds = { object: 'list', data: filteredData };
@@ -455,6 +454,16 @@ function normalizeEventData(event: Stripe.Event): Record<string, unknown> {
     }
   }
   return allowed;
+}
+
+function normalizeRefundMetadata(value: unknown): Record<string, string> {
+  if (value === null || typeof value !== 'object') return {};
+  const raw = value as Record<string, unknown>;
+  const metadata: Record<string, string> = {};
+  for (const key of ['refund_id', 'organization_id', 'protocol_version'] as const) {
+    if (typeof raw[key] === 'string') metadata[key] = raw[key];
+  }
+  return metadata;
 }
 
 /**
@@ -760,6 +769,22 @@ export class StripeAdapter implements PaymentProviderAdapter {
   }
 
   async createRefund(params: CreateRefundParams): Promise<RefundResult> {
+    if (params.metadata !== undefined) {
+      const keys = Object.keys(params.metadata).sort();
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (
+        keys.join(',') !== 'organization_id,protocol_version,refund_id' ||
+        !uuidRegex.test(params.metadata.refund_id) ||
+        !uuidRegex.test(params.metadata.organization_id) ||
+        params.metadata.protocol_version !== 'refund-requested-v1'
+      ) {
+        throw new PaymentProviderError(
+          'VALIDATION',
+          'Metadata refund invalide',
+          'invalid_metadata',
+        );
+      }
+    }
     try {
       const refundParams: Stripe.RefundCreateParams = {
         payment_intent: params.paymentIntentId,
@@ -767,6 +792,9 @@ export class StripeAdapter implements PaymentProviderAdapter {
         reverse_transfer: params.reverseTransfer,
         refund_application_fee: params.refundApplicationFee,
       };
+      if (params.metadata !== undefined) {
+        refundParams.metadata = { ...params.metadata };
+      }
 
       const refund = await this.stripe.refunds.create(refundParams, {
         idempotencyKey: params.idempotencyKey,

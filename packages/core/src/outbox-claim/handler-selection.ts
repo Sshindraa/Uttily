@@ -30,6 +30,12 @@ export type KnownHandlerSelection =
       readonly eventType: 'PAYMENT_COMPENSATION_REQUESTED';
       readonly eventVersion: 'v1';
       readonly aggregateType: 'PAYMENT';
+    }
+  | {
+      readonly kind: 'REFUND_REQUEST';
+      readonly eventType: 'REFUND_REQUESTED';
+      readonly eventVersion: 'v1';
+      readonly aggregateType: 'REFUND';
     };
 
 /** Sélection de handler pour BOOKING_CONFIRMED.v1/BOOKING (pipeline documentaire). */
@@ -46,6 +52,14 @@ export const PAYMENT_COMPENSATION_SELECTION: KnownHandlerSelection = {
   eventType: 'PAYMENT_COMPENSATION_REQUESTED',
   eventVersion: 'v1',
   aggregateType: 'PAYMENT',
+} as const;
+
+/** Sélection de handler pour REFUND_REQUESTED.v1/REFUND. */
+export const REFUND_REQUEST_SELECTION: KnownHandlerSelection = {
+  kind: 'REFUND_REQUEST',
+  eventType: 'REFUND_REQUESTED',
+  eventVersion: 'v1',
+  aggregateType: 'REFUND',
 } as const;
 
 /**
@@ -106,6 +120,21 @@ export function validateHandlerSelection(selection: unknown): KnownHandlerSelect
       };
     }
     throw new Error('HandlerSelection PAYMENT_COMPENSATION invalide : champs incorrects');
+  }
+  if (s.kind === 'REFUND_REQUEST') {
+    if (
+      s.eventType === 'REFUND_REQUESTED' &&
+      s.eventVersion === 'v1' &&
+      s.aggregateType === 'REFUND'
+    ) {
+      return {
+        kind: 'REFUND_REQUEST',
+        eventType: 'REFUND_REQUESTED',
+        eventVersion: 'v1',
+        aggregateType: 'REFUND',
+      };
+    }
+    throw new Error('HandlerSelection REFUND_REQUEST invalide : champs incorrects');
   }
   throw new Error('HandlerSelection invalide : kind inconnu ou absent');
 }
