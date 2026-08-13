@@ -78,7 +78,10 @@ export type RefundProjectionFailureCode =
   | 'REFUND_ID_MISSING'
   | 'REFUND_STATUS_MISSING'
   | 'REFUND_PROVIDER_STATE_UNSUPPORTED'
-  | 'REFUND_ACCOUNT_MISMATCH';
+  | 'REFUND_ACCOUNT_MISMATCH'
+  | 'REFUND_METADATA_INVALID'
+  | 'REFUND_METADATA_NOT_FOUND'
+  | 'REFUND_REASON_MISMATCH';
 
 /**
  * Erreur de projection de refund (P1-1). Levée à l'intérieur d'un savepoint
@@ -1220,7 +1223,14 @@ async function handleRefundEvent(
       finalStatus = 'FAILED';
       failureCode = resolutionFailure;
     } else if (orgId !== null) {
-      const projection = await projectRefundStatus(tx, event, orgId, paymentId, endpoint);
+      const projection = await projectRefundStatus(
+        tx,
+        event,
+        orgId,
+        paymentId,
+        endpoint,
+        environment,
+      );
       finalStatus = projection.result;
       failureCode = projection.failureCode;
     }
@@ -1361,6 +1371,7 @@ async function projectRefundStatus(
   orgId: string,
   paymentId: string | null,
   endpoint: 'platform' | 'connect',
+  environment: 'TEST' | 'LIVE',
 ): Promise<{
   result: 'PROCESSED' | 'IGNORED' | 'FAILED';
   failureCode?: RefundProjectionFailureCode;
@@ -1393,6 +1404,25 @@ async function projectRefundStatus(
         // P1 : identifiant de remboursement absent → anomalie (pas de skip).
         if (typeof refundId !== 'string' || refundId.length === 0) {
           throw new RefundProjectionError('REFUND_ID_MISSING');
+        }
+
+        const refundMetadata = refundRecord.metadata;
+        const metadataKeys =
+          refundMetadata !== null && typeof refundMetadata === 'object'
+            ? Object.keys(refundMetadata as Record<string, unknown>).sort()
+            : [];
+        const hasRefundMetadata = metadataKeys.length > 0;
+        if (hasRefundMetadata) {
+          await projectTaggedBookingModificationRefund(
+            sp,
+            event,
+            environment,
+            orgId,
+            refundRecord,
+            refundMetadata,
+          );
+          anyProjected = true;
+          continue;
         }
 
         const refundStatus = refundRecord.status;
@@ -1930,6 +1960,160 @@ async function projectRefundStatus(
     return { result: 'FAILED', failureCode: failure.code };
   }
   return { result: anyProjected ? 'PROCESSED' : 'IGNORED' };
+}
+
+/**
+ * Handles the B2-B2A tagged refund path before the legacy provider-id/amount
+ * fallbacks. The metadata is the only safe identity when the worker has not
+ * persisted provider_refund_id yet.
+ */
+async function projectTaggedBookingModificationRefund(
+  tx: DatabaseTransaction,
+  event: VerifiedWebhookEvent,
+  environment: 'TEST' | 'LIVE',
+  orgId: string,
+  refundRecord: Record<string, unknown>,
+  rawMetadata: unknown,
+): Promise<void> {
+  if (rawMetadata === null || typeof rawMetadata !== 'object') {
+    throw new RefundProjectionError('REFUND_METADATA_INVALID');
+  }
+  const metadata = rawMetadata as Record<string, unknown>;
+  const keys = Object.keys(metadata).sort();
+  if (keys.join(',') !== 'organization_id,protocol_version,refund_id') {
+    throw new RefundProjectionError('REFUND_METADATA_INVALID');
+  }
+  const refundId = metadata.refund_id;
+  const metadataOrganizationId = metadata.organization_id;
+  const protocolVersion = metadata.protocol_version;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (
+    typeof refundId !== 'string' ||
+    typeof metadataOrganizationId !== 'string' ||
+    typeof protocolVersion !== 'string' ||
+    !uuidRegex.test(refundId) ||
+    !uuidRegex.test(metadataOrganizationId) ||
+    protocolVersion !== 'refund-requested-v1'
+  ) {
+    throw new RefundProjectionError('REFUND_METADATA_INVALID');
+  }
+  if (metadataOrganizationId !== orgId) {
+    throw new RefundProjectionError('REFUND_ORG_MISMATCH');
+  }
+
+  const refundRows = await tx
+    .select({
+      id: refunds.id,
+      organizationId: refunds.organizationId,
+      paymentId: refunds.paymentId,
+      reason: refunds.reason,
+      amountMinor: refunds.amountMinor,
+      currency: refunds.currency,
+      status: refunds.status,
+      providerRefundId: refunds.providerRefundId,
+      providerEventCreatedAt: refunds.providerEventCreatedAt,
+    })
+    .from(refunds)
+    .where(eq(refunds.id, refundId))
+    .for('update')
+    .limit(1);
+  const localRefund = refundRows[0];
+  if (localRefund === undefined) {
+    throw new RefundProjectionError('REFUND_METADATA_NOT_FOUND');
+  }
+  if (localRefund.reason !== 'BOOKING_MODIFICATION') {
+    throw new RefundProjectionError('REFUND_REASON_MISMATCH');
+  }
+  if (
+    localRefund.organizationId !== orgId ||
+    localRefund.paymentId === null ||
+    localRefund.currency !== 'EUR'
+  ) {
+    throw new RefundProjectionError('REFUND_ORG_MISMATCH');
+  }
+
+  const paymentIntentId = refundRecord.payment_intent;
+  if (typeof paymentIntentId !== 'string' || paymentIntentId.length === 0) {
+    throw new RefundProjectionError('REFUND_PI_MISSING');
+  }
+  const paymentRows = await tx
+    .select({
+      id: payments.id,
+      organizationId: payments.organizationId,
+      connectedAccountId: payments.connectedAccountId,
+      environment: payments.environment,
+    })
+    .from(payments)
+    .innerJoin(paymentAttempts, eq(paymentAttempts.paymentId, payments.id))
+    .where(
+      and(
+        eq(payments.id, localRefund.paymentId),
+        eq(payments.organizationId, orgId),
+        eq(payments.status, 'SUCCEEDED'),
+        eq(payments.environment, environment),
+        eq(paymentAttempts.status, 'SUCCEEDED'),
+        eq(paymentAttempts.providerPaymentIntentId, paymentIntentId),
+      ),
+    )
+    .for('update')
+    .limit(1);
+  if (paymentRows.length === 0) throw new RefundProjectionError('REFUND_PI_MISMATCH');
+  if (event.accountId !== null && paymentRows[0]!.connectedAccountId !== event.accountId) {
+    throw new RefundProjectionError('REFUND_ACCOUNT_MISMATCH');
+  }
+
+  const amount = refundRecord.amount;
+  if (typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount <= 0) {
+    throw new RefundProjectionError('REFUND_INVALID_AMOUNT');
+  }
+  if (amount !== localRefund.amountMinor) throw new RefundProjectionError('REFUND_AMOUNT_MISMATCH');
+  if (typeof refundRecord.currency !== 'string' || refundRecord.currency.toUpperCase() !== 'EUR') {
+    throw new RefundProjectionError('REFUND_CURRENCY_MISMATCH');
+  }
+  if (localRefund.providerRefundId !== null && localRefund.providerRefundId !== refundRecord.id) {
+    throw new RefundProjectionError('REFUND_INVARIANT_BROKEN');
+  }
+
+  const providerStatus = refundRecord.status;
+  let mappedStatus: 'PENDING' | 'SUCCEEDED' | 'FAILED_REQUIRES_MANUAL_ACTION';
+  if (providerStatus === 'succeeded') mappedStatus = 'SUCCEEDED';
+  else if (providerStatus === 'failed' || providerStatus === 'canceled') {
+    mappedStatus = 'FAILED_REQUIRES_MANUAL_ACTION';
+  } else if (providerStatus === 'pending' || providerStatus === 'requires_action') {
+    mappedStatus = 'PENDING';
+  } else {
+    throw new RefundProjectionError('REFUND_PROVIDER_STATE_UNSUPPORTED');
+  }
+
+  if (
+    localRefund.providerEventCreatedAt !== null &&
+    event.created <= localRefund.providerEventCreatedAt
+  ) {
+    return;
+  }
+  if (
+    (localRefund.status === 'SUCCEEDED' ||
+      localRefund.status === 'FAILED_REQUIRES_MANUAL_ACTION' ||
+      localRefund.status === 'SETTLED_OFF_PLATFORM') &&
+    mappedStatus !== localRefund.status
+  ) {
+    return;
+  }
+  const effectiveStatus =
+    localRefund.status === 'SUBMITTED' && mappedStatus === 'PENDING' ? 'SUBMITTED' : mappedStatus;
+  const now = sql`transaction_timestamp()`;
+  const updateData: Record<string, unknown> = {
+    providerRefundId: refundRecord.id,
+    status: effectiveStatus,
+    providerEventCreatedAt: event.created,
+    updatedAt: now,
+  };
+  if (effectiveStatus === 'SUCCEEDED') updateData.succeededAt = now;
+  if (effectiveStatus === 'FAILED_REQUIRES_MANUAL_ACTION') {
+    updateData.failedAt = now;
+    updateData.failureCode = 'STRIPE_REFUND_FAILED';
+  }
+  await tx.update(refunds).set(updateData).where(eq(refunds.id, localRefund.id));
 }
 
 /**

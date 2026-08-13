@@ -13,6 +13,7 @@ import {
   validateClaimEligibility,
   BOOKING_CONFIRMED_SELECTION,
   PAYMENT_COMPENSATION_SELECTION,
+  REFUND_REQUEST_SELECTION,
   claimOutboxBatch,
 } from './index';
 
@@ -58,6 +59,18 @@ describe('validateHandlerSelection — runtime validation (closed union)', () =>
       'eventVersion',
       'kind',
     ]);
+  });
+
+  it('accepte REFUND_REQUESTED.v1/REFUND et retourne une valeur canonique', () => {
+    const input = {
+      kind: 'REFUND_REQUEST',
+      eventType: 'REFUND_REQUESTED',
+      eventVersion: 'v1',
+      aggregateType: 'REFUND',
+    };
+    const result = validateHandlerSelection(input);
+    expect(result).toEqual(REFUND_REQUEST_SELECTION);
+    expect(result).not.toBe(input);
   });
 
   // Rejection cases — all must throw.

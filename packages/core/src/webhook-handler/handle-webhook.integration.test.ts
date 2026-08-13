@@ -8,6 +8,7 @@
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { randomUUID } from 'node:crypto';
 import postgres from 'postgres';
 import { createDatabase, type DatabaseClient } from '@uttily/database';
 import {
@@ -28,6 +29,8 @@ import { handleWebhook } from './handle-webhook';
 import type { WebhookHandlerDeps, WebhookHandlerInput, WebhookHandlerResult } from './types';
 import type { FinancialTermsConfig, TermsAcceptanceProof } from '../financial-terms/types';
 import { expireBookingDraftsBatch } from '../booking-drafts/expire-booking-drafts-batch';
+import { executeRefundRequestBatch } from '../refund-request-execution';
+import type { CreateRefundParams, RefundResult } from '../payments/types';
 
 const isCi = process.env.CI === '1' || process.env.CI === 'true';
 
@@ -589,6 +592,7 @@ function makeChargeRefundedBody(params: {
   refundId: string;
   refundStatus: string;
   amount: number;
+  metadata?: Record<string, string>;
   /** Compte Connect (champ `account` de l'événement) — endpoint connect. */
   account?: string;
 }): string {
@@ -614,10 +618,42 @@ function makeChargeRefundedBody(params: {
               amount: params.amount,
               payment_intent: params.paymentIntentId,
               currency: 'eur',
+              ...(params.metadata === undefined ? {} : { metadata: params.metadata }),
             },
           ],
           has_more: false,
         },
+      },
+    },
+  });
+}
+
+function makeDirectRefundBody(params: {
+  eventId: string;
+  eventType?: 'refund.created' | 'refund.updated';
+  created: number;
+  refundId: string;
+  paymentIntentId: string;
+  refundStatus: string;
+  amount: number;
+  currency?: string;
+  metadata?: Record<string, string>;
+}): string {
+  return JSON.stringify({
+    id: params.eventId,
+    type: params.eventType ?? 'refund.updated',
+    created: params.created,
+    api_version: '2026-06-24.dahlia',
+    data: {
+      object: {
+        id: params.refundId,
+        object: 'refund',
+        status: params.refundStatus,
+        amount: params.amount,
+        currency: params.currency ?? 'eur',
+        payment_intent: params.paymentIntentId,
+        metadata: params.metadata,
+        extra_sensitive_field: 'must-not-persist',
       },
     },
   });
@@ -672,6 +708,93 @@ async function waitForPgTimePast(conn: RawSql, targetIso: string, timeoutMs = 50
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration PostgreSQL', () => {
+  interface TaggedRefundFixture {
+    ids: BaseIds;
+    deps: WebhookHandlerDeps & { adapter: FakeStripeAdapter };
+    paymentId: string;
+    paymentIntentId: string;
+    amount: number;
+    refundIds: string[];
+  }
+
+  class SucceedingRefundProvider extends FakeStripeAdapter {
+    calls: CreateRefundParams[] = [];
+
+    override async createRefund(params: CreateRefundParams): Promise<RefundResult> {
+      this.calls.push(params);
+      return {
+        id: `re_worker_${params.metadata?.refund_id}`,
+        status: 'succeeded',
+        amountMinor: params.amountMinor,
+        currency: 'EUR',
+      };
+    }
+  }
+
+  async function seedTaggedRefundFixture(suffix: string, count = 1): Promise<TaggedRefundFixture> {
+    if (!db || !rawSql) throw new Error('DB non initialisée');
+    const ids = await seedBaseData(suffix);
+    await seedPaymentAccount(ids);
+    const draftId = await createHeldDraft(ids, `tagged-${suffix}`);
+    const initResult = await initiatePayment(
+      makeInitDeps(),
+      makeInitiateInput(ids, draftId, `tagged-${suffix}`),
+    );
+    expect(initResult.kind).toBe('SUCCESS');
+    if (initResult.kind !== 'SUCCESS') throw new Error('initiation de paiement impossible');
+    const paymentId = await getPaymentId(draftId);
+    const amount = await getPaymentAmount(draftId);
+    const paymentDeps = makeDeps();
+    const succeededBody = makeWebhookPayload(
+      'payment_intent.succeeded',
+      initResult.providerPaymentIntentId,
+      amount,
+      {
+        payment_id: initResult.paymentId,
+        payment_attempt_id: initResult.paymentAttemptId,
+        draft_id: draftId,
+        organization_id: ids.orgId,
+        protocol_version: 'v1',
+      },
+      'succeeded',
+      { eventId: `evt_tagged_payment_${suffix}` },
+    );
+    const paymentResult = await handleWebhook(
+      paymentDeps,
+      makeWebhookInput(succeededBody, paymentDeps.adapter),
+    );
+    expect(paymentResult.kind).toBe('SUCCESS');
+    const refundIds: string[] = [];
+    for (let index = 0; index < count; index++) {
+      const refundId = randomUUID();
+      refundIds.push(refundId);
+      await rawSql`
+        INSERT INTO refunds (
+          id, organization_id, payment_id, reason, status, amount_minor, currency,
+          provider_idempotency_key, reverse_transfer, refund_application_fee, requested_at
+        ) VALUES (
+          ${refundId}, ${ids.orgId}, ${paymentId}, 'BOOKING_MODIFICATION', 'PENDING',
+          ${amount}, 'EUR', ${'refund_amendment_' + refundId}, true, true, now()
+        )
+      `;
+    }
+    return {
+      ids,
+      deps: makeDeps(),
+      paymentId,
+      paymentIntentId: initResult.providerPaymentIntentId,
+      amount,
+      refundIds,
+    };
+  }
+
+  async function refundState(refundId: string) {
+    if (!rawSql) throw new Error('DB non initialisée');
+    return rawSql`
+      SELECT status, provider_refund_id, provider_event_created_at FROM refunds WHERE id = ${refundId}
+    `.then((rows) => rows[0]!);
+  }
+
   // 1. Confirmation nominale
   it('1. payment_intent.succeeded → confirmation atomique, booking créé, outbox créé', async () => {
     if (!db || !rawSql) return;
@@ -2260,6 +2383,380 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
     expect(refundRows.length).toBe(1);
     expect(refundRows[0]!.status).toBe('SUCCEEDED');
     expect(Number(refundRows[0]!.amount_minor)).toBe(amount);
+  });
+
+  it('26bis. refund BOOKING_MODIFICATION tagué par metadata → projection par refund_id sans EXTERNAL_REFUND', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('refund-tagged');
+    await seedPaymentAccount(ids);
+    const draftId = await createHeldDraft(ids, 'refund-tagged');
+    const initDeps = makeInitDeps();
+    const initResult = await initiatePayment(
+      initDeps,
+      makeInitiateInput(ids, draftId, 'refund-tagged'),
+    );
+    expect(initResult.kind).toBe('SUCCESS');
+    if (initResult.kind !== 'SUCCESS') return;
+
+    const piId = initResult.providerPaymentIntentId;
+    const paymentId = await getPaymentId(draftId);
+    const amount = await getPaymentAmount(draftId);
+    const deps = makeDeps();
+    const succeeded = makeWebhookPayload('payment_intent.succeeded', piId, amount, {
+      payment_id: initResult.paymentId,
+      payment_attempt_id: initResult.paymentAttemptId,
+      draft_id: draftId,
+      organization_id: ids.orgId,
+      protocol_version: 'v1',
+    });
+    await handleWebhook(deps, makeWebhookInput(succeeded, deps.adapter));
+
+    const refundId = '77777777-7777-4777-8777-777777777777';
+    await rawSql`
+      INSERT INTO refunds (
+        id, organization_id, payment_id, reason, status, amount_minor, currency,
+        provider_idempotency_key, reverse_transfer, refund_application_fee, requested_at
+      ) VALUES (
+        ${refundId}, ${ids.orgId}, ${paymentId}, 'BOOKING_MODIFICATION', 'PENDING', ${amount}, 'EUR',
+        ${'refund_amendment_' + refundId}, true, true, now()
+      )
+    `;
+
+    const body = makeChargeRefundedBody({
+      eventId: 'evt_refund_tagged_success',
+      created: 1_900_000_000,
+      chargeId: 'ch_refund_tagged',
+      paymentIntentId: piId,
+      refundId: 're_refund_tagged_success',
+      refundStatus: 'succeeded',
+      amount,
+      metadata: {
+        refund_id: refundId,
+        organization_id: ids.orgId,
+        protocol_version: 'refund-requested-v1',
+      },
+    });
+    const result = await handleWebhook(deps, makeWebhookInput(body, deps.adapter));
+    expect(result.kind).toBe('SUCCESS');
+
+    const projected = await rawSql`
+      SELECT status, provider_refund_id, provider_event_created_at
+      FROM refunds WHERE id = ${refundId}
+    `;
+    expect(projected[0]!['status']).toBe('SUCCEEDED');
+    expect(projected[0]!['provider_refund_id']).toBe('re_refund_tagged_success');
+    expect(Number(projected[0]!['provider_event_created_at'])).toBe(1_900_000_000);
+    const external = await rawSql`
+      SELECT count(*) FROM refunds
+      WHERE reason = 'EXTERNAL_REFUND' AND provider_refund_id = 're_refund_tagged_success'
+    `;
+    expect(Number(external[0]!['count'])).toBe(0);
+  });
+
+  it('G7M-B2-B2A webhook direct refund.created : metadata exacte et allow-list sans fuite', async () => {
+    if (!rawSql) throw new Error('DB non initialisée');
+    const fixture = await seedTaggedRefundFixture('direct-created');
+    const body = makeDirectRefundBody({
+      eventId: 'evt_b2b2a_direct_created',
+      eventType: 'refund.created',
+      created: 1_910_000_000,
+      refundId: 're_b2b2a_direct_created',
+      paymentIntentId: fixture.paymentIntentId,
+      refundStatus: 'succeeded',
+      amount: fixture.amount,
+      metadata: {
+        refund_id: fixture.refundIds[0]!,
+        organization_id: fixture.ids.orgId,
+        protocol_version: 'refund-requested-v1',
+        payment_id: fixture.paymentId,
+        secret_extra: 'strip-me',
+      },
+    });
+    const result = await handleWebhook(fixture.deps, makeWebhookInput(body, fixture.deps.adapter));
+    expect(result.kind).toBe('SUCCESS');
+    expect((await refundState(fixture.refundIds[0]!)).status).toBe('SUCCEEDED');
+    const event = await rawSql`
+      SELECT normalized_payload FROM payment_webhook_events WHERE provider_event_id = 'evt_b2b2a_direct_created'
+    `.then((rows) => rows[0]!);
+    expect(event.normalized_payload.object.metadata).toEqual({
+      refund_id: fixture.refundIds[0],
+      organization_id: fixture.ids.orgId,
+      protocol_version: 'refund-requested-v1',
+    });
+  });
+
+  it('G7M-B2-B2A charge.refunded imbriqué : metadata refund_id choisit exactement le bon refund', async () => {
+    if (!rawSql) throw new Error('DB non initialisée');
+    const fixture = await seedTaggedRefundFixture('nested-two', 2);
+    const targetRefundId = fixture.refundIds[1]!;
+    const body = makeChargeRefundedBody({
+      eventId: 'evt_b2b2a_nested_two',
+      created: 1_910_000_001,
+      chargeId: 'ch_b2b2a_nested_two',
+      paymentIntentId: fixture.paymentIntentId,
+      refundId: 're_b2b2a_nested_two',
+      refundStatus: 'succeeded',
+      amount: fixture.amount,
+      metadata: {
+        refund_id: targetRefundId,
+        organization_id: fixture.ids.orgId,
+        protocol_version: 'refund-requested-v1',
+      },
+    });
+    const result = await handleWebhook(fixture.deps, makeWebhookInput(body, fixture.deps.adapter));
+    expect(result.kind).toBe('SUCCESS');
+    expect((await refundState(targetRefundId)).status).toBe('SUCCEEDED');
+    expect((await refundState(fixture.refundIds[0]!)).status).toBe('PENDING');
+    const external = await rawSql`
+      SELECT count(*) FROM refunds WHERE reason = 'EXTERNAL_REFUND'
+    `.then((rows) => rows[0]!);
+    expect(Number(external.count)).toBe(0);
+  });
+
+  it.each([
+    ['wrong refund_id', () => ({ refund_id: randomUUID() })],
+    ['wrong organization_id', () => ({ organization_id: randomUUID() })],
+    ['wrong protocol', () => ({ protocol_version: 'refund-requested-v0' })],
+    ['incomplete metadata', () => ({ refund_id: randomUUID(), organization_id: randomUUID() })],
+  ])(
+    'G7M-B2-B2A metadata forgée ou incomplète (%s) : aucune projection ni EXTERNAL_REFUND',
+    async (_label, makeMetadata) => {
+      if (!rawSql) throw new Error('DB non initialisée');
+      const fixture = await seedTaggedRefundFixture(
+        'invalid-meta-' + Math.random().toString(36).slice(2, 6),
+      );
+      const body = makeDirectRefundBody({
+        eventId: `evt_b2b2a_invalid_meta_${randomUUID()}`,
+        created: 1_910_000_010,
+        refundId: 're_b2b2a_invalid_meta',
+        paymentIntentId: fixture.paymentIntentId,
+        refundStatus: 'succeeded',
+        amount: fixture.amount,
+        metadata: makeMetadata(),
+      });
+      const result = await handleWebhook(
+        fixture.deps,
+        makeWebhookInput(body, fixture.deps.adapter),
+      );
+      expect(result.kind).toBe('SUCCESS');
+      expect((await refundState(fixture.refundIds[0]!)).status).toBe('PENDING');
+      const external = await rawSql`
+      SELECT count(*) FROM refunds WHERE reason = 'EXTERNAL_REFUND'
+    `.then((rows) => rows[0]!);
+      expect(Number(external.count)).toBe(0);
+    },
+  );
+
+  it.each([
+    ['payment intent', { paymentIntentId: 'pi_forged_b2b2a' }],
+    ['amount', { amount: 1 }],
+    ['currency', { currency: 'usd' }],
+  ] as Array<[string, { paymentIntentId?: string; amount?: number; currency?: string }]>)(
+    'G7M-B2-B2A incohérence financière (%s) : aucune mutation du refund taggé',
+    async (_label, override) => {
+      if (!rawSql) throw new Error('DB non initialisée');
+      const fixture = await seedTaggedRefundFixture(
+        'invalid-financial-' + Math.random().toString(36).slice(2, 6),
+      );
+      const body = makeDirectRefundBody({
+        eventId: `evt_b2b2a_invalid_financial_${randomUUID()}`,
+        created: 1_910_000_020,
+        refundId: 're_b2b2a_invalid_financial',
+        paymentIntentId: override.paymentIntentId ?? fixture.paymentIntentId,
+        refundStatus: 'succeeded',
+        amount: override.amount ?? fixture.amount,
+        ...(override.currency === undefined ? {} : { currency: override.currency }),
+        metadata: {
+          refund_id: fixture.refundIds[0]!,
+          organization_id: fixture.ids.orgId,
+          protocol_version: 'refund-requested-v1',
+        },
+      });
+      const result = await handleWebhook(
+        fixture.deps,
+        makeWebhookInput(body, fixture.deps.adapter),
+      );
+      expect(result.kind).toBe('SUCCESS');
+      expect((await refundState(fixture.refundIds[0]!)).status).toBe('PENDING');
+    },
+  );
+
+  it.each(['failed', 'canceled'] as const)(
+    'G7M-B2-B2A %s → FAILED_REQUIRES_MANUAL_ACTION',
+    async (refundStatus) => {
+      const fixture = await seedTaggedRefundFixture(`failed-${refundStatus}`);
+      const body = makeDirectRefundBody({
+        eventId: `evt_b2b2a_${refundStatus}`,
+        created: 1_910_000_030,
+        refundId: `re_b2b2a_${refundStatus}`,
+        paymentIntentId: fixture.paymentIntentId,
+        refundStatus,
+        amount: fixture.amount,
+        metadata: {
+          refund_id: fixture.refundIds[0]!,
+          organization_id: fixture.ids.orgId,
+          protocol_version: 'refund-requested-v1',
+        },
+      });
+      const result = await handleWebhook(
+        fixture.deps,
+        makeWebhookInput(body, fixture.deps.adapter),
+      );
+      expect(result.kind).toBe('SUCCESS');
+      expect((await refundState(fixture.refundIds[0]!)).status).toBe(
+        'FAILED_REQUIRES_MANUAL_ACTION',
+      );
+    },
+  );
+
+  it('G7M-B2-B2A pending/requires_action ne régresse pas SUBMITTED', async () => {
+    if (!rawSql) throw new Error('DB non initialisée');
+    const fixture = await seedTaggedRefundFixture('pending-submitted');
+    await rawSql`
+      UPDATE refunds SET status = 'SUBMITTED', provider_refund_id = 're_b2b2a_pending_existing', submitted_at = now()
+      WHERE id = ${fixture.refundIds[0]!}
+    `;
+    const body = makeDirectRefundBody({
+      eventId: 'evt_b2b2a_pending_submitted',
+      created: 1_910_000_040,
+      refundId: 're_b2b2a_pending_existing',
+      paymentIntentId: fixture.paymentIntentId,
+      refundStatus: 'requires_action',
+      amount: fixture.amount,
+      metadata: {
+        refund_id: fixture.refundIds[0]!,
+        organization_id: fixture.ids.orgId,
+        protocol_version: 'refund-requested-v1',
+      },
+    });
+    await handleWebhook(fixture.deps, makeWebhookInput(body, fixture.deps.adapter));
+    expect((await refundState(fixture.refundIds[0]!)).status).toBe('SUBMITTED');
+  });
+
+  it.each(['SUCCEEDED', 'FAILED_REQUIRES_MANUAL_ACTION', 'SETTLED_OFF_PLATFORM'] as const)(
+    'G7M-B2-B2A protège le terminal %s',
+    async (status) => {
+      if (!rawSql) throw new Error('DB non initialisée');
+      const fixture = await seedTaggedRefundFixture(
+        `terminal-${status.toLowerCase().replace(/[^a-z0-9-]/g, '-')}`,
+      );
+      if (status === 'SETTLED_OFF_PLATFORM') {
+        await rawSql`
+          UPDATE refunds
+          SET status = 'FAILED_REQUIRES_MANUAL_ACTION', failed_at = now(), failure_code = 'MANUAL'
+          WHERE id = ${fixture.refundIds[0]!}
+        `;
+        await rawSql`
+          UPDATE refunds SET status = 'SETTLED_OFF_PLATFORM', settled_off_platform_at = now(),
+            settled_off_platform_by = ${fixture.ids.userId}, settlement_notes = 'terminal protection test'
+          WHERE id = ${fixture.refundIds[0]!}
+        `;
+      } else if (status === 'SUCCEEDED') {
+        await rawSql`UPDATE refunds SET status = 'SUCCEEDED', succeeded_at = now() WHERE id = ${fixture.refundIds[0]!}`;
+      } else {
+        await rawSql`UPDATE refunds SET status = 'FAILED_REQUIRES_MANUAL_ACTION', failed_at = now() WHERE id = ${fixture.refundIds[0]!}`;
+      }
+      const body = makeDirectRefundBody({
+        eventId: `evt_b2b2a_terminal_${status}`,
+        created: 1_910_000_050,
+        refundId: `re_b2b2a_terminal_${status}`,
+        paymentIntentId: fixture.paymentIntentId,
+        refundStatus: 'pending',
+        amount: fixture.amount,
+        metadata: {
+          refund_id: fixture.refundIds[0]!,
+          organization_id: fixture.ids.orgId,
+          protocol_version: 'refund-requested-v1',
+        },
+      });
+      await handleWebhook(fixture.deps, makeWebhookInput(body, fixture.deps.adapter));
+      expect((await refundState(fixture.refundIds[0]!)).status).toBe(status);
+    },
+  );
+
+  it('G7M-B2-B2A webhook avant worker final : projette le refund local sans EXTERNAL_REFUND', async () => {
+    if (!rawSql) throw new Error('DB non initialisée');
+    const fixture = await seedTaggedRefundFixture('race-before-worker');
+    const body = makeDirectRefundBody({
+      eventId: 'evt_b2b2a_before_worker',
+      created: 1_910_000_060,
+      refundId: 're_b2b2a_before_worker',
+      paymentIntentId: fixture.paymentIntentId,
+      refundStatus: 'succeeded',
+      amount: fixture.amount,
+      metadata: {
+        refund_id: fixture.refundIds[0]!,
+        organization_id: fixture.ids.orgId,
+        protocol_version: 'refund-requested-v1',
+      },
+    });
+    await handleWebhook(fixture.deps, makeWebhookInput(body, fixture.deps.adapter));
+    const current = await refundState(fixture.refundIds[0]!);
+    expect(current.status).toBe('SUCCEEDED');
+    expect(current.provider_refund_id).toBe('re_b2b2a_before_worker');
+  });
+
+  it('G7M-B2-B2A webhook après worker : confirme le provider_refund_id sans régression', async () => {
+    if (!db || !rawSql) throw new Error('DB non initialisée');
+    const fixture = await seedTaggedRefundFixture('race-after-worker');
+    const booking = await rawSql`
+      SELECT id FROM bookings WHERE payment_id = ${fixture.paymentId}
+    `.then((rows) => rows[0]!);
+    const amendmentId = await rawSql`
+      INSERT INTO booking_amendments (
+        organization_id, booking_id, amendment_number, type, status,
+        financial_snapshot_before, financial_snapshot_after,
+        new_customer_start_at, new_customer_end_at,
+        new_blocked_start_at, new_blocked_end_at, created_by
+      ) VALUES (
+        ${fixture.ids.orgId}, ${booking.id}, 1, 'REFUND', 'READY_TO_APPLY',
+        ${rawSql.json({ total_amount_minor: fixture.amount })}, ${rawSql.json({ total_amount_minor: 0 })},
+        '2026-02-10 09:00:00+00', '2026-02-12 17:00:00+00',
+        '2026-02-10 08:30:00+00', '2026-02-12 17:30:00+00', ${fixture.ids.userId}
+      ) RETURNING id
+    `.then((rows) => rows[0]!.id);
+    await rawSql`
+      UPDATE booking_amendments SET status = 'APPLIED', applied_at = now() WHERE id = ${amendmentId}
+    `;
+    await rawSql`
+      INSERT INTO outbox_events (
+        organization_id, aggregate_type, aggregate_id, event_type, event_version,
+        payload, status, attempt_count, available_at, idempotency_key
+      ) VALUES (
+        ${fixture.ids.orgId}, 'REFUND', ${fixture.refundIds[0]!}, 'REFUND_REQUESTED', 'v1',
+        ${rawSql.json({
+          organizationId: fixture.ids.orgId,
+          bookingId: booking.id,
+          amendmentId,
+          refundId: fixture.refundIds[0]!,
+        })}, 'PENDING', 0, now(), ${'outbox_tagged_worker_' + fixture.refundIds[0]!}
+      )
+    `;
+    const provider = new SucceedingRefundProvider({ environment: 'TEST' });
+    const workerResult = await executeRefundRequestBatch(
+      { db, provider },
+      { environment: 'TEST', batchLimit: 1 },
+    );
+    expect(workerResult.anomalies).toEqual([]);
+    expect(workerResult).toMatchObject({ claimedCount: 1, submittedCount: 1 });
+    const providerRefundId = `re_worker_${fixture.refundIds[0]}`;
+    const body = makeDirectRefundBody({
+      eventId: 'evt_b2b2a_after_worker',
+      created: 1_910_000_070,
+      refundId: providerRefundId,
+      paymentIntentId: fixture.paymentIntentId,
+      refundStatus: 'succeeded',
+      amount: fixture.amount,
+      metadata: {
+        refund_id: fixture.refundIds[0]!,
+        organization_id: fixture.ids.orgId,
+        protocol_version: 'refund-requested-v1',
+      },
+    });
+    await handleWebhook(fixture.deps, makeWebhookInput(body, fixture.deps.adapter));
+    const current = await refundState(fixture.refundIds[0]!);
+    expect(current.status).toBe('SUCCEEDED');
+    expect(current.provider_refund_id).toBe(providerRefundId);
   });
 
   // 27. Projection account.updated → organization_payment_accounts mis à jour

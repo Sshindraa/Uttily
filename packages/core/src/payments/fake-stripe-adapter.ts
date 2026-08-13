@@ -26,6 +26,7 @@ import type {
   PaymentIntentStatus,
   PaymentMetadata,
   PaymentProviderAdapter,
+  RefundMetadata,
   RefundResult,
   RefundStatus,
   StripeEnvironment,
@@ -67,6 +68,7 @@ interface FakeRefund {
   reverseTransfer: boolean;
   refundApplicationFee: boolean;
   idempotencyKey: string;
+  metadata?: RefundMetadata;
 }
 
 /**
@@ -110,7 +112,10 @@ export interface FakeStripeConfig {
  * Le corps brut et les données de carte ne sont jamais persistés.
  * Cette logique reflète celle du StripeAdapter réel.
  */
-function normalizeWebhookData(obj: Record<string, unknown> | undefined): Record<string, unknown> {
+function normalizeWebhookData(
+  obj: Record<string, unknown> | undefined,
+  eventType?: string,
+): Record<string, unknown> {
   if (!obj || typeof obj !== 'object') {
     return {};
   }
@@ -133,13 +138,11 @@ function normalizeWebhookData(obj: Record<string, unknown> | undefined): Record<
   if (obj.metadata !== undefined && typeof obj.metadata === 'object') {
     const rawMetadata = obj.metadata as Record<string, unknown>;
     const filteredMetadata: Record<string, string> = {};
-    const allowedKeys: (keyof PaymentMetadata)[] = [
-      'payment_id',
-      'payment_attempt_id',
-      'draft_id',
-      'organization_id',
-      'protocol_version',
-    ];
+    const allowedKeys: (keyof PaymentMetadata | keyof RefundMetadata)[] = eventType?.startsWith(
+      'refund.',
+    )
+      ? ['refund_id', 'organization_id', 'protocol_version']
+      : ['payment_id', 'payment_attempt_id', 'draft_id', 'organization_id', 'protocol_version'];
     for (const key of allowedKeys) {
       if (typeof rawMetadata[key] === 'string') {
         filteredMetadata[key] = rawMetadata[key] as string;
@@ -187,6 +190,7 @@ function normalizeWebhookData(obj: Record<string, unknown> | undefined): Record<
           amount: refund.amount,
           payment_intent: refund.payment_intent,
           currency: refund.currency,
+          metadata: normalizeRefundMetadata(refund.metadata),
         };
       });
       allowed.refunds = { object: 'list', data: filteredData };
@@ -240,6 +244,16 @@ function normalizeWebhookData(obj: Record<string, unknown> | undefined): Record<
     }
   }
   return allowed;
+}
+
+function normalizeRefundMetadata(value: unknown): Record<string, string> {
+  if (value === null || typeof value !== 'object') return {};
+  const raw = value as Record<string, unknown>;
+  const metadata: Record<string, string> = {};
+  for (const key of ['refund_id', 'organization_id', 'protocol_version'] as const) {
+    if (typeof raw[key] === 'string') metadata[key] = raw[key];
+  }
+  return metadata;
 }
 
 /**
@@ -379,6 +393,20 @@ function validateCreateRefundParams(params: CreateRefundParams): void {
       "Clé d'idempotence manquante ou vide",
       'invalid_idempotency_key',
     );
+  }
+  if (params.metadata !== undefined) {
+    const keys = Object.keys(params.metadata).sort();
+    if (keys.join(',') !== 'organization_id,protocol_version,refund_id') {
+      throw new PaymentProviderError('VALIDATION', 'Metadata refund invalide', 'invalid_metadata');
+    }
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (
+      !uuidRegex.test(params.metadata.refund_id) ||
+      !uuidRegex.test(params.metadata.organization_id) ||
+      params.metadata.protocol_version !== 'refund-requested-v1'
+    ) {
+      throw new PaymentProviderError('VALIDATION', 'Metadata refund invalide', 'invalid_metadata');
+    }
   }
 }
 
@@ -682,6 +710,7 @@ export class FakeStripeAdapter implements PaymentProviderAdapter {
       reverseTransfer: params.reverseTransfer,
       refundApplicationFee: params.refundApplicationFee,
       idempotencyKey: params.idempotencyKey,
+      ...(params.metadata === undefined ? {} : { metadata: { ...params.metadata } }),
     };
 
     this.refunds.set(id, refund);
@@ -775,7 +804,10 @@ export class FakeStripeAdapter implements PaymentProviderAdapter {
           apiVersion: parsed.api_version ?? 'fake-api-version',
           objectId: parsed.data?.object?.id ?? '',
           accountId: parsed.account ?? null,
-          data: normalizeWebhookData(parsed.data?.object as Record<string, unknown> | undefined),
+          data: normalizeWebhookData(
+            parsed.data?.object as Record<string, unknown> | undefined,
+            parsed.type,
+          ),
         };
 
         return { valid: true, event };

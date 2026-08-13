@@ -95,6 +95,13 @@ export interface RefundResult {
   currency: string;
 }
 
+/** Metadata minimale et fermée attachée aux refunds Uttily. */
+export interface RefundMetadata {
+  refund_id: string;
+  organization_id: string;
+  protocol_version: 'refund-requested-v1';
+}
+
 /**
  * Paramètres pour annuler un PaymentIntent (ADR-010 §8).
  */
@@ -119,6 +126,8 @@ export interface CreateRefundParams {
   reverseTransfer: boolean;
   /** Rembourser la commission de plateforme. */
   refundApplicationFee: boolean;
+  /** Metadata Uttily du refund, omise pour les flux historiques non tagués. */
+  metadata?: RefundMetadata;
 }
 
 /**

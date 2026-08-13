@@ -12,7 +12,9 @@ Dans ce lot (livré en B2-B1) :
 - Les événements `BOOKING_AMENDED.v1` et `REFUND_REQUESTED.v1` sont publiés dans `outbox_events` dans la même transaction.
 - En cas d'échec lors du commit métier/outbox, la transaction PostgreSQL annule tous les effets métier et outbox, tandis que l'enregistrement de réservation de clé idempotente conserve le statut `PENDING` jusqu'à son expiration.
 
-Statut : **G7M-B2-B1 Livré (Worker consumer G7M-B2-B2 Pending)**.
+Statut : **G7M-B2-B1 livré ; moteur Core G7M-B2-B2A livré et validé dans
+`docs/implementation/g7m-b2b2a-refund-execution.md` ; wiring worker/cron
+G7M-B2-B2B pending**.
 
 ## API Publique `@uttily/core`
 

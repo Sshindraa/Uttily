@@ -19,6 +19,7 @@ export {
   validateHandlerSelection,
   BOOKING_CONFIRMED_SELECTION,
   PAYMENT_COMPENSATION_SELECTION,
+  REFUND_REQUEST_SELECTION,
 } from './handler-selection';
 export {
   MAX_BATCH_LIMIT,
