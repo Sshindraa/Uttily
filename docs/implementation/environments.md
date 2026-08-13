@@ -37,7 +37,7 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
 | `NEXT_PUBLIC_APP_NAME` | `Uttily` | `Uttily` | |
 | `DATABASE_URL` | `postgresql://...` | fournie par Neon (endpoint **pooled**, hostname avec `-pooler`) | PostgreSQL + PostGIS. Connexion runtime distant : application Web et worker. Les tests unitaires n'utilisent aucune base. Les tests d'intégration PostgreSQL destructifs utilisent uniquement PostgreSQL local (garde-fou `assertLocalhost`). |
 | `DATABASE_DIRECT_URL` | `postgresql://...` (peut être identique à `DATABASE_URL` en local) | fournie par Neon (endpoint **direct**, hostname **sans** `-pooler`) | Réservée aux migrations Drizzle Kit et opérations administratives explicites. Jamais utilisée par le runtime. |
-| `CRON_SECRET` | `dev-cron-secret-local` | générée (voir ci-dessous) | Authentification du Cron d'expiration des holds (ADR-009 §18-19) |
+| `CRON_SECRET` | `dev-cron-secret-local` | générée (voir ci-dessous) | Authentification des endpoints Vercel Cron (`expire-holds`, `process-compensations` et `process-refund-requests`) |
 
 ## Connexions Neon — pooled vs direct (G5G-C)
 
@@ -160,3 +160,17 @@ header `Authorization: Bearer ${CRON_SECRET}` et appelle
   `{"event":"cron.expire-holds.error","durationMs":N,"error":"..."}`.
 - Surveiller `anomalyCount` répété > 0 (risque de starvation, voir
   étape 5).
+
+## Vercel Cron — traitement des refunds G7M-B2-B2B
+
+L'endpoint `/api/cron/process-refund-requests` est déclenché chaque minute par
+`apps/web/vercel.json`. Il appelle `executeRefundRequestBatch` avec
+`STRIPE_ENVIRONMENT` (`TEST` par défaut, ou `LIVE` explicitement validé), après
+vérification fail-closed de `Authorization: Bearer ${CRON_SECRET}`.
+
+La route expose uniquement les compteurs du batch et produit des logs JSON
+structurés (`cron.process-refund-requests` et
+`cron.process-refund-requests.alert`). Le provider est appelé hors transaction
+par le moteur Core ; aucun runtime `apps/worker` n'est introduit. Les détails
+de la route et sa matrice de 20 tests Web/PostgreSQL sont documentés dans
+`docs/implementation/g7m-b2b2b-refund-cron.md`.
