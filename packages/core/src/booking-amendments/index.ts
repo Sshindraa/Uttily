@@ -1,14 +1,15 @@
 /**
- * @uttily/core — Module booking-amendments (G7M-B1, G7M-B2-A).
+ * @uttily/core — Module booking-amendments (G7M-B1, G7M-B2-A, G7M-C1).
  *
  * Projection canonique read-only de l'état effectif d'une réservation (G7M-B1)
- * et mutation transactionnelle idempotente d'amendement NEUTRAL (G7M-B2-A).
+ * et mutations transactionnelles d'amendement NEUTRAL/REFUND, ainsi que la
+ * création locale durable d'un SUPPLEMENT avant Stripe (G7M-C1).
  *
  * Exports publics :
  * - getEffectiveBooking, EffectiveBookingError, EffectiveBookingErrorCode,
  *   et les types nécessaires à la consommation de la projection.
- * - createNeutralBookingAmendment, NeutralAmendmentError,
- *   NeutralAmendmentErrorCode, et les types de commande/résultat.
+ * - createNeutralBookingAmendment, createRefundBookingAmendment et
+ *   createSupplementBookingAmendment, leurs erreurs/codes et types publics.
  */
 
 export { getEffectiveBooking } from './get-effective-booking';
@@ -25,8 +26,17 @@ export type {
 
 export { createNeutralBookingAmendment } from './create-neutral-booking-amendment';
 export { createRefundBookingAmendment } from './create-refund-booking-amendment';
-export { NeutralAmendmentError, RefundAmendmentError } from './types-amendment';
-export type { NeutralAmendmentErrorCode, RefundAmendmentErrorCode } from './types-amendment';
+export { createSupplementBookingAmendment } from './create-supplement-booking-amendment';
+export {
+  NeutralAmendmentError,
+  RefundAmendmentError,
+  SupplementAmendmentError,
+} from './types-amendment';
+export type {
+  NeutralAmendmentErrorCode,
+  RefundAmendmentErrorCode,
+  SupplementAmendmentErrorCode,
+} from './types-amendment';
 export type {
   NeutralAmendmentCommand,
   NeutralAmendmentDesiredLine,
@@ -34,4 +44,6 @@ export type {
   NeutralAmendmentResult,
   RefundAmendmentCommand,
   RefundAmendmentResult,
+  SupplementAmendmentCommand,
+  SupplementAmendmentResult,
 } from './types-amendment';

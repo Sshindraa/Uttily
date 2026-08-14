@@ -157,6 +157,17 @@ wiring route/cron B2-B2B livré) ; G7D dépend de G7C-R3 et G7P-B2 ; G7E dépend
 G7D ; G7F-A dépend de G7C-R3 ; G7F-B dépend de G7F-A ; G7G/G7H dépendent de
 G7B-R3 ; G7I dépend de tous.
 
+G7M-C1 est implémenté, avec validation Core globale définitive pending CI :
+création locale durable du `SUPPLEMENT` avant Stripe, delta-segments et holds
+de dix minutes, payment/attempt `PENDING_PROVIDER` et outbox
+`BOOKING_AMENDMENT_REQUESTED.v1`. La validation ciblée locale est verte
+(contrat 5/5, unitaires delta/C1 8/8, PostgreSQL C1 10/10 sans skip,
+`booking-amendments` 171/171, expiration isolée 23/23). La première suite Core
+a obtenu 2 403/2 404 avec un timeout isolé hors C1 ; la seconde a été
+interrompue avant son résumé et n'est pas revendiquée. G7M-C2 (Stripe), C3
+(webhook et application), C4 (expiration/compensation) et C5 (UI) restent
+pending.
+
 ## Horizons stratégiques post-MVP — option C
 
 > Direction approuvée par ADR-019. Cette section n'est pas une autorisation
