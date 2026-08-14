@@ -57,11 +57,16 @@ import type {
   NeutralAmendmentResult,
   RefundAmendmentResult,
 } from './types-amendment';
-import { NeutralAmendmentError, RefundAmendmentError } from './types-amendment';
+import {
+  NeutralAmendmentError,
+  RefundAmendmentError,
+  SupplementAmendmentError,
+} from './types-amendment';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export type AmendmentClassification = 'NEUTRAL' | 'REFUND';
+export type AmendmentClassification = 'NEUTRAL' | 'REFUND' | 'SUPPLEMENT';
+type AppliedAmendmentClassification = Exclude<AmendmentClassification, 'SUPPLEMENT'>;
 
 /**
  * Erreur interne typée pour casser un savepoint et propager un résultat métier.
@@ -192,7 +197,10 @@ export function validateCommand(command: NeutralAmendmentCommand): string | null
 
 export function computeAmendmentFingerprint(
   command: NeutralAmendmentCommand,
-  version: 'amendment-neutral-v2' | 'amendment-refund-v1' = 'amendment-neutral-v2',
+  version:
+    | 'amendment-neutral-v2'
+    | 'amendment-refund-v1'
+    | 'amendment-supplement-v1' = 'amendment-neutral-v2',
 ): string {
   const sortedLines = [...command.desiredLines].sort((a, b) => {
     if (a.variantId !== b.variantId) {
@@ -438,7 +446,7 @@ export async function executeBookingAmendmentInternal(
   authenticatedActor: AuthenticatedUser,
   organizationId: string,
   command: NeutralAmendmentCommand,
-  expectedClassification: AmendmentClassification,
+  expectedClassification: AppliedAmendmentClassification,
   options?: { now?: Date },
 ): Promise<NeutralAmendmentResult | RefundAmendmentResult> {
   if (!UUID_REGEX.test(authenticatedActor.id)) {
@@ -584,7 +592,7 @@ async function executeBusinessLogic(
   organizationId: string,
   command: NeutralAmendmentCommand,
   authenticatedActor: AuthenticatedUser,
-  expectedClassification: AmendmentClassification,
+  expectedClassification: AppliedAmendmentClassification,
   now: Date,
 ): Promise<NeutralAmendmentResult | RefundAmendmentResult> {
   const bookingLockRows = await sp
@@ -1238,7 +1246,7 @@ async function executeBusinessLogic(
   return { kind: 'SUCCESS', amendmentId, amendmentNumber };
 }
 
-interface AllocationPlanEntry {
+export interface AllocationPlanEntry {
   action: 'RETAIN' | 'ADD' | 'REMOVE' | 'REPLACE';
   amendmentLineId: string;
   inventoryItemId: string;
@@ -1248,12 +1256,12 @@ interface AllocationPlanEntry {
   newBlockId?: string;
 }
 
-interface AllocationPlan {
+export interface AllocationPlan {
   allocations: AllocationPlanEntry[];
   conflict: string | null;
 }
 
-async function computeAllocationPlan(
+export async function computeAllocationPlan(
   sp: DatabaseTransaction,
   organizationId: string,
   bookingId: string,
@@ -1416,7 +1424,7 @@ async function computeAllocationPlan(
   return { allocations, conflict: null };
 }
 
-async function findSourceBlockId(
+export async function findSourceBlockId(
   sp: DatabaseTransaction,
   organizationId: string,
   bookingId: string,
@@ -1458,7 +1466,11 @@ async function findSourceBlockId(
   }
 
   const ErrorClass =
-    expectedClassification === 'NEUTRAL' ? NeutralAmendmentError : RefundAmendmentError;
+    expectedClassification === 'NEUTRAL'
+      ? NeutralAmendmentError
+      : expectedClassification === 'REFUND'
+        ? RefundAmendmentError
+        : SupplementAmendmentError;
   throw new ErrorClass(
     'INTERNAL',
     `Block source introuvable pour l'allocation ${effectiveAllocation.id}.`,

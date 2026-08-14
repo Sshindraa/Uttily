@@ -2,8 +2,8 @@
  * @uttily/core — Types publics pour la mutation createNeutralBookingAmendment (G7M-B2-A).
  *
  * ADR-023 §3-9, §11-13, §15 : amendements NEUTRAL append-only sur réservation
- * CONFIRMED. Seul le type NEUTRAL (delta financier nul) est implémenté dans ce lot.
- * REFUND et SUPPLEMENT sont différés.
+ * CONFIRMED. NEUTRAL et REFUND sont appliqués directement ; SUPPLEMENT est
+ * créé localement en HOLD_PENDING avant tout appel Stripe.
  *
  * Le résultat est une union fermée (closed union) : chaque variante correspond
  * à un échec ou succès métier déterministe. Les erreurs inattendues uniquement
@@ -159,6 +159,76 @@ export type RefundAmendmentResult =
       readonly deltaMinor: number;
     }
   | { readonly kind: 'IDEMPOTENCY_CONFLICT' };
+
+/** Commande d'initialisation locale d'un supplément (G7M-C1). */
+export type SupplementAmendmentCommand = NeutralAmendmentCommand;
+
+/**
+ * Résultat fermé de createSupplementBookingAmendment.
+ *
+ * Aucun client secret ni identifiant provider n'est produit par G7M-C1 : la
+ * réponse expose uniquement les identifiants durables et la borne du hold.
+ */
+export type SupplementAmendmentResult =
+  | {
+      readonly kind: 'SUCCESS';
+      readonly amendmentId: string;
+      readonly amendmentNumber: number;
+      readonly amendmentPaymentId: string;
+      readonly amendmentPaymentAttemptId: string;
+      readonly supplementAmountMinor: number;
+      readonly holdDeadline: string;
+    }
+  | {
+      readonly kind: 'REPLAY';
+      readonly amendmentId: string;
+      readonly amendmentNumber: number;
+      readonly amendmentPaymentId: string;
+      readonly amendmentPaymentAttemptId: string;
+      readonly supplementAmountMinor: number;
+      readonly holdDeadline: string;
+    }
+  | { readonly kind: 'NOT_FOUND' }
+  | { readonly kind: 'FORBIDDEN' }
+  | { readonly kind: 'BOOKING_NOT_CONFIRMED' }
+  | { readonly kind: 'ACTIVE_AMENDMENT_EXISTS' }
+  | { readonly kind: 'STALE_EFFECTIVE_BOOKING'; readonly expected: number; readonly actual: number }
+  | { readonly kind: 'INVALID_INPUT'; readonly message: string }
+  | { readonly kind: 'AVAILABILITY_CONFLICT'; readonly message: string }
+  | {
+      readonly kind: 'FINANCIAL_ACTION_REQUIRED';
+      readonly classification: 'NEUTRAL' | 'REFUND';
+      readonly deltaMinor: number;
+    }
+  | { readonly kind: 'IDEMPOTENCY_CONFLICT' };
+
+/** Codes fermés pour les erreurs internes de création locale du supplément. */
+export type SupplementAmendmentErrorCode = 'VALIDATION' | 'INTERNAL';
+
+const SUPPLEMENT_AMENDMENT_ERROR_CODES: readonly SupplementAmendmentErrorCode[] = [
+  'VALIDATION',
+  'INTERNAL',
+];
+
+export function isSupplementAmendmentErrorCode(
+  value: unknown,
+): value is SupplementAmendmentErrorCode {
+  return (
+    typeof value === 'string' &&
+    (SUPPLEMENT_AMENDMENT_ERROR_CODES as readonly string[]).includes(value)
+  );
+}
+
+/** Erreur typée réservée aux anomalies internes du flux SUPPLEMENT. */
+export class SupplementAmendmentError extends Error {
+  readonly code: SupplementAmendmentErrorCode;
+
+  constructor(code: SupplementAmendmentErrorCode, message: string) {
+    super(message);
+    this.name = 'SupplementAmendmentError';
+    this.code = code;
+  }
+}
 
 /**
  * Codes d'erreur fermés pour RefundAmendmentError.
