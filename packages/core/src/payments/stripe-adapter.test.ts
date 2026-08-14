@@ -396,6 +396,45 @@ describe('StripeAdapter', () => {
   });
 
   describe('createPaymentIntent', () => {
+    it('applique le même contrat fermé de metadata que le fake', async () => {
+      const amendmentMetadata = {
+        payment_type: 'AMENDMENT' as const,
+        amendment_payment_attempt_id: '11111111-1111-4111-8111-111111111111',
+        amendment_id: '22222222-2222-4222-8222-222222222222',
+        organization_id: '33333333-3333-4333-8333-333333333333',
+        environment: 'TEST' as const,
+        protocol_version: 'booking-amendment-payment-v1' as const,
+      };
+      const invalidMetadata = [
+        { ...amendmentMetadata, payment_type: 'UNKNOWN' },
+        { ...amendmentMetadata, amendment_id: 'not-a-uuid' },
+        { ...amendmentMetadata, environment: 'SANDBOX' },
+        { ...amendmentMetadata, protocol_version: 'v2' },
+        {
+          payment_id: 'pay_123',
+          payment_attempt_id: 'att_123',
+          draft_id: 'draft_123',
+          organization_id: 'org_123',
+          protocol_version: 'v1',
+          extra: 'forbidden',
+        },
+      ] as const;
+
+      for (const metadata of invalidMetadata) {
+        await expect(
+          adapter.createPaymentIntent(
+            baseCreatePaymentIntentParams({
+              metadata: metadata as unknown as CreatePaymentIntentParams['metadata'],
+            }),
+          ),
+        ).rejects.toMatchObject({
+          code: 'VALIDATION',
+          providerErrorCode: 'invalid_metadata',
+        });
+      }
+      expect(mockPaymentIntentsCreate).not.toHaveBeenCalled();
+    });
+
     it('crée un PaymentIntent avec les paramètres corrects', async () => {
       const mockIntent = makeMockPaymentIntent({
         status: 'requires_payment_method',

@@ -47,17 +47,32 @@ export interface PaymentIntentResult {
   onBehalfOfAccountId: string | null;
 }
 
-/**
- * Metadata internes versionnées attachées aux PaymentIntents.
- * Clés fermées : seules ces 5 clés sont autorisées.
- */
-export interface PaymentMetadata {
+/** Metadata du paiement initial, conservées inchangées pour le flux Lot 5. */
+export interface InitialPaymentMetadata {
   payment_id: string;
   payment_attempt_id: string;
   draft_id: string;
   organization_id: string;
   protocol_version: string;
 }
+
+/** Metadata strictes et fermées du PaymentIntent d'un amendement financier. */
+export interface AmendmentPaymentMetadata {
+  /** Champs historiques interdits pour cette variante, gardés optionnels pour
+   * préserver l'accès typé aux metadata legacy dans les adapters/tests. */
+  payment_id?: never;
+  payment_attempt_id?: never;
+  draft_id?: never;
+  payment_type: 'AMENDMENT';
+  amendment_payment_attempt_id: string;
+  amendment_id: string;
+  organization_id: string;
+  environment: StripeEnvironment;
+  protocol_version: 'booking-amendment-payment-v1';
+}
+
+/** Union fermée des metadata PaymentIntent Uttily. */
+export type PaymentMetadata = InitialPaymentMetadata | AmendmentPaymentMetadata;
 
 /**
  * Paramètres pour créer un PaymentIntent (ADR-010 §5, §8).

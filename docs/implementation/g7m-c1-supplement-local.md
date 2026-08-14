@@ -1,6 +1,6 @@
 # G7M-C1 — Création locale durable du SUPPLEMENT
 
-- **Statut** : implémenté — validation globale en attente
+- **Statut** : implémenté — validation ciblée C1/C2 verte, validation globale en attente
 - **ADR de référence** : [ADR-023](../decisions/ADR-023-booking-financial-amendments.md), §§7, 8, 10, 12 et 15
 - **Migration** : aucune ; le schéma 0036 est suffisant
 
@@ -59,7 +59,9 @@ absente hors CI et ce cas n'est pas compté comme une validation C1.
 ## Validation locale
 
 - Validation ciblée C1 : verte — contrat 5/5, unitaires delta/C1 8/8,
-  PostgreSQL C1 10/10 sans skip, module `booking-amendments` 171/171.
+  PostgreSQL C1 10/10 sans skip. Le dernier périmètre module partagé C1+C2
+  passe 191/191 (111 unitaires, 80 PostgreSQL), contre 171/171 lors de la
+  validation historique C1 seule.
 - Test isolé `expire-booking-drafts-batch.test.ts` : 23/23, sans skip.
 - Première suite Core complète : 2 403/2 404, avec un timeout isolé hors C1
   dans `expire-booking-drafts-batch.test.ts` ; elle n'est pas revendiquée
@@ -72,7 +74,8 @@ absente hors CI et ce cas n'est pas compté comme une validation C1.
 
 - **C1** : implémenté ; validation ciblée verte, validation Core globale
   définitive pending CI.
-- **C2** : initiation Stripe et réconciliation, pending.
+- **C2** : initiation Stripe et projection synchrone, implémenté et validé dans
+  [la note C2](g7m-c2-supplement-payment.md).
 - **C3** : webhooks et application atomique, pending.
 - **C4** : expiration, réconciliation tardive et compensation, pending.
 - **C5** : route cliente Stripe Elements, pending.

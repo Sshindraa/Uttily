@@ -164,9 +164,21 @@ de dix minutes, payment/attempt `PENDING_PROVIDER` et outbox
 (contrat 5/5, unitaires delta/C1 8/8, PostgreSQL C1 10/10 sans skip,
 `booking-amendments` 171/171, expiration isolée 23/23). La première suite Core
 a obtenu 2 403/2 404 avec un timeout isolé hors C1 ; la seconde a été
-interrompue avant son résumé et n'est pas revendiquée. G7M-C2 (Stripe), C3
-(webhook et application), C4 (expiration/compensation) et C5 (UI) restent
-pending.
+interrompue avant son résumé et n'est pas revendiquée. G7M-C3 (webhook et
+application), C4 (expiration/compensation) et C5 (UI) restent pending.
+
+G7M-C2 est désormais implémenté : `initiateSupplementPayment` réalise la
+séquence Transaction A → appel Stripe hors transaction → Transaction B, avec
+ordre de verrous commun, `startedAt`/`projectionAt` distincts, deadline bornée
+par le hold, idempotence de PaymentIntent, projection serveur sécurisée,
+commission half-up en unités mineures et absence de persistance du
+`clientSecret`. La preuve dédiée compte 13/13 tests PostgreSQL réels, 7/7
+tests unitaires de commission et 90/90 tests Fake/Stripe pour les metadata.
+Le périmètre `booking-amendments` validé compte 191/191 tests (111 unitaires,
+80 PostgreSQL) ; les tests 25 et 31 isolés passent 1/1 et le fichier
+`get-effective-booking` passe 34/34. La validation Core globale reste pending
+CI ; G7M-C3, C4 et C5 restent pending. Voir
+`docs/implementation/g7m-c2-supplement-payment.md`.
 
 ## Horizons stratégiques post-MVP — option C
 
