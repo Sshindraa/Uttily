@@ -13,6 +13,7 @@
 import Stripe from 'stripe';
 import { PaymentProviderError } from './errors';
 import { validateControllerConfiguration } from './controller-config';
+import { validatePaymentMetadata } from './metadata-validation';
 import type {
   AccountCapabilities,
   AccountApiGeneration,
@@ -26,9 +27,7 @@ import type {
   OnboardingLinkResult,
   PaymentIntentResult,
   PaymentIntentStatus,
-  PaymentMetadata,
   PaymentProviderAdapter,
-  RefundMetadata,
   RefundResult,
   RefundStatus,
   StripeErrorCode,
@@ -350,9 +349,18 @@ function normalizeEventData(event: Stripe.Event): Record<string, unknown> {
   if (obj?.metadata !== undefined && typeof obj.metadata === 'object') {
     const rawMetadata = obj.metadata as Record<string, unknown>;
     const filteredMetadata: Record<string, string> = {};
-    const allowedKeys: (keyof PaymentMetadata | keyof RefundMetadata)[] = isRefundEvent
+    const allowedKeys: string[] = isRefundEvent
       ? ['refund_id', 'organization_id', 'protocol_version']
-      : ['payment_id', 'payment_attempt_id', 'draft_id', 'organization_id', 'protocol_version'];
+      : rawMetadata.payment_type === 'AMENDMENT'
+        ? [
+            'payment_type',
+            'amendment_payment_attempt_id',
+            'amendment_id',
+            'organization_id',
+            'environment',
+            'protocol_version',
+          ]
+        : ['payment_id', 'payment_attempt_id', 'draft_id', 'organization_id', 'protocol_version'];
     for (const key of allowedKeys) {
       if (typeof rawMetadata[key] === 'string') {
         filteredMetadata[key] = rawMetadata[key] as string;
@@ -534,23 +542,7 @@ function validateCreatePaymentIntentParams(params: CreatePaymentIntentParams): v
       'invalid_on_behalf_of',
     );
   }
-  // Valider les 5 clés exactes de metadata (ADR-010 §6).
-  const requiredMetadataKeys: (keyof PaymentMetadata)[] = [
-    'payment_id',
-    'payment_attempt_id',
-    'draft_id',
-    'organization_id',
-    'protocol_version',
-  ];
-  for (const key of requiredMetadataKeys) {
-    if (typeof params.metadata[key] !== 'string' || params.metadata[key].length === 0) {
-      throw new PaymentProviderError(
-        'VALIDATION',
-        `Metadata manquante ou invalide pour la clé : ${key}`,
-        'invalid_metadata',
-      );
-    }
-  }
+  validatePaymentMetadata(params.metadata);
 }
 
 /**

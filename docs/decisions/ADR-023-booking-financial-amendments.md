@@ -1,6 +1,6 @@
 # ADR-023 — Modifications financières append-only des réservations avant retrait
 
-- **Statut** : Accepted (conception approuvée, implémentation non commencée)
+- **Statut** : Accepted (conception approuvée ; G7M-A, G7M-B1, G7M-B2 et G7M-C1/C2 implémentés, C3–C5 restants)
 - **Date** : 2026-08-10
 - **Décideurs** : Porteur produit Uttily, engineering
 - **Relie à** : ADR-009, ADR-010, ADR-011, ADR-013, ADR-018 ; G7M/G7P-C
@@ -523,6 +523,39 @@ Pour le supplément :
   dépassée. Après `hold_deadline`, aucun nouveau PaymentIntent n'est créé.
 - Si crash après Stripe mais avant projection : la réconciliation retrieve le
   PaymentIntent et projette. Le webhook peut arriver entre-temps.
+
+G7M-C2 verrouille dans l'ordre organisation, réservation, amendement,
+`amendment_payments`, puis `amendment_payment_attempts`. Après le commit de la
+transaction A, `createPaymentIntent` ou `retrievePaymentIntent` est appelé hors
+transaction ; une transaction B reprend le même ordre et ne projette que
+l'identifiant et le statut fournisseur sur l'attempt. Le `clientSecret` reste
+éphémère : il est renvoyé depuis la mémoire après le commit de B et n'est
+jamais persisté, journalisé ou placé dans l'outbox.
+
+Transaction A capture `startedAt` et borne `processing_deadline_at` au minimum
+entre le délai technique et `hold_deadline`. Transaction B capture un
+`projectionAt` frais après l'appel provider ; si le hold est expiré à cet
+instant, elle retourne `HOLD_EXPIRED` sans projection, en conservant la même
+tentative et la même clé d'idempotence pour la récupération ultérieure. La
+validation runtime des metadata PaymentIntent est centralisée entre FakeStripe
+et StripeAdapter : les variantes initiale et `AMENDMENT` sont des allow-lists
+fermées, la variante amendment exige trois UUIDs, `TEST`/`LIVE` et le protocole
+`booking-amendment-payment-v1`.
+
+### 10.1 bis Commission du supplément
+
+La commission du supplément est un snapshot serveur dérivé des montants
+originaux :
+
+```text
+round_half_up(supplement_amount_minor * commission_original_minor
+              / total_original_minor)
+```
+
+Le calcul utilise `bigint`, un arrondi half-up positif et une borne entre zéro
+et le supplément. Si le total original vaut zéro, seule une commission
+originale nulle est cohérente. Le résultat alimente `application_fee_amount` ;
+aucune valeur fournie par le client ne participe au calcul.
 
 Pour le remboursement :
 
