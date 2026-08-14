@@ -251,9 +251,7 @@ export async function handleWebhook(
             event: 'webhook.stripe',
             endpoint,
             environment,
-            providerEventId: event.id,
             eventType: event.type,
-            providerObjectId: event.objectId,
             result: 'amendment_attempt_not_found',
             durationMs: Date.now() - startTime,
           }),
@@ -287,6 +285,7 @@ export async function handleWebhook(
             piData,
             ingestResult.row.id,
             environment,
+            deps.clock?.(),
           );
         });
         if (outcome instanceof WebhookHandlerError) {

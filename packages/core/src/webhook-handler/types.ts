@@ -26,6 +26,8 @@ import type { WebhookHandlerError } from './errors';
 export interface WebhookHandlerDeps {
   db: DatabaseClient;
   provider: PaymentProviderAdapter;
+  /** Horloge injectable uniquement pour les tests d'égalité de deadline. */
+  clock?: () => Date;
 }
 
 /** Entrée du use case handleWebhook. */

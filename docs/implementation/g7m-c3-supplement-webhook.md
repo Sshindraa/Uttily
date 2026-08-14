@@ -2,10 +2,10 @@
 
 ## État
 
-Le chemin Core C3 est implémenté localement au-dessus de G7M-C2. La validation
-unitaire et statique ciblée est verte ; la preuve PostgreSQL ciblée reste à
-exécuter dans la CI ou avec un PostgreSQL de test disponible. Aucun service n’a
-été démarré pendant cette phase.
+Le chemin Core C3 est implémenté localement au-dessus de G7M-C2. Le commit C3
+initial existe déjà ; les corrections et preuves PostgreSQL ajoutées dans cette
+revue restent locales et non commitées. Les suites ciblées unitaires, statiques
+et PostgreSQL réelles sont vertes. La validation Core globale reste pending CI.
 
 G7M-C4 (expiration et compensation tardive) et G7M-C5 (route cliente et
 Stripe Elements) restent hors périmètre.
@@ -35,6 +35,9 @@ Stripe Elements) restent hors périmètre.
   réservées à C4.
 - Aucun appel provider n’est effectué dans le webhook handler et aucun
   `clientSecret` n’est persisté, loggé ou placé dans l’outbox.
+- Les collisions d’outbox avec payload incompatible échouent de façon fail-closed
+  et roulent la transaction ; les logs de succès tardif et de résolution
+  infructueuse n’exposent aucun identifiant de fixture ou provider.
 
 ## Vérifications locales
 
@@ -42,6 +45,15 @@ Stripe Elements) restent hors périmètre.
 - lint des fichiers C3 : vert ;
 - Prettier ciblé : vert ;
 - `git diff --check` : vert ;
-- suites unitaires ciblées C3/webhook/metadata/commission : 59/59, dont 10/10
-  tests de projection C3 ;
-- suites PostgreSQL C3 : pending, PostgreSQL arrêté.
+- `apply-supplement-amendment.integration.test.ts` : 12/12 tests PostgreSQL
+  réels, 0 skip ;
+- `handle-webhook.integration.test.ts` : 93/93 tests PostgreSQL réels, 0 skip ;
+- unitaires ciblés : projection C3 10/10, `handleWebhook` 34/34, metadata
+  8/8, commission 7/7, delta-segments 4/4 ; adapters Fake/Stripe 172/172 ;
+- régression complète `booking-amendments` : 213/213 (121 unitaires,
+  92 PostgreSQL), 0 skip ; `get-effective-booking` : 34/34 ;
+- C2 `initiateSupplementPayment` : 13/13 tests PostgreSQL réels ;
+- le correctif de collision JSONB d’outbox et l’assainissement des logs sont
+  locaux, sans nouveau commit, staging, push ou PR ;
+- C4 (expiration/compensation), C5 (UI) et la validation Core globale restent
+  pending CI.

@@ -268,7 +268,9 @@ Une tâche est terminée lorsque :
   `docs/implementation/g7m-c1-supplement-local.md`. G7M-C2 est livré et validé
   par 13/13 tests PostgreSQL réels, 7/7 tests unitaires de commission et
   90/90 tests Fake/Stripe du contrat metadata. Le module
-  `booking-amendments` actuel passe 191/191 (111 unitaires, 80 PostgreSQL) ;
+  `booking-amendments` au jalon C2 comptait 191/191 (111 unitaires, 80
+  PostgreSQL) ; le périmètre courant après C3 passe 213/213 (121 unitaires,
+  92 PostgreSQL), 0 skip ;
   les tests `get-effective-booking` 25 et 31 passent isolément 1/1 chacun et
   le fichier complet passe 34/34. Les deux timeouts historiques sous charge
   module sont documentés comme intermittents et non reproduits dans cette
@@ -281,9 +283,12 @@ Une tâche est terminée lorsque :
   source et `REPLACE` le remplace. Les projections `requires_action`,
   `processing`, `payment_failed` et `canceled` sont monotones ; le succès tardif
   est projeté avec un résultat interne réservé à la compensation C4. Validation
-  ciblée unitaire/statique C3 verte (10/10 projection, typecheck, lint,
-  Prettier) ; preuves PostgreSQL C3 pending et validation Core globale
-  définitive pending CI. Voir `docs/implementation/g7m-c3-supplement-webhook.md`.
+  ciblée unitaire/statique C3 verte (10/10 projection, `handleWebhook` 34/34,
+  metadata 8/8, commission 7/7, delta-segments 4/4, adapters Fake/Stripe
+  172/172) ; preuves PostgreSQL C3 vertes (`apply-supplement-amendment`
+  12/12 et `handle-webhook` 93/93, 0 skip). Les corrections de revue restent
+  locales et non commitées ; la validation Core globale définitive reste
+  pending CI. Voir `docs/implementation/g7m-c3-supplement-webhook.md`.
   G7M-C4 (expiration/compensation) et G7M-C5 (UI) restent pending.
 
   Mise à jour G7M-C2 : la mention historique « Stripe SUPPLEMENT et UI »

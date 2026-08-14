@@ -58,6 +58,20 @@ function invariant(message: string): WebhookHandlerError {
   return new WebhookHandlerError('WEBHOOK_INVARIANT_BROKEN', message, { statusCode: 500 });
 }
 
+function isBookingAmendedPayload(
+  payload: unknown,
+  expected: { organizationId: string; bookingId: string; amendmentId: string },
+): boolean {
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return false;
+  const actual = payload as Record<string, unknown>;
+  return (
+    Object.keys(actual).length === 3 &&
+    actual.organizationId === expected.organizationId &&
+    actual.bookingId === expected.bookingId &&
+    actual.amendmentId === expected.amendmentId
+  );
+}
+
 async function lockSupplementRows(
   tx: DatabaseTransaction,
   resolved: ResolvedAmendmentAttempt,
@@ -65,7 +79,12 @@ async function lockSupplementRows(
   const bookingRows = await tx
     .select()
     .from(bookings)
-    .where(eq(bookings.id, resolved.bookingId))
+    .where(
+      and(
+        eq(bookings.id, resolved.bookingId),
+        eq(bookings.organizationId, resolved.organizationId),
+      ),
+    )
     .for('update')
     .limit(1);
   const booking = bookingRows[0];
@@ -74,7 +93,12 @@ async function lockSupplementRows(
   const amendmentRows = await tx
     .select()
     .from(bookingAmendments)
-    .where(eq(bookingAmendments.id, resolved.amendmentId))
+    .where(
+      and(
+        eq(bookingAmendments.id, resolved.amendmentId),
+        eq(bookingAmendments.organizationId, resolved.organizationId),
+      ),
+    )
     .for('update')
     .limit(1);
   const amendment = amendmentRows[0];
@@ -129,6 +153,9 @@ async function lockSupplementRows(
           )
           .orderBy(asc(inventoryBlocks.id))
           .for('update');
+  if (blockRows.length !== uniqueBlockIds.length) {
+    throw invariant('Les blocks attendus du supplément ne sont pas tous rattachés au tenant.');
+  }
 
   const allocationRows =
     allocationIds.length === 0
@@ -144,6 +171,9 @@ async function lockSupplementRows(
           )
           .orderBy(asc(bookingAmendmentAllocations.id))
           .for('update');
+  if (allocationRows.length !== allocationIds.length) {
+    throw invariant('Les allocations attendues du supplément ne sont pas toutes verrouillées.');
+  }
 
   const segmentRows =
     allocationIds.length === 0
@@ -159,6 +189,9 @@ async function lockSupplementRows(
           )
           .orderBy(asc(bookingAmendmentSegments.id))
           .for('update');
+  if (segmentRows.length !== segmentIdsRows.length) {
+    throw invariant('Les segments attendus du supplément ne sont pas tous verrouillés.');
+  }
 
   const paymentRows = await tx
     .select()
@@ -488,7 +521,14 @@ async function applySupplement(
     }
     if (allocation.sourceBookingBlockId !== null) {
       const source = sourceBlocks.get(allocation.sourceBookingBlockId);
-      if (!source || source.type !== 'BOOKING' || source.status !== 'ACTIVE') {
+      if (
+        !source ||
+        source.type !== 'BOOKING' ||
+        source.status !== 'ACTIVE' ||
+        source.organizationId !== resolved.organizationId ||
+        source.inventoryItemId !== allocation.inventoryItemId ||
+        source.sourceId !== resolved.bookingId
+      ) {
         throw invariant(`Le block source de l'allocation ${allocation.id} est incohérent.`);
       }
       if (allocation.action === 'REPLACE' || allocation.action === 'REMOVE') {
@@ -502,7 +542,14 @@ async function applySupplement(
 
   for (const segment of rows.segments) {
     const hold = sourceBlocks.get(segment.holdBlockId);
-    if (!hold || hold.type !== 'HOLD' || hold.status !== 'ACTIVE') {
+    if (
+      !hold ||
+      hold.type !== 'HOLD' ||
+      hold.status !== 'ACTIVE' ||
+      hold.organizationId !== resolved.organizationId ||
+      hold.inventoryItemId !== segment.inventoryItemId ||
+      hold.sourceId !== amendment.id
+    ) {
       throw invariant(`Le hold du segment ${segment.id} est incohérent.`);
     }
     await tx
@@ -564,6 +611,12 @@ async function applySupplement(
     .set({ status: 'APPLIED', appliedAt: now, updatedAt: now })
     .where(eq(bookingAmendments.id, amendment.id));
   await projectFinancialSuccess();
+  const outboxPayload = {
+    organizationId: resolved.organizationId,
+    bookingId: resolved.bookingId,
+    amendmentId: resolved.amendmentId,
+  };
+  const idempotencyKey = `booking_amended_${resolved.amendmentId}`;
   await tx
     .insert(outboxEvents)
     .values({
@@ -572,17 +625,37 @@ async function applySupplement(
       aggregateId: resolved.bookingId,
       eventType: BOOKING_AMENDED_EVENT_TYPE,
       eventVersion: BOOKING_AMENDED_EVENT_VERSION,
-      payload: {
-        organizationId: resolved.organizationId,
-        bookingId: resolved.bookingId,
-        amendmentId: resolved.amendmentId,
-      },
+      payload: outboxPayload,
       status: 'PENDING',
       attemptCount: 0,
       availableAt: now,
-      idempotencyKey: `booking_amended_${resolved.amendmentId}`,
+      idempotencyKey,
     })
     .onConflictDoNothing({ target: [outboxEvents.idempotencyKey] });
+  const existingOutbox = await tx
+    .select({
+      organizationId: outboxEvents.organizationId,
+      aggregateType: outboxEvents.aggregateType,
+      aggregateId: outboxEvents.aggregateId,
+      eventType: outboxEvents.eventType,
+      eventVersion: outboxEvents.eventVersion,
+      payload: outboxEvents.payload,
+    })
+    .from(outboxEvents)
+    .where(eq(outboxEvents.idempotencyKey, idempotencyKey))
+    .limit(1);
+  const outboxRow = existingOutbox[0];
+  if (
+    !outboxRow ||
+    outboxRow.organizationId !== resolved.organizationId ||
+    outboxRow.aggregateType !== BOOKING_AMENDED_AGGREGATE_TYPE ||
+    outboxRow.aggregateId !== resolved.bookingId ||
+    outboxRow.eventType !== BOOKING_AMENDED_EVENT_TYPE ||
+    outboxRow.eventVersion !== BOOKING_AMENDED_EVENT_VERSION ||
+    !isBookingAmendedPayload(outboxRow.payload, outboxPayload)
+  ) {
+    throw invariant('La clé idempotente BOOKING_AMENDED.v1 référence un payload incompatible.');
+  }
 }
 
 export async function handleSupplementPaymentWebhook(
@@ -592,6 +665,7 @@ export async function handleSupplementPaymentWebhook(
   piData: PaymentIntentEventData,
   webhookEventId: string,
   environment: 'TEST' | 'LIVE',
+  nowOverride?: Date,
 ): Promise<SupplementWebhookOutcome> {
   return withInvariantHandling(tx, webhookEventId, async (sp) => {
     await lockOrganization(sp, resolved.organizationId);
@@ -618,7 +692,7 @@ export async function handleSupplementPaymentWebhook(
     if (rows.payment.status !== rows.attempt.status) {
       throw invariant('Le paiement et la tentative de supplément sont incohérents.');
     }
-    const now = new Date();
+    const now = nowOverride === undefined ? new Date() : new Date(nowOverride.getTime());
     const expectedStatuses: Record<string, string> = {
       'payment_intent.succeeded': 'succeeded',
       'payment_intent.requires_action': 'requires_action',
@@ -650,8 +724,6 @@ export async function handleSupplementPaymentWebhook(
             JSON.stringify({
               event: 'webhook.stripe',
               result: successOutcome.kind,
-              amendmentId: successOutcome.amendmentId,
-              amendmentPaymentId: successOutcome.amendmentPaymentId,
             }),
           );
         }

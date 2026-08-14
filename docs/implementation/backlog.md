@@ -175,10 +175,11 @@ par le hold, idempotence de PaymentIntent, projection serveur sécurisée,
 commission half-up en unités mineures et absence de persistance du
 `clientSecret`. La preuve dédiée compte 13/13 tests PostgreSQL réels, 7/7
 tests unitaires de commission et 90/90 tests Fake/Stripe pour les metadata.
-Le périmètre `booking-amendments` validé compte 191/191 tests (111 unitaires,
-80 PostgreSQL) ; les tests 25 et 31 isolés passent 1/1 et le fichier
-`get-effective-booking` passe 34/34. La validation Core globale reste pending
-CI ; C4 et C5 restent pending. Voir
+Le périmètre `booking-amendments` validé au jalon C2 comptait 191/191 tests
+(111 unitaires, 80 PostgreSQL) ; après C3, le périmètre courant passe 213/213
+(121 unitaires, 92 PostgreSQL), sans skip. Les tests 25 et 31 isolés passent
+1/1 et le fichier `get-effective-booking` passe 34/34. La validation Core
+globale reste pending CI ; C4 et C5 restent pending. Voir
 `docs/implementation/g7m-c2-supplement-payment.md`.
 
 G7M-C3 est implémenté localement : `handleWebhook` résout les PaymentIntents
@@ -187,10 +188,12 @@ et applique atomiquement les holds, allocations, blocks, paiement et outbox
 `BOOKING_AMENDED.v1`. `RETAIN` conserve le block source, `REPLACE` le remplace,
 et les projections `requires_action`, `processing`, `payment_failed` et
 `canceled` restent monotones. Un succès après le hold est projeté sans
-application et signale le besoin de compensation à C4. La validation ciblée
-unitaire/statique C3 est verte (10/10 tests de projection, typecheck, lint et
-Prettier) ; la preuve PostgreSQL ciblée C3 reste pending, comme la validation
-Core globale pending CI. Voir `docs/implementation/g7m-c3-supplement-webhook.md`.
+application et signale le besoin de compensation à C4. Le commit C3 initial
+existe ; les corrections locales de revue et leurs preuves restent non
+commitées. La validation ciblée compte 12/12 tests PostgreSQL C3, 93/93 tests
+PostgreSQL webhook historiques, 10/10 tests de projection et les régressions
+unitaires ciblées vertes. La validation Core globale reste pending CI ; C4 et
+C5 restent pending. Voir `docs/implementation/g7m-c3-supplement-webhook.md`.
 
 ## Horizons stratégiques post-MVP — option C
 
