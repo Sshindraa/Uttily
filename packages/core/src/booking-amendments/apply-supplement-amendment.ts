@@ -32,6 +32,7 @@ import { lockWebhookEvent } from '../webhook-handler/dedupe-event';
 import { withInvariantHandling } from '../webhook-handler/with-invariant-handling';
 import { lockOrganization } from '@uttily/database';
 import { calculateSupplementCommission } from './supplement-commission';
+import { compensateAmendmentPayment } from './compensate-amendment-payment';
 
 interface LockedSupplementRows {
   booking: typeof bookings.$inferSelect;
@@ -716,10 +717,32 @@ export async function handleSupplementPaymentWebhook(
       if (paymentTerminal) {
         // Une projection terminale existante gagne contre un webhook livré en
         // désordre ; aucune transition terminale ne peut régresser.
+        if (
+          rows.payment.status === 'SUCCEEDED' &&
+          (rows.amendment.status === 'EXPIRED' ||
+            rows.amendment.status === 'CANCELLED' ||
+            (rows.amendment.holdDeadline !== null &&
+              now.getTime() >= rows.amendment.holdDeadline.getTime()))
+        ) {
+          await compensateAmendmentPayment(sp, {
+            organizationId: resolved.organizationId,
+            bookingId: resolved.bookingId,
+            amendmentId: resolved.amendmentId,
+            amendmentPaymentId: resolved.amendmentPaymentId,
+            now,
+          });
+        }
       } else {
         const result = await applySupplement(sp, resolved, rows, now, piData.id);
         if (result !== undefined) {
           successOutcome = result;
+          await compensateAmendmentPayment(sp, {
+            organizationId: resolved.organizationId,
+            bookingId: resolved.bookingId,
+            amendmentId: resolved.amendmentId,
+            amendmentPaymentId: resolved.amendmentPaymentId,
+            now,
+          });
           console.warn(
             JSON.stringify({
               event: 'webhook.stripe',

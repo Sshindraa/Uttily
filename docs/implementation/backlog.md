@@ -195,17 +195,19 @@ PostgreSQL webhook historiques, 10/10 tests de projection et les régressions
 unitaires ciblées vertes. La validation Core globale reste pending CI ; C4 et
 C5 restent pending. Voir `docs/implementation/g7m-c3-supplement-webhook.md`.
 
-G7M-C4-S est committé localement comme prérequis de schéma, sans nouvel objet
-Drizzle : migration 0037, upgrade réel 0036→0037 et trigger PostgreSQL pour
-`READY_TO_APPLY → EXPIRED`, ainsi que retry
-`FAILED → PENDING_PROVIDER` uniquement avec un attempt N+1
-`PENDING_PROVIDER` unique, vierge de provider. G7M-C4-A est implémenté
-localement dans Core : expiration HOLD_PENDING/READY_TO_APPLY à la borne,
-libération atomique des holds/segments, retry métier et réconciliation provider
-hors transaction avec lease/fencing. C4-B (compensation/wiring) et C5 (UI)
-restent pending. La validation ciblée et l'upgrade sont décrits dans
-`docs/implementation/g7m-c4s-supplement-retry-schema.md` (pour C4-S) et
-`docs/implementation/g7m-c4a-supplement-lifecycle.md` (pour C4-A). La validation
+G7M-C4-S et G7M-C4-A sont committés localement dans la pile (migration 0037,
+trigger READY_TO_APPLY → EXPIRED, retry N+1 FAILED → PENDING_PROVIDER, expiration
+HOLD_PENDING/READY_TO_APPLY à la borne, libération atomique des holds/segments,
+retry métier et réconciliation provider hors transaction avec lease/fencing).
+G7M-C4-B est entièrement implémenté et validé dans le worktree (non commité) :
+compensation atomique `compensateAmendmentPayment`, câblage du webhook C3,
+extension du moteur d'exécution des remboursements pour `AMENDMENT_COMPENSATION`,
+et câblage des crons web existants `expire-holds` et `reconcile-payments` sans
+modifier `vercel.json`. Rien de C2–C4 n'est encore fusionné sur main. Seul C5 (UI) reste
+pending. La validation ciblée et l'upgrade sont décrits dans
+`docs/implementation/g7m-c4s-supplement-retry-schema.md` (C4-S),
+`docs/implementation/g7m-c4a-supplement-lifecycle.md` (C4-A) et
+`docs/implementation/g7m-c4b-supplement-compensation.md` (C4-B). La validation
 Core globale reste pending CI.
 
 ## Horizons stratégiques post-MVP — option C

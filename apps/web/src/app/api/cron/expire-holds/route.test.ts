@@ -507,6 +507,176 @@ describe.skipIf(shouldSkipIntegrationTests())(
       }
     });
 
+    // 11. G7M-C4-B — expire les suppléments dont la hold_deadline est dépassée
+    it('11. retourne 200 et expire les suppléments en plus des brouillons', async () => {
+      if (!testDb || !rawSql) return;
+      const ids = await seedBaseData();
+      const s = rawSql;
+      const connectedAccountId = 'acct_test_' + SUFFIX();
+
+      await s`
+        INSERT INTO "organization_payment_accounts" (
+          "organization_id", "provider", "environment", "provider_account_id",
+          "account_api_generation", "onboarding_status", "charges_enabled", "payouts_enabled",
+          "transfers_capability_status", "settlement_merchant_mode",
+          "controller_configuration_snapshot", "requirements_snapshot"
+        ) VALUES (
+          ${ids.orgId}, 'STRIPE', 'TEST', ${connectedAccountId},
+          'ACCOUNTS_V1_CONTROLLER_PROPERTIES', 'ENABLED', true, true, 'ACTIVE', 'PLATFORM',
+          ${s.json({ preset: 'TEST' })}, ${s.json({})}
+        )
+      `;
+
+      const draft = await s`
+        INSERT INTO "booking_drafts" (
+          "organization_id", "location_id", "customer_user_id", "status",
+          "customer_start_at", "customer_end_at", "blocked_start_at", "blocked_end_at",
+          "timezone", "prep_buffer_minutes", "cleanup_buffer_minutes", "currency",
+          "subtotal_amount_minor", "mandatory_fees_amount_minor", "total_amount_minor",
+          "tax_status", "tax_amount_minor", "commission_amount_minor", "billable_unit",
+          "billable_unit_count", "cancellation_policy_snapshot"
+        ) VALUES (
+          ${ids.orgId}, ${ids.locationId}, ${ids.userId}, 'DRAFT',
+          '2026-07-10T09:00:00.000Z', '2026-07-12T17:00:00.000Z',
+          '2026-07-10T08:30:00.000Z', '2026-07-12T17:30:00.000Z',
+          'Europe/Paris', 30, 30, 'EUR', 10000, 0, 10000,
+          'NOT_APPLICABLE', 0, 500, 'DAY', 2,
+          ${s.json({ policy: 'FLEXIBLE' })}
+        ) RETURNING "id"
+      `.then((r) => r[0]!);
+
+      const payment = await s`
+        INSERT INTO "payments" (
+          "organization_id", "draft_id", "customer_user_id", "status", "amount_minor", "currency",
+          "tax_status", "tax_amount_minor", "commission_amount_minor", "financial_terms_version",
+          "legal_terms_version", "terms_acceptance_snapshot", "charge_model", "settlement_merchant_mode",
+          "connected_account_id", "on_behalf_of_account_id", "environment", "succeeded_at"
+        ) VALUES (
+          ${ids.orgId}, ${draft.id}, ${ids.userId}, 'SUCCEEDED', 10000, 'EUR',
+          'NOT_APPLICABLE', 0, 500, 'v1', 'v1',
+          ${s.json({ accepted: true })}, 'DESTINATION', 'CONNECTED_ACCOUNT',
+          ${connectedAccountId}, ${connectedAccountId}, 'TEST', now()
+        ) RETURNING "id"
+      `.then((r) => r[0]!);
+
+      const booking = await s`
+        INSERT INTO "bookings" (
+          "organization_id", "location_id", "customer_user_id", "draft_id", "payment_id", "status",
+          "customer_start_at", "customer_end_at", "blocked_start_at", "blocked_end_at", "timezone",
+          "prep_buffer_minutes", "cleanup_buffer_minutes", "currency", "subtotal_amount_minor",
+          "mandatory_fees_amount_minor", "total_amount_minor", "tax_status", "tax_amount_minor",
+          "commission_amount_minor", "billable_unit_count", "cancellation_policy_snapshot",
+          "terms_acceptance_snapshot", "confirmed_at"
+        ) VALUES (
+          ${ids.orgId}, ${ids.locationId}, ${ids.userId}, ${draft.id}, ${payment.id}, 'CONFIRMED',
+          '2026-07-10T09:00:00.000Z', '2026-07-12T17:00:00.000Z',
+          '2026-07-10T08:30:00.000Z', '2026-07-12T17:30:00.000Z', 'Europe/Paris', 30, 30,
+          'EUR', 10000, 0, 10000, 'NOT_APPLICABLE', 0, 500, 2,
+          ${s.json({ policy: 'FLEXIBLE' })}, ${s.json({ accepted: true })}, now()
+        ) RETURNING "id"
+      `.then((r) => r[0]!);
+
+      const bookingLine = await s`
+        INSERT INTO "booking_lines" (
+          "booking_id", "variant_id", "quantity", "unit_price_amount_minor", "billable_unit_count",
+          "line_total_amount_minor", "variant_snapshot"
+        ) VALUES (
+          ${booking.id}, ${ids.variantId}, 1, 5000, 2, 10000, ${s.json({ name: 'Standard' })}
+        ) RETURNING "id"
+      `.then((r) => r[0]!);
+
+      const bookingBlock = await s`
+        INSERT INTO "inventory_blocks" (
+          "organization_id", "inventory_item_id", "type", "status",
+          "customer_start_at", "customer_end_at", "blocked_start_at", "blocked_end_at", "source_id"
+        ) VALUES (
+          ${ids.orgId}, ${ids.itemIds[0]!}, 'BOOKING', 'ACTIVE',
+          '2026-07-10T09:00:00.000Z', '2026-07-12T17:00:00.000Z',
+          '2026-07-10T08:30:00.000Z', '2026-07-12T17:30:00.000Z', ${booking.id}
+        ) RETURNING "id"
+      `.then((r) => r[0]!);
+
+      await s`
+        INSERT INTO "booking_items" ("booking_id", "booking_line_id", "inventory_item_id", "booking_block_id")
+        VALUES (${booking.id}, ${bookingLine.id}, ${ids.itemIds[0]!}, ${bookingBlock.id})
+      `;
+
+      const amendment = await s`
+        INSERT INTO "booking_amendments" (
+          "organization_id", "booking_id", "amendment_number", "type", "status",
+          "financial_snapshot_before", "financial_snapshot_after",
+          "new_customer_start_at", "new_customer_end_at", "new_blocked_start_at", "new_blocked_end_at",
+          "hold_deadline", "created_by", "created_at"
+        ) VALUES (
+          ${ids.orgId}, ${booking.id}, 1, 'SUPPLEMENT', 'HOLD_PENDING',
+          ${s.json({ totalAmountMinor: 10000, currency: 'EUR' })},
+          ${s.json({ totalAmountMinor: 15000, currency: 'EUR' })},
+          '2026-07-10T09:00:00.000Z', '2026-07-13T17:00:00.000Z',
+          '2026-07-10T08:30:00.000Z', '2026-07-13T17:30:00.000Z',
+          now() - interval '10 seconds', ${ids.userId}, now() - interval '10 minutes 10 seconds'
+        ) RETURNING "id"
+      `.then((r) => r[0]!);
+
+      const holdBlock = await s`
+        INSERT INTO "inventory_blocks" (
+          "organization_id", "inventory_item_id", "type", "status",
+          "customer_start_at", "customer_end_at", "blocked_start_at", "blocked_end_at",
+          "expires_at", "source_id"
+        ) VALUES (
+          ${ids.orgId}, ${ids.itemIds[0]!}, 'HOLD', 'ACTIVE',
+          '2026-07-12T17:30:00.000Z', '2026-07-13T17:30:00.000Z',
+          '2026-07-12T17:30:00.000Z', '2026-07-13T17:30:00.000Z',
+          now() - interval '10 seconds', ${amendment.id}
+        ) RETURNING "id"
+      `.then((r) => r[0]!);
+
+      const amendmentLine = await s`
+        INSERT INTO "booking_amendment_lines" (
+          "amendment_id", "organization_id", "logical_line_id", "origin_type", "source_booking_line_id",
+          "variant_id", "action", "before_quantity", "before_unit_price_amount_minor",
+          "before_line_total_amount_minor", "after_quantity", "after_unit_price_amount_minor",
+          "after_line_total_amount_minor", "pricing_snapshot", "variant_snapshot"
+        ) VALUES (
+          ${amendment.id}, ${ids.orgId}, ${bookingLine.id}, 'ORIGINAL', ${bookingLine.id},
+          ${ids.variantId}, 'MODIFY', 1, 5000, 10000, 1, 5000, 15000,
+          ${s.json({ source: 'C4B' })}, ${s.json({ name: 'Standard' })}
+        ) RETURNING "id"
+      `.then((r) => r[0]!);
+
+      const allocation = await s`
+        INSERT INTO "booking_amendment_allocations" (
+          "amendment_id", "amendment_line_id", "organization_id", "inventory_item_id", "action",
+          "source_booking_block_id", "effective_customer_start_at", "effective_customer_end_at",
+          "effective_blocked_start_at", "effective_blocked_end_at"
+        ) VALUES (
+          ${amendment.id}, ${amendmentLine.id}, ${ids.orgId}, ${ids.itemIds[0]!}, 'RETAIN',
+          ${bookingBlock.id}, '2026-07-10T09:00:00.000Z', '2026-07-13T17:00:00.000Z',
+          '2026-07-10T08:30:00.000Z', '2026-07-13T17:30:00.000Z'
+        ) RETURNING "id"
+      `.then((r) => r[0]!);
+
+      await s`
+        INSERT INTO "booking_amendment_segments" (
+          "allocation_id", "organization_id", "inventory_item_id", "hold_block_id",
+          "delta_start_at", "delta_end_at"
+        ) VALUES (
+          ${allocation.id}, ${ids.orgId}, ${ids.itemIds[0]!}, ${holdBlock.id},
+          '2026-07-12T17:30:00.000Z', '2026-07-13T17:30:00.000Z'
+        )
+      `;
+
+      const response = await GET(makeRequest(CRON_SECRET));
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body.ok).toBe(true);
+      expect(body.supplements.expiredCount).toBe(1);
+      expect(body.supplements.processedCount).toBe(1);
+
+      const amendmentRows =
+        await s`SELECT "status" FROM "booking_amendments" WHERE "id" = ${amendment.id}`;
+      expect(amendmentRows[0]!.status).toBe('EXPIRED');
+    });
+
     // 10. Log d'erreur — error quand le batch échoue
     it("10. logue une erreur structurée en cas d'échec technique", async () => {
       if (!testDb) return;

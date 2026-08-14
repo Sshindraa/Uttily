@@ -38,6 +38,7 @@ export async function claimRefundRequestBatch(
         ELSE NULL
       END
       LEFT JOIN "payments" p ON p.id = r.payment_id
+      LEFT JOIN "amendment_payments" ap ON ap.id = r.amendment_payment_id
       WHERE oe.event_type = ${REFUND_REQUEST_SELECTION.eventType}
         AND oe.event_version = ${REFUND_REQUEST_SELECTION.eventVersion}
         AND oe.aggregate_type = ${REFUND_REQUEST_SELECTION.aggregateType}
@@ -45,7 +46,12 @@ export async function claimRefundRequestBatch(
         AND oe.available_at <= now()
         AND (oe.lease_until IS NULL OR oe.lease_until <= now())
         AND oe.attempt_count < ${MAX_ATTEMPTS}
-        AND (r.id IS NULL OR p.id IS NULL OR p.environment = ${environment}::payment_environment)
+        AND (
+          r.id IS NULL
+          OR (p.id IS NULL AND ap.id IS NULL)
+          OR p.environment = ${environment}::payment_environment
+          OR ap.environment = ${environment}::payment_environment
+        )
       ORDER BY oe.available_at ASC, oe.id ASC
       LIMIT ${limit}
       FOR UPDATE OF oe SKIP LOCKED

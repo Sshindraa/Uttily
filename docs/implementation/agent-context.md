@@ -296,8 +296,16 @@ Une tâche est terminée lorsque :
   0036→0037 et l'idempotence du journal sont documentés dans
   `docs/implementation/g7m-c4s-supplement-retry-schema.md`. G7M-C4-A (expiration,
   retry N+1 et réconciliation) est implémenté localement dans Core et documenté
-  dans `docs/implementation/g7m-c4a-supplement-lifecycle.md`. C4-B (compensation/wiring)
-  et C5 (UI) restent pending ; la validation Core globale reste pending CI.
+  dans `docs/implementation/g7m-c4a-supplement-lifecycle.md`. G7M-C4-B (compensation
+  atomique des suppléments payés tardivement, wiring webhook C3, extension refund
+  execution et routes cron existantes `expire-holds`/`reconcile-payments`) est
+  entièrement implémenté et validé dans le worktree (non commité) par 26/26 tests Core C4-B (`supplement-compensation.integration.test.ts`),
+  26/26 tests refund execution, 105/105 tests webhook & lifecycle, 11/11 tests expire-holds,
+  9/9 tests reconcile-payments, 256/256 tests booking-amendments séquentiels ; documenté dans
+  `docs/implementation/g7m-c4b-supplement-compensation.md`. C4-S et C4-A sont committés
+  localement dans la pile ; C4-B est implémenté et validé dans le worktree mais non commité ;
+  rien de C2–C4 n'est encore fusionné sur main. Seul C5 (UI) reste
+  pending ; la validation Core globale reste pending CI.
 
   Mise à jour G7M-C2 : la mention historique « Stripe SUPPLEMENT et UI »
   ci-dessous est supersédée pour Stripe ; seule l'UI reste à implémenter.

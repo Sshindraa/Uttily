@@ -816,10 +816,9 @@ export async function handleWebhook(
         event: 'webhook.stripe',
         endpoint,
         environment,
-        providerEventId: event.id,
         eventType: event.type,
         result: 'error',
-        error: error instanceof Error ? error.message : String(error),
+        errorCode: 'TECHNICAL_FAILURE',
         durationMs: Date.now() - startTime,
       }),
     );

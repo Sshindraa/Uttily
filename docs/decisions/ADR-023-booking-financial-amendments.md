@@ -1,6 +1,6 @@
 # ADR-023 — Modifications financières append-only des réservations avant retrait
 
-- **Statut** : Accepted (conception approuvée ; C1 livré, C2/C3 implémentés dans des commits locaux empilés, C4-S committé localement et C4-A implémenté localement ; C4-B et C5 restent pending ; validation Core globale pending CI)
+- **Statut** : Accepted (conception approuvée ; C1 livré, C2/C3 implémentés dans des commits locaux empilés, C4-S et C4-A committés localement dans la pile ; G7M-C4-B est implémenté et validé dans le worktree mais non commité ; rien de C2–C4 n'est encore fusionné sur main ; C5 reste pending ; validation Core globale pending CI)
 - **Date** : 2026-08-10
 - **Décideurs** : Porteur produit Uttily, engineering
 - **Relie à** : ADR-009, ADR-010, ADR-011, ADR-013, ADR-018 ; G7M/G7P-C
@@ -449,7 +449,7 @@ verrouille l'amendement (`FOR UPDATE`) et, si `projectionAt >= holdDeadline` et
 La condition et l'orchestration d'expiration sont implémentées par C4-A dans
 `expireSupplementAmendmentsBatch`, avec une horloge capturée une fois, un batch
 borné `FOR UPDATE SKIP LOCKED`, des verrous tenant-scoped et une outbox
-idempotente. C4-B reste responsable de la compensation/wiring.
+idempotente. C4-B implémente la compensation atomique et le câblage opérationnel.
 
 ### 7.6 Paiement tardif → compensation automatique
 
@@ -570,8 +570,10 @@ G7M-C4-S (migration 0037) ne crée aucun objet de schéma nouveau. Elle autorise
 `FAILED → PENDING_PROVIDER` avec un attempt N+1 unique, initialisé sans
 provider. Les attempts terminaux et les snapshots du paiement restent
 immuables. G7M-C4-A implémente l'expiration, le retry métier et la
-réconciliation hors transaction provider ; C4-B (compensation/wiring) reste
-à implémenter.
+réconciliation hors transaction provider ; G7M-C4-B implémente la compensation
+atomique `compensateAmendmentPayment`, le câblage du webhook C3, l'extension du
+moteur d'exécution des remboursements pour `AMENDMENT_COMPENSATION`, et le
+câblage des crons web `expire-holds` et `reconcile-payments`.
 
 ### 10.1 bis Commission du supplément
 
