@@ -1,6 +1,6 @@
 # ADR-023 — Modifications financières append-only des réservations avant retrait
 
-- **Statut** : Accepted (conception approuvée ; G7M-A, G7M-B1, G7M-B2 et G7M-C1/C2 implémentés, C3–C5 restants)
+- **Statut** : Accepted (conception approuvée ; G7M-A, G7M-B1, G7M-B2 et G7M-C1/C2 implémentés, C3 implémenté localement avec validation ciblée unitaire/statique verte et validation PostgreSQL pending, C4–C5 restants)
 - **Date** : 2026-08-10
 - **Décideurs** : Porteur produit Uttily, engineering
 - **Relie à** : ADR-009, ADR-010, ADR-011, ADR-013, ADR-018 ; G7M/G7P-C
@@ -426,7 +426,7 @@ gérée automatiquement par Stripe.js.
 ### 7.5 Expiration ferme
 
 `hold_deadline = created_at + 10 minutes` (non négociable). Le cron d'expiration
-verrouille l'amendement (`FOR UPDATE`) et, si `hold_deadline < now()` et
+verrouille l'amendement (`FOR UPDATE`) et, si `projectionAt >= holdDeadline` et
 `status = HOLD_PENDING`, expire atomiquement : `HOLD blocks → EXPIRED`,
 `amendment_segments → EXPIRED`, `amendment → EXPIRED`,
 `INSERT outbox BOOKING_AMENDMENT_EXPIRED.v1`.
@@ -435,8 +435,10 @@ verrouille l'amendement (`FOR UPDATE`) et, si `hold_deadline < now()` et
 
 Si le webhook `payment_intent.succeeded` arrive après l'expiration :
 
-- Le webhook détecte `amendment.status = EXPIRED`.
-- Déclenche `compensateAmendmentPayment` : `INSERT refunds (reason =
+- Le webhook détecte `amendment.status = EXPIRED` et C3 projette le paiement et
+  l'attempt en succès sans appliquer l'amendement.
+- C3 retourne le résultat interne `LATE_SUCCESS_REQUIRES_COMPENSATION` ; C4
+  déclenche `compensateAmendmentPayment` : `INSERT refunds (reason =
   'AMENDMENT_COMPENSATION', status = 'PENDING')`, `INSERT outbox
   REFUND_REQUESTED.v1`.
 - Le worker outbox exécute `stripe.createRefund` (hors transaction).
@@ -458,9 +460,10 @@ delta = nouvelle plage − plages BOOKING déjà détenues par cette réservatio
 
 Seuls les segments delta sont placés en `HOLD/ACTIVE`. Les segments non-delta
 restent protégés par les blocks `BOOKING` existants. À l'application, les blocks
-`BOOKING` existants sont marqués `RELEASED`, les `HOLD` delta sont marqués
-`CONVERTED`, et de nouveaux blocks `BOOKING/ACTIVE` sont créés pour la pleine
-plage effective.
+`BOOKING` existants sont marqués `RELEASED` pour `REPLACE`/`REMOVE`, les `HOLD`
+delta sont marqués `CONVERTED`, et de nouveaux blocks `BOOKING/ACTIVE` sont
+créés pour `ADD`/`REPLACE` ; `RETAIN` conserve le block source et l'utilise
+comme `applied_booking_block_id`.
 
 ### 8.2 Scénarios
 
@@ -713,7 +716,7 @@ Quand un supplément est payé après l'expiration de l'amendement :
 | Création REFUND | 1→2→3→4→5→8→11 |
 | Application amendement | 1→3→4→5→6→7→11 |
 | Expiration cron | 4(SKIP LOCKED)→5→6→7 |
-| Webhook supplément | 1→4→9→10→11 |
+| Webhook supplément | organisation→booking→amendment→blocks→allocations→segments→amendment_payment→amendment_attempt→webhook_event→outbox |
 | Webhook refund | 1→8→10→11 |
 | Watchdog zombies | 1→4→5→6→7→11 |
 | Compensation amendement | outbox claim → 8 → 9 (worker) |

@@ -31,6 +31,10 @@ export { createRefundBookingAmendment } from './create-refund-booking-amendment'
 export { createSupplementBookingAmendment } from './create-supplement-booking-amendment';
 export { initiateSupplementPayment } from './initiate-supplement-payment';
 export {
+  handleSupplementPaymentWebhook,
+  projectSupplementPaymentStatus,
+} from './apply-supplement-amendment';
+export {
   NeutralAmendmentError,
   RefundAmendmentError,
   SupplementAmendmentError,

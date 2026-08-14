@@ -25,6 +25,7 @@ export { handleWebhook } from './handle-webhook';
 export { extractPaymentIntentEventData } from './extract-event';
 export { projectAttemptStatus, isStaleEvent } from './project-status';
 export { resolveAttempt } from './resolve-attempt';
+export { resolveAmendmentAttempt } from './resolve-amendment-attempt';
 export {
   dedupeEvent,
   ingestEvent,
@@ -36,7 +37,12 @@ export {
 } from './dedupe-event';
 export { validateWebhookAuthority } from './validate-authority';
 export { confirmBooking, isDraftTerminalForConversion } from './confirm-booking';
-export { handlePaymentFailed, handleCanceled, handleProcessing } from './handle-non-success';
+export {
+  handlePaymentFailed,
+  handleCanceled,
+  handleProcessing,
+  handleRequiresAction,
+} from './handle-non-success';
 export { compensateLatePayment } from './compensate-late';
 export { withInvariantHandling, isHandlerError } from './with-invariant-handling';
 

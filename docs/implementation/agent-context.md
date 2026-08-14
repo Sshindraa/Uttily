@@ -274,9 +274,17 @@ Une tâche est terminée lorsque :
   module sont documentés comme intermittents et non reproduits dans cette
   validation ; aucun timeout global n'a été modifié. La validation Core globale
   définitive reste pending CI. Voir
-  `docs/implementation/g7m-c2-supplement-payment.md`.
-  C3 (webhook/application), C4 (expiration/compensation) et C5 (UI) restent
-  pending.
+  `docs/implementation/g7m-c2-supplement-payment.md`. G7M-C3 est implémenté
+  localement : le webhook `AMENDMENT` résout les tentatives par provider ID ou
+  metadata, valide l’autorité et applique atomiquement les blocks, allocations,
+  segments, paiement et outbox `BOOKING_AMENDED.v1` ; `RETAIN` conserve le block
+  source et `REPLACE` le remplace. Les projections `requires_action`,
+  `processing`, `payment_failed` et `canceled` sont monotones ; le succès tardif
+  est projeté avec un résultat interne réservé à la compensation C4. Validation
+  ciblée unitaire/statique C3 verte (10/10 projection, typecheck, lint,
+  Prettier) ; preuves PostgreSQL C3 pending et validation Core globale
+  définitive pending CI. Voir `docs/implementation/g7m-c3-supplement-webhook.md`.
+  G7M-C4 (expiration/compensation) et G7M-C5 (UI) restent pending.
 
   Mise à jour G7M-C2 : la mention historique « Stripe SUPPLEMENT et UI »
   ci-dessous est supersédée pour Stripe ; seule l'UI reste à implémenter.

@@ -165,7 +165,8 @@ de dix minutes, payment/attempt `PENDING_PROVIDER` et outbox
 `booking-amendments` 171/171, expiration isolée 23/23). La première suite Core
 a obtenu 2 403/2 404 avec un timeout isolé hors C1 ; la seconde a été
 interrompue avant son résumé et n'est pas revendiquée. G7M-C3 (webhook et
-application), C4 (expiration/compensation) et C5 (UI) restent pending.
+application) est décrit ci-dessous ; C4 (expiration/compensation) et C5 (UI)
+restent pending.
 
 G7M-C2 est désormais implémenté : `initiateSupplementPayment` réalise la
 séquence Transaction A → appel Stripe hors transaction → Transaction B, avec
@@ -177,8 +178,19 @@ tests unitaires de commission et 90/90 tests Fake/Stripe pour les metadata.
 Le périmètre `booking-amendments` validé compte 191/191 tests (111 unitaires,
 80 PostgreSQL) ; les tests 25 et 31 isolés passent 1/1 et le fichier
 `get-effective-booking` passe 34/34. La validation Core globale reste pending
-CI ; G7M-C3, C4 et C5 restent pending. Voir
+CI ; C4 et C5 restent pending. Voir
 `docs/implementation/g7m-c2-supplement-payment.md`.
+
+G7M-C3 est implémenté localement : `handleWebhook` résout les PaymentIntents
+`AMENDMENT` par identifiant provider ou metadata, valide l’autorité tenant-safe
+et applique atomiquement les holds, allocations, blocks, paiement et outbox
+`BOOKING_AMENDED.v1`. `RETAIN` conserve le block source, `REPLACE` le remplace,
+et les projections `requires_action`, `processing`, `payment_failed` et
+`canceled` restent monotones. Un succès après le hold est projeté sans
+application et signale le besoin de compensation à C4. La validation ciblée
+unitaire/statique C3 est verte (10/10 tests de projection, typecheck, lint et
+Prettier) ; la preuve PostgreSQL ciblée C3 reste pending, comme la validation
+Core globale pending CI. Voir `docs/implementation/g7m-c3-supplement-webhook.md`.
 
 ## Horizons stratégiques post-MVP — option C
 

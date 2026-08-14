@@ -291,5 +291,79 @@ export async function handleProcessing(
   }); // withInvariantHandling
 }
 
+/**
+ * Gère payment_intent.requires_action : projection monotone vers
+ * REQUIRES_ACTION. Un événement reçu après PROCESSING ou un état terminal ne
+ * régresse jamais la tentative.
+ */
+export async function handleRequiresAction(
+  tx: DatabaseTransaction,
+  attempt: ResolvedAttempt,
+  webhookEventId: string,
+  event: VerifiedWebhookEvent,
+  piData: PaymentIntentEventData,
+  environment: 'TEST' | 'LIVE',
+): Promise<HandlerOutcome> {
+  return withInvariantHandling(tx, webhookEventId, async (tx) => {
+    const { payment, attemptRow } = await lockPaymentAttemptRows(tx, attempt);
+    const webhookRow = await lockWebhookEvent(tx, webhookEventId);
+    if (webhookRow.status === 'MISSING') {
+      throw new WebhookHandlerError(
+        'WEBHOOK_AGGREGATE_INCONSISTENT',
+        'Événement webhook introuvable lors du verrouillage final (requires_action).',
+        { statusCode: 500 },
+      );
+    }
+    if (
+      webhookRow.status === 'PROCESSED' ||
+      webhookRow.status === 'IGNORED' ||
+      webhookRow.status === 'FAILED'
+    ) {
+      throw new WebhookHandlerError(
+        'WEBHOOK_ALREADY_PROCESSED',
+        'Événement webhook déjà traité par un worker concurrent.',
+        { statusCode: 200 },
+      );
+    }
+
+    const now = sql`transaction_timestamp()`;
+    if (await checkStaleEvent(tx, event, attempt, environment)) {
+      await tx
+        .update(paymentWebhookEvents)
+        .set({ status: 'IGNORED', processedAt: now })
+        .where(eq(paymentWebhookEvents.id, webhookEventId));
+      return;
+    }
+
+    await validateWebhookAuthority(
+      tx,
+      attempt,
+      piData,
+      { payment, attempt: attemptRow },
+      environment,
+    );
+    const projection = projectAttemptStatus('payment_intent.requires_action', attemptRow.status);
+    if (!projection.ignored) {
+      await tx
+        .update(paymentAttempts)
+        .set({
+          status: 'REQUIRES_ACTION',
+          providerStatus: 'requires_action',
+          providerPaymentIntentId: sql`COALESCE("provider_payment_intent_id", ${piData.id})`,
+          updatedAt: now,
+        })
+        .where(eq(paymentAttempts.id, attempt.attemptId));
+      await tx
+        .update(payments)
+        .set({ status: 'REQUIRES_ACTION', updatedAt: now })
+        .where(eq(payments.id, attempt.paymentId));
+    }
+    await tx
+      .update(paymentWebhookEvents)
+      .set({ status: 'PROCESSED', processedAt: now })
+      .where(eq(paymentWebhookEvents.id, webhookEventId));
+  });
+}
+
 // Re-export pour compat (WebhookEventRow utilisé dans les signatures internes).
 export type { WebhookEventRow };
