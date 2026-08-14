@@ -1,3 +1,5 @@
+export type LineAction = 'ADD' | 'MODIFY' | 'REMOVE' | 'UNCHANGED';
+
 /**
  * @uttily/core — Types publics pour la mutation createNeutralBookingAmendment (G7M-B2-A).
  *
@@ -251,6 +253,103 @@ export class RefundAmendmentError extends Error {
   constructor(code: RefundAmendmentErrorCode, message: string) {
     super(message);
     this.name = 'RefundAmendmentError';
+    this.code = code;
+  }
+}
+
+/**
+ * Commande de prévisualisation d'amendement de réservation (G7M-C5-A).
+ *
+ * Strictement read-only : aucune clé d'idempotence requise.
+ */
+export interface PreviewBookingAmendmentCommand {
+  readonly bookingId: string;
+  readonly expectedLastAppliedAmendmentNumber: number;
+  readonly intent: NeutralAmendmentIntent;
+  readonly desiredLines: readonly NeutralAmendmentDesiredLine[];
+}
+
+/**
+ * Ligne du diff de prévisualisation avec libellés publics sûrs (G7M-C5-A).
+ *
+ * Aucune PII, numéro de série ou donnée provider exposée.
+ */
+export interface PreviewLineDiffEntry {
+  readonly logicalLineId: string;
+  readonly variantId: string;
+  readonly productName: string;
+  readonly variantName: string;
+  readonly action: LineAction;
+  readonly beforeQuantity: number;
+  readonly afterQuantity: number;
+  readonly beforeLineTotalAmountMinor: number;
+  readonly afterLineTotalAmountMinor: number;
+}
+
+/**
+ * Résultat de prévisualisation réussie (G7M-C5-A).
+ */
+export interface PreviewBookingAmendmentSuccess {
+  readonly kind: 'SUCCESS';
+  readonly bookingId: string;
+  readonly locationId: string;
+  readonly locationTimeZone: string;
+  readonly lastAppliedAmendmentNumber: number;
+  readonly classification: 'NEUTRAL' | 'REFUND' | 'SUPPLEMENT';
+  readonly previousCustomerStartAt: Date;
+  readonly previousCustomerEndAt: Date;
+  readonly nextCustomerStartAt: Date;
+  readonly nextCustomerEndAt: Date;
+  readonly previousContractualTotalAmountMinor: number;
+  readonly nextContractualTotalAmountMinor: number;
+  readonly deltaAmountMinor: number;
+  readonly currency: 'EUR';
+  readonly supplementCommissionAmountMinor: number | null;
+  readonly supplementNetAmountMinor: number | null;
+  readonly lines: readonly PreviewLineDiffEntry[];
+}
+
+/**
+ * Résultat fermé de previewBookingAmendment (G7M-C5-A).
+ */
+export type PreviewBookingAmendmentResult =
+  | PreviewBookingAmendmentSuccess
+  | { readonly kind: 'NOT_FOUND' }
+  | { readonly kind: 'FORBIDDEN' }
+  | { readonly kind: 'BOOKING_NOT_CONFIRMED' }
+  | { readonly kind: 'ACTIVE_AMENDMENT_EXISTS' }
+  | { readonly kind: 'STALE_EFFECTIVE_BOOKING'; readonly expected: number; readonly actual: number }
+  | { readonly kind: 'INVALID_INPUT'; readonly message: string }
+  | { readonly kind: 'AVAILABILITY_CONFLICT'; readonly message: string };
+
+/**
+ * Codes d'erreur fermés pour PreviewBookingAmendmentError.
+ */
+export type PreviewBookingAmendmentErrorCode = 'VALIDATION' | 'INTERNAL';
+
+const PREVIEW_AMENDMENT_ERROR_CODES: readonly PreviewBookingAmendmentErrorCode[] = [
+  'VALIDATION',
+  'INTERNAL',
+];
+
+export function isPreviewBookingAmendmentErrorCode(
+  value: unknown,
+): value is PreviewBookingAmendmentErrorCode {
+  return (
+    typeof value === 'string' &&
+    (PREVIEW_AMENDMENT_ERROR_CODES as readonly string[]).includes(value)
+  );
+}
+
+/**
+ * Erreur typée pour previewBookingAmendment (erreurs internes inattendues uniquement).
+ */
+export class PreviewBookingAmendmentError extends Error {
+  readonly code: PreviewBookingAmendmentErrorCode;
+
+  constructor(code: PreviewBookingAmendmentErrorCode, message: string) {
+    super(message);
+    this.name = 'PreviewBookingAmendmentError';
     this.code = code;
   }
 }

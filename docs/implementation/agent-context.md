@@ -302,10 +302,7 @@ Une tâche est terminée lorsque :
   entièrement implémenté et validé dans le worktree (non commité) par 26/26 tests Core C4-B (`supplement-compensation.integration.test.ts`),
   26/26 tests refund execution, 105/105 tests webhook & lifecycle, 11/11 tests expire-holds,
   9/9 tests reconcile-payments, 256/256 tests booking-amendments séquentiels ; documenté dans
-  `docs/implementation/g7m-c4b-supplement-compensation.md`. C4-S et C4-A sont committés
-  localement dans la pile ; C4-B est implémenté et validé dans le worktree mais non commité ;
-  rien de C2–C4 n'est encore fusionné sur main. Seul C5 (UI) reste
-  pending ; la validation Core globale reste pending CI.
+  `docs/implementation/g7m-c4b-supplement-compensation.md`. G7M C2–C4 sont fusionnés sur main. G7M-C5-A est implémenté et validé : fonction canonique read-only `previewBookingAmendment`, types fermés, Server Action `previewBookingAmendmentAction`, interface loueur `/dashboard/[orgId]/operations/[bookingId]/amend`, tests unitaires Core (11/11), tests d'intégration PostgreSQL (10/10 sans écriture), tests Web (21/21) et build Next.js validé. Voir `docs/implementation/g7m-c5a-amendment-preview-ui.md`.
 
   Mise à jour G7M-C2 : la mention historique « Stripe SUPPLEMENT et UI »
   ci-dessous est supersédée pour Stripe ; seule l'UI reste à implémenter.

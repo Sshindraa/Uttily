@@ -1,12 +1,16 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { and, eq, inArray } from 'drizzle-orm';
+import { bookingAmendments } from '@uttily/database';
 import {
   getOperationalBookingDetails,
+  getMembership,
   INVENTORY_CONDITIONS,
   type BookingStatus,
   type InventoryCondition,
 } from '@uttily/core';
 import { requireFulfillmentOperatorOf } from '@/lib/fulfillment-auth';
+import { getAmendmentEntryState } from '@/lib/amendment-auth';
 import {
   bookingStatusLabel,
   formatDateTimeInTimeZone,
@@ -43,7 +47,7 @@ export default async function OperationsDetailPage({
   // Validation UUID du paramètre avant toute query.
   if (!isValidUuid(bookingId)) notFound();
 
-  const { db, organizationId } = await requireFulfillmentOperatorOf(orgId);
+  const { user, db, organizationId } = await requireFulfillmentOperatorOf(orgId);
   const details = await getOperationalBookingDetails(db, organizationId, bookingId);
   if (details === null) notFound();
 
@@ -53,6 +57,30 @@ export default async function OperationsDetailPage({
   const showReturnForm = canCreateReturnReport(status);
   const showDamageForm = canCreateDamageReport(status);
   const readOnly = isReadOnlyStatus(status);
+
+  // Vérification de l'éligibilité à la modification (G7M-C5-A)
+  const membership = await getMembership(db, organizationId, user.id);
+  let hasActiveAmendment = false;
+  if (status === 'CONFIRMED') {
+    const activeAmendmentRows = await db
+      .select({ id: bookingAmendments.id })
+      .from(bookingAmendments)
+      .where(
+        and(
+          eq(bookingAmendments.bookingId, bookingId),
+          eq(bookingAmendments.organizationId, organizationId),
+          inArray(bookingAmendments.status, ['HOLD_PENDING', 'READY_TO_APPLY']),
+        ),
+      )
+      .limit(1);
+    hasActiveAmendment = activeAmendmentRows.length > 0;
+  }
+
+  const amendmentEntry = getAmendmentEntryState({
+    bookingStatus: status,
+    role: membership?.status === 'ACTIVE' ? membership.role : null,
+    hasActiveAmendment,
+  });
 
   // Items sérialisables pour les formulaires Client Components.
   const formItems: ItemProps[] = details.items.map((item) => ({
@@ -87,6 +115,34 @@ export default async function OperationsDetailPage({
         <p>Fin : {formatDateTimeInTimeZone(details.customerEndAt, details.locationTimeZone)}</p>
         <p>Email client : {details.customerEmail}</p>
       </section>
+
+      {/* Modification de la réservation (G7M-C5-A) */}
+      {amendmentEntry.reason !== 'INSUFFICIENT_ROLE' && (
+        <section aria-labelledby="amendment-heading" style={{ marginBottom: '1.5rem' }}>
+          <h2 id="amendment-heading">Modification de la réservation</h2>
+          {amendmentEntry.canAmend ? (
+            <div>
+              <p>Vous pouvez ajuster les dates de location et les quantités d'articles réservés.</p>
+              <Link
+                href={`/dashboard/${organizationId}/operations/${bookingId}/amend`}
+                style={{
+                  display: 'inline-block',
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#2563eb',
+                  color: '#ffffff',
+                  borderRadius: '0.375rem',
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                }}
+              >
+                Modifier la réservation
+              </Link>
+            </div>
+          ) : amendmentEntry.reason === 'ACTIVE_AMENDMENT_EXISTS' ? (
+            <p>Une modification est actuellement en cours sur cette réservation.</p>
+          ) : null}
+        </section>
+      )}
 
       {/* Action de transition */}
       {transitionInfo !== null && (

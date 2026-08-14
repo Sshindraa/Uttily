@@ -203,12 +203,7 @@ G7M-C4-B est entièrement implémenté et validé dans le worktree (non commité
 compensation atomique `compensateAmendmentPayment`, câblage du webhook C3,
 extension du moteur d'exécution des remboursements pour `AMENDMENT_COMPENSATION`,
 et câblage des crons web existants `expire-holds` et `reconcile-payments` sans
-modifier `vercel.json`. Rien de C2–C4 n'est encore fusionné sur main. Seul C5 (UI) reste
-pending. La validation ciblée et l'upgrade sont décrits dans
-`docs/implementation/g7m-c4s-supplement-retry-schema.md` (C4-S),
-`docs/implementation/g7m-c4a-supplement-lifecycle.md` (C4-A) et
-`docs/implementation/g7m-c4b-supplement-compensation.md` (C4-B). La validation
-Core globale reste pending CI.
+modifier `vercel.json`. G7M C2–C4 sont fusionnés sur main. G7M-C5-A (fondation canonique de prévisualisation read-only et première interface loueur) est entièrement implémenté et validé : fonction Core `previewBookingAmendment`, action serveur `previewBookingAmendmentAction`, écran `/dashboard/[orgId]/operations/[bookingId]/amend`, tests unitaires et intégration PostgreSQL 10/10. Voir `docs/implementation/g7m-c5a-amendment-preview-ui.md`.
 
 ## Horizons stratégiques post-MVP — option C
 
