@@ -126,6 +126,7 @@ Lors d'un succès tardif avec compensation :
 ## Preuves & Résultats de Test
 
 ### 1. Tests d'Intégration Core C4-B (`supplement-compensation.integration.test.ts`)
+- **Isolation de la base de test** : La suite dérive une connexion d'administration, crée une base dédiée `uttily_test_g7m_c4b_compensation`, applique l'ensemble des migrations Drizzle de manière autonome, et nettoie la base dédiée en fin de test. Aucune dépendance sur une base préalablement migrée en CI.
 - **26 / 26 tests passés avec succès sur PostgreSQL réel** :
   1. `1.1 rejet explicite si l’amendement est actif avant sa deadline`
   2. `1.2 rejet explicite si l’amendement est APPLIED`

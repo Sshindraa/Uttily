@@ -15,9 +15,13 @@
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import postgres from 'postgres';
-import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { randomUUID } from 'node:crypto';
-import * as schema from '@uttily/database';
+import {
+  assertLocalhost,
+  createDatabase,
+  runMigrations,
+  type DatabaseClient,
+} from '@uttily/database';
 import { handleWebhook } from '../webhook-handler/handle-webhook';
 import type { WebhookHandlerInput } from '../webhook-handler/types';
 import type { RefundResult, CreateRefundParams } from '../payments/types';
@@ -28,7 +32,9 @@ import { claimRefundRequestBatch } from '../refund-request-execution/claim-refun
 import { executeRefundRequest } from '../refund-request-execution/execute-refund-request';
 import { RefundRequestError } from '../refund-request-execution/errors';
 
-const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://uttily:uttily@localhost:5432/uttily';
+const sourceUrl = process.env.DATABASE_URL ?? 'postgres://uttily:uttily@127.0.0.1:5432/uttily';
+const testDbName = 'uttily_test_g7m_c4b_compensation';
+const shouldSkip = !process.env.DATABASE_URL && process.env.CI !== '1' && process.env.CI !== 'true';
 
 class TestRefundProbeAdapter extends FakeStripeAdapter {
   readonly createRefundCalls: Array<CreateRefundParams> = [];
@@ -56,22 +62,62 @@ class TestRefundProbeAdapter extends FakeStripeAdapter {
   }
 }
 
-describe('G7M-C4-B — compensation des suppléments PostgreSQL réel', () => {
+describe.skipIf(shouldSkip)('G7M-C4-B — compensation des suppléments PostgreSQL réel', () => {
   let sql: postgres.Sql | null = null;
-  let db: (PostgresJsDatabase<typeof schema> & { $client: postgres.Sql }) | null = null;
+  let db: DatabaseClient | null = null;
   let probeSql: postgres.Sql | null = null;
+  let adminSql: postgres.Sql | null = null;
+  let testDbUrl: string | null = null;
 
   beforeAll(async () => {
-    sql = postgres(DATABASE_URL, { max: 10 });
-    db = drizzle(sql, { schema }) as unknown as PostgresJsDatabase<typeof schema> & {
-      $client: postgres.Sql;
-    };
-    probeSql = postgres(DATABASE_URL, { max: 2 });
-  });
+    if (!sourceUrl) return;
+    assertLocalhost(sourceUrl);
+
+    // Dériver une connexion admin vers /postgres depuis DATABASE_URL avec fallback
+    try {
+      const parsedAdmin = new URL(sourceUrl);
+      parsedAdmin.pathname = '/postgres';
+      adminSql = postgres(parsedAdmin.toString(), { max: 1 });
+      await adminSql`SELECT 1`;
+    } catch {
+      if (adminSql) await adminSql.end();
+      adminSql = postgres(sourceUrl, { max: 1 });
+    }
+
+    // Terminer les connexions résiduelles éventuelles
+    await adminSql.unsafe(
+      `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${testDbName}' AND pid <> pg_backend_pid();`,
+    );
+    await adminSql.unsafe(`DROP DATABASE IF EXISTS ${testDbName};`);
+    await adminSql.unsafe(`CREATE DATABASE ${testDbName};`);
+
+    // Construire l'URL de la base dédiée et exécuter les migrations Drizzle
+    const parsedTest = new URL(sourceUrl);
+    parsedTest.pathname = `/${testDbName}`;
+    testDbUrl = parsedTest.toString();
+    await runMigrations(testDbUrl);
+
+    // Créer sql, db et probeSql uniquement vers cette base dédiée
+    sql = postgres(testDbUrl, { max: 10 });
+    db = createDatabase(testDbUrl);
+    probeSql = postgres(testDbUrl, { max: 2 });
+  }, 600000);
 
   afterAll(async () => {
     if (probeSql) await probeSql.end();
     if (sql) await sql.end();
+    if (db) await db.$client.end();
+
+    if (adminSql) {
+      try {
+        await adminSql.unsafe(
+          `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${testDbName}' AND pid <> pg_backend_pid();`,
+        );
+        await adminSql.unsafe(`DROP DATABASE IF EXISTS ${testDbName};`);
+      } finally {
+        await adminSql.end();
+      }
+    }
   });
 
   beforeEach(async () => {
@@ -176,7 +222,7 @@ describe('G7M-C4-B — compensation des suppléments PostgreSQL réel', () => {
       ) VALUES (
         ${orgId}, 'STRIPE', 'TEST', ${connectedAccountId},
         'ACCOUNTS_V1_CONTROLLER_PROPERTIES', 'ENABLED', true, true, 'ACTIVE', 'PLATFORM',
-        ${JSON.stringify({ preset: 'TEST' })}, ${JSON.stringify({})}
+        ${s.json({ preset: 'TEST' })}, ${s.json({})}
       )
     `;
 
@@ -194,7 +240,7 @@ describe('G7M-C4-B — compensation des suppléments PostgreSQL réel', () => {
         '2026-07-10T08:30:00.000Z', '2026-07-12T17:30:00.000Z',
         'Europe/Paris', 30, 30, 'EUR', 10000, 0, 10000,
         'NOT_APPLICABLE', 0, 500, 'DAY', 2,
-        ${JSON.stringify({ policy: 'FLEXIBLE' })}
+        ${s.json({ policy: 'FLEXIBLE' })}
       ) RETURNING "id"
     `.then((r) => r[0]!);
 
@@ -207,7 +253,7 @@ describe('G7M-C4-B — compensation des suppléments PostgreSQL réel', () => {
       ) VALUES (
         ${orgId}, ${draft.id}, ${userId}, 'SUCCEEDED', 10000, 'EUR',
         'NOT_APPLICABLE', 0, 500, 'v1', 'v1',
-        ${JSON.stringify({ accepted: true })}, 'DESTINATION', 'CONNECTED_ACCOUNT',
+        ${s.json({ accepted: true })}, 'DESTINATION', 'CONNECTED_ACCOUNT',
         ${connectedAccountId}, ${connectedAccountId}, ${environment}, now()
       ) RETURNING "id"
     `.then((r) => r[0]!);
@@ -225,7 +271,7 @@ describe('G7M-C4-B — compensation des suppléments PostgreSQL réel', () => {
         '2026-07-10T09:00:00.000Z', '2026-07-12T17:00:00.000Z',
         '2026-07-10T08:30:00.000Z', '2026-07-12T17:30:00.000Z', 'Europe/Paris', 30, 30,
         'EUR', 10000, 0, 10000, 'NOT_APPLICABLE', 0, 500, 2,
-        ${JSON.stringify({ policy: 'FLEXIBLE' })}, ${JSON.stringify({ accepted: true })}, now()
+        ${s.json({ policy: 'FLEXIBLE' })}, ${s.json({ accepted: true })}, now()
       ) RETURNING "id"
     `.then((r) => r[0]!);
 
@@ -234,7 +280,7 @@ describe('G7M-C4-B — compensation des suppléments PostgreSQL réel', () => {
         "booking_id", "variant_id", "quantity", "unit_price_amount_minor", "billable_unit_count",
         "line_total_amount_minor", "variant_snapshot"
       ) VALUES (
-        ${booking.id}, ${variantId}, 1, 5000, 2, 10000, ${JSON.stringify({ name: 'Standard' })}
+        ${booking.id}, ${variantId}, 1, 5000, 2, 10000, ${s.json({ name: 'Standard' })}
       ) RETURNING "id"
     `.then((r) => r[0]!);
 
@@ -264,8 +310,8 @@ describe('G7M-C4-B — compensation des suppléments PostgreSQL réel', () => {
         "hold_deadline", "created_by", "created_at"
       ) VALUES (
         ${orgId}, ${booking.id}, 1, 'SUPPLEMENT', 'HOLD_PENDING',
-        ${JSON.stringify({ totalAmountMinor: 10000, currency: 'EUR' })},
-        ${JSON.stringify({ totalAmountMinor: 15000, currency: 'EUR' })},
+        ${s.json({ totalAmountMinor: 10000, currency: 'EUR' })},
+        ${s.json({ totalAmountMinor: 15000, currency: 'EUR' })},
         '2026-07-10T09:00:00.000Z', '2026-07-13T17:00:00.000Z',
         '2026-07-10T08:30:00.000Z', '2026-07-13T17:30:00.000Z',
         ${holdDeadline.toISOString()}, ${userId}, ${createdAt.toISOString()}
@@ -306,7 +352,7 @@ describe('G7M-C4-B — compensation des suppléments PostgreSQL réel', () => {
       ) VALUES (
         ${amendment.id}, ${orgId}, ${bookingLine.id}, 'ORIGINAL', ${bookingLine.id},
         ${variantId}, 'MODIFY', 1, 5000, 10000, 1, 5000, 15000,
-        ${JSON.stringify({ source: 'C4B' })}, ${JSON.stringify({ name: 'Standard' })}
+        ${s.json({ source: 'C4B' })}, ${s.json({ name: 'Standard' })}
       ) RETURNING "id"
     `.then((r) => r[0]!);
 
@@ -564,7 +610,7 @@ describe('G7M-C4-B — compensation des suppléments PostgreSQL réel', () => {
       ) VALUES (
         ${fixture.orgId}, 'REFUND', ${refundId}, 'REFUND_REQUESTED',
         'v1', ${'refund_requested_' + refundId},
-        ${JSON.stringify({ organizationId: fixture.orgId, bookingId: randomUUID(), amendmentId: fixture.amendmentId, refundId })}, ${new Date().toISOString()}
+        ${sql.json({ organizationId: fixture.orgId, bookingId: randomUUID(), amendmentId: fixture.amendmentId, refundId })}, ${new Date(Date.now() - 10_000).toISOString()}
       )
     `;
 
@@ -638,13 +684,13 @@ describe('G7M-C4-B — compensation des suppléments PostgreSQL réel', () => {
       ) VALUES (
         ${fixture.orgId}, 'REFUND', ${refundId}, 'REFUND_REQUESTED',
         'v1', ${'refund_requested_' + refundId},
-        ${JSON.stringify({
+        ${sql.json({
           organizationId: fixture.orgId,
           bookingId: fixture.bookingId,
           amendmentId: fixture.amendmentId,
           refundId,
           extraUnauthorizedProperty: 'malicious',
-        })}, ${new Date().toISOString()}
+        })}, ${new Date(Date.now() - 10_000).toISOString()}
       )
     `;
 
@@ -720,7 +766,7 @@ describe('G7M-C4-B — compensation des suppléments PostgreSQL réel', () => {
       ) VALUES (
         ${fixture.orgId}, 'REFUND', ${refundId}, 'REFUND_REQUESTED',
         'v1', ${'refund_requested_' + refundId},
-        ${JSON.stringify({ organizationId: otherOrgId, bookingId: fixture.bookingId, amendmentId: fixture.amendmentId, refundId })}, ${new Date(Date.now() - 10_000).toISOString()}
+        ${sql.json({ organizationId: otherOrgId, bookingId: fixture.bookingId, amendmentId: fixture.amendmentId, refundId })}, ${new Date(Date.now() - 10_000).toISOString()}
       ) RETURNING id
     `.then((r) => r[0]!);
 
@@ -875,7 +921,7 @@ describe('G7M-C4-B — compensation des suppléments PostgreSQL réel', () => {
         ) VALUES (
           ${fixture.orgId}, 'REFUND', ${refundId}, 'REFUND_REQUESTED',
           'v1', ${'refund_requested_' + refundId},
-          ${JSON.stringify({ organizationId: fixture.orgId, bookingId: targetBookingId, amendmentId: targetAmendmentId, refundId })}, ${new Date(Date.now() - 10_000).toISOString()}
+          ${sql.json({ organizationId: fixture.orgId, bookingId: targetBookingId, amendmentId: targetAmendmentId, refundId })}, ${new Date(Date.now() - 10_000).toISOString()}
         ) RETURNING id
       `.then((r) => r[0]!);
 
@@ -960,7 +1006,7 @@ describe('G7M-C4-B — compensation des suppléments PostgreSQL réel', () => {
       ) VALUES (
         ${fixture.orgId}, 'REFUND', ${refundId}, 'REFUND_REQUESTED',
         'v1', ${'refund_requested_' + refundId},
-        ${JSON.stringify({ organizationId: fixture.orgId, bookingId: fixture.bookingId, amendmentId: fixture.amendmentId, refundId })}, ${new Date(Date.now() - 10_000).toISOString()}
+        ${sql.json({ organizationId: fixture.orgId, bookingId: fixture.bookingId, amendmentId: fixture.amendmentId, refundId })}, ${new Date(Date.now() - 10_000).toISOString()}
       ) RETURNING id
     `.then((r) => r[0]!);
 
