@@ -1,6 +1,6 @@
 # ADR-023 — Modifications financières append-only des réservations avant retrait
 
-- **Statut** : Accepted (conception approuvée ; G7M-A, G7M-B1, G7M-B2 et G7M-C1/C2 implémentés, C3 implémenté localement avec validation ciblée unitaire/statique verte et validation PostgreSQL pending, C4–C5 restants)
+- **Statut** : Accepted (conception approuvée ; C1 livré, C2/C3 implémentés dans des commits locaux empilés, C4-S livré localement comme prérequis de schéma ; C4-A, C4-B et C5 restent pending ; validation Core globale pending CI)
 - **Date** : 2026-08-10
 - **Décideurs** : Porteur produit Uttily, engineering
 - **Relie à** : ADR-009, ADR-010, ADR-011, ADR-013, ADR-018 ; G7M/G7P-C
@@ -255,6 +255,7 @@ HOLD_PENDING → READY_TO_APPLY → APPLIED
 HOLD_PENDING → EXPIRED
 HOLD_PENDING → CANCELLED
 READY_TO_APPLY → APPLIED
+READY_TO_APPLY → EXPIRED
 READY_TO_APPLY → FAILED
 ```
 
@@ -267,6 +268,11 @@ READY_TO_APPLY → FAILED
 - `CANCELLED` : annulé par le loueur (terminal).
 - `FAILED` : application impossible après paiement (terminal, compensation
   requise).
+
+La migration 0037 (`G7M-C4-S`) rend `READY_TO_APPLY → EXPIRED` explicite dans
+le trigger PostgreSQL tout en conservant l'immutabilité des états terminaux.
+Le code d'expiration C4-A qui décidera quand effectuer cette transition reste
+à implémenter.
 
 **Par type** :
 
@@ -284,6 +290,7 @@ PENDING_PROVIDER → REQUIRES_PAYMENT_METHOD → PROCESSING → SUCCEEDED
 PENDING_PROVIDER → REQUIRES_ACTION → PROCESSING → SUCCEEDED
 PENDING_PROVIDER → FAILED
 PROCESSING → SUCCEEDED | FAILED | CANCELLED
+FAILED → PENDING_PROVIDER (uniquement avec un nouvel attempt N+1)
 ```
 
 Le webhook est l'autorité pour le statut final. La réconciliation replaye
@@ -295,6 +302,14 @@ si encore annulable, et un éventuel succès tardif est compensé (voir §7.5 et
 §7.6). La fenêtre d'idempotence fournisseur (24 h côté Stripe) est une
 propriété technique qui ne doit jamais autoriser un retry après expiration du
 hold.
+
+Le trigger de la migration 0037 autorise le seul reset contrôlé
+`FAILED → PENDING_PROVIDER` si, dans la même transaction, un unique attempt
+non terminal `PENDING_PROVIDER` N+1 vient d'être créé avec
+`provider_payment_intent_id` et `provider_status` à NULL. Sans nouvel attempt,
+avec un numéro non croissant, plusieurs attempts non terminaux, un provider
+déjà renseigné ou depuis `SUCCEEDED`/`CANCELLED`, la transition est rejetée.
+Les attempts terminaux et les snapshots du paiement restent immuables.
 
 ### 5.3 Obligation de remboursement
 
@@ -427,9 +442,12 @@ gérée automatiquement par Stripe.js.
 
 `hold_deadline = created_at + 10 minutes` (non négociable). Le cron d'expiration
 verrouille l'amendement (`FOR UPDATE`) et, si `projectionAt >= holdDeadline` et
-`status = HOLD_PENDING`, expire atomiquement : `HOLD blocks → EXPIRED`,
+`status IN (HOLD_PENDING, READY_TO_APPLY)`, expire atomiquement : `HOLD blocks → EXPIRED`,
 `amendment_segments → EXPIRED`, `amendment → EXPIRED`,
 `INSERT outbox BOOKING_AMENDMENT_EXPIRED.v1`.
+
+La condition et l'orchestration d'expiration appartiennent encore à C4-A ;
+0037 ne fournit que la transition PostgreSQL et ses invariants.
 
 ### 7.6 Paiement tardif → compensation automatique
 
@@ -544,6 +562,13 @@ validation runtime des metadata PaymentIntent est centralisée entre FakeStripe
 et StripeAdapter : les variantes initiale et `AMENDMENT` sont des allow-lists
 fermées, la variante amendment exige trois UUIDs, `TEST`/`LIVE` et le protocole
 `booking-amendment-payment-v1`.
+
+G7M-C4-S (migration 0037) ne crée aucun objet de schéma nouveau. Elle autorise
+`READY_TO_APPLY → EXPIRED` et impose le retry
+`FAILED → PENDING_PROVIDER` avec un attempt N+1 unique, initialisé sans
+provider. Les attempts terminaux et les snapshots du paiement restent
+immuables. C4-A (expiration, retry métier, réconciliation) et C4-B
+(compensation/wiring) restent à implémenter.
 
 ### 10.1 bis Commission du supplément
 

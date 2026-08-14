@@ -277,7 +277,7 @@ Une tâche est terminée lorsque :
   validation ; aucun timeout global n'a été modifié. La validation Core globale
   définitive reste pending CI. Voir
   `docs/implementation/g7m-c2-supplement-payment.md`. G7M-C3 est implémenté
-  localement : le webhook `AMENDMENT` résout les tentatives par provider ID ou
+  dans le commit local empilé sur C2 : le webhook `AMENDMENT` résout les tentatives par provider ID ou
   metadata, valide l’autorité et applique atomiquement les blocks, allocations,
   segments, paiement et outbox `BOOKING_AMENDED.v1` ; `RETAIN` conserve le block
   source et `REPLACE` le remplace. Les projections `requires_action`,
@@ -287,9 +287,16 @@ Une tâche est terminée lorsque :
   metadata 8/8, commission 7/7, delta-segments 4/4, adapters Fake/Stripe
   172/172) ; preuves PostgreSQL C3 vertes (`apply-supplement-amendment`
   12/12 et `handle-webhook` 93/93, 0 skip). Les corrections de revue restent
-  locales et non commitées ; la validation Core globale définitive reste
-  pending CI. Voir `docs/implementation/g7m-c3-supplement-webhook.md`.
-  G7M-C4 (expiration/compensation) et G7M-C5 (UI) restent pending.
+  locales ; la validation Core globale définitive reste pending CI. Voir
+  `docs/implementation/g7m-c3-supplement-webhook.md`. G7M-C4-S est implémenté
+  localement comme migration 0037 sans nouvelle table, colonne ou enum :
+  `READY_TO_APPLY → EXPIRED` est autorisé et le retry
+  `FAILED → PENDING_PROVIDER` exige un unique attempt N+1
+  `PENDING_PROVIDER` sans provider. La preuve PostgreSQL C4-S, l'upgrade réel
+  0036→0037 et l'idempotence du journal sont documentés dans
+  `docs/implementation/g7m-c4s-supplement-retry-schema.md`. C4-A (expiration,
+  retry métier et réconciliation), C4-B (compensation/wiring) et C5 (UI) restent
+  pending ; la validation Core globale reste pending CI.
 
   Mise à jour G7M-C2 : la mention historique « Stripe SUPPLEMENT et UI »
   ci-dessous est supersédée pour Stripe ; seule l'UI reste à implémenter.

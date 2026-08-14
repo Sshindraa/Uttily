@@ -182,18 +182,28 @@ Le périmètre `booking-amendments` validé au jalon C2 comptait 191/191 tests
 globale reste pending CI ; C4 et C5 restent pending. Voir
 `docs/implementation/g7m-c2-supplement-payment.md`.
 
-G7M-C3 est implémenté localement : `handleWebhook` résout les PaymentIntents
+G7M-C3 est implémenté dans le commit local empilé sur C2 : `handleWebhook` résout les PaymentIntents
 `AMENDMENT` par identifiant provider ou metadata, valide l’autorité tenant-safe
 et applique atomiquement les holds, allocations, blocks, paiement et outbox
 `BOOKING_AMENDED.v1`. `RETAIN` conserve le block source, `REPLACE` le remplace,
 et les projections `requires_action`, `processing`, `payment_failed` et
 `canceled` restent monotones. Un succès après le hold est projeté sans
 application et signale le besoin de compensation à C4. Le commit C3 initial
-existe ; les corrections locales de revue et leurs preuves restent non
-commitées. La validation ciblée compte 12/12 tests PostgreSQL C3, 93/93 tests
+et les corrections de revue sont présents dans les commits locaux empilés.
+La validation ciblée compte 12/12 tests PostgreSQL C3, 93/93 tests
 PostgreSQL webhook historiques, 10/10 tests de projection et les régressions
 unitaires ciblées vertes. La validation Core globale reste pending CI ; C4 et
 C5 restent pending. Voir `docs/implementation/g7m-c3-supplement-webhook.md`.
+
+G7M-C4-S est implémenté localement comme prérequis de schéma, sans lifecycle
+Core C4-A : migration 0037, upgrade réel 0036→0037 et trigger PostgreSQL pour
+`READY_TO_APPLY → EXPIRED`, ainsi que retry
+`FAILED → PENDING_PROVIDER` uniquement avec un attempt N+1
+`PENDING_PROVIDER` unique, vierge de provider. C4-A (expiration, retry métier,
+réconciliation) et C4-B (compensation/wiring) restent pending ; C5 (UI) reste
+pending. La validation ciblée et l'upgrade sont décrits dans
+`docs/implementation/g7m-c4s-supplement-retry-schema.md`. La validation Core
+globale reste pending CI.
 
 ## Horizons stratégiques post-MVP — option C
 
