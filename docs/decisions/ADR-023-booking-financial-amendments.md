@@ -1,6 +1,6 @@
 # ADR-023 — Modifications financières append-only des réservations avant retrait
 
-- **Statut** : Accepted (conception approuvée, implémentation non commencée)
+- **Statut** : Accepted (conception approuvée ; C1 livré, C2/C3 implémentés dans des commits locaux empilés, C4-S et C4-A committés localement dans la pile ; G7M-C4-B est implémenté et validé dans le worktree mais non commité ; rien de C2–C4 n'est encore fusionné sur main ; C5 reste pending ; validation Core globale pending CI)
 - **Date** : 2026-08-10
 - **Décideurs** : Porteur produit Uttily, engineering
 - **Relie à** : ADR-009, ADR-010, ADR-011, ADR-013, ADR-018 ; G7M/G7P-C
@@ -255,6 +255,7 @@ HOLD_PENDING → READY_TO_APPLY → APPLIED
 HOLD_PENDING → EXPIRED
 HOLD_PENDING → CANCELLED
 READY_TO_APPLY → APPLIED
+READY_TO_APPLY → EXPIRED
 READY_TO_APPLY → FAILED
 ```
 
@@ -267,6 +268,11 @@ READY_TO_APPLY → FAILED
 - `CANCELLED` : annulé par le loueur (terminal).
 - `FAILED` : application impossible après paiement (terminal, compensation
   requise).
+
+La migration 0037 (`G7M-C4-S`) rend `READY_TO_APPLY → EXPIRED` explicite dans
+le trigger PostgreSQL tout en conservant l'immutabilité des états terminaux.
+Le code d'expiration C4-A qui décidera quand effectuer cette transition reste
+à implémenter.
 
 **Par type** :
 
@@ -284,6 +290,7 @@ PENDING_PROVIDER → REQUIRES_PAYMENT_METHOD → PROCESSING → SUCCEEDED
 PENDING_PROVIDER → REQUIRES_ACTION → PROCESSING → SUCCEEDED
 PENDING_PROVIDER → FAILED
 PROCESSING → SUCCEEDED | FAILED | CANCELLED
+FAILED → PENDING_PROVIDER (uniquement avec un nouvel attempt N+1)
 ```
 
 Le webhook est l'autorité pour le statut final. La réconciliation replaye
@@ -295,6 +302,14 @@ si encore annulable, et un éventuel succès tardif est compensé (voir §7.5 et
 §7.6). La fenêtre d'idempotence fournisseur (24 h côté Stripe) est une
 propriété technique qui ne doit jamais autoriser un retry après expiration du
 hold.
+
+Le trigger de la migration 0037 autorise le seul reset contrôlé
+`FAILED → PENDING_PROVIDER` si, dans la même transaction, un unique attempt
+non terminal `PENDING_PROVIDER` N+1 vient d'être créé avec
+`provider_payment_intent_id` et `provider_status` à NULL. Sans nouvel attempt,
+avec un numéro non croissant, plusieurs attempts non terminaux, un provider
+déjà renseigné ou depuis `SUCCEEDED`/`CANCELLED`, la transition est rejetée.
+Les attempts terminaux et les snapshots du paiement restent immuables.
 
 ### 5.3 Obligation de remboursement
 
@@ -426,17 +441,24 @@ gérée automatiquement par Stripe.js.
 ### 7.5 Expiration ferme
 
 `hold_deadline = created_at + 10 minutes` (non négociable). Le cron d'expiration
-verrouille l'amendement (`FOR UPDATE`) et, si `hold_deadline < now()` et
-`status = HOLD_PENDING`, expire atomiquement : `HOLD blocks → EXPIRED`,
+verrouille l'amendement (`FOR UPDATE`) et, si `projectionAt >= holdDeadline` et
+`status IN (HOLD_PENDING, READY_TO_APPLY)`, expire atomiquement : `HOLD blocks → EXPIRED`,
 `amendment_segments → EXPIRED`, `amendment → EXPIRED`,
 `INSERT outbox BOOKING_AMENDMENT_EXPIRED.v1`.
+
+La condition et l'orchestration d'expiration sont implémentées par C4-A dans
+`expireSupplementAmendmentsBatch`, avec une horloge capturée une fois, un batch
+borné `FOR UPDATE SKIP LOCKED`, des verrous tenant-scoped et une outbox
+idempotente. C4-B implémente la compensation atomique et le câblage opérationnel.
 
 ### 7.6 Paiement tardif → compensation automatique
 
 Si le webhook `payment_intent.succeeded` arrive après l'expiration :
 
-- Le webhook détecte `amendment.status = EXPIRED`.
-- Déclenche `compensateAmendmentPayment` : `INSERT refunds (reason =
+- Le webhook détecte `amendment.status = EXPIRED` et C3 projette le paiement et
+  l'attempt en succès sans appliquer l'amendement.
+- C3 retourne le résultat interne `LATE_SUCCESS_REQUIRES_COMPENSATION` ; C4
+  déclenche `compensateAmendmentPayment` : `INSERT refunds (reason =
   'AMENDMENT_COMPENSATION', status = 'PENDING')`, `INSERT outbox
   REFUND_REQUESTED.v1`.
 - Le worker outbox exécute `stripe.createRefund` (hors transaction).
@@ -458,9 +480,10 @@ delta = nouvelle plage − plages BOOKING déjà détenues par cette réservatio
 
 Seuls les segments delta sont placés en `HOLD/ACTIVE`. Les segments non-delta
 restent protégés par les blocks `BOOKING` existants. À l'application, les blocks
-`BOOKING` existants sont marqués `RELEASED`, les `HOLD` delta sont marqués
-`CONVERTED`, et de nouveaux blocks `BOOKING/ACTIVE` sont créés pour la pleine
-plage effective.
+`BOOKING` existants sont marqués `RELEASED` pour `REPLACE`/`REMOVE`, les `HOLD`
+delta sont marqués `CONVERTED`, et de nouveaux blocks `BOOKING/ACTIVE` sont
+créés pour `ADD`/`REPLACE` ; `RETAIN` conserve le block source et l'utilise
+comme `applied_booking_block_id`.
 
 ### 8.2 Scénarios
 
@@ -524,6 +547,49 @@ Pour le supplément :
 - Si crash après Stripe mais avant projection : la réconciliation retrieve le
   PaymentIntent et projette. Le webhook peut arriver entre-temps.
 
+G7M-C2 verrouille dans l'ordre organisation, réservation, amendement,
+`amendment_payments`, puis `amendment_payment_attempts`. Après le commit de la
+transaction A, `createPaymentIntent` ou `retrievePaymentIntent` est appelé hors
+transaction ; une transaction B reprend le même ordre et ne projette que
+l'identifiant et le statut fournisseur sur l'attempt. Le `clientSecret` reste
+éphémère : il est renvoyé depuis la mémoire après le commit de B et n'est
+jamais persisté, journalisé ou placé dans l'outbox.
+
+Transaction A capture `startedAt` et borne `processing_deadline_at` au minimum
+entre le délai technique et `hold_deadline`. Transaction B capture un
+`projectionAt` frais après l'appel provider ; si le hold est expiré à cet
+instant, elle retourne `HOLD_EXPIRED` sans projection, en conservant la même
+tentative et la même clé d'idempotence pour la récupération ultérieure. La
+validation runtime des metadata PaymentIntent est centralisée entre FakeStripe
+et StripeAdapter : les variantes initiale et `AMENDMENT` sont des allow-lists
+fermées, la variante amendment exige trois UUIDs, `TEST`/`LIVE` et le protocole
+`booking-amendment-payment-v1`.
+
+G7M-C4-S (migration 0037) ne crée aucun objet de schéma nouveau. Elle autorise
+`READY_TO_APPLY → EXPIRED` et impose le retry
+`FAILED → PENDING_PROVIDER` avec un attempt N+1 unique, initialisé sans
+provider. Les attempts terminaux et les snapshots du paiement restent
+immuables. G7M-C4-A implémente l'expiration, le retry métier et la
+réconciliation hors transaction provider ; G7M-C4-B implémente la compensation
+atomique `compensateAmendmentPayment`, le câblage du webhook C3, l'extension du
+moteur d'exécution des remboursements pour `AMENDMENT_COMPENSATION`, et le
+câblage des crons web `expire-holds` et `reconcile-payments`.
+
+### 10.1 bis Commission du supplément
+
+La commission du supplément est un snapshot serveur dérivé des montants
+originaux :
+
+```text
+round_half_up(supplement_amount_minor * commission_original_minor
+              / total_original_minor)
+```
+
+Le calcul utilise `bigint`, un arrondi half-up positif et une borne entre zéro
+et le supplément. Si le total original vaut zéro, seule une commission
+originale nulle est cohérente. Le résultat alimente `application_fee_amount` ;
+aucune valeur fournie par le client ne participe au calcul.
+
 Pour le remboursement :
 
 - L'obligation locale (`refunds PENDING`) est persistée dans la transaction
@@ -563,11 +629,13 @@ idempotent si le webhook a déjà projeté l'état.
 
 ### 10.5 Réconciliation
 
-La réconciliation existante (`reconcile-payments-batch`) est étendue pour
-traiter les `amendment_payment_attempts` avec le même pattern `SKIP LOCKED` +
-lease. Le replay `createPaymentIntent` n'a lieu qu'avant `hold_deadline`. Après
-`hold_deadline`, la réconciliation laisse le cron d'expiration traiter
-l'amendement ; aucun nouveau PaymentIntent n'est créé.
+Le mécanisme Core est étendu par
+`reconcileSupplementPaymentsBatch`/`claimSupplementPaymentBatch` pour traiter
+les `amendment_payment_attempts` avec le même pattern `SKIP LOCKED` + lease et
+fencing. Les appels provider sont hors transaction et hors verrou métier. Le
+replay `createPaymentIntent` n'a lieu qu'avant `hold_deadline`. Après
+`hold_deadline`, aucun nouveau PaymentIntent n'est créé et le succès provider
+n'est jamais appliqué localement par C4-A ; l'expiration traite l'amendement.
 
 ### 10.6 Compensation
 
@@ -680,7 +748,7 @@ Quand un supplément est payé après l'expiration de l'amendement :
 | Création REFUND | 1→2→3→4→5→8→11 |
 | Application amendement | 1→3→4→5→6→7→11 |
 | Expiration cron | 4(SKIP LOCKED)→5→6→7 |
-| Webhook supplément | 1→4→9→10→11 |
+| Webhook supplément | organisation→booking→amendment→blocks→allocations→segments→amendment_payment→amendment_attempt→webhook_event→outbox |
 | Webhook refund | 1→8→10→11 |
 | Watchdog zombies | 1→4→5→6→7→11 |
 | Compensation amendement | outbox claim → 8 → 9 (worker) |

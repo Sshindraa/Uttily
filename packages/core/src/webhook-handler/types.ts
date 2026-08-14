@@ -26,6 +26,8 @@ import type { WebhookHandlerError } from './errors';
 export interface WebhookHandlerDeps {
   db: DatabaseClient;
   provider: PaymentProviderAdapter;
+  /** Horloge injectable uniquement pour les tests d'égalité de deadline. */
+  clock?: () => Date;
 }
 
 /** Entrée du use case handleWebhook. */
@@ -69,6 +71,7 @@ export type HandlerOutcome = void | WebhookHandlerError;
 /** Types d'événements Stripe que nous traitons (ADR-010 §9). */
 export type HandledEventType =
   | 'payment_intent.succeeded'
+  | 'payment_intent.requires_action'
   | 'payment_intent.processing'
   | 'payment_intent.payment_failed'
   | 'payment_intent.canceled';
@@ -89,10 +92,14 @@ export interface PaymentIntentEventData {
   amount: number;
   currency: string;
   metadata?: {
+    payment_type?: 'AMENDMENT';
     payment_id?: string;
     payment_attempt_id?: string;
     draft_id?: string;
+    amendment_payment_attempt_id?: string;
+    amendment_id?: string;
     organization_id?: string;
+    environment?: 'TEST' | 'LIVE';
     protocol_version?: string;
   };
   /** transfer_data.destination (connected account ID). */
@@ -117,6 +124,26 @@ export interface ResolvedAttempt {
   paymentStatus: string;
   draftStatus: string;
   providerPaymentIntentId: string | null;
+}
+
+/**
+ * Tentative de paiement d'un amendement SUPPLEMENT résolue depuis un webhook.
+ * Elle est distincte de ResolvedAttempt : les paiements d'amendement n'ont ni
+ * draft ni ligne dans les tables legacy payments/payment_attempts.
+ */
+export interface ResolvedAmendmentAttempt {
+  kind: 'AMENDMENT';
+  attemptId: string;
+  amendmentPaymentId: string;
+  amendmentId: string;
+  bookingId: string;
+  organizationId: string;
+  customerUserId: string;
+  attemptStatus: string;
+  paymentStatus: string;
+  amendmentStatus: string;
+  providerPaymentIntentId: string | null;
+  connectedAccountId: string;
 }
 
 /**

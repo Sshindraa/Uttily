@@ -1,5 +1,7 @@
 import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import {
+  amendmentPaymentAttempts,
+  amendmentPayments,
   bookingAmendments,
   paymentAttempts,
   payments,
@@ -38,14 +40,14 @@ function parseClaimedEvent(claimed: ClaimedRefundRequest) {
   }
 }
 
-function assertLeaseRows(rows: unknown[], code: 'LEASE_LOST' | 'OUTBOX_METADATA_MISMATCH'): void {
+function assertLeaseRows(rows: unknown[], code: 'LEASE_LOST') {
   if (rows.length === 0) {
-    throw new RefundRequestError(code, 'Lease ou événement outbox non détenu');
+    throw new RefundRequestError(code, 'Événement outbox non détenu');
   }
 }
 
-/** Transactional authority reload before the provider call. */
-async function verifyRefundRequest(
+/** Pre-call validation transaction; acquires row locks on outbox, refund, payment, attempt. */
+export async function verifyRefundRequest(
   db: DatabaseClient,
   claimed: ClaimedRefundRequest,
   environment: StripeEnvironment,
@@ -133,14 +135,8 @@ async function verifyRefundRequest(
       }
       throw new RefundRequestError('REFUND_STATUS_INVALID', 'Refund non éligible');
     }
-    if (refund.reason !== 'BOOKING_MODIFICATION') {
+    if (refund.reason !== 'BOOKING_MODIFICATION' && refund.reason !== 'AMENDMENT_COMPENSATION') {
       throw new RefundRequestError('REFUND_REASON_MISMATCH', 'Raison refund non éligible');
-    }
-    if (refund.paymentId === null || refund.amendmentPaymentId !== null) {
-      throw new RefundRequestError(
-        'REFUND_PAYMENT_ORIGIN_INVALID',
-        'Origine paiement refund incohérente',
-      );
     }
     if (!Number.isSafeInteger(refund.amountMinor) || refund.amountMinor <= 0) {
       throw new RefundRequestError('AMOUNT_INVALID', 'Montant refund invalide');
@@ -155,76 +151,205 @@ async function verifyRefundRequest(
       throw new RefundRequestError('IDEMPOTENCY_KEY_MISMATCH', 'Clé refund incohérente');
     }
 
-    const paymentRows = await tx
-      .select()
-      .from(payments)
-      .where(eq(payments.id, refund.paymentId))
-      .for('update');
-    const payment = paymentRows[0];
-    if (payment === undefined)
-      throw new RefundRequestError('PAYMENT_NOT_FOUND', 'Paiement introuvable');
-    if (payment.organizationId !== refund.organizationId) {
-      throw new RefundRequestError(
-        'PAYMENT_ORGANIZATION_MISMATCH',
-        'Organisation paiement incohérente',
-      );
-    }
-    if (payment.status !== 'SUCCEEDED') {
-      throw new RefundRequestError('PAYMENT_NOT_SUCCEEDED', 'Paiement initial non réussi');
-    }
-    if (payment.currency !== 'EUR') {
-      throw new RefundRequestError('PAYMENT_CURRENCY_MISMATCH', 'Devise paiement non supportée');
-    }
-    if (payment.environment !== environment) {
-      throw new RefundRequestError('ENVIRONMENT_MISMATCH', 'Environnement paiement incohérent');
-    }
+    let providerPaymentIntentId: string;
 
-    const amendmentRows = await tx
-      .select()
-      .from(bookingAmendments)
-      .where(eq(bookingAmendments.id, authoritativeEvent.payload.amendmentId))
-      .for('update');
-    const amendment = amendmentRows[0];
-    if (amendment === undefined) {
-      throw new RefundRequestError('AMENDMENT_NOT_FOUND', 'Amendment introuvable');
-    }
-    if (
-      amendment.organizationId !== refund.organizationId ||
-      amendment.bookingId !== authoritativeEvent.payload.bookingId ||
-      amendment.type !== 'REFUND' ||
-      amendment.status !== 'APPLIED'
-    ) {
-      throw new RefundRequestError('AMENDMENT_MISMATCH', 'Amendment incohérent');
-    }
+    if (refund.reason === 'BOOKING_MODIFICATION') {
+      if (refund.paymentId === null || refund.amendmentPaymentId !== null) {
+        throw new RefundRequestError(
+          'REFUND_PAYMENT_ORIGIN_INVALID',
+          'Origine paiement refund incohérente',
+        );
+      }
 
-    const attemptRows = await tx
-      .select({
-        id: paymentAttempts.id,
-        providerPaymentIntentId: paymentAttempts.providerPaymentIntentId,
-      })
-      .from(paymentAttempts)
-      .where(
-        and(
-          eq(paymentAttempts.paymentId, payment.id),
-          eq(paymentAttempts.organizationId, payment.organizationId),
-          eq(paymentAttempts.status, 'SUCCEEDED'),
-          isNotNull(paymentAttempts.providerPaymentIntentId),
-        ),
-      )
-      .orderBy(sql`${paymentAttempts.createdAt} DESC, ${paymentAttempts.id} DESC`)
-      .limit(1)
-      .for('update');
-    const attempt = attemptRows[0];
-    if (attempt === undefined || attempt.providerPaymentIntentId === null) {
-      throw new RefundRequestError(
-        'ATTEMPT_NOT_SUCCEEDED',
-        'Tentative paiement réussie introuvable',
-      );
+      const paymentRows = await tx
+        .select()
+        .from(payments)
+        .where(eq(payments.id, refund.paymentId))
+        .for('update');
+      const payment = paymentRows[0];
+      if (payment === undefined)
+        throw new RefundRequestError('PAYMENT_NOT_FOUND', 'Paiement introuvable');
+      if (payment.organizationId !== refund.organizationId) {
+        throw new RefundRequestError(
+          'PAYMENT_ORGANIZATION_MISMATCH',
+          'Organisation paiement incohérente',
+        );
+      }
+      if (payment.status !== 'SUCCEEDED') {
+        throw new RefundRequestError('PAYMENT_NOT_SUCCEEDED', 'Paiement initial non réussi');
+      }
+      if (payment.currency !== 'EUR') {
+        throw new RefundRequestError('PAYMENT_CURRENCY_MISMATCH', 'Devise paiement non supportée');
+      }
+      if (payment.environment !== environment) {
+        throw new RefundRequestError('ENVIRONMENT_MISMATCH', 'Environnement paiement incohérent');
+      }
+
+      const amendmentRows = await tx
+        .select()
+        .from(bookingAmendments)
+        .where(eq(bookingAmendments.id, authoritativeEvent.payload.amendmentId))
+        .for('update');
+      const amendment = amendmentRows[0];
+      if (amendment === undefined) {
+        throw new RefundRequestError('AMENDMENT_NOT_FOUND', 'Amendment introuvable');
+      }
+      if (
+        amendment.organizationId !== refund.organizationId ||
+        amendment.bookingId !== authoritativeEvent.payload.bookingId ||
+        amendment.type !== 'REFUND' ||
+        amendment.status !== 'APPLIED'
+      ) {
+        throw new RefundRequestError('AMENDMENT_MISMATCH', 'Amendment incohérent');
+      }
+
+      const attemptRows = await tx
+        .select({
+          id: paymentAttempts.id,
+          providerPaymentIntentId: paymentAttempts.providerPaymentIntentId,
+        })
+        .from(paymentAttempts)
+        .where(
+          and(
+            eq(paymentAttempts.paymentId, payment.id),
+            eq(paymentAttempts.organizationId, payment.organizationId),
+            eq(paymentAttempts.status, 'SUCCEEDED'),
+            isNotNull(paymentAttempts.providerPaymentIntentId),
+          ),
+        )
+        .orderBy(sql`${paymentAttempts.createdAt} DESC, ${paymentAttempts.id} DESC`)
+        .limit(1)
+        .for('update');
+      const attempt = attemptRows[0];
+      if (attempt === undefined || attempt.providerPaymentIntentId === null) {
+        throw new RefundRequestError(
+          'ATTEMPT_NOT_SUCCEEDED',
+          'Tentative paiement réussie introuvable',
+        );
+      }
+      providerPaymentIntentId = attempt.providerPaymentIntentId;
+    } else {
+      // AMENDMENT_COMPENSATION
+      if (refund.paymentId !== null || refund.amendmentPaymentId === null) {
+        throw new RefundRequestError(
+          'REFUND_PAYMENT_ORIGIN_INVALID',
+          'Origine paiement refund incohérente',
+        );
+      }
+
+      const amendmentPaymentRows = await tx
+        .select()
+        .from(amendmentPayments)
+        .where(eq(amendmentPayments.id, refund.amendmentPaymentId))
+        .for('update');
+      const amendmentPayment = amendmentPaymentRows[0];
+      if (amendmentPayment === undefined)
+        throw new RefundRequestError('PAYMENT_NOT_FOUND', 'Paiement d’amendement introuvable');
+      if (amendmentPayment.organizationId !== refund.organizationId) {
+        throw new RefundRequestError(
+          'PAYMENT_ORGANIZATION_MISMATCH',
+          'Organisation paiement incohérente',
+        );
+      }
+      if (
+        amendmentPayment.amendmentId !== authoritativeEvent.payload.amendmentId ||
+        amendmentPayment.bookingId !== authoritativeEvent.payload.bookingId
+      ) {
+        throw new RefundRequestError(
+          'AMENDMENT_MISMATCH',
+          'Liaison amendement/réservation du paiement incohérente avec le payload',
+        );
+      }
+      if (amendmentPayment.status !== 'SUCCEEDED') {
+        throw new RefundRequestError('PAYMENT_NOT_SUCCEEDED', 'Paiement d’amendement non réussi');
+      }
+      if (amendmentPayment.currency !== refund.currency || amendmentPayment.currency !== 'EUR') {
+        throw new RefundRequestError(
+          'PAYMENT_CURRENCY_MISMATCH',
+          'Devise paiement non supportée ou mismatch refund',
+        );
+      }
+      if (amendmentPayment.amountMinor !== refund.amountMinor) {
+        throw new RefundRequestError('AMOUNT_INVALID', 'Montant du refund différent du paiement');
+      }
+      if (amendmentPayment.environment !== environment) {
+        throw new RefundRequestError('ENVIRONMENT_MISMATCH', 'Environnement paiement incohérent');
+      }
+
+      const amendmentRows = await tx
+        .select()
+        .from(bookingAmendments)
+        .where(eq(bookingAmendments.id, authoritativeEvent.payload.amendmentId))
+        .for('update');
+      const amendment = amendmentRows[0];
+      if (amendment === undefined) {
+        throw new RefundRequestError('AMENDMENT_NOT_FOUND', 'Amendment introuvable');
+      }
+      if (
+        amendment.organizationId !== refund.organizationId ||
+        amendment.bookingId !== authoritativeEvent.payload.bookingId ||
+        amendment.type !== 'SUPPLEMENT'
+      ) {
+        throw new RefundRequestError('AMENDMENT_MISMATCH', 'Amendment incohérent');
+      }
+
+      if (amendment.status === 'APPLIED') {
+        throw new RefundRequestError(
+          'AMENDMENT_MISMATCH',
+          'Amendement déjà appliqué, compensation refusée',
+        );
+      }
+
+      const asOfRows = await tx.execute(sql`SELECT transaction_timestamp() AS as_of`);
+      const asOf = new Date((asOfRows[0] as unknown as { as_of: Date | string }).as_of);
+      const isExpiredOrCancelled =
+        amendment.status === 'EXPIRED' || amendment.status === 'CANCELLED';
+      const isPastHoldDeadline =
+        amendment.holdDeadline !== null && asOf.getTime() >= amendment.holdDeadline.getTime();
+
+      if (!isExpiredOrCancelled && !isPastHoldDeadline) {
+        throw new RefundRequestError(
+          'AMENDMENT_MISMATCH',
+          'Amendement actif avant sa deadline non éligible pour compensation',
+        );
+      }
+
+      const attemptRows = await tx
+        .select({
+          id: amendmentPaymentAttempts.id,
+          providerPaymentIntentId: amendmentPaymentAttempts.providerPaymentIntentId,
+        })
+        .from(amendmentPaymentAttempts)
+        .where(
+          and(
+            eq(amendmentPaymentAttempts.amendmentPaymentId, amendmentPayment.id),
+            eq(amendmentPaymentAttempts.organizationId, amendmentPayment.organizationId),
+            eq(amendmentPaymentAttempts.status, 'SUCCEEDED'),
+            isNotNull(amendmentPaymentAttempts.providerPaymentIntentId),
+          ),
+        )
+        .orderBy(
+          sql`${amendmentPaymentAttempts.createdAt} DESC, ${amendmentPaymentAttempts.id} DESC`,
+        )
+        .limit(1)
+        .for('update');
+      const attempt = attemptRows[0];
+      if (
+        attempt === undefined ||
+        attempt.providerPaymentIntentId === null ||
+        attempt.providerPaymentIntentId.trim() === ''
+      ) {
+        throw new RefundRequestError(
+          'ATTEMPT_NOT_SUCCEEDED',
+          'Tentative paiement d’amendement réussie introuvable',
+        );
+      }
+      providerPaymentIntentId = attempt.providerPaymentIntentId;
     }
 
     return {
       refundId: refund.id,
-      paymentIntentId: attempt.providerPaymentIntentId,
+      paymentIntentId: providerPaymentIntentId,
       amountMinor: refund.amountMinor,
       idempotencyKey: refund.providerIdempotencyKey,
       organizationId: refund.organizationId,

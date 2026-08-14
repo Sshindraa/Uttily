@@ -48,8 +48,15 @@ import {
   isDraftTerminalForConversion,
   type ConfirmBookingResult,
 } from './confirm-booking';
-import { handlePaymentFailed, handleCanceled, handleProcessing } from './handle-non-success';
+import {
+  handlePaymentFailed,
+  handleCanceled,
+  handleProcessing,
+  handleRequiresAction,
+} from './handle-non-success';
 import { compensateLatePayment } from './compensate-late';
+import { resolveAmendmentAttempt } from './resolve-amendment-attempt';
+import { handleSupplementPaymentWebhook } from '../booking-amendments/apply-supplement-amendment';
 
 /** Types d'événements de refund (journalisés et projetés, pas de worker en Phase 6). */
 const REFUND_EVENT_TYPES = new Set<string>([
@@ -178,6 +185,7 @@ export async function handleWebhook(
     // Événements PaymentIntent gérés.
     const handledTypes: readonly string[] = [
       'payment_intent.succeeded',
+      'payment_intent.requires_action',
       'payment_intent.processing',
       'payment_intent.payment_failed',
       'payment_intent.canceled',
@@ -222,6 +230,83 @@ export async function handleWebhook(
         error: 'WEBHOOK_PAYLOAD_INVALID',
         message: 'Données PaymentIntent invalides dans le webhook',
       };
+    }
+
+    // G7M-C3 : tenter d'abord la résolution dans l'agrégat SUPPLEMENT. Cette
+    // résolution couvre à la fois le provider PaymentIntent déjà persisté et
+    // la metadata amendment_payment_attempt_id lorsque C2 n'a pas encore
+    // terminé sa Transaction B. Un PaymentIntent AMENDMENT non rattachable ne
+    // doit jamais retomber dans le chemin legacy payment/payment_attempts.
+    const amendmentAttempt = await resolveAmendmentAttempt(
+      db,
+      piData,
+      environment,
+      event.accountId,
+    );
+
+    if (amendmentAttempt !== null || piData.metadata?.payment_type === 'AMENDMENT') {
+      if (amendmentAttempt === null) {
+        console.warn(
+          JSON.stringify({
+            event: 'webhook.stripe',
+            endpoint,
+            environment,
+            eventType: event.type,
+            result: 'amendment_attempt_not_found',
+            durationMs: Date.now() - startTime,
+          }),
+        );
+        try {
+          await logUnattachedEvent(db, event, rawBody, environment, startTime);
+        } catch {
+          return {
+            kind: 'FAILURE',
+            statusCode: 500,
+            error: 'UNKNOWN',
+            message: 'Erreur technique lors de la journalisation du webhook non rattaché',
+          };
+        }
+        return { kind: 'SUCCESS', statusCode: 200 };
+      }
+
+      const ingestResult = await db.transaction(async (tx) => {
+        return await ingestEvent(tx, event, rawBody, environment, amendmentAttempt.organizationId);
+      });
+      if (ingestResult.organizationId === null || ingestResult.isDuplicate) {
+        return { kind: 'SUCCESS', statusCode: 200 };
+      }
+
+      try {
+        const outcome = await db.transaction(async (tx) => {
+          return await handleSupplementPaymentWebhook(
+            tx,
+            amendmentAttempt,
+            event,
+            piData,
+            ingestResult.row.id,
+            environment,
+            deps.clock?.(),
+          );
+        });
+        if (outcome instanceof WebhookHandlerError) {
+          if (isIrreconcilable(outcome)) return { kind: 'SUCCESS', statusCode: 200 };
+          return {
+            kind: 'FAILURE',
+            statusCode: outcome.statusCode,
+            error: outcome.code,
+            message: outcome.message,
+          };
+        }
+        return { kind: 'SUCCESS', statusCode: 200 };
+      } catch (supplementError) {
+        if (
+          supplementError instanceof WebhookHandlerError &&
+          supplementError.code === 'WEBHOOK_ALREADY_PROCESSED'
+        ) {
+          return { kind: 'SUCCESS', statusCode: 200 };
+        }
+        throw supplementError;
+      }
     }
 
     // ── 4. Résoudre la tentative (HORS transaction) ───────────────────────────
@@ -676,6 +761,28 @@ export async function handleWebhook(
         return { kind: 'SUCCESS', statusCode: 200 };
       }
 
+      if (eventType === 'payment_intent.requires_action') {
+        const outcome = await handleRequiresAction(
+          tx,
+          attempt,
+          webhookEventId,
+          event,
+          piData,
+          environment,
+        );
+        if (outcome instanceof WebhookHandlerError) {
+          return buildHandlerOutcomeResult(
+            outcome,
+            endpoint,
+            environment,
+            event.id,
+            event.type,
+            startTime,
+          );
+        }
+        return { kind: 'SUCCESS', statusCode: 200 };
+      }
+
       // Type non géré (ne devrait pas arriver ici car filtré plus haut).
       return { kind: 'SUCCESS', statusCode: 200 };
     });
@@ -709,10 +816,9 @@ export async function handleWebhook(
         event: 'webhook.stripe',
         endpoint,
         environment,
-        providerEventId: event.id,
         eventType: event.type,
         result: 'error',
-        error: error instanceof Error ? error.message : String(error),
+        errorCode: 'TECHNICAL_FAILURE',
         durationMs: Date.now() - startTime,
       }),
     );

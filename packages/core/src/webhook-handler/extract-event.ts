@@ -51,6 +51,9 @@ export function extractPaymentIntentEventData(event: VerifiedWebhookEvent): Paym
   const metadata: PaymentIntentEventData['metadata'] = {};
   if (rawMetadata !== undefined && typeof rawMetadata === 'object' && rawMetadata !== null) {
     const md = rawMetadata as Record<string, unknown>;
+    if (md.payment_type === 'AMENDMENT') {
+      metadata.payment_type = 'AMENDMENT';
+    }
     if (typeof md.payment_id === 'string') {
       metadata.payment_id = md.payment_id;
     }
@@ -60,8 +63,17 @@ export function extractPaymentIntentEventData(event: VerifiedWebhookEvent): Paym
     if (typeof md.draft_id === 'string') {
       metadata.draft_id = md.draft_id;
     }
+    if (typeof md.amendment_payment_attempt_id === 'string') {
+      metadata.amendment_payment_attempt_id = md.amendment_payment_attempt_id;
+    }
+    if (typeof md.amendment_id === 'string') {
+      metadata.amendment_id = md.amendment_id;
+    }
     if (typeof md.organization_id === 'string') {
       metadata.organization_id = md.organization_id;
+    }
+    if (md.environment === 'TEST' || md.environment === 'LIVE') {
+      metadata.environment = md.environment;
     }
     if (typeof md.protocol_version === 'string') {
       metadata.protocol_version = md.protocol_version;

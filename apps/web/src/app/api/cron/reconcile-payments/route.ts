@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { getStripeAdapter } from '@/lib/stripe';
-import { reconcilePaymentsBatch } from '@uttily/core';
+import { reconcilePaymentsBatch, reconcileSupplementPaymentsBatch } from '@uttily/core';
 
 // Désactive l'optimisation statique : cet endpoint doit toujours s'exécuter
 // dynamiquement (cron).
@@ -42,21 +42,20 @@ function verifyCronSecret(request: Request): boolean {
 }
 
 /**
- * Endpoint Cron pour la réconciliation batch des paiements non-terminaux.
+ * Endpoint Cron pour la réconciliation batch des paiements initiaux et des suppléments non-terminaux.
  *
  * Sécurité :
  * - Authentification par secret partagé (CRON_SECRET) dans le header
  *   Authorization: Bearer ${CRON_SECRET}.
  * - Méthode GET uniquement (Vercel Cron utilise GET).
- * - Aucune donnée sensible dans la réponse (pas de payment IDs, pas de
- *   détails d'anomalies — seulement des compteurs).
+ * - Aucune donnée sensible dans la réponse (seulement des compteurs).
  *
  * Observabilité :
  * - Log structuré du résultat de chaque invocation.
  * - Log d'alerte si anomalyCount > 0.
  * - Log d'erreur en cas d'échec technique.
  *
- * @see ADR-010 §12
+ * @see ADR-010 §12, ADR-023 §10.3
  */
 export async function GET(request: Request): Promise<NextResponse> {
   // 1. Authentification.
@@ -73,7 +72,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
   const environment = rawEnvironment;
 
-  // 3. Exécuter le batch.
+  // 3. Exécuter les batchs de réconciliation avec le même adapter provider.
   const startTime = Date.now();
   try {
     const db = getDb();
@@ -92,9 +91,15 @@ export async function GET(request: Request): Promise<NextResponse> {
     const oldestProcessingAgeSeconds =
       oldestRows.length > 0 ? Number(oldestRows[0]!.age_seconds) : null;
 
-    const result = await reconcilePaymentsBatch({ db, provider }, { environment });
+    const initialResult = await reconcilePaymentsBatch({ db, provider }, { environment });
+    const supplementResult = await reconcileSupplementPaymentsBatch(
+      { db, provider },
+      { environment },
+    );
 
-    // 4. Log structuré avec métriques ADR-010 §12.
+    const totalAnomalyCount = initialResult.anomalyCount + supplementResult.anomalyCount;
+
+    // 4. Log structuré avec métriques ADR-010 §12 et C4-A.
     const durationMs = Date.now() - startTime;
     console.log(
       JSON.stringify({
@@ -102,25 +107,36 @@ export async function GET(request: Request): Promise<NextResponse> {
         durationMs,
         environment,
         oldestProcessingAgeSeconds,
-        claimedCount: result.claimedCount,
-        reconciledCount: result.reconciledCount,
-        confirmedCount: result.confirmedCount,
-        cancelledCount: result.cancelledCount,
-        rescheduledCount: result.rescheduledCount,
-        compensationRequestedCount: result.compensationRequestedCount,
-        anomalyCount: result.anomalyCount,
+        claimedCount: initialResult.claimedCount,
+        reconciledCount: initialResult.reconciledCount,
+        confirmedCount: initialResult.confirmedCount,
+        cancelledCount: initialResult.cancelledCount,
+        rescheduledCount: initialResult.rescheduledCount,
+        compensationRequestedCount: initialResult.compensationRequestedCount,
+        anomalyCount: totalAnomalyCount,
+        supplements: {
+          claimedCount: supplementResult.claimedCount,
+          reconciledCount: supplementResult.reconciledCount,
+          projectedCount: supplementResult.projectedCount,
+          ignoredLateSuccessCount: supplementResult.ignoredLateSuccessCount,
+          skippedExpiredCount: supplementResult.skippedExpiredCount,
+          anomalyCount: supplementResult.anomalyCount,
+        },
       }),
     );
 
     // Alerte si anomalies détectées.
-    if (result.anomalyCount > 0) {
+    if (totalAnomalyCount > 0) {
       console.warn(
         JSON.stringify({
           event: 'cron.reconcile-payments.anomalies',
           durationMs,
           environment,
-          anomalyCount: result.anomalyCount,
-          codes: result.anomalies.map((a) => a.code),
+          anomalyCount: totalAnomalyCount,
+          codes: [
+            ...initialResult.anomalies.map((a) => a.code),
+            ...supplementResult.anomalies.map((a) => a.code),
+          ],
         }),
       );
     }
@@ -129,13 +145,30 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.json({
       ok: true,
       environment,
-      claimedCount: result.claimedCount,
-      reconciledCount: result.reconciledCount,
-      confirmedCount: result.confirmedCount,
-      cancelledCount: result.cancelledCount,
-      rescheduledCount: result.rescheduledCount,
-      compensationRequestedCount: result.compensationRequestedCount,
-      anomalyCount: result.anomalyCount,
+      claimedCount: initialResult.claimedCount,
+      reconciledCount: initialResult.reconciledCount,
+      confirmedCount: initialResult.confirmedCount,
+      cancelledCount: initialResult.cancelledCount,
+      rescheduledCount: initialResult.rescheduledCount,
+      compensationRequestedCount: initialResult.compensationRequestedCount,
+      anomalyCount: totalAnomalyCount,
+      initialPayments: {
+        claimedCount: initialResult.claimedCount,
+        reconciledCount: initialResult.reconciledCount,
+        confirmedCount: initialResult.confirmedCount,
+        cancelledCount: initialResult.cancelledCount,
+        rescheduledCount: initialResult.rescheduledCount,
+        compensationRequestedCount: initialResult.compensationRequestedCount,
+        anomalyCount: initialResult.anomalyCount,
+      },
+      supplementPayments: {
+        claimedCount: supplementResult.claimedCount,
+        reconciledCount: supplementResult.reconciledCount,
+        projectedCount: supplementResult.projectedCount,
+        ignoredLateSuccessCount: supplementResult.ignoredLateSuccessCount,
+        skippedExpiredCount: supplementResult.skippedExpiredCount,
+        anomalyCount: supplementResult.anomalyCount,
+      },
     });
   } catch (error) {
     // 6. Erreur technique : log et 500.

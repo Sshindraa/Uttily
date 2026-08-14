@@ -253,6 +253,13 @@
       "when": 1785546181799,
       "tag": "0036_g7m_a_amendment_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1786713930000,
+      "tag": "0037_g7m_c4_supplement_retry_transitions",
+      "breakpoints": true
     }
   ]
 }

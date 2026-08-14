@@ -259,13 +259,54 @@ Une tâche est terminée lorsque :
   passés avec `DATABASE_URL`, couvrant replay, tenant, rollback, concurrence,
   source block absent et supplément sans delta physique. Le fichier est
   skippable hors CI sans PostgreSQL et ce cas n'est pas compté comme preuve.
-  La validation ciblée inclut aussi 171/171 tests du module
+  La validation ciblée historique C1 comptait 171/171 tests du module
   `booking-amendments` et 23/23 tests du fichier isolé
   `expire-booking-drafts-batch.test.ts`. Une première suite Core a obtenu
   2 403/2 404 avec un timeout isolé hors C1 ; la seconde a été interrompue
   avant son résumé et n'est pas revendiquée. La validation Core globale
   définitive reste pending CI. Voir
-  `docs/implementation/g7m-c1-supplement-local.md`. G7M-C2 (initiation Stripe),
-  C3 (webhook/application), C4 (expiration/compensation) et C5 (UI) restent
-  pending.
+  `docs/implementation/g7m-c1-supplement-local.md`. G7M-C2 est livré et validé
+  par 13/13 tests PostgreSQL réels, 7/7 tests unitaires de commission et
+  90/90 tests Fake/Stripe du contrat metadata. Le module
+  `booking-amendments` au jalon C2 comptait 191/191 (111 unitaires, 80
+  PostgreSQL) ; le périmètre courant après C3 passe 213/213 (121 unitaires,
+  92 PostgreSQL), 0 skip ;
+  les tests `get-effective-booking` 25 et 31 passent isolément 1/1 chacun et
+  le fichier complet passe 34/34. Les deux timeouts historiques sous charge
+  module sont documentés comme intermittents et non reproduits dans cette
+  validation ; aucun timeout global n'a été modifié. La validation Core globale
+  définitive reste pending CI. Voir
+  `docs/implementation/g7m-c2-supplement-payment.md`. G7M-C3 est implémenté
+  dans le commit local empilé sur C2 : le webhook `AMENDMENT` résout les tentatives par provider ID ou
+  metadata, valide l’autorité et applique atomiquement les blocks, allocations,
+  segments, paiement et outbox `BOOKING_AMENDED.v1` ; `RETAIN` conserve le block
+  source et `REPLACE` le remplace. Les projections `requires_action`,
+  `processing`, `payment_failed` et `canceled` sont monotones ; le succès tardif
+  est projeté avec un résultat interne réservé à la compensation C4. Validation
+  ciblée unitaire/statique C3 verte (10/10 projection, `handleWebhook` 34/34,
+  metadata 8/8, commission 7/7, delta-segments 4/4, adapters Fake/Stripe
+  172/172) ; preuves PostgreSQL C3 vertes (`apply-supplement-amendment`
+  12/12 et `handle-webhook` 93/93, 0 skip). Les corrections de revue restent
+  locales ; la validation Core globale définitive reste pending CI. Voir
+  `docs/implementation/g7m-c3-supplement-webhook.md`. G7M-C4-S est implémenté
+  localement comme migration 0037 sans nouvelle table, colonne ou enum :
+  `READY_TO_APPLY → EXPIRED` est autorisé et le retry
+  `FAILED → PENDING_PROVIDER` exige un unique attempt N+1
+  `PENDING_PROVIDER` sans provider. La preuve PostgreSQL C4-S, l'upgrade réel
+  0036→0037 et l'idempotence du journal sont documentés dans
+  `docs/implementation/g7m-c4s-supplement-retry-schema.md`. G7M-C4-A (expiration,
+  retry N+1 et réconciliation) est implémenté localement dans Core et documenté
+  dans `docs/implementation/g7m-c4a-supplement-lifecycle.md`. G7M-C4-B (compensation
+  atomique des suppléments payés tardivement, wiring webhook C3, extension refund
+  execution et routes cron existantes `expire-holds`/`reconcile-payments`) est
+  entièrement implémenté et validé dans le worktree (non commité) par 26/26 tests Core C4-B (`supplement-compensation.integration.test.ts`),
+  26/26 tests refund execution, 105/105 tests webhook & lifecycle, 11/11 tests expire-holds,
+  9/9 tests reconcile-payments, 256/256 tests booking-amendments séquentiels ; documenté dans
+  `docs/implementation/g7m-c4b-supplement-compensation.md`. C4-S et C4-A sont committés
+  localement dans la pile ; C4-B est implémenté et validé dans le worktree mais non commité ;
+  rien de C2–C4 n'est encore fusionné sur main. Seul C5 (UI) reste
+  pending ; la validation Core globale reste pending CI.
+
+  Mise à jour G7M-C2 : la mention historique « Stripe SUPPLEMENT et UI »
+  ci-dessous est supersédée pour Stripe ; seule l'UI reste à implémenter.
 - ADR-017 Accepted (révisé 2026-08-07, G7C-R3 terminé le 2026-08-07). ADR-018 Accepted (G7P-A Round 2 terminé le 2026-08-07, schéma uniquement ; G7P-B2-A terminé, G7P-B2-B Round 2 terminé et validé, G7P-B2-C implanté le 2026-08-08). ADR-023 Accepted le 2026-08-10 (modifications financières append-only des réservations avant retrait, G7M/G7P-C : conception approuvée ; G7M-A livré le 2026-08-11 — schéma, migration 0036_g7m_a_amendment_schema.sql, triggers d'immutabilité et de transition, tests PostgreSQL 103 tests, voir `docs/implementation/g7m-a-amendment-schema.md` ; G7M-B1 livré le 2026-08-11 — projection canonique `getEffectiveBooking` read-only, tenant-safe, parsing JSONB validé, 46 tests unitaires + 34 tests d'intégration PostgreSQL (0 skip, preuves réelles avec PostgreSQL/PostGIS), invariant financier ADR-023 §11.2 vérifié à chaque projection avec FINANCIAL_INVARIANT_VIOLATION, voir `docs/implementation/g7m-b1-effective-booking.md` ; G7M-B2-A livré le 2026-08-12 — amendements NEUTRAL, `createNeutralBookingAmendment` transactionnel idempotent, optimistic locking `expectedLastAppliedAmendmentNumber`, append-only, outbox BOOKING_AMENDED.v1, 37 tests unitaires + 13 tests d'intégration PostgreSQL (50 tests au total), voir `docs/implementation/g7m-b2a-neutral-amendments.md` ; G7M-B2-B1 livré le 2026-08-13 — amendements REFUND avant pickup, `createRefundBookingAmendment` transactionnel idempotent avec `eventVersion: 'v1'`, clés provider `refund_amendment_${refundId}` et outbox `refund_requested_${refundId}` distinctes, payload `REFUND_REQUESTED.v1` 4 UUIDs (`{ organizationId, bookingId, amendmentId, refundId }`), statut refund `PENDING` sans appel provider à l'étape B2-B1, rollback atomique DB avec réservation idempotence `PENDING`, cap cumulatif par statut et concurrence sans deadlock, voir `docs/implementation/g7m-b2b1-refund-amendments.md` ; G7M-B2-B2A livré et validé dans `docs/implementation/g7m-b2b2a-refund-execution.md` (12 tests unitaires dédiés, 26 tests PostgreSQL worker, 18 tests PostgreSQL webhook tagués, sans skip) ; G7M-B2-B2B livré par route/cron Vercel sans runtime `apps/worker` ; reste à implémenter : Stripe SUPPLEMENT et UI ; périmètre : amendements NEUTRAL/SUPPLEMENT/REFUND sur réservation CONFIRMED uniquement, hold delta-segment 10 min pour SUPPLEMENT, application atomique directe pour NEUTRAL/REFUND, dette de remboursement visible et auditée via `FAILED_REQUIRES_MANUAL_ACTION`/`SETTLED_OFF_PLATFORM`, UI client minimale réutilisant Stripe Elements, OWNER/ADMIN/MANAGER uniquement, EUR uniquement, pas de modification à partir de READY_FOR_PICKUP ; dépendances de migration : nouvelles tables d'amendement, extension `refund_reason`/`refund_status`, adaptation `condition_reports`/`damage_reports`, route cliente de paiement).
