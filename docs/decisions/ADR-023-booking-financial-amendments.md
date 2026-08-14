@@ -1,6 +1,6 @@
 # ADR-023 — Modifications financières append-only des réservations avant retrait
 
-- **Statut** : Accepted (conception approuvée ; C1 livré, C2/C3 implémentés dans des commits locaux empilés, C4-S livré localement comme prérequis de schéma ; C4-A, C4-B et C5 restent pending ; validation Core globale pending CI)
+- **Statut** : Accepted (conception approuvée ; C1 livré, C2/C3 implémentés dans des commits locaux empilés, C4-S committé localement et C4-A implémenté localement ; C4-B et C5 restent pending ; validation Core globale pending CI)
 - **Date** : 2026-08-10
 - **Décideurs** : Porteur produit Uttily, engineering
 - **Relie à** : ADR-009, ADR-010, ADR-011, ADR-013, ADR-018 ; G7M/G7P-C
@@ -446,8 +446,10 @@ verrouille l'amendement (`FOR UPDATE`) et, si `projectionAt >= holdDeadline` et
 `amendment_segments → EXPIRED`, `amendment → EXPIRED`,
 `INSERT outbox BOOKING_AMENDMENT_EXPIRED.v1`.
 
-La condition et l'orchestration d'expiration appartiennent encore à C4-A ;
-0037 ne fournit que la transition PostgreSQL et ses invariants.
+La condition et l'orchestration d'expiration sont implémentées par C4-A dans
+`expireSupplementAmendmentsBatch`, avec une horloge capturée une fois, un batch
+borné `FOR UPDATE SKIP LOCKED`, des verrous tenant-scoped et une outbox
+idempotente. C4-B reste responsable de la compensation/wiring.
 
 ### 7.6 Paiement tardif → compensation automatique
 
@@ -567,8 +569,9 @@ G7M-C4-S (migration 0037) ne crée aucun objet de schéma nouveau. Elle autorise
 `READY_TO_APPLY → EXPIRED` et impose le retry
 `FAILED → PENDING_PROVIDER` avec un attempt N+1 unique, initialisé sans
 provider. Les attempts terminaux et les snapshots du paiement restent
-immuables. C4-A (expiration, retry métier, réconciliation) et C4-B
-(compensation/wiring) restent à implémenter.
+immuables. G7M-C4-A implémente l'expiration, le retry métier et la
+réconciliation hors transaction provider ; C4-B (compensation/wiring) reste
+à implémenter.
 
 ### 10.1 bis Commission du supplément
 
@@ -624,11 +627,13 @@ idempotent si le webhook a déjà projeté l'état.
 
 ### 10.5 Réconciliation
 
-La réconciliation existante (`reconcile-payments-batch`) est étendue pour
-traiter les `amendment_payment_attempts` avec le même pattern `SKIP LOCKED` +
-lease. Le replay `createPaymentIntent` n'a lieu qu'avant `hold_deadline`. Après
-`hold_deadline`, la réconciliation laisse le cron d'expiration traiter
-l'amendement ; aucun nouveau PaymentIntent n'est créé.
+Le mécanisme Core est étendu par
+`reconcileSupplementPaymentsBatch`/`claimSupplementPaymentBatch` pour traiter
+les `amendment_payment_attempts` avec le même pattern `SKIP LOCKED` + lease et
+fencing. Les appels provider sont hors transaction et hors verrou métier. Le
+replay `createPaymentIntent` n'a lieu qu'avant `hold_deadline`. Après
+`hold_deadline`, aucun nouveau PaymentIntent n'est créé et le succès provider
+n'est jamais appliqué localement par C4-A ; l'expiration traite l'amendement.
 
 ### 10.6 Compensation
 

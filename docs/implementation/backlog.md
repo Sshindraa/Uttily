@@ -195,15 +195,18 @@ PostgreSQL webhook historiques, 10/10 tests de projection et les régressions
 unitaires ciblées vertes. La validation Core globale reste pending CI ; C4 et
 C5 restent pending. Voir `docs/implementation/g7m-c3-supplement-webhook.md`.
 
-G7M-C4-S est implémenté localement comme prérequis de schéma, sans lifecycle
-Core C4-A : migration 0037, upgrade réel 0036→0037 et trigger PostgreSQL pour
+G7M-C4-S est committé localement comme prérequis de schéma, sans nouvel objet
+Drizzle : migration 0037, upgrade réel 0036→0037 et trigger PostgreSQL pour
 `READY_TO_APPLY → EXPIRED`, ainsi que retry
 `FAILED → PENDING_PROVIDER` uniquement avec un attempt N+1
-`PENDING_PROVIDER` unique, vierge de provider. C4-A (expiration, retry métier,
-réconciliation) et C4-B (compensation/wiring) restent pending ; C5 (UI) reste
-pending. La validation ciblée et l'upgrade sont décrits dans
-`docs/implementation/g7m-c4s-supplement-retry-schema.md`. La validation Core
-globale reste pending CI.
+`PENDING_PROVIDER` unique, vierge de provider. G7M-C4-A est implémenté
+localement dans Core : expiration HOLD_PENDING/READY_TO_APPLY à la borne,
+libération atomique des holds/segments, retry métier et réconciliation provider
+hors transaction avec lease/fencing. C4-B (compensation/wiring) et C5 (UI)
+restent pending. La validation ciblée et l'upgrade sont décrits dans
+`docs/implementation/g7m-c4s-supplement-retry-schema.md` (pour C4-S) et
+`docs/implementation/g7m-c4a-supplement-lifecycle.md` (pour C4-A). La validation
+Core globale reste pending CI.
 
 ## Horizons stratégiques post-MVP — option C
 

@@ -294,9 +294,10 @@ Une tâche est terminée lorsque :
   `FAILED → PENDING_PROVIDER` exige un unique attempt N+1
   `PENDING_PROVIDER` sans provider. La preuve PostgreSQL C4-S, l'upgrade réel
   0036→0037 et l'idempotence du journal sont documentés dans
-  `docs/implementation/g7m-c4s-supplement-retry-schema.md`. C4-A (expiration,
-  retry métier et réconciliation), C4-B (compensation/wiring) et C5 (UI) restent
-  pending ; la validation Core globale reste pending CI.
+  `docs/implementation/g7m-c4s-supplement-retry-schema.md`. G7M-C4-A (expiration,
+  retry N+1 et réconciliation) est implémenté localement dans Core et documenté
+  dans `docs/implementation/g7m-c4a-supplement-lifecycle.md`. C4-B (compensation/wiring)
+  et C5 (UI) restent pending ; la validation Core globale reste pending CI.
 
   Mise à jour G7M-C2 : la mention historique « Stripe SUPPLEMENT et UI »
   ci-dessous est supersédée pour Stripe ; seule l'UI reste à implémenter.

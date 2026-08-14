@@ -397,7 +397,7 @@ async function executeTransactionA(
 
     await tx
       .update(amendmentPaymentAttempts)
-      .set({ status: 'PROCESSING', updatedAt: now })
+      .set({ status: 'PROCESSING', reconcileAfter: now, updatedAt: now })
       .where(eq(amendmentPaymentAttempts.id, attempt.id));
   }
 
@@ -535,6 +535,10 @@ async function executeTransactionB(
       .set({
         providerPaymentIntentId: providerResult.id,
         providerStatus: providerResult.status,
+        reconcileAfter:
+          providerResult.status === 'processing'
+            ? (payment.processingDeadlineAt ?? amendment.holdDeadline)
+            : null,
         updatedAt: projectionAt,
       })
       .where(eq(amendmentPaymentAttempts.id, attempt.id));
