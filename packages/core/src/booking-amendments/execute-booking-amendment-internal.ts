@@ -11,7 +11,7 @@
 
 import { createHash, randomUUID } from 'node:crypto';
 import { and, asc, eq, inArray, isNull, not, sql, exists, sum } from 'drizzle-orm';
-import type { DatabaseClient, DatabaseTransaction } from '@uttily/database';
+import type { DatabaseClient, DatabaseTransaction, DbExecutor } from '@uttily/database';
 import { lockOrganization } from '@uttily/database';
 import {
   bookings,
@@ -110,70 +110,72 @@ export function isExclusionViolation(err: unknown, constraintName: string): bool
   return false;
 }
 
-export function validateCommand(command: NeutralAmendmentCommand): string | null {
-  if (typeof command !== 'object' || command === null) {
-    return 'command doit être un objet.';
-  }
-  if (!UUID_REGEX.test(command.bookingId)) {
+export function validateCommandPayload(
+  bookingId: string,
+  expectedLastAppliedAmendmentNumber: number,
+  intent: unknown,
+  desiredLines: unknown,
+): string | null {
+  if (typeof bookingId !== 'string' || !UUID_REGEX.test(bookingId)) {
     return 'bookingId invalide (UUID attendu).';
   }
   if (
-    !Number.isSafeInteger(command.expectedLastAppliedAmendmentNumber) ||
-    command.expectedLastAppliedAmendmentNumber < 0
+    !Number.isSafeInteger(expectedLastAppliedAmendmentNumber) ||
+    expectedLastAppliedAmendmentNumber < 0
   ) {
     return 'expectedLastAppliedAmendmentNumber doit être un entier sûr >= 0.';
   }
-  if (typeof command.idempotencyKey !== 'string' || command.idempotencyKey.trim().length === 0) {
-    return 'idempotencyKey requis (string non vide).';
-  }
-  if (!command.intent || typeof command.intent !== 'object') {
+  if (!intent || typeof intent !== 'object') {
     return 'intent est requis.';
   }
-
-  if (command.intent.kind === 'TIME_RANGE') {
-    if (typeof command.intent.startAt !== 'string' || typeof command.intent.endAt !== 'string') {
+  const typedIntent = intent as NeutralAmendmentIntent;
+  if (typedIntent.kind === 'TIME_RANGE') {
+    if (typeof typedIntent.startAt !== 'string' || typeof typedIntent.endAt !== 'string') {
       return 'intent.startAt et intent.endAt doivent être des chaînes ISO locales.';
     }
     try {
-      parseLocalDateTimeString(command.intent.startAt);
-      parseLocalDateTimeString(command.intent.endAt);
+      parseLocalDateTimeString(typedIntent.startAt);
+      parseLocalDateTimeString(typedIntent.endAt);
     } catch (err) {
       return err instanceof Error ? err.message : 'intent TIME_RANGE invalide.';
     }
-    if (!(command.intent.endAt > command.intent.startAt)) {
+    if (!(typedIntent.endAt > typedIntent.startAt)) {
       return 'newCustomerEndAt doit être strictement après newCustomerStartAt.';
     }
-  } else if (command.intent.kind === 'DAY_RANGE') {
+  } else if (typedIntent.kind === 'DAY_RANGE') {
     if (
-      !command.intent.startDate ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(command.intent.startDate) ||
-      !command.intent.endDateExclusive ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(command.intent.endDateExclusive)
+      !typedIntent.startDate ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(typedIntent.startDate) ||
+      !typedIntent.endDateExclusive ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(typedIntent.endDateExclusive)
     ) {
       return 'intent.startDate et intent.endDateExclusive doivent être au format YYYY-MM-DD.';
     }
-    if (!(command.intent.endDateExclusive > command.intent.startDate)) {
+    if (!(typedIntent.endDateExclusive > typedIntent.startDate)) {
       return 'newCustomerEndAt doit être strictement après newCustomerStartAt.';
     }
   } else {
     return 'intent.kind invalide.';
   }
 
-  if (!Array.isArray(command.desiredLines) || command.desiredLines.length === 0) {
+  if (!Array.isArray(desiredLines) || desiredLines.length === 0) {
     return 'desiredLines doit être un tableau non vide.';
   }
 
   const seenLogicalLineIds = new Set<string>();
   const seenVariantIds = new Set<string>();
 
-  for (let i = 0; i < command.desiredLines.length; i++) {
-    const line = command.desiredLines[i]!;
-    if (!UUID_REGEX.test(line.variantId)) {
+  for (let i = 0; i < desiredLines.length; i++) {
+    const line = desiredLines[i] as NeutralAmendmentDesiredLine;
+    if (typeof line !== 'object' || line === null) {
+      return `desiredLines[${i}] doit être un objet.`;
+    }
+    if (typeof line.variantId !== 'string' || !UUID_REGEX.test(line.variantId)) {
       return `desiredLines[${i}].variantId invalide (UUID attendu).`;
     }
 
     if (line.logicalLineId !== undefined) {
-      if (!UUID_REGEX.test(line.logicalLineId)) {
+      if (typeof line.logicalLineId !== 'string' || !UUID_REGEX.test(line.logicalLineId)) {
         return `desiredLines[${i}].logicalLineId invalide (UUID attendu).`;
       }
       if (seenLogicalLineIds.has(line.logicalLineId)) {
@@ -193,6 +195,21 @@ export function validateCommand(command: NeutralAmendmentCommand): string | null
   }
 
   return null;
+}
+
+export function validateCommand(command: NeutralAmendmentCommand): string | null {
+  if (typeof command !== 'object' || command === null) {
+    return 'command doit être un objet.';
+  }
+  if (typeof command.idempotencyKey !== 'string' || command.idempotencyKey.trim().length === 0) {
+    return 'idempotencyKey requis (string non vide).';
+  }
+  return validateCommandPayload(
+    command.bookingId,
+    command.expectedLastAppliedAmendmentNumber,
+    command.intent,
+    command.desiredLines,
+  );
 }
 
 export function computeAmendmentFingerprint(
@@ -1425,13 +1442,13 @@ export async function computeAllocationPlan(
 }
 
 export async function findSourceBlockId(
-  sp: DatabaseTransaction,
+  db: DbExecutor,
   organizationId: string,
   bookingId: string,
   effectiveAllocation: EffectiveAllocation,
   expectedClassification: AmendmentClassification,
 ): Promise<string> {
-  const bookingItemRows = await sp
+  const bookingItemRows = await db
     .select({ bookingBlockId: inventoryBlocks.id })
     .from(inventoryBlocks)
     .innerJoin(sql`booking_items`, sql`booking_items.booking_block_id = ${inventoryBlocks.id}`)
@@ -1449,7 +1466,7 @@ export async function findSourceBlockId(
     return bookingItemRows[0]!.bookingBlockId;
   }
 
-  const amendmentAllocRows = await sp
+  const amendmentAllocRows = await db
     .select({ appliedBookingBlockId: bookingAmendmentAllocations.appliedBookingBlockId })
     .from(bookingAmendmentAllocations)
     .where(

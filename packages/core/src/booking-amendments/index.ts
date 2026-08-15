@@ -86,3 +86,39 @@ export type {
   SupplementReconciliationOptions,
   SupplementReconciliationBatchResult,
 } from './reconcile-supplement-payments-batch';
+
+// G7M-C5-A — Prévisualisation canonique read-only de modification de réservation.
+export { previewBookingAmendment } from './preview-booking-amendment';
+export {
+  PreviewBookingAmendmentError,
+  isPreviewBookingAmendmentErrorCode,
+} from './types-amendment';
+export type {
+  PreviewBookingAmendmentCommand,
+  PreviewLineDiffEntry,
+  PreviewBookingAmendmentSuccess,
+  PreviewBookingAmendmentResult,
+  PreviewBookingAmendmentErrorCode,
+} from './types-amendment';
+export { getEffectivePricingIntent } from './get-effective-pricing-intent';
+export type { GetEffectivePricingIntentResult } from './get-effective-pricing-intent';
+
+// G7M-C5-B — Orchestration de confirmation d'amendement de réservation.
+export { confirmBookingAmendment } from './confirm-booking-amendment';
+export type {
+  ConfirmBookingAmendmentCommand,
+  ConfirmBookingAmendmentAppliedNeutral,
+  ConfirmBookingAmendmentAppliedRefund,
+  ConfirmBookingAmendmentPaymentRequired,
+  ConfirmBookingAmendmentSuccess,
+  ConfirmBookingAmendmentResult,
+} from './types-amendment';
+
+// G7M-C5-C — Read model de checkout du supplément client.
+export { getSupplementCheckoutSummary } from './get-supplement-checkout-summary';
+export type {
+  GetSupplementCheckoutInput,
+  GetSupplementCheckoutOptions,
+  SupplementCheckoutPayable,
+  GetSupplementCheckoutResult,
+} from './types-amendment';

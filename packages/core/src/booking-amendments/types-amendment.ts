@@ -1,3 +1,5 @@
+export type LineAction = 'ADD' | 'MODIFY' | 'REMOVE' | 'UNCHANGED';
+
 /**
  * @uttily/core — Types publics pour la mutation createNeutralBookingAmendment (G7M-B2-A).
  *
@@ -254,3 +256,214 @@ export class RefundAmendmentError extends Error {
     this.code = code;
   }
 }
+
+/**
+ * Commande de prévisualisation d'amendement de réservation (G7M-C5-A).
+ *
+ * Strictement read-only : aucune clé d'idempotence requise.
+ */
+export interface PreviewBookingAmendmentCommand {
+  readonly bookingId: string;
+  readonly expectedLastAppliedAmendmentNumber: number;
+  readonly intent: NeutralAmendmentIntent;
+  readonly desiredLines: readonly NeutralAmendmentDesiredLine[];
+}
+
+/**
+ * Ligne du diff de prévisualisation avec libellés publics sûrs (G7M-C5-A).
+ *
+ * Aucune PII, numéro de série ou donnée provider exposée.
+ */
+export interface PreviewLineDiffEntry {
+  readonly logicalLineId: string;
+  readonly variantId: string;
+  readonly productName: string;
+  readonly variantName: string;
+  readonly action: LineAction;
+  readonly beforeQuantity: number;
+  readonly afterQuantity: number;
+  readonly beforeLineTotalAmountMinor: number;
+  readonly afterLineTotalAmountMinor: number;
+}
+
+/**
+ * Résultat de prévisualisation réussie (G7M-C5-A).
+ */
+export interface PreviewBookingAmendmentSuccess {
+  readonly kind: 'SUCCESS';
+  readonly bookingId: string;
+  readonly locationId: string;
+  readonly locationTimeZone: string;
+  readonly lastAppliedAmendmentNumber: number;
+  readonly classification: 'NEUTRAL' | 'REFUND' | 'SUPPLEMENT';
+  readonly previousCustomerStartAt: Date;
+  readonly previousCustomerEndAt: Date;
+  readonly nextCustomerStartAt: Date;
+  readonly nextCustomerEndAt: Date;
+  readonly previousContractualTotalAmountMinor: number;
+  readonly nextContractualTotalAmountMinor: number;
+  readonly deltaAmountMinor: number;
+  readonly currency: 'EUR';
+  readonly supplementCommissionAmountMinor: number | null;
+  readonly supplementNetAmountMinor: number | null;
+  readonly lines: readonly PreviewLineDiffEntry[];
+}
+
+/**
+ * Résultat fermé de previewBookingAmendment (G7M-C5-A).
+ */
+export type PreviewBookingAmendmentResult =
+  | PreviewBookingAmendmentSuccess
+  | { readonly kind: 'NOT_FOUND' }
+  | { readonly kind: 'FORBIDDEN' }
+  | { readonly kind: 'BOOKING_NOT_CONFIRMED' }
+  | { readonly kind: 'ACTIVE_AMENDMENT_EXISTS' }
+  | { readonly kind: 'STALE_EFFECTIVE_BOOKING'; readonly expected: number; readonly actual: number }
+  | { readonly kind: 'INVALID_INPUT'; readonly message: string }
+  | { readonly kind: 'AVAILABILITY_CONFLICT'; readonly message: string };
+
+/**
+ * Codes d'erreur fermés pour PreviewBookingAmendmentError.
+ */
+export type PreviewBookingAmendmentErrorCode = 'VALIDATION' | 'INTERNAL';
+
+const PREVIEW_AMENDMENT_ERROR_CODES: readonly PreviewBookingAmendmentErrorCode[] = [
+  'VALIDATION',
+  'INTERNAL',
+];
+
+export function isPreviewBookingAmendmentErrorCode(
+  value: unknown,
+): value is PreviewBookingAmendmentErrorCode {
+  return (
+    typeof value === 'string' &&
+    (PREVIEW_AMENDMENT_ERROR_CODES as readonly string[]).includes(value)
+  );
+}
+
+/**
+ * Erreur typée pour previewBookingAmendment (erreurs internes inattendues uniquement).
+ */
+export class PreviewBookingAmendmentError extends Error {
+  readonly code: PreviewBookingAmendmentErrorCode;
+
+  constructor(code: PreviewBookingAmendmentErrorCode, message: string) {
+    super(message);
+    this.name = 'PreviewBookingAmendmentError';
+    this.code = code;
+  }
+}
+
+/**
+ * Commande de confirmation d'amendement de réservation (G7M-C5-B).
+ */
+export interface ConfirmBookingAmendmentCommand {
+  readonly bookingId: string;
+  readonly expectedLastAppliedAmendmentNumber: number;
+  readonly intent: NeutralAmendmentIntent;
+  readonly desiredLines: readonly NeutralAmendmentDesiredLine[];
+  readonly idempotencyKey: string;
+  readonly expectedClassification: 'NEUTRAL' | 'REFUND' | 'SUPPLEMENT';
+  readonly expectedDeltaAmountMinor: number;
+  readonly expectedNextTotalAmountMinor: number;
+}
+
+/**
+ * Succès de confirmation pour un amendement NEUTRAL appliqué immédiatement (G7M-C5-B).
+ */
+export interface ConfirmBookingAmendmentAppliedNeutral {
+  readonly kind: 'APPLIED_NEUTRAL';
+  readonly amendmentId: string;
+  readonly amendmentNumber: number;
+  readonly bookingId: string;
+  readonly isReplay: boolean;
+}
+
+/**
+ * Succès de confirmation pour un amendement REFUND appliqué immédiatement avec remboursement PENDING (G7M-C5-B).
+ */
+export interface ConfirmBookingAmendmentAppliedRefund {
+  readonly kind: 'APPLIED_REFUND';
+  readonly amendmentId: string;
+  readonly amendmentNumber: number;
+  readonly bookingId: string;
+  readonly refundAmountMinor: number;
+  readonly currency: 'EUR';
+  readonly isReplay: boolean;
+}
+
+/**
+ * Succès de confirmation pour un amendement SUPPLEMENT avec hold local en attente de paiement (G7M-C5-B).
+ */
+export interface ConfirmBookingAmendmentPaymentRequired {
+  readonly kind: 'PAYMENT_REQUIRED';
+  readonly amendmentId: string;
+  readonly amendmentNumber: number;
+  readonly bookingId: string;
+  readonly supplementAmountMinor: number;
+  readonly currency: 'EUR';
+  readonly holdDeadline: string;
+  readonly isReplay: boolean;
+}
+
+/**
+ * Union des succès de confirmation d'amendement (G7M-C5-B).
+ */
+export type ConfirmBookingAmendmentSuccess =
+  | ConfirmBookingAmendmentAppliedNeutral
+  | ConfirmBookingAmendmentAppliedRefund
+  | ConfirmBookingAmendmentPaymentRequired;
+
+/**
+ * Résultat fermé de confirmBookingAmendment (G7M-C5-B).
+ */
+export type ConfirmBookingAmendmentResult =
+  | ConfirmBookingAmendmentSuccess
+  | { readonly kind: 'NOT_FOUND' }
+  | { readonly kind: 'FORBIDDEN' }
+  | { readonly kind: 'BOOKING_NOT_CONFIRMED' }
+  | { readonly kind: 'ACTIVE_AMENDMENT_EXISTS' }
+  | { readonly kind: 'STALE_EFFECTIVE_BOOKING'; readonly expected: number; readonly actual: number }
+  | { readonly kind: 'AVAILABILITY_CONFLICT'; readonly message: string }
+  | { readonly kind: 'INVALID_INPUT'; readonly message: string }
+  | { readonly kind: 'PREVIEW_CHANGED' }
+  | { readonly kind: 'IDEMPOTENCY_CONFLICT' }
+  | { readonly kind: 'INVALID_STATE' };
+
+/**
+ * Paramètres d'entrée pour le read model du checkout de supplément (G7M-C5-C).
+ */
+export interface GetSupplementCheckoutInput {
+  readonly amendmentId: string;
+  readonly customerUserId: string;
+}
+
+/**
+ * Options d'exécution pour getSupplementCheckoutSummary.
+ */
+export interface GetSupplementCheckoutOptions {
+  /** Horloge applicative injectable pour tester l'échéance du hold. */
+  readonly asOf?: Date;
+}
+
+/**
+ * État PAYABLE du checkout de supplément (G7M-C5-C).
+ */
+export interface SupplementCheckoutPayable {
+  readonly kind: 'PAYABLE';
+  readonly amountMinor: number;
+  readonly currency: 'EUR';
+  readonly holdDeadline: string;
+  readonly timeZone: string;
+}
+
+/**
+ * Résultat fermé à 6 états du read model getSupplementCheckoutSummary (G7M-C5-C).
+ */
+export type GetSupplementCheckoutResult =
+  | SupplementCheckoutPayable
+  | { readonly kind: 'PROCESSING' }
+  | { readonly kind: 'PAID' }
+  | { readonly kind: 'EXPIRED' }
+  | { readonly kind: 'NOT_FOUND' }
+  | { readonly kind: 'INVALID_STATE' };

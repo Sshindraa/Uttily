@@ -1,0 +1,104 @@
+import React from 'react';
+import { redirect } from 'next/navigation';
+import { getAuthenticatedUser } from '@/lib/auth';
+import { getDb } from '@/lib/db';
+import { getSupplementCheckoutSummary } from '@uttily/core';
+import { SupplementCheckoutClient } from './supplement-checkout-client';
+
+interface PageProps {
+  params: Promise<{ amendmentId: string }>;
+}
+
+export default async function AmendmentCheckoutPage({
+  params,
+}: PageProps): Promise<React.ReactElement> {
+  const { amendmentId } = await params;
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    redirect(
+      `/sign-in?redirectUrl=${encodeURIComponent(`/checkout/amendment/${encodeURIComponent(amendmentId)}`)}`,
+    );
+  }
+
+  const db = getDb();
+  const summary = await getSupplementCheckoutSummary(db, {
+    amendmentId,
+    customerUserId: user.id,
+  });
+
+  if (summary.kind === 'NOT_FOUND') {
+    return (
+      <main style={containerStyle}>
+        <h1>Paiement introuvable</h1>
+        <p>Ce paiement de modification n'existe pas ou ne vous est pas accessible.</p>
+      </main>
+    );
+  }
+
+  if (summary.kind === 'EXPIRED') {
+    return (
+      <main style={containerStyle}>
+        <h1>Délai de paiement expiré</h1>
+        <p>
+          Le délai de 10 minutes pour régler cette modification a expiré. Les articles associés ont
+          été libérés.
+        </p>
+      </main>
+    );
+  }
+
+  if (summary.kind === 'PAID') {
+    return (
+      <main style={containerStyle}>
+        <h1>Modification déjà réglée</h1>
+        <p>
+          Ce supplément a déjà été réglé. La modification est en cours d'application ou a déjà été
+          confirmée.
+        </p>
+      </main>
+    );
+  }
+
+  if (summary.kind === 'PROCESSING') {
+    return (
+      <main style={containerStyle}>
+        <h1>Paiement en cours de traitement</h1>
+        <p>
+          Votre paiement est en cours de validation bancaire. Vous serez notifié dès sa
+          confirmation.
+        </p>
+      </main>
+    );
+  }
+
+  if (summary.kind === 'INVALID_STATE') {
+    return (
+      <main style={containerStyle}>
+        <h1>Paiement indisponible</h1>
+        <p>
+          Ce paiement ne peut pas être effectué dans l'état actuel. Veuillez contacter votre loueur.
+        </p>
+      </main>
+    );
+  }
+
+  return (
+    <main style={containerStyle}>
+      <h1>Règlement du supplément</h1>
+      <SupplementCheckoutClient
+        amendmentId={amendmentId}
+        amountMinor={summary.amountMinor}
+        currency={summary.currency}
+        holdDeadline={summary.holdDeadline}
+        timeZone={summary.timeZone}
+      />
+    </main>
+  );
+}
+
+const containerStyle: React.CSSProperties = {
+  maxWidth: 520,
+  margin: '2rem auto',
+  padding: '1.5rem',
+  fontFamily: 'system-ui, -apple-system, sans-serif',
+};
