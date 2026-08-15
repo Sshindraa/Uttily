@@ -6,29 +6,21 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DATABASE_URL: postgresql://uttily:uttily@localhost:5432/uttily
+
 jobs:
-  verify:
-    name: Lint, typecheck, test, build
+  quality:
+    name: Quality (lint, format, typecheck)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    services:
-      postgres:
-        image: postgis/postgis:16-3.4
-        env:
-          POSTGRES_USER: uttily
-          POSTGRES_PASSWORD: uttily
-          POSTGRES_DB: uttily
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U uttily -d uttily"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
-    env:
-      DATABASE_URL: postgresql://uttily:uttily@localhost:5432/uttily
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
@@ -55,8 +47,95 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Test (unit + integration PostgreSQL)
-        run: pnpm test
+  tests:
+    name: Tests (${{ matrix.package }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - '@uttily/auth'
+          - '@uttily/contracts'
+          - '@uttily/ui'
+          - '@uttily/database'
+          - '@uttily/core'
+          - '@uttily/web'
+          - '@uttily/worker'
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: uttily
+          POSTGRES_PASSWORD: uttily
+          POSTGRES_DB: uttily
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U uttily -d uttily"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test package
+        run: pnpm --filter "${{ matrix.package }}" test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Build
         run: pnpm build
+
+  verify:
+    name: Lint, typecheck, test, build
+    if: ${{ always() }}
+    needs: [quality, tests, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Fail if a required job failed or was cancelled
+        if: ${{ needs.quality.result != 'success' || needs.tests.result != 'success' || needs.build.result != 'success' }}
+        run: |
+          echo "Quality: ${{ needs.quality.result }}"
+          echo "Tests: ${{ needs.tests.result }}"
+          echo "Build: ${{ needs.build.result }}"
+          exit 1
+
+      - name: Verification passed
+        run: echo "Parallel CI jobs passed."
