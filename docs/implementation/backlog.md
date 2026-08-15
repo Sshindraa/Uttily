@@ -148,7 +148,7 @@ Critères d'acceptation :
 | G7F-B — UI guidée photos | tutoriel par catégorie, upload, fallback | G7F-A, politique image | CDN imposé |
 | G7G — Dashboard | signal minimal maintenance/BROKEN, fuseaux — **Implémenté le 2026-08-09 : projection Core bornée, isolation PostgreSQL, bornes temporelles exactes, UI dashboard et tests dédiés** | G7B-R3 | workflow complet |
 | G7H — Analytics | ledger first-party, 4 mesures, privacy-gated — **G7H-A terminé (fondations techniques : migration 0035, module Core product-analytics, tests unitaires et intégration PostgreSQL, ADR-022) ; G7H-B terminé (cablage de 3 evenements analytics dans les parcours applicatifs : PUBLIC_SEARCH_PERFORMED, BOOKING_ATTEMPTED, BOOKING_CONFIRMED, avec resolveur d'environnement pur et gate PRODUCTION impossible, enregistreur best-effort avec savepoint, ADR-022 amende section 2.8) ; activation production bloquée par question ouverte G7B-R3** | G7B-R3, validation privacy | provider externe, collecte avant validation |
-| G7I — Validation transversale | e2e, a11y, performance, concurrence, DST, snapshots | G7C-R3–G7H | réouverture Lot 6 |
+| G7I — Validation transversale | tests transversaux Core PostgreSQL (chaîne publique, isolation tenant, intervalles semi-ouverts), security sentinel fail-closed (WebhookHandlerError + BookingDraftError), static accessibility guardrails, matrice de couverture complète — **Validé par CI PR #16 ; fusion sur main pending** | G7C-R3–G7H | réouverture Lot 6 |
 
 Dépendances explicites : G7C-R3 dépend de G7B-R3 ; G7P-A dépend de G7B-R3 ;
 G7P-B dépend de G7P-A et G7C-R3 ; G7M/G7P-C dépend de G7P-B2 et d'une conception

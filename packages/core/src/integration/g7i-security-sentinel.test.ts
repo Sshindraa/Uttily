@@ -9,99 +9,183 @@
  * les constructeurs d'erreurs et les codes fermés via analyse statique du
  * code source et construction d'instances.
  *
- * Date de travail : 2026-08-08.
+ * Fail-closed : la découverte des fichiers est récursive (aucune liste codée en
+ * dur). Si un fichier découvert ne peut être lu, le test échoue. Au moins un
+ * call site WebhookHandlerError et un call site BookingDraftError doivent être
+ * trouvés, sinon le test échoue.
+ *
+ * Date de travail : 2026-08-15.
  */
 
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { WebhookHandlerError, type WebhookHandlerErrorCode } from '../webhook-handler/errors';
 import { BookingDraftError } from '../booking-drafts/errors';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Recursive discovery of all production .ts files under packages/core/src/
+// Excludes .test.ts, .fixture.ts, and directories named __fixtures__ or __generated__
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SRC_ROOT = join(__dirname, '..');
+
+function isExcludedFile(fileName: string): boolean {
+  return fileName.endsWith('.test.ts') || fileName.endsWith('.fixture.ts');
+}
+
+function isExcludedDir(dirName: string): boolean {
+  return dirName === '__fixtures__' || dirName === '__generated__';
+}
+
+function discoverTsFiles(dir: string, acc: string[] = []): string[] {
+  const entries = readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (isExcludedDir(entry.name)) continue;
+      discoverTsFiles(fullPath, acc);
+    } else if (entry.isFile() && entry.name.endsWith('.ts') && !isExcludedFile(entry.name)) {
+      acc.push(fullPath);
+    }
+  }
+  return acc;
+}
+
+const discoveredFiles = discoverTsFiles(SRC_ROOT);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper: check a 6-line window (constructor line + 5 following lines) for leaks
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface LeakFinding {
+  filePath: string;
+  lineNumber: number;
+  pattern: string;
+}
+
+function findLeaksInFile(
+  filePath: string,
+  constructorName: 'WebhookHandlerError' | 'BookingDraftError',
+): LeakFinding[] {
+  const content = readFileSync(filePath, 'utf8'); // fail-closed: no try/catch
+  const lines = content.split('\n');
+  const findings: LeakFinding[] = [];
+  const needle = `new ${constructorName}(`;
+
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i]!.includes(needle)) continue;
+    const windowEnd = Math.min(i + 6, lines.length);
+    const window = lines.slice(i, windowEnd).join('\n');
+
+    // client_secret or clientSecret (case-insensitive)
+    if (/client_secret|clientsecret/i.test(window)) {
+      findings.push({ filePath, lineNumber: i + 1, pattern: 'client_secret/clientSecret' });
+    }
+
+    // Raw SQL patterns
+    if (/\b(SELECT|INSERT|UPDATE|DELETE)\s.+\bFROM\b/i.test(window)) {
+      findings.push({
+        filePath,
+        lineNumber: i + 1,
+        pattern: 'SQL SELECT/INSERT/UPDATE/DELETE ... FROM',
+      });
+    }
+    if (/\bINSERT\s+INTO\b/i.test(window)) {
+      findings.push({ filePath, lineNumber: i + 1, pattern: 'SQL INSERT INTO' });
+    }
+    if (/\bUPDATE\s+\w+\s+SET\b/i.test(window)) {
+      findings.push({ filePath, lineNumber: i + 1, pattern: 'SQL UPDATE ... SET' });
+    }
+    if (/\bDELETE\s+FROM\b/i.test(window)) {
+      findings.push({ filePath, lineNumber: i + 1, pattern: 'SQL DELETE FROM' });
+    }
+
+    // Stripe provider prefixes in quoted strings
+    if (/['"`]sk_/.test(window)) {
+      findings.push({ filePath, lineNumber: i + 1, pattern: 'Stripe sk_ prefix' });
+    }
+    if (/['"`]pi_/.test(window)) {
+      findings.push({ filePath, lineNumber: i + 1, pattern: 'Stripe pi_ prefix' });
+    }
+    if (/['"`]acct_/.test(window)) {
+      findings.push({ filePath, lineNumber: i + 1, pattern: 'Stripe acct_ prefix' });
+    }
+  }
+  return findings;
+}
+
 describe('G7I — security sentinel: no client_secret or provider details in public errors', () => {
   // ─────────────────────────────────────────────────────────────────────────
-  // GAP 4a: WebhookHandlerError does not include client_secret in message or responseBody
+  // Verify at least one real constructor call site is found for each error type
   // ─────────────────────────────────────────────────────────────────────────
-  // Complete list of all production source files that construct WebhookHandlerError.
-  // Found via: grep -rn 'new WebhookHandlerError' packages/core/src/ --include='*.ts' | grep -v '.test.'
-  const sourceFiles = [
-    join(__dirname, '..', 'webhook-handler', 'validate-authority.ts'),
-    join(__dirname, '..', 'webhook-handler', 'resolve-attempt.ts'),
-    join(__dirname, '..', 'webhook-handler', 'resolve-amendment-attempt.ts'),
-    join(__dirname, '..', 'webhook-handler', 'handle-non-success.ts'),
-    join(__dirname, '..', 'webhook-handler', 'confirm-booking.ts'),
-    join(__dirname, '..', 'webhook-handler', 'compensate-late.ts'),
-    join(__dirname, '..', 'payment-transitions', 'lock-rows.ts'),
-    join(__dirname, '..', 'payment-transitions', 'apply-booking-confirmation.ts'),
-    join(__dirname, '..', 'booking-amendments', 'apply-supplement-amendment.ts'),
-    join(__dirname, '..', 'booking-amendments', 'initiate-supplement-payment.ts'),
-  ];
+  it('discovers at least one real WebhookHandlerError constructor call site in production source', () => {
+    let webhookCount = 0;
+    for (const file of discoveredFiles) {
+      const content = readFileSync(file, 'utf8');
+      if (content.includes('new WebhookHandlerError(')) {
+        webhookCount++;
+      }
+    }
+    expect(webhookCount).toBeGreaterThanOrEqual(1);
+  });
 
-  it('no production WebhookHandlerError constructor leaks client_secret in its message argument (multi-line aware static check)', () => {
-    // For each source file, find every `new WebhookHandlerError(...)` occurrence and
-    // check a window of 5 lines AFTER the constructor line (to catch multi-line
-    // template literals where the message spans several lines).
-    for (const file of sourceFiles) {
-      let fileContent = '';
-      try {
-        fileContent = readFileSync(file, 'utf8');
-      } catch {
-        // File may not exist in all contexts — skip silently.
-        continue;
+  it('discovers at least one real BookingDraftError constructor call site in production source', () => {
+    let bookingDraftCount = 0;
+    for (const file of discoveredFiles) {
+      const content = readFileSync(file, 'utf8');
+      if (content.includes('new BookingDraftError(')) {
+        bookingDraftCount++;
       }
-      const lines = fileContent.split('\n');
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i]!.includes('new WebhookHandlerError')) {
-          // Check the constructor line itself plus a 5-line window after it.
-          const windowEnd = Math.min(i + 6, lines.length);
-          const window = lines.slice(i, windowEnd).join('\n');
-          expect(window).not.toContain('client_secret');
-          expect(window).not.toContain('clientSecret');
-        }
-      }
+    }
+    expect(bookingDraftCount).toBeGreaterThanOrEqual(1);
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // GAP 4a: WebhookHandlerError — coverage gap detection (fail-closed)
+  // ─────────────────────────────────────────────────────────────────────────
+  it('no production WebhookHandlerError constructor leaks client_secret, raw SQL, or Stripe provider prefixes (recursive fail-closed static analysis)', () => {
+    const allFindings: LeakFinding[] = [];
+    for (const file of discoveredFiles) {
+      const content = readFileSync(file, 'utf8');
+      if (!content.includes('new WebhookHandlerError(')) continue;
+      const findings = findLeaksInFile(file, 'WebhookHandlerError');
+      allFindings.push(...findings);
+    }
+    if (allFindings.length > 0) {
+      const details = allFindings
+        .map((f) => `  - ${relative(SRC_ROOT, f.filePath)}:${f.lineNumber} — ${f.pattern}`)
+        .join('\n');
+      expect.fail(
+        `WebhookHandlerError leak detected in ${allFindings.length} call site(s):\n${details}`,
+      );
     }
   });
 
-  it('no production WebhookHandlerError constructor leaks raw SQL fragments or Stripe internal IDs in its message argument', () => {
-    // Read each actual source file and verify that no WebhookHandlerError message
-    // argument contains raw SQL keywords (SELECT, INSERT, UPDATE, DELETE, FROM in a
-    // SQL context) or provider internal detail prefixes (sk_, acct_, pi_).
-    //
-    // Internal UUIDs in messages are acceptable for server-side errors, but SQL
-    // fragments and client_secret are not.
-    for (const file of sourceFiles) {
-      let fileContent = '';
-      try {
-        fileContent = readFileSync(file, 'utf8');
-      } catch {
-        continue;
-      }
-      const lines = fileContent.split('\n');
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i]!.includes('new WebhookHandlerError')) {
-          // Extract the message argument: check a window of 5 lines after the
-          // constructor line (messages may span multiple lines as template literals).
-          const windowEnd = Math.min(i + 6, lines.length);
-          const window = lines.slice(i, windowEnd).join('\n');
-
-          // No raw SQL keywords in a SQL-statement context.
-          // We check for SQL keywords followed by typical SQL patterns.
-          expect(window).not.toMatch(/\b(SELECT|INSERT|UPDATE|DELETE)\s.+\bFROM\b/i);
-          expect(window).not.toMatch(/\bINSERT\s+INTO\b/i);
-          expect(window).not.toMatch(/\bUPDATE\s+\w+\s+SET\b/i);
-          expect(window).not.toMatch(/\bDELETE\s+FROM\b/i);
-
-          // No Stripe provider internal detail prefixes in error messages.
-          // acct_ is acceptable in connected account configuration context but
-          // not in user-facing error messages.
-          expect(window).not.toMatch(/['"`]sk_/);
-          expect(window).not.toMatch(/['"`]pi_/);
-          expect(window).not.toMatch(/['"`]acct_/);
-        }
-      }
+  // ─────────────────────────────────────────────────────────────────────────
+  // GAP 4b: BookingDraftError — coverage gap detection (fail-closed)
+  // ─────────────────────────────────────────────────────────────────────────
+  it('no production BookingDraftError constructor leaks client_secret, raw SQL, or Stripe provider prefixes (recursive fail-closed static analysis)', () => {
+    const allFindings: LeakFinding[] = [];
+    for (const file of discoveredFiles) {
+      const content = readFileSync(file, 'utf8');
+      if (!content.includes('new BookingDraftError(')) continue;
+      const findings = findLeaksInFile(file, 'BookingDraftError');
+      allFindings.push(...findings);
+    }
+    if (allFindings.length > 0) {
+      const details = allFindings
+        .map((f) => `  - ${relative(SRC_ROOT, f.filePath)}:${f.lineNumber} — ${f.pattern}`)
+        .join('\n');
+      expect.fail(
+        `BookingDraftError leak detected in ${allFindings.length} call site(s):\n${details}`,
+      );
     }
   });
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Synthetic assertions: construct error instances and verify responseBody
+  // ─────────────────────────────────────────────────────────────────────────
   it('WebhookHandlerError responseBody and message do not leak provider details (raw SQL, Stripe internal IDs beyond connected account)', () => {
     // Construct a WebhookHandlerError with a typical message and verify responseBody.
     const err = new WebhookHandlerError('WEBHOOK_ATTEMPT_NOT_FOUND', 'Tentative introuvable.');

@@ -1,15 +1,18 @@
 /**
  * @uttily/core — G7I Lot 7 release validation gate.
  *
- * Tests d'intégration PostgreSQL transversaux couvrant la chaîne publique
- * complète (search → details → authority → hold → payment → webhook → confirm),
- * l'isolation multi-tenant des publicIds, et la cohérence des intervalles
- * semi-ouverts [start, end) à travers le flux search→hold→checkout.
+ * Core transversal integration — Tests d'intégration PostgreSQL transversaux
+ * couvrant la chaîne publique complète (search → details → authority → hold →
+ * payment → webhook → confirm), l'isolation multi-tenant des publicIds, et la
+ * cohérence des intervalles semi-ouverts [start, end) à travers le flux
+ * search→hold→checkout.
  *
  * Ces tests ne dupliquent pas la couverture existante : ils chaînent les 7 étapes
- * dans un seul test end-to-end et vérifient les invariants transversaux.
+ * dans un seul test d'intégration transversal et vérifient les invariants
+ * transversaux. Le `PostgresPhotoPublicationGate` réel (G7F-A2) est utilisé
+ * partout — les fixtures seedent 3 photos valides par produit.
  *
- * Date de travail : 2026-08-08.
+ * Date de travail : 2026-08-15.
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -24,11 +27,8 @@ import { searchPublicOffers } from '../public-search/search-offers';
 import { getPublicOfferDetails } from '../public-search/get-public-offer-details';
 import { resolvePublicBookingAuthority } from '../public-search/resolve-public-booking-authority';
 import { createPublicSearchCursorCodec } from '../public-search/cursor';
-import type {
-  PublicProductPublicationGate,
-  SearchPublicOffersInput,
-  PublicSearchIntent,
-} from '../public-search/types';
+import { PostgresPhotoPublicationGate } from '../photos/postgres-publication-gate';
+import type { SearchPublicOffersInput, PublicSearchIntent } from '../public-search/types';
 import type { FlexibleCreateBookingDraftInput } from '../booking-drafts/types';
 import { createBookingDraftWithHold } from '../booking-drafts';
 import { initiatePayment } from '../payment-initiation/initiate-payment';
@@ -94,11 +94,7 @@ const testCursorCodec = createPublicSearchCursorCodec(
   'test-secret-for-g7i-journey-tests-only-not-for-production',
 );
 
-const fakePublicationGate: PublicProductPublicationGate = {
-  async filterEligibleProductIds(_db: DatabaseClient, productIds: readonly string[]) {
-    return new Set(productIds);
-  },
-};
+const realPublicationGate = new PostgresPhotoPublicationGate();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Seed helpers
@@ -463,7 +459,7 @@ describe.skipIf(shouldSkipIntegrationTests())('G7I — Lot 7 release validation'
       intent: dayRange,
     };
     const searchResult = await searchPublicOffers(db, searchInput, {
-      publicationGate: fakePublicationGate,
+      publicationGate: realPublicationGate,
       cursorCodec: testCursorCodec,
     });
     expect(searchResult.items.length).toBeGreaterThanOrEqual(1);
@@ -485,7 +481,7 @@ describe.skipIf(shouldSkipIntegrationTests())('G7I — Lot 7 release validation'
         publicLocationId: ids.publicLocationId,
         locale: 'fr',
       },
-      { publicationGate: fakePublicationGate },
+      { publicationGate: realPublicationGate },
     );
     expect(detailsResult.kind).toBe('SUCCESS');
     if (detailsResult.kind !== 'SUCCESS') return;
@@ -506,7 +502,7 @@ describe.skipIf(shouldSkipIntegrationTests())('G7I — Lot 7 release validation'
         publicLocationId: ids.publicLocationId,
         publicVariantId: ids.publicVariantId,
       },
-      { publicationGate: fakePublicationGate },
+      { publicationGate: realPublicationGate },
     );
     expect(authorityResult.kind).toBe('SUCCESS');
     if (authorityResult.kind !== 'SUCCESS') return;
@@ -606,7 +602,7 @@ describe.skipIf(shouldSkipIntegrationTests())('G7I — Lot 7 release validation'
         publicLocationId: orgA.publicLocationId,
         publicVariantId: orgB.publicVariantId,
       },
-      { publicationGate: fakePublicationGate },
+      { publicationGate: realPublicationGate },
     );
     // Must NOT be SUCCESS — variant from another org must be rejected
     expect(crossResult.kind).not.toBe('SUCCESS');
@@ -620,7 +616,7 @@ describe.skipIf(shouldSkipIntegrationTests())('G7I — Lot 7 release validation'
         publicLocationId: orgA.publicLocationId,
         publicVariantId: orgA.publicVariantId,
       },
-      { publicationGate: fakePublicationGate },
+      { publicationGate: realPublicationGate },
     );
     expect(validResult.kind).toBe('SUCCESS');
   });

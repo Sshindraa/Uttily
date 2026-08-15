@@ -1,22 +1,23 @@
 /**
- * @uttily/web — G7I Lot 7 a11y & UX sentinel tests.
+ * @uttily/web — G7I Lot 7 static accessibility guardrails.
  *
- * Tests d'analyse statique garantissant que les surfaces publiques (recherche,
- * résultat, checkout, offre) respectent les exigences d'accessibilité et de
- * responsive design mobile-first.
+ * Tests d'analyse statique (static source analysis) vérifiant la structure
+ * source : labels, rôles, live regions et media queries.
  *
- * Pattern : readFileSync + expect toContain/not.toContain (pas de DOM rendering,
- * pas de Playwright). Vérifie la présence d'attributs ARIA, de labels associés,
- * de classes responsive et de messages d'erreur accessibles.
+ * Ces tests vérifient la structure du code source, PAS une navigation clavier
+ * réellement exécutée. Ils garantissent que les attributs ARIA, labels et media
+ * queries sont présents dans le source.
  *
- * Date de travail : 2026-08-08.
+ * Aucun Playwright, aucun rendu DOM, aucune nouvelle dépendance.
+ *
+ * Date de travail : 2026-08-15.
  */
 
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-describe('G7I — a11y & UX essentials', () => {
+describe('G7I — static accessibility guardrails', () => {
   // ─────────────────────────────────────────────────────────────────────────
   // search-form.tsx — labels, keyboard-accessible inputs, aria-describedby
   // ─────────────────────────────────────────────────────────────────────────
