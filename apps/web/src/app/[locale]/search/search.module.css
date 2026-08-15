@@ -465,3 +465,33 @@
     scroll-behavior: auto;
   }
 }
+
+.offerLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.offerLink:hover {
+  text-decoration: underline;
+  color: var(--accent);
+}
+
+.bookButton {
+  display: block;
+  width: 100%;
+  padding: 0.65rem 1rem;
+  background: var(--accent);
+  color: #fff;
+  text-align: center;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: background-color 0.15s;
+  box-sizing: border-box;
+}
+
+.bookButton:hover {
+  background: #124e37;
+  color: #fff;
+}

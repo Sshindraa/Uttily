@@ -260,6 +260,13 @@
       "when": 1786713930000,
       "tag": "0037_g7m_c4_supplement_retry_transitions",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1786800000000,
+      "tag": "0038_product_variants_public_id",
+      "breakpoints": true
     }
   ]
 }

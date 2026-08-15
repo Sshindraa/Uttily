@@ -566,6 +566,7 @@ export const productVariants = pgTable(
   'product_variants',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    publicId: uuid('public_id').notNull().unique().defaultRandom(),
     productId: uuid('product_id')
       .notNull()
       .references(() => products.id),

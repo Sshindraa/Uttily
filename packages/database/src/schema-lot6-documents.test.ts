@@ -697,7 +697,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Lot 6 G5B — Documents transacti
   // -------------------------------------------------------------------------
   // 1. Migration from scratch — toutes les tables G5B existent
   // -------------------------------------------------------------------------
-  it('crée les 4 tables G5B et __drizzle_migrations a 37 entrées', async () => {
+  it('crée les 4 tables G5B et __drizzle_migrations a 38 entrées', async () => {
     if (!testUrl) return;
     const sql = postgres(testUrl, { max: 1 });
     try {
@@ -711,7 +711,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Lot 6 G5B — Documents transacti
       expect(tables.length).toBe(4);
 
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(37);
+      expect(rows.length).toBe(38);
     } finally {
       await sql.end();
     }
@@ -726,7 +726,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Lot 6 G5B — Documents transacti
     const sql = postgres(testUrl, { max: 1 });
     try {
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(37);
+      expect(rows.length).toBe(38);
     } finally {
       await sql.end();
     }
@@ -2188,12 +2188,12 @@ describe.skipIf(shouldSkipIntegrationTests())('Lot 6 G5B — Documents transacti
     });
 
     // --- 23. Compte final de migrations égal à 31 ---
-    it('__drizzle_migrations contient 37 entrées', async () => {
+    it('__drizzle_migrations contient 38 entrées', async () => {
       if (!testUrl) return;
       const sql = postgres(testUrl, { max: 1 });
       try {
         const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-        expect(rows.length).toBe(37);
+        expect(rows.length).toBe(38);
       } finally {
         await sql.end();
       }
