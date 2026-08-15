@@ -316,3 +316,18 @@ Une tâche est terminée lorsque :
 - **Server Action & Formulaire (`createBookingDraftAction` / `OfferBookingForm`)** : Empreinte métier déterministe, clé d'idempotence stable via `useRef`, mapping d'erreurs fermé sans fuite interne.
 - **Preuves de tests** : 4 tests PostgreSQL Database (0038), 31 tests Core (unitaires, PostgreSQL, sentinelles), 17 tests ciblés Web (concurrence réelle 2 utilisateurs 1 hold, idempotence, sentinelles SSR), 429 tests globaux Web passés, lint/typecheck/build verts.
 - **Document de livraison** : `docs/implementation/public-offer-booking-bridge.md`.
+
+## Statut G7I
+
+- G7I (validation transversale Lot 7) : implémenté et validé par la CI de la
+  PR #16 le 2026-08-15. Tests transversaux Core PostgreSQL (chaîne publique
+  search → details → authority → hold → payment → webhook → confirmation avec
+  PostgresPhotoPublicationGate réel), security sentinel fail-closed (découverte
+  récursive des call sites WebhookHandlerError + BookingDraftError, aucune
+  fuite de client_secret/SQL/provider), static accessibility guardrails
+  (labels, rôles, live regions, media queries — analyse statique du source, pas
+  de navigation clavier exécutée). Matrice de couverture complète documentée
+  dans `docs/implementation/g7i-lot7-release-validation.md` (18 critères :
+  7 nouveaux tests + 11 preuves existantes réutilisées pour amendments,
+  analytics, outbox). Aucune nouvelle fonctionnalité, aucune migration, aucun
+  fichier source modifié. Fusion sur main encore pending.
