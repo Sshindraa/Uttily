@@ -15,7 +15,9 @@ export default async function AmendmentCheckoutPage({
   const { amendmentId } = await params;
   const user = await getAuthenticatedUser();
   if (!user) {
-    redirect('/sign-in');
+    redirect(
+      `/sign-in?redirectUrl=${encodeURIComponent(`/checkout/amendment/${encodeURIComponent(amendmentId)}`)}`,
+    );
   }
 
   const db = getDb();

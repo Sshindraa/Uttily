@@ -492,6 +492,8 @@ export type InitiateSupplementPaymentActionResult =
 export async function initiateSupplementPaymentAction(input: {
   amendmentId: string;
 }): Promise<InitiateSupplementPaymentActionResult> {
+  const asOf = new Date();
+
   const user = await getAuthenticatedUser();
   if (!user) {
     return {
@@ -528,7 +530,7 @@ export async function initiateSupplementPaymentAction(input: {
         eq(bookings.organizationId, bookingAmendments.organizationId),
       ),
     )
-    .where(eq(bookingAmendments.id, input.amendmentId))
+    .where(and(eq(bookingAmendments.id, input.amendmentId), eq(bookings.customerUserId, user.id)))
     .limit(1);
 
   if (rows.length === 0) {
@@ -541,7 +543,7 @@ export async function initiateSupplementPaymentAction(input: {
 
   const row = rows[0]!;
 
-  if (row.customerUserId !== user.id || row.type !== 'SUPPLEMENT') {
+  if (row.type !== 'SUPPLEMENT' || row.customerUserId !== user.id) {
     return {
       kind: 'ERROR',
       code: 'NOT_FOUND',
@@ -549,7 +551,19 @@ export async function initiateSupplementPaymentAction(input: {
     };
   }
 
-  if (row.holdDeadline && Date.now() >= row.holdDeadline.getTime()) {
+  if (
+    !row.holdDeadline ||
+    !(row.holdDeadline instanceof Date) ||
+    !Number.isFinite(row.holdDeadline.getTime())
+  ) {
+    return {
+      kind: 'ERROR',
+      code: 'UNAVAILABLE',
+      message: 'Paiement indisponible.',
+    };
+  }
+
+  if (asOf.getTime() >= row.holdDeadline.getTime()) {
     return {
       kind: 'ERROR',
       code: 'EXPIRED',
@@ -586,12 +600,17 @@ export async function initiateSupplementPaymentAction(input: {
   }
 
   try {
-    const result = await initiateSupplementPayment(db, provider, {
-      organizationId: row.organizationId,
-      amendmentId: input.amendmentId,
-      customerUserId: user.id,
-      environment,
-    });
+    const result = await initiateSupplementPayment(
+      db,
+      provider,
+      {
+        organizationId: row.organizationId,
+        amendmentId: input.amendmentId,
+        customerUserId: user.id,
+        environment,
+      },
+      { now: asOf },
+    );
 
     switch (result.kind) {
       case 'SUCCESS':

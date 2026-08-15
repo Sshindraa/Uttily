@@ -10,6 +10,7 @@ import * as auth from '@/lib/auth';
 import * as dbModule from '@/lib/db';
 import * as stripeModule from '@/lib/stripe';
 import * as core from '@uttily/core';
+import type { StripeAdapter } from '@uttily/core';
 
 vi.mock('@/lib/amendment-auth', () => ({
   requireAmendmentManagerOf: vi.fn(),
@@ -783,7 +784,7 @@ describe('initiateSupplementPaymentAction', () => {
     vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(mockUser);
     vi.spyOn(dbModule, 'getDb').mockReturnValueOnce(createMockDb());
     vi.spyOn(stripeModule, 'getStripeAdapter').mockReturnValueOnce(
-      mockProvider as unknown as PaymentProviderAdapter,
+      mockProvider as unknown as StripeAdapter,
     );
     vi.spyOn(core, 'initiateSupplementPayment').mockResolvedValueOnce({
       kind: 'SUCCESS',
@@ -809,7 +810,7 @@ describe('initiateSupplementPaymentAction', () => {
     vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(mockUser);
     vi.spyOn(dbModule, 'getDb').mockReturnValueOnce(createMockDb());
     vi.spyOn(stripeModule, 'getStripeAdapter').mockReturnValueOnce(
-      mockProvider as unknown as PaymentProviderAdapter,
+      mockProvider as unknown as StripeAdapter,
     );
     vi.spyOn(core, 'initiateSupplementPayment').mockResolvedValueOnce({
       kind: 'HOLD_EXPIRED',
@@ -827,7 +828,7 @@ describe('initiateSupplementPaymentAction', () => {
     vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(mockUser);
     vi.spyOn(dbModule, 'getDb').mockReturnValueOnce(createMockDb());
     vi.spyOn(stripeModule, 'getStripeAdapter').mockReturnValueOnce(
-      mockProvider as unknown as PaymentProviderAdapter,
+      mockProvider as unknown as StripeAdapter,
     );
     vi.spyOn(core, 'initiateSupplementPayment').mockResolvedValueOnce({
       kind: 'IN_PROGRESS',
@@ -845,7 +846,7 @@ describe('initiateSupplementPaymentAction', () => {
     vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(mockUser);
     vi.spyOn(dbModule, 'getDb').mockReturnValueOnce(createMockDb());
     vi.spyOn(stripeModule, 'getStripeAdapter').mockReturnValueOnce(
-      mockProvider as unknown as PaymentProviderAdapter,
+      mockProvider as unknown as StripeAdapter,
     );
     vi.spyOn(core, 'initiateSupplementPayment').mockResolvedValueOnce({
       kind: 'PROVIDER_ERROR',

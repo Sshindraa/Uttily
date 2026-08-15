@@ -1,12 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { ReactElement, FormEvent } from 'react';
+import React, { useState, useEffect, useRef, useCallback, type ReactElement } from 'react';
 import { loadStripe, type Stripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { initiateSupplementPaymentAction } from '@/app/actions/booking-amendments';
 
-export interface SupplementCheckoutClientProps {
+interface SupplementCheckoutClientProps {
   amendmentId: string;
   amountMinor: number;
   currency: string;
@@ -14,110 +13,169 @@ export interface SupplementCheckoutClientProps {
   timeZone: string;
 }
 
-type Phase = 'idle' | 'initiating' | 'elements' | 'confirming' | 'success' | 'error';
+type Phase = 'initializing' | 'ready' | 'success' | 'error';
 
 let stripePromise: Promise<Stripe | null> | null = null;
 
 function getStripePromise(): Promise<Stripe | null> {
   if (!stripePromise) {
-    const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
-    if (!publishableKey) {
-      stripePromise = Promise.resolve(null);
-    } else {
-      stripePromise = loadStripe(publishableKey);
+    const key = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    if (!key) {
+      return Promise.resolve(null);
     }
+    stripePromise = loadStripe(key);
   }
   return stripePromise;
 }
 
-function formatAmount(minor: number, currency: string): string {
-  const value = minor / 100;
+export function formatAmount(minor: number, currency: string): string {
+  return (minor / 100).toLocaleString('fr-FR', {
+    style: 'currency',
+    currency,
+  });
+}
+
+export function formatHoldDeadline(isoString: string, timeZone: string): string {
   try {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency,
-    }).format(value);
+    const date = new Date(isoString);
+    if (!Number.isFinite(date.getTime())) return 'date non disponible';
+    return new Intl.DateTimeFormat('fr-FR', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+      timeZone,
+    }).format(date);
   } catch {
-    return `${value.toFixed(2)} ${currency}`;
+    return 'date non disponible';
   }
 }
 
-function formatHoldDeadline(isoString: string, timeZone: string): string {
-  try {
-    const d = new Date(isoString);
-    return new Intl.DateTimeFormat('fr-FR', {
-      timeZone,
-      hour: '2-digit',
-      minute: '2-digit',
-      day: '2-digit',
-      month: '2-digit',
-    }).format(d);
-  } catch {
-    return isoString;
+export function isHoldExpired(
+  holdDeadline: number | string | Date,
+  nowMs: number = Date.now(),
+): boolean {
+  const deadlineMs =
+    typeof holdDeadline === 'number'
+      ? holdDeadline
+      : typeof holdDeadline === 'string'
+        ? new Date(holdDeadline).getTime()
+        : holdDeadline.getTime();
+  if (!Number.isFinite(deadlineMs)) return true;
+  return nowMs >= deadlineMs;
+}
+
+export function mapStripeErrorToSafeMessage(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'type' in error) {
+    const stripeErr = error as { type?: unknown };
+    if (stripeErr.type === 'card_error' || stripeErr.type === 'validation_error') {
+      return 'Votre moyen de paiement a été refusé ou contient des informations invalides.';
+    }
   }
+  return 'Une erreur est survenue lors de la validation du paiement.';
+}
+
+export function canSubmitPayment(params: {
+  stripe: boolean;
+  elements: boolean;
+  submitting: boolean;
+  isExpired: boolean;
+  holdDeadlineMs: number;
+  nowMs?: number;
+}): {
+  canSubmit: boolean;
+  reason?: 'MISSING_STRIPE' | 'MISSING_ELEMENTS' | 'ALREADY_SUBMITTING' | 'EXPIRED';
+} {
+  const now = params.nowMs ?? Date.now();
+  if (params.submitting) return { canSubmit: false, reason: 'ALREADY_SUBMITTING' };
+  if (params.isExpired || now >= params.holdDeadlineMs)
+    return { canSubmit: false, reason: 'EXPIRED' };
+  if (!params.stripe) return { canSubmit: false, reason: 'MISSING_STRIPE' };
+  if (!params.elements) return { canSubmit: false, reason: 'MISSING_ELEMENTS' };
+  return { canSubmit: true };
 }
 
 interface PaymentFormProps {
   totalLabel: string;
-  onConfirming: () => void;
+  holdDeadlineMs: number;
+  isExpired: boolean;
   onSuccess: () => void;
-  onError: (message: string) => void;
+  onError: (safeErrorMessage: string) => void;
 }
 
 function PaymentForm({
   totalLabel,
-  onConfirming,
+  holdDeadlineMs,
+  isExpired,
   onSuccess,
-  onError,
 }: PaymentFormProps): ReactElement {
   const stripe = useStripe();
   const elements = useElements();
-  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>): Promise<void> {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stripe || !elements) return;
-    setSubmitting(true);
-    setError(null);
-    onConfirming();
-
-    const result = await stripe.confirmPayment({
-      elements,
-      redirect: 'if_required',
+    const check = canSubmitPayment({
+      stripe: Boolean(stripe),
+      elements: Boolean(elements),
+      submitting,
+      isExpired,
+      holdDeadlineMs,
     });
 
-    if (result.error) {
-      const message = result.error.message ?? 'Erreur lors du paiement.';
-      setError(message);
-      onError(message);
-      setSubmitting(false);
-    } else {
-      onSuccess();
+    if (!check.canSubmit) {
+      if (check.reason === 'EXPIRED') {
+        setFormError('Le délai de paiement a expiré.');
+      }
+      return;
     }
-  }
+
+    setSubmitting(true);
+    setFormError(null);
+
+    try {
+      const result = await stripe!.confirmPayment({
+        elements: elements!,
+        redirect: 'if_required',
+      });
+
+      if (result.error) {
+        setFormError(mapStripeErrorToSafeMessage(result.error));
+        setSubmitting(false);
+      } else {
+        onSuccess();
+      }
+    } catch {
+      setFormError('Une erreur est survenue lors de la validation du paiement.');
+      setSubmitting(false);
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit} style={formStyle} data-testid="supplement-payment-form">
       <PaymentElement
         options={{
-          layout: { type: 'accordion', defaultCollapsed: false, radios: true },
+          layout: 'tabs',
         }}
       />
-      <button
-        type="submit"
-        disabled={!stripe || submitting}
-        aria-busy={submitting}
-        style={submitButtonStyle}
-        data-testid="supplement-submit-payment-button"
-      >
-        {submitting ? 'Traitement en cours…' : `Payer ${totalLabel}`}
-      </button>
-      {error && (
-        <p role="alert" style={errorStyle} data-testid="supplement-payment-error">
-          {error}
+
+      {formError && (
+        <p role="alert" style={errorStyle} data-testid="payment-form-error">
+          {formError}
         </p>
       )}
+
+      <button
+        type="submit"
+        disabled={submitting || isExpired || !stripe || !elements}
+        style={{
+          ...submitButtonStyle,
+          opacity: submitting || isExpired || !stripe || !elements ? 0.6 : 1,
+          cursor: submitting || isExpired || !stripe || !elements ? 'not-allowed' : 'pointer',
+        }}
+        data-testid="supplement-pay-button"
+      >
+        {submitting ? 'Validation en cours…' : `Payer ${totalLabel}`}
+      </button>
     </form>
   );
 }
@@ -129,16 +187,60 @@ export function SupplementCheckoutClient({
   holdDeadline,
   timeZone,
 }: SupplementCheckoutClientProps): ReactElement {
-  const [phase, setPhase] = useState<Phase>('idle');
+  const deadlineMs = new Date(holdDeadline).getTime();
+  const [isExpired, setIsExpired] = useState(() => isHoldExpired(holdDeadline));
+  const [phase, setPhase] = useState<Phase>('initializing');
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [stripe, setStripe] = useState<Stripe | null | undefined>(undefined);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const initiatedRef = useRef(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
   const successRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
-    if (phase === 'elements' && stripe === undefined) {
+    if (isExpired) return;
+    const remainingMs = deadlineMs - Date.now();
+    if (remainingMs <= 0) {
+      setIsExpired(true);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setIsExpired(true);
+    }, remainingMs);
+    return () => clearTimeout(timer);
+  }, [deadlineMs, isExpired]);
+
+  const handleInitiate = useCallback(async () => {
+    if (isHoldExpired(deadlineMs)) {
+      setIsExpired(true);
+      return;
+    }
+    setPhase('initializing');
+    setErrorMessage(null);
+    try {
+      const result = await initiateSupplementPaymentAction({ amendmentId });
+      if (result.kind === 'READY') {
+        setClientSecret(result.clientSecret);
+        setPhase('ready');
+      } else {
+        setErrorMessage(result.message);
+        setPhase('error');
+      }
+    } catch {
+      setErrorMessage('Une erreur temporaire est survenue. Veuillez réessayer.');
+      setPhase('error');
+    }
+  }, [amendmentId, deadlineMs]);
+
+  useEffect(() => {
+    if (initiatedRef.current) return;
+    initiatedRef.current = true;
+    handleInitiate();
+  }, [handleInitiate]);
+
+  useEffect(() => {
+    if (phase === 'ready' && stripe === undefined) {
       let cancelled = false;
       getStripePromise().then((s) => {
         if (!cancelled) setStripe(s);
@@ -157,30 +259,26 @@ export function SupplementCheckoutClient({
     }
   }, [phase]);
 
-  const handleInitiate = useCallback(async () => {
-    setPhase('initiating');
-    setErrorMessage(null);
-    try {
-      const result = await initiateSupplementPaymentAction({ amendmentId });
-      if (result.kind === 'READY') {
-        setClientSecret(result.clientSecret);
-        setPhase('elements');
-      } else {
-        setErrorMessage(result.message);
-        setPhase('error');
-      }
-    } catch (err) {
-      setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : 'Une erreur temporaire est survenue. Veuillez réessayer.',
-      );
-      setPhase('error');
-    }
-  }, [amendmentId]);
-
   const totalLabel = formatAmount(amountMinor, currency);
   const formattedDeadline = formatHoldDeadline(holdDeadline, timeZone);
+
+  if (isExpired) {
+    return (
+      <section
+        aria-labelledby="expired-heading"
+        style={cardStyle}
+        data-testid="supplement-expired-section"
+      >
+        <h2 id="expired-heading" style={{ fontSize: '1.25rem', margin: 0, color: '#b91c1c' }}>
+          Délai de paiement expiré
+        </h2>
+        <p role="alert" style={errorStyle} data-testid="supplement-expired-message">
+          Le délai de 10 minutes pour régler cette modification a expiré. Les articles associés ont
+          été libérés.
+        </p>
+      </section>
+    );
+  }
 
   if (phase === 'success') {
     return (
@@ -278,24 +376,13 @@ export function SupplementCheckoutClient({
         </div>
       </div>
 
-      {phase === 'idle' && (
-        <button
-          type="button"
-          onClick={handleInitiate}
-          style={submitButtonStyle}
-          data-testid="supplement-initiate-button"
-        >
-          Payer {totalLabel}
-        </button>
-      )}
-
-      {phase === 'initiating' && (
+      {phase === 'initializing' && (
         <p aria-busy="true" role="status" style={{ textAlign: 'center', color: '#4b5563' }}>
           Préparation du paiement sécurisé…
         </p>
       )}
 
-      {phase === 'elements' && (
+      {phase === 'ready' && (
         <>
           {stripe === undefined ? (
             <p role="status" aria-busy="true" style={{ textAlign: 'center', color: '#4b5563' }}>
@@ -315,7 +402,8 @@ export function SupplementCheckoutClient({
             >
               <PaymentForm
                 totalLabel={totalLabel}
-                onConfirming={() => setPhase('confirming')}
+                holdDeadlineMs={deadlineMs}
+                isExpired={isExpired}
                 onSuccess={() => setPhase('success')}
                 onError={(msg) => {
                   setErrorMessage(msg);
@@ -325,12 +413,6 @@ export function SupplementCheckoutClient({
             </Elements>
           ) : null}
         </>
-      )}
-
-      {phase === 'confirming' && (
-        <p role="status" aria-busy="true" style={{ textAlign: 'center', color: '#4b5563' }}>
-          Validation du paiement en cours…
-        </p>
       )}
     </section>
   );

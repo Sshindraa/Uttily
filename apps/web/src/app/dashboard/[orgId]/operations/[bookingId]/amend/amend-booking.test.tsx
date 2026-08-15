@@ -1,8 +1,12 @@
 import React from 'react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { buildPreviewBookingAmendmentInput } from './build-preview-input';
-import { AmendBookingForm } from './amend-booking-form';
+import {
+  AmendBookingForm,
+  copyPaymentLinkToClipboard,
+  SupplementPaymentHandoff,
+} from './amend-booking-form';
 import { AmendmentPreviewResult, formatEuros, actionLabel } from './amendment-preview-result';
 import { getAmendmentEntryState } from '@/lib/amendment-auth';
 import type { PreviewBookingAmendmentSuccess } from '@uttily/core';
@@ -368,11 +372,57 @@ describe('G7M-C5-A — Interface Loueur & Validation de Prévisualisation', () =
       expect(state.reason).toBe('ACTIVE_AMENDMENT_EXISTS');
     });
   });
-  it('G7M-C5-C : génère le lien de paiement partageable et le bouton de copie pour SUPPLEMENT', () => {
-    // Vérifie le format de lien généré
+  describe('G7M-C5-C : handoff loueur et lien de paiement sécurisé', () => {
     const amendmentId = '11111111-1111-4111-8111-111111111111';
-    const expectedPath = `/checkout/amendment/${amendmentId}`;
-    expect(expectedPath).toBe('/checkout/amendment/11111111-1111-4111-8111-111111111111');
+    const origin = 'https://app.uttily.fr';
+
+    it('1. copie l URL absolue exacte dans le presse-papier et affiche un statut accessible', async () => {
+      const mockWriteText = vi.fn().mockResolvedValue(undefined);
+      const res = await copyPaymentLinkToClipboard(amendmentId, origin, mockWriteText);
+
+      expect(mockWriteText).toHaveBeenCalledWith(
+        'https://app.uttily.fr/checkout/amendment/11111111-1111-4111-8111-111111111111',
+      );
+      expect(res.ok).toBe(true);
+      expect(res.feedback).toBe('Lien de paiement copié !');
+      expect(res.feedback).not.toContain(amendmentId);
+      expect(res.feedback).not.toContain('http');
+    });
+
+    it('2. en cas d échec ou absence de clipboard, affiche un message sécurisé sans URL ni UUID', async () => {
+      // Échec clipboard
+      const mockFailingWrite = vi.fn().mockRejectedValue(new Error('Permission denied'));
+      const resFail = await copyPaymentLinkToClipboard(amendmentId, origin, mockFailingWrite);
+
+      expect(resFail.ok).toBe(false);
+      expect(resFail.feedback).toBe('Impossible de copier automatiquement.');
+      expect(resFail.feedback).not.toContain(amendmentId);
+      expect(resFail.feedback).not.toContain('http');
+
+      // Absence clipboard
+      const resMissing = await copyPaymentLinkToClipboard(amendmentId, origin, undefined);
+      expect(resMissing.ok).toBe(false);
+      expect(resMissing.feedback).toBe('Impossible de copier automatiquement.');
+      expect(resMissing.feedback).not.toContain(amendmentId);
+    });
+
+    it('3. le composant SupplementPaymentHandoff ne contient aucun input et n expose aucun UUID ni URL dans le rendu', () => {
+      const html = renderToStaticMarkup(
+        <SupplementPaymentHandoff
+          amendmentId={amendmentId}
+          organizationId="org-1"
+          bookingId="book-1"
+        />,
+      );
+
+      expect(html).toContain('Copier le lien de paiement');
+      expect(html).toContain('Voir la réservation');
+      expect(html).not.toContain('<input');
+      expect(html).not.toContain('amendment-payment-link');
+      expect(html).not.toContain(amendmentId);
+      expect(html).not.toContain('/checkout/amendment/');
+      expect(html).not.toContain('Lien de paiement à transmettre');
+    });
   });
 });
 
@@ -406,7 +456,8 @@ describe('G7M-C5-B — Confirmation Workflow & Success Screens', () => {
     );
 
     expect(html).toContain('Contexte de réservation');
-    expect(html).toContain('Annecy (Europe/Paris)');
+    expect(html).toContain('Annecy');
+    expect(html).toContain('(Europe/Paris)');
     expect(html).toContain('Vérifier les changements');
     expect(html).toContain('Kayak — Standard');
   });

@@ -1,11 +1,11 @@
 import { and, eq } from 'drizzle-orm';
+import type { DatabaseClient } from '@uttily/database';
 import {
-  amendmentPaymentAttempts,
-  amendmentPayments,
   bookingAmendments,
   bookings,
   locations,
-  type DatabaseClient,
+  amendmentPayments,
+  amendmentPaymentAttempts,
 } from '@uttily/database';
 import type {
   GetSupplementCheckoutInput,
@@ -28,6 +28,18 @@ function isNonEmptyString(value: unknown): value is string {
 
 function isValidDate(value: unknown): value is Date {
   return value instanceof Date && Number.isFinite(value.getTime());
+}
+
+function isValidIanaTimeZone(timeZone: unknown): timeZone is string {
+  if (typeof timeZone !== 'string' || timeZone.trim().length === 0) {
+    return false;
+  }
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -105,10 +117,16 @@ export async function getSupplementCheckoutSummary(
     return { kind: 'NOT_FOUND' };
   }
 
+  if (!isValidIanaTimeZone(row.locationTimeZone)) {
+    return { kind: 'INVALID_STATE' };
+  }
+
   const paymentRows = await db
     .select({
       id: amendmentPayments.id,
       organizationId: amendmentPayments.organizationId,
+      bookingId: amendmentPayments.bookingId,
+      amendmentId: amendmentPayments.amendmentId,
       customerUserId: amendmentPayments.customerUserId,
       amountMinor: amendmentPayments.amountMinor,
       currency: amendmentPayments.currency,
@@ -130,24 +148,63 @@ export async function getSupplementCheckoutSummary(
   const payment = paymentRows[0]!;
 
   if (
+    payment.organizationId !== row.organizationId ||
+    payment.bookingId !== row.bookingId ||
+    payment.amendmentId !== row.amendmentId ||
+    payment.customerUserId !== input.customerUserId ||
     payment.currency !== 'EUR' ||
     !Number.isSafeInteger(payment.amountMinor) ||
-    payment.amountMinor <= 0 ||
-    payment.customerUserId !== input.customerUserId
+    payment.amountMinor <= 0
   ) {
     return { kind: 'INVALID_STATE' };
   }
 
-  if (
-    row.amendmentStatus === 'APPLIED' ||
-    row.amendmentStatus === 'READY_TO_APPLY' ||
-    payment.status === 'SUCCEEDED'
-  ) {
-    return { kind: 'PAID' };
-  }
-
+  // Traiter l'expiration avant tout état payé : un amendement EXPIRED reste EXPIRED même avec paiement SUCCEEDED
   if (row.amendmentStatus === 'EXPIRED') {
     return { kind: 'EXPIRED' };
+  }
+
+  if (row.amendmentStatus === 'READY_TO_APPLY' || row.amendmentStatus === 'APPLIED') {
+    if (payment.status !== 'SUCCEEDED') {
+      return { kind: 'INVALID_STATE' };
+    }
+
+    const attempts = await db
+      .select({
+        id: amendmentPaymentAttempts.id,
+        organizationId: amendmentPaymentAttempts.organizationId,
+        amendmentPaymentId: amendmentPaymentAttempts.amendmentPaymentId,
+        status: amendmentPaymentAttempts.status,
+        providerPaymentIntentId: amendmentPaymentAttempts.providerPaymentIntentId,
+        providerStatus: amendmentPaymentAttempts.providerStatus,
+      })
+      .from(amendmentPaymentAttempts)
+      .where(
+        and(
+          eq(amendmentPaymentAttempts.amendmentPaymentId, payment.id),
+          eq(amendmentPaymentAttempts.organizationId, row.organizationId),
+        ),
+      );
+
+    const hasActiveAttempt = attempts.some((a) =>
+      (NON_TERMINAL_ATTEMPT_STATUSES as readonly string[]).includes(a.status),
+    );
+    if (hasActiveAttempt) {
+      return { kind: 'INVALID_STATE' };
+    }
+
+    const hasCoherentSucceededAttempt = attempts.some(
+      (a) =>
+        a.status === 'SUCCEEDED' &&
+        isNonEmptyString(a.providerPaymentIntentId) &&
+        a.providerStatus === 'succeeded',
+    );
+
+    if (!hasCoherentSucceededAttempt) {
+      return { kind: 'INVALID_STATE' };
+    }
+
+    return { kind: 'PAID' };
   }
 
   if (row.amendmentStatus === 'CANCELLED' || row.amendmentStatus === 'FAILED') {
@@ -163,64 +220,125 @@ export async function getSupplementCheckoutSummary(
       return { kind: 'EXPIRED' };
     }
 
-    if (payment.status === 'PROCESSING') {
-      return { kind: 'PROCESSING' };
+    // Un paiement SUCCEEDED sur un amendement encore HOLD_PENDING est incohérent
+    if (
+      payment.status === 'SUCCEEDED' ||
+      payment.status === 'FAILED' ||
+      payment.status === 'CANCELLED'
+    ) {
+      return { kind: 'INVALID_STATE' };
     }
 
-    if (payment.status === 'FAILED' || payment.status === 'CANCELLED') {
+    const attempts = await db
+      .select({
+        id: amendmentPaymentAttempts.id,
+        organizationId: amendmentPaymentAttempts.organizationId,
+        amendmentPaymentId: amendmentPaymentAttempts.amendmentPaymentId,
+        status: amendmentPaymentAttempts.status,
+        providerPaymentIntentId: amendmentPaymentAttempts.providerPaymentIntentId,
+        providerStatus: amendmentPaymentAttempts.providerStatus,
+      })
+      .from(amendmentPaymentAttempts)
+      .where(
+        and(
+          eq(amendmentPaymentAttempts.amendmentPaymentId, payment.id),
+          eq(amendmentPaymentAttempts.organizationId, row.organizationId),
+        ),
+      );
+
+    const activeAttempts = attempts.filter((a) =>
+      (NON_TERMINAL_ATTEMPT_STATUSES as readonly string[]).includes(a.status),
+    );
+
+    if (activeAttempts.length !== 1) {
+      return { kind: 'INVALID_STATE' };
+    }
+
+    const attempt = activeAttempts[0]!;
+    if (
+      attempt.organizationId !== row.organizationId ||
+      attempt.amendmentPaymentId !== payment.id
+    ) {
       return { kind: 'INVALID_STATE' };
     }
 
     if (payment.status === 'PENDING_PROVIDER') {
-      const attempts = await db
-        .select({
-          id: amendmentPaymentAttempts.id,
-          status: amendmentPaymentAttempts.status,
-        })
-        .from(amendmentPaymentAttempts)
-        .where(
-          and(
-            eq(amendmentPaymentAttempts.amendmentPaymentId, payment.id),
-            eq(amendmentPaymentAttempts.organizationId, row.organizationId),
-          ),
-        );
-
-      const activeAttempts = attempts.filter((a) =>
-        (NON_TERMINAL_ATTEMPT_STATUSES as readonly string[]).includes(a.status),
-      );
-
-      if (activeAttempts.length > 1) {
+      if (
+        attempt.status !== 'PENDING_PROVIDER' ||
+        isNonEmptyString(attempt.providerPaymentIntentId) ||
+        isNonEmptyString(attempt.providerStatus)
+      ) {
         return { kind: 'INVALID_STATE' };
       }
-
-      if (activeAttempts.length === 1) {
-        const attempt = activeAttempts[0]!;
-        if (attempt.status === 'PROCESSING') {
-          return { kind: 'PROCESSING' };
-        }
-        if (
-          attempt.status === 'PENDING_PROVIDER' ||
-          attempt.status === 'REQUIRES_PAYMENT_METHOD' ||
-          attempt.status === 'REQUIRES_ACTION'
-        ) {
-          return {
-            kind: 'PAYABLE',
-            amountMinor: payment.amountMinor,
-            currency: 'EUR',
-            holdDeadline: row.holdDeadline.toISOString(),
-            timeZone: row.locationTimeZone || 'Europe/Paris',
-          };
-        }
-        return { kind: 'INVALID_STATE' };
-      }
-
       return {
         kind: 'PAYABLE',
         amountMinor: payment.amountMinor,
         currency: 'EUR',
         holdDeadline: row.holdDeadline.toISOString(),
-        timeZone: row.locationTimeZone || 'Europe/Paris',
+        timeZone: row.locationTimeZone,
       };
+    }
+
+    if (payment.status === 'REQUIRES_PAYMENT_METHOD') {
+      if (
+        attempt.status !== 'REQUIRES_PAYMENT_METHOD' ||
+        !isNonEmptyString(attempt.providerPaymentIntentId) ||
+        attempt.providerStatus !== 'requires_payment_method'
+      ) {
+        return { kind: 'INVALID_STATE' };
+      }
+      return {
+        kind: 'PAYABLE',
+        amountMinor: payment.amountMinor,
+        currency: 'EUR',
+        holdDeadline: row.holdDeadline.toISOString(),
+        timeZone: row.locationTimeZone,
+      };
+    }
+
+    if (payment.status === 'REQUIRES_ACTION') {
+      if (
+        attempt.status !== 'REQUIRES_ACTION' ||
+        !isNonEmptyString(attempt.providerPaymentIntentId) ||
+        attempt.providerStatus !== 'requires_action'
+      ) {
+        return { kind: 'INVALID_STATE' };
+      }
+      return {
+        kind: 'PAYABLE',
+        amountMinor: payment.amountMinor,
+        currency: 'EUR',
+        holdDeadline: row.holdDeadline.toISOString(),
+        timeZone: row.locationTimeZone,
+      };
+    }
+
+    if (payment.status === 'PROCESSING') {
+      if (attempt.status !== 'PROCESSING') {
+        return { kind: 'INVALID_STATE' };
+      }
+      const hasPi = isNonEmptyString(attempt.providerPaymentIntentId);
+      const provStatus = attempt.providerStatus;
+
+      if (!hasPi && !provStatus) {
+        return { kind: 'PROCESSING' };
+      }
+
+      if (hasPi && (provStatus === 'requires_payment_method' || provStatus === 'requires_action')) {
+        return {
+          kind: 'PAYABLE',
+          amountMinor: payment.amountMinor,
+          currency: 'EUR',
+          holdDeadline: row.holdDeadline.toISOString(),
+          timeZone: row.locationTimeZone,
+        };
+      }
+
+      if (hasPi && (provStatus === 'processing' || provStatus === 'succeeded')) {
+        return { kind: 'PROCESSING' };
+      }
+
+      return { kind: 'INVALID_STATE' };
     }
 
     return { kind: 'INVALID_STATE' };
