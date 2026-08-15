@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Component, type ErrorInfo, type ReactNode, useEffect, useRef, useState } from 'react';
 import type {
@@ -190,7 +191,7 @@ export function SearchResults({
             </h3>
             {exactItems.length > 0 ? (
               <div className={styles.grid}>
-                {exactItems.map((item) => renderCard(item, locale))}
+                {exactItems.map((item) => renderCard(item, locale, activeSearchParams))}
               </div>
             ) : (
               <p className={styles.emptySection}>
@@ -214,7 +215,7 @@ export function SearchResults({
                   : 'These offers are outside the selected destination but inside the chosen map area.'}
               </p>
               <div className={styles.grid}>
-                {alternativeItems.map((item) => renderCard(item, locale))}
+                {alternativeItems.map((item) => renderCard(item, locale, activeSearchParams))}
               </div>
             </section>
           ) : null}
@@ -234,14 +235,28 @@ export function SearchResults({
   );
 }
 
-function renderCard(item: PublicOfferSearchItem, locale: PublicUiLocale): React.ReactElement {
+function renderCard(
+  item: PublicOfferSearchItem,
+  locale: PublicUiLocale,
+  activeSearchParams: string,
+): React.ReactElement {
+  const fr = locale === 'fr';
+  const searchParams = new URLSearchParams(activeSearchParams);
+  searchParams.delete('cursor');
+  const offerQuery = searchParams.toString();
+  const offerUrl = `/${locale}/offers/${item.publicProductId}/${item.publicLocationId}${offerQuery ? `?${offerQuery}` : ''}`;
+
   return (
     <article key={`${item.publicProductId}:${item.publicLocationId}`} className={styles.card}>
       <div className={styles.cardTopline}>
         <span>{formatDistance(item.distanceMeters, locale)}</span>
-        <span className={styles.available}>{locale === 'fr' ? 'Disponible' : 'Available'}</span>
+        <span className={styles.available}>{fr ? 'Disponible' : 'Available'}</span>
       </div>
-      <h4>{item.productName}</h4>
+      <h4>
+        <Link href={offerUrl} className={styles.offerLink}>
+          {item.productName}
+        </Link>
+      </h4>
       <p className={styles.renter}>{item.organizationPublicDisplayName}</p>
       <p>
         {item.locationName}
@@ -259,6 +274,11 @@ function renderCard(item: PublicOfferSearchItem, locale: PublicUiLocale): React.
       <div className={styles.price}>
         <strong>{formatMoney(item.price.totalAmountMinor, item.price.currency, locale)}</strong>
         <span>{item.price.publicLabel}</span>
+      </div>
+      <div style={{ marginTop: '0.85rem' }}>
+        <Link href={offerUrl} className={styles.bookButton}>
+          {fr ? 'Voir l’offre et réserver' : 'View offer & book'}
+        </Link>
       </div>
     </article>
   );
