@@ -88,5 +88,6 @@ Recherche publique (/[locale]/search)
 
 ## 4. Statut du Backlog
 
-Le pont de réservation publique vers le checkout initial est entièrement durci et vérifié.
-Le lot **G7I** (Validation transversale globale du Lot 7) reste en cours d'exécution.
+Le pont de réservation publique vers le checkout initial est implémenté localement et validé par les tests locaux.
+La validation globale du workspace reste pending CI.
+Le lot **G7I** (Validation transversale globale du Lot 7) est la prochaine étape et n'est pas encore commencé.

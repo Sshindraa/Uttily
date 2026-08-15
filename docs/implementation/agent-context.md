@@ -315,4 +315,4 @@ Une tâche est terminée lorsque :
 - **Résolveur serveur partagé (`resolvePublicBookingAuthority`)** : Contrôle fail-closed de l'éligibilité (produit PUBLISHED, org active, lieu listé et pickup activé, pays actif, variante active, gating photos `PostgresPhotoPublicationGate`).
 - **Server Action & Formulaire (`createBookingDraftAction` / `OfferBookingForm`)** : Empreinte métier déterministe, clé d'idempotence stable via `useRef`, mapping d'erreurs fermé sans fuite interne.
 - **Preuves de tests** : 4 tests PostgreSQL Database (0038), 31 tests Core (unitaires, PostgreSQL, sentinelles), 17 tests ciblés Web (concurrence réelle 2 utilisateurs 1 hold, idempotence, sentinelles SSR), 429 tests globaux Web passés, lint/typecheck/build verts.
-- **Document de livraison** : `docs/delivery/public-offer-booking-bridge-delivery.md`.
+- **Document de livraison** : `docs/implementation/public-offer-booking-bridge.md`.

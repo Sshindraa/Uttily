@@ -13,15 +13,7 @@ interface OfferPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-const WEEKDAY_NAMES_FR = [
-  'Dimanche',
-  'Lundi',
-  'Mardi',
-  'Mercredi',
-  'Jeudi',
-  'Vendredi',
-  'Samedi',
-];
+const WEEKDAY_NAMES_FR = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 const WEEKDAY_NAMES_EN = [
   'Sunday',
   'Monday',
