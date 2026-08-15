@@ -48,20 +48,43 @@ jobs:
         run: pnpm typecheck
 
   tests:
-    name: Tests (${{ matrix.package }})
+    name: Tests (${{ matrix.label }})
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        package:
-          - '@uttily/auth'
-          - '@uttily/contracts'
-          - '@uttily/ui'
-          - '@uttily/database'
-          - '@uttily/core'
-          - '@uttily/web'
-          - '@uttily/worker'
+        include:
+          - package: '@uttily/auth'
+            label: '@uttily/auth'
+            shard: ''
+          - package: '@uttily/contracts'
+            label: '@uttily/contracts'
+            shard: ''
+          - package: '@uttily/ui'
+            label: '@uttily/ui'
+            shard: ''
+          - package: '@uttily/database'
+            label: '@uttily/database'
+            shard: ''
+          - package: '@uttily/core'
+            label: '@uttily/core shard 1/4'
+            shard: '1/4'
+          - package: '@uttily/core'
+            label: '@uttily/core shard 2/4'
+            shard: '2/4'
+          - package: '@uttily/core'
+            label: '@uttily/core shard 3/4'
+            shard: '3/4'
+          - package: '@uttily/core'
+            label: '@uttily/core shard 4/4'
+            shard: '4/4'
+          - package: '@uttily/web'
+            label: '@uttily/web'
+            shard: ''
+          - package: '@uttily/worker'
+            label: '@uttily/worker'
+            shard: ''
 
     services:
       postgres:
@@ -95,7 +118,12 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Test package
-        run: pnpm --filter "${{ matrix.package }}" test
+        run: |
+          if [ -n "${{ matrix.shard }}" ]; then
+            pnpm --filter "${{ matrix.package }}" test -- --shard="${{ matrix.shard }}"
+          else
+            pnpm --filter "${{ matrix.package }}" test
+          fi
 
   build:
     name: Build
