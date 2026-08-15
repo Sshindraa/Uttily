@@ -1,8 +1,16 @@
 'use client';
 
 import React, { useState, useRef, useTransition } from 'react';
-import { previewBookingAmendmentAction } from '@/app/actions/booking-amendments';
-import type { PreviewBookingAmendmentSuccess, NeutralAmendmentIntent } from '@uttily/core';
+import Link from 'next/link';
+import {
+  previewBookingAmendmentAction,
+  confirmBookingAmendmentAction,
+} from '@/app/actions/booking-amendments';
+import type {
+  PreviewBookingAmendmentSuccess,
+  ConfirmBookingAmendmentSuccess,
+  NeutralAmendmentIntent,
+} from '@uttily/core';
 import { buildPreviewBookingAmendmentInput } from './build-preview-input';
 import { AmendmentPreviewResult, formatEuros } from './amendment-preview-result';
 
@@ -25,6 +33,19 @@ export interface AmendBookingFormProps {
   initialIntent: NeutralAmendmentIntent;
   currentTotalAmountMinor: number;
   lines: AmendBookingFormLineProp[];
+}
+
+function formatHoldDeadlineTime(isoString: string, timeZone: string): string {
+  try {
+    const d = new Date(isoString);
+    return new Intl.DateTimeFormat('fr-FR', {
+      timeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(d);
+  } catch {
+    return isoString;
+  }
 }
 
 export function AmendBookingForm({
@@ -59,23 +80,43 @@ export function AmendBookingForm({
     return initial;
   });
 
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<PreviewBookingAmendmentSuccess | null>(null);
+  const [isPreviewPending, startPreviewTransition] = useTransition();
+  const [isConfirmPending, startConfirmTransition] = useTransition();
 
-  const errorRef = useRef<HTMLDivElement>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<PreviewBookingAmendmentSuccess | null>(null);
+  const [confirmationResult, setConfirmationResult] =
+    useState<ConfirmBookingAmendmentSuccess | null>(null);
+
+  // Clé d'idempotence stable pour chaque tentative de confirmation
+  const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
+
+  const previewErrorRef = useRef<HTMLDivElement>(null);
+  const confirmErrorRef = useRef<HTMLDivElement>(null);
   const resultHeadingRef = useRef<HTMLHeadingElement>(null);
+  const successHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  const invalidateWorkflow = () => {
+    setPreview(null);
+    setConfirmationResult(null);
+    setPreviewError(null);
+    setConfirmError(null);
+    idempotencyKeyRef.current = crypto.randomUUID();
+  };
 
   const handleQuantityChange = (logicalLineId: string, value: string) => {
     const parsed = parseInt(value, 10);
     const qty = Number.isNaN(parsed) || parsed < 0 ? 0 : parsed;
     setQuantities((prev) => ({ ...prev, [logicalLineId]: qty }));
-    setError(null);
+    invalidateWorkflow();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handlePreviewSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setPreviewError(null);
+    setConfirmError(null);
+    setConfirmationResult(null);
 
     const buildResult = buildPreviewBookingAmendmentInput({
       bookingId,
@@ -90,28 +131,186 @@ export function AmendBookingForm({
     });
 
     if (!buildResult.ok) {
-      setError(buildResult.error);
-      setTimeout(() => errorRef.current?.focus(), 0);
+      setPreviewError(buildResult.error);
+      setTimeout(() => previewErrorRef.current?.focus(), 0);
       return;
     }
 
-    startTransition(async () => {
+    startPreviewTransition(async () => {
       const result = await previewBookingAmendmentAction(organizationId, buildResult.input);
       if (!result.ok) {
-        setError(result.message);
+        setPreviewError(result.message);
         setPreview(null);
-        setTimeout(() => errorRef.current?.focus(), 0);
+        setTimeout(() => previewErrorRef.current?.focus(), 0);
       } else {
         setPreview(result.data);
+        idempotencyKeyRef.current = crypto.randomUUID();
         setTimeout(() => resultHeadingRef.current?.focus(), 0);
       }
     });
   };
 
+  const handleConfirmSubmit = () => {
+    if (!preview) return;
+    setConfirmError(null);
+
+    const buildResult = buildPreviewBookingAmendmentInput({
+      bookingId,
+      expectedLastAppliedAmendmentNumber,
+      intentKind,
+      startDate,
+      endDateExclusive,
+      startAt,
+      endAt,
+      quantities,
+      lines,
+    });
+
+    if (!buildResult.ok) {
+      setConfirmError(buildResult.error);
+      setTimeout(() => confirmErrorRef.current?.focus(), 0);
+      return;
+    }
+
+    startConfirmTransition(async () => {
+      const result = await confirmBookingAmendmentAction(organizationId, {
+        ...buildResult.input,
+        idempotencyKey: idempotencyKeyRef.current,
+        expectedClassification: preview.classification,
+        expectedDeltaAmountMinor: preview.deltaAmountMinor,
+        expectedNextTotalAmountMinor: preview.nextContractualTotalAmountMinor,
+      });
+
+      if (!result.ok) {
+        setConfirmError(result.message);
+        if (result.code === 'CONFLICT_BLOCK') {
+          // Conditions modifiées ou stock épuisé : réinitialiser la prévisualisation
+          setPreview(null);
+        }
+        setTimeout(() => confirmErrorRef.current?.focus(), 0);
+      } else {
+        setConfirmationResult(result.data);
+        setTimeout(() => successHeadingRef.current?.focus(), 0);
+      }
+    });
+  };
+
+  const isBusy = isPreviewPending || isConfirmPending;
+
+  // Vue de succès post-confirmation (G7M-C5-B)
+  if (confirmationResult !== null) {
+    const isSupplement = confirmationResult.kind === 'PAYMENT_REQUIRED';
+    return (
+      <div
+        aria-live="polite"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5rem',
+          backgroundColor: '#ffffff',
+          border: '1px solid #e5e7eb',
+          borderRadius: '0.5rem',
+          padding: '2rem',
+          maxWidth: '680px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div
+            style={{
+              width: '2.5rem',
+              height: '2.5rem',
+              borderRadius: '9999px',
+              backgroundColor: isSupplement ? '#eff6ff' : '#ecfdf5',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: isSupplement ? '#2563eb' : '#059669',
+              fontSize: '1.25rem',
+            }}
+          >
+            ✓
+          </div>
+          <div>
+            <h2
+              ref={successHeadingRef}
+              tabIndex={-1}
+              data-testid="amendment-success-heading"
+              style={{
+                fontSize: '1.25rem',
+                fontWeight: 600,
+                margin: 0,
+                color: '#111827',
+                outline: 'none',
+              }}
+            >
+              {isSupplement ? 'Modification en attente de paiement' : 'Modification enregistrée'}
+            </h2>
+            <p style={{ margin: '0.25rem 0 0 0', color: '#4b5563', fontSize: '0.875rem' }}>
+              Réservation n° {bookingId.slice(0, 8)}
+            </p>
+          </div>
+        </div>
+
+        <div
+          data-testid="amendment-success-message"
+          style={{
+            padding: '1rem',
+            backgroundColor: isSupplement ? '#f0f9ff' : '#f0fdf4',
+            border: isSupplement ? '1px solid #bae6fd' : '1px solid #bbf7d0',
+            borderRadius: '0.375rem',
+            fontSize: '0.925rem',
+            color: isSupplement ? '#0369a1' : '#166534',
+            lineHeight: 1.5,
+          }}
+        >
+          {confirmationResult.kind === 'APPLIED_NEUTRAL' && (
+            <p style={{ margin: 0 }}>La réservation a été mise à jour.</p>
+          )}
+
+          {confirmationResult.kind === 'APPLIED_REFUND' && (
+            <p style={{ margin: 0 }}>
+              La réservation a été mise à jour. Le remboursement de{' '}
+              <strong>{formatEuros(confirmationResult.refundAmountMinor)}</strong> est en cours.
+            </p>
+          )}
+
+          {confirmationResult.kind === 'PAYMENT_REQUIRED' && (
+            <p style={{ margin: 0 }}>
+              La modification est réservée pendant 10 minutes. Le client doit maintenant régler{' '}
+              <strong>{formatEuros(confirmationResult.supplementAmountMinor)}</strong> avant{' '}
+              <strong>
+                {formatHoldDeadlineTime(confirmationResult.holdDeadline, locationTimeZone)}
+              </strong>
+              .
+            </p>
+          )}
+        </div>
+
+        <div>
+          <Link
+            href={`/dashboard/${organizationId}/operations/${bookingId}`}
+            style={{
+              display: 'inline-block',
+              padding: '0.625rem 1.25rem',
+              backgroundColor: '#2563eb',
+              color: '#ffffff',
+              borderRadius: '0.375rem',
+              fontWeight: 500,
+              fontSize: '0.875rem',
+              textDecoration: 'none',
+            }}
+          >
+            Voir la réservation
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <form
-        onSubmit={handleSubmit}
+        onSubmit={handlePreviewSubmit}
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -172,9 +371,9 @@ export function AmendBookingForm({
                   value={startAt}
                   onChange={(e) => {
                     setStartAt(e.target.value);
-                    setError(null);
+                    invalidateWorkflow();
                   }}
-                  disabled={isPending}
+                  disabled={isBusy}
                   required
                   style={{
                     width: '100%',
@@ -204,9 +403,9 @@ export function AmendBookingForm({
                   value={endAt}
                   onChange={(e) => {
                     setEndAt(e.target.value);
-                    setError(null);
+                    invalidateWorkflow();
                   }}
-                  disabled={isPending}
+                  disabled={isBusy}
                   required
                   style={{
                     width: '100%',
@@ -245,9 +444,9 @@ export function AmendBookingForm({
                   value={startDate}
                   onChange={(e) => {
                     setStartDate(e.target.value);
-                    setError(null);
+                    invalidateWorkflow();
                   }}
-                  disabled={isPending}
+                  disabled={isBusy}
                   required
                   style={{
                     width: '100%',
@@ -277,9 +476,9 @@ export function AmendBookingForm({
                   value={endDateExclusive}
                   onChange={(e) => {
                     setEndDateExclusive(e.target.value);
-                    setError(null);
+                    invalidateWorkflow();
                   }}
-                  disabled={isPending}
+                  disabled={isBusy}
                   required
                   aria-describedby="amend-end-date-helper"
                   style={{
@@ -353,7 +552,7 @@ export function AmendBookingForm({
                     step="1"
                     value={quantities[line.logicalLineId] ?? line.currentQuantity}
                     onChange={(e) => handleQuantityChange(line.logicalLineId, e.target.value)}
-                    disabled={isPending}
+                    disabled={isBusy}
                     style={{
                       width: '70px',
                       padding: '0.4rem',
@@ -372,9 +571,9 @@ export function AmendBookingForm({
           </p>
         </fieldset>
 
-        {error && (
+        {previewError && (
           <div
-            ref={errorRef}
+            ref={previewErrorRef}
             tabIndex={-1}
             role="alert"
             style={{
@@ -387,32 +586,96 @@ export function AmendBookingForm({
               outline: 'none',
             }}
           >
-            {error}
+            {previewError}
           </div>
         )}
 
         <div>
           <button
             type="submit"
-            disabled={isPending}
+            disabled={isBusy}
             style={{
               padding: '0.625rem 1.25rem',
-              backgroundColor: isPending ? '#93c5fd' : '#2563eb',
+              backgroundColor: isBusy ? '#93c5fd' : '#2563eb',
               color: '#ffffff',
               border: 'none',
               borderRadius: '0.375rem',
               fontWeight: 500,
               fontSize: '0.875rem',
-              cursor: isPending ? 'not-allowed' : 'pointer',
+              cursor: isBusy ? 'not-allowed' : 'pointer',
             }}
           >
-            {isPending ? 'Vérification en cours...' : 'Vérifier les changements'}
+            {isPreviewPending ? 'Vérification en cours...' : 'Vérifier les changements'}
           </button>
         </div>
       </form>
 
-      {/* Résultat de prévisualisation */}
-      {preview && <AmendmentPreviewResult preview={preview} headingRef={resultHeadingRef} />}
+      {/* Résultat de prévisualisation & Action principale de confirmation */}
+      {preview && (
+        <div aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <AmendmentPreviewResult preview={preview} headingRef={resultHeadingRef} />
+
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+              padding: '1.5rem',
+              backgroundColor: '#ffffff',
+              border: '1px solid #e5e7eb',
+              borderRadius: '0.5rem',
+            }}
+          >
+            <h3 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>
+              Confirmer la modification
+            </h3>
+            <p style={{ margin: 0, color: '#4b5563', fontSize: '0.875rem' }}>
+              En confirmant, les changements vérifiés ci-dessus seront appliqués autoritairement à
+              la réservation.
+            </p>
+
+            {confirmError && (
+              <div
+                ref={confirmErrorRef}
+                tabIndex={-1}
+                role="alert"
+                style={{
+                  padding: '0.75rem 1rem',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '0.375rem',
+                  color: '#b91c1c',
+                  fontSize: '0.875rem',
+                  outline: 'none',
+                }}
+              >
+                {confirmError}
+              </div>
+            )}
+
+            <div>
+              <button
+                type="button"
+                onClick={handleConfirmSubmit}
+                disabled={isBusy}
+                data-testid="confirm-amendment-button"
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: isBusy ? '#93c5fd' : '#059669',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '0.375rem',
+                  fontWeight: 600,
+                  fontSize: '0.925rem',
+                  cursor: isBusy ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isConfirmPending ? 'Confirmation en cours...' : 'Confirmer la modification'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

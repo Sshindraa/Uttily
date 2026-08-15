@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { DatabaseClient } from '@uttily/database';
-import { previewBookingAmendmentAction } from './booking-amendments';
+import { previewBookingAmendmentAction, confirmBookingAmendmentAction } from './booking-amendments';
 import * as amendmentAuth from '@/lib/amendment-auth';
 import * as core from '@uttily/core';
 
@@ -13,6 +13,7 @@ vi.mock('@uttily/core', async (importOriginal) => {
   return {
     ...actual,
     previewBookingAmendment: vi.fn(),
+    confirmBookingAmendment: vi.fn(),
   };
 });
 
@@ -298,6 +299,202 @@ describe('previewBookingAmendmentAction', () => {
       expect(res.data.deltaAmountMinor).toBe(5000);
       expect(res.data.supplementCommissionAmountMinor).toBe(750);
       expect(res.data.supplementNetAmountMinor).toBe(4250);
+    }
+  });
+});
+
+describe('confirmBookingAmendmentAction', () => {
+  const orgId = '11111111-1111-4111-8111-111111111111';
+  const bookingId = '22222222-2222-4222-8222-222222222222';
+  const variantId = '33333333-3333-4333-8333-333333333333';
+  const idempotencyKey = '77777777-7777-4777-8777-777777777777';
+  const mockDb = {} as unknown as DatabaseClient;
+  const mockUser = {
+    id: '55555555-5555-4555-8555-555555555555',
+    email: 'mgr@example.com',
+    oidcSubject: 'sub_555',
+    emailVerified: true,
+    isPlatformAdmin: false,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('rejette une clé d idempotence invalide', async () => {
+    const res = await confirmBookingAmendmentAction(orgId, {
+      bookingId,
+      expectedLastAppliedAmendmentNumber: 0,
+      intent: { kind: 'DAY_RANGE', startDate: '2026-06-01', endDateExclusive: '2026-06-02' },
+      lines: [{ variantId, quantity: 1 }],
+      idempotencyKey: 'not-a-valid-uuid',
+    });
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.code).toBe('VALIDATION');
+      expect(res.message).toBe('Clé d idempotence invalide.');
+    }
+  });
+
+  it('confirme avec succès un amendement NEUTRAL', async () => {
+    vi.spyOn(amendmentAuth, 'requireAmendmentManagerOf').mockResolvedValueOnce({
+      user: mockUser,
+      db: mockDb,
+      organizationId: orgId,
+    });
+    vi.spyOn(core, 'confirmBookingAmendment').mockResolvedValueOnce({
+      kind: 'APPLIED_NEUTRAL',
+      amendmentId: 'amend-neu-1',
+      amendmentNumber: 1,
+      bookingId,
+      isReplay: false,
+    });
+
+    const res = await confirmBookingAmendmentAction(orgId, {
+      bookingId,
+      expectedLastAppliedAmendmentNumber: 0,
+      intent: { kind: 'DAY_RANGE', startDate: '2026-06-01', endDateExclusive: '2026-06-02' },
+      lines: [{ variantId, quantity: 1 }],
+      idempotencyKey,
+      expectedClassification: 'NEUTRAL',
+      expectedDeltaAmountMinor: 0,
+      expectedNextTotalAmountMinor: 5000,
+    });
+
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.data.kind).toBe('APPLIED_NEUTRAL');
+      if (res.data.kind === 'APPLIED_NEUTRAL') {
+        expect(res.data.amendmentId).toBe('amend-neu-1');
+        expect(res.data.amendmentNumber).toBe(1);
+      }
+    }
+  });
+
+  it('confirme avec succès un amendement REFUND', async () => {
+    vi.spyOn(amendmentAuth, 'requireAmendmentManagerOf').mockResolvedValueOnce({
+      user: mockUser,
+      db: mockDb,
+      organizationId: orgId,
+    });
+    vi.spyOn(core, 'confirmBookingAmendment').mockResolvedValueOnce({
+      kind: 'APPLIED_REFUND',
+      amendmentId: 'amend-ref-1',
+      amendmentNumber: 1,
+      bookingId,
+      refundAmountMinor: 2500,
+      currency: 'EUR',
+      isReplay: false,
+    });
+
+    const res = await confirmBookingAmendmentAction(orgId, {
+      bookingId,
+      expectedLastAppliedAmendmentNumber: 0,
+      intent: { kind: 'DAY_RANGE', startDate: '2026-06-01', endDateExclusive: '2026-06-02' },
+      lines: [{ variantId, quantity: 1 }],
+      idempotencyKey,
+      expectedClassification: 'REFUND',
+      expectedDeltaAmountMinor: -2500,
+      expectedNextTotalAmountMinor: 2500,
+    });
+
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.data.kind).toBe('APPLIED_REFUND');
+      if (res.data.kind === 'APPLIED_REFUND') {
+        expect(res.data.refundAmountMinor).toBe(2500);
+      }
+    }
+  });
+
+  it('confirme avec succès un amendement SUPPLEMENT', async () => {
+    vi.spyOn(amendmentAuth, 'requireAmendmentManagerOf').mockResolvedValueOnce({
+      user: mockUser,
+      db: mockDb,
+      organizationId: orgId,
+    });
+    vi.spyOn(core, 'confirmBookingAmendment').mockResolvedValueOnce({
+      kind: 'PAYMENT_REQUIRED',
+      amendmentId: 'amend-sup-1',
+      amendmentNumber: 1,
+      bookingId,
+      supplementAmountMinor: 5000,
+      currency: 'EUR',
+      holdDeadline: '2026-06-01T12:00:00.000Z',
+      isReplay: false,
+    });
+
+    const res = await confirmBookingAmendmentAction(orgId, {
+      bookingId,
+      expectedLastAppliedAmendmentNumber: 0,
+      intent: { kind: 'DAY_RANGE', startDate: '2026-06-01', endDateExclusive: '2026-06-04' },
+      lines: [{ variantId, quantity: 1 }],
+      idempotencyKey,
+      expectedClassification: 'SUPPLEMENT',
+      expectedDeltaAmountMinor: 5000,
+      expectedNextTotalAmountMinor: 10000,
+    });
+
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.data.kind).toBe('PAYMENT_REQUIRED');
+      if (res.data.kind === 'PAYMENT_REQUIRED') {
+        expect(res.data.supplementAmountMinor).toBe(5000);
+        expect(res.data.holdDeadline).toBe('2026-06-01T12:00:00.000Z');
+      }
+    }
+  });
+
+  it('mappe PREVIEW_CHANGED avec un message clair invitant à revérifier', async () => {
+    vi.spyOn(amendmentAuth, 'requireAmendmentManagerOf').mockResolvedValueOnce({
+      user: mockUser,
+      db: mockDb,
+      organizationId: orgId,
+    });
+    vi.spyOn(core, 'confirmBookingAmendment').mockResolvedValueOnce({
+      kind: 'PREVIEW_CHANGED',
+    });
+
+    const res = await confirmBookingAmendmentAction(orgId, {
+      bookingId,
+      expectedLastAppliedAmendmentNumber: 0,
+      intent: { kind: 'DAY_RANGE', startDate: '2026-06-01', endDateExclusive: '2026-06-02' },
+      lines: [{ variantId, quantity: 1 }],
+      idempotencyKey,
+      expectedClassification: 'NEUTRAL',
+    });
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.code).toBe('CONFLICT_BLOCK');
+      expect(res.message).toBe(
+        'Les conditions ou disponibilités ont changé. Veuillez vérifier à nouveau les changements.',
+      );
+    }
+  });
+
+  it('mappe IDEMPOTENCY_CONFLICT avec un message sûr', async () => {
+    vi.spyOn(amendmentAuth, 'requireAmendmentManagerOf').mockResolvedValueOnce({
+      user: mockUser,
+      db: mockDb,
+      organizationId: orgId,
+    });
+    vi.spyOn(core, 'confirmBookingAmendment').mockResolvedValueOnce({
+      kind: 'IDEMPOTENCY_CONFLICT',
+    });
+
+    const res = await confirmBookingAmendmentAction(orgId, {
+      bookingId,
+      expectedLastAppliedAmendmentNumber: 0,
+      intent: { kind: 'DAY_RANGE', startDate: '2026-06-01', endDateExclusive: '2026-06-02' },
+      lines: [{ variantId, quantity: 1 }],
+      idempotencyKey,
+    });
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.code).toBe('CONFLICT_IDEMPOTENCY');
+      expect(res.message).toBe('Une requête différente a déjà été soumise avec la même clé.');
     }
   });
 });

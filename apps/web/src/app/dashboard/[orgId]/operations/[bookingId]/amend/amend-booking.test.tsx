@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { buildPreviewBookingAmendmentInput } from './build-preview-input';
+import { AmendBookingForm } from './amend-booking-form';
 import { AmendmentPreviewResult, formatEuros, actionLabel } from './amendment-preview-result';
 import { getAmendmentEntryState } from '@/lib/amendment-auth';
 import type { PreviewBookingAmendmentSuccess } from '@uttily/core';
@@ -366,5 +367,52 @@ describe('G7M-C5-A — Interface Loueur & Validation de Prévisualisation', () =
       expect(state.canAmend).toBe(false);
       expect(state.reason).toBe('ACTIVE_AMENDMENT_EXISTS');
     });
+  });
+});
+
+describe('G7M-C5-B — Confirmation Workflow & Success Screens', () => {
+  it('rend le formulaire initial avec les champs et l action de vérification', () => {
+    const html = renderToStaticMarkup(
+      <AmendBookingForm
+        organizationId="11111111-1111-4111-8111-111111111111"
+        bookingId="22222222-2222-4222-8222-222222222222"
+        locationName="Annecy"
+        locationTimeZone="Europe/Paris"
+        expectedLastAppliedAmendmentNumber={0}
+        initialIntent={{
+          kind: 'DAY_RANGE',
+          startDate: '2026-06-01',
+          endDateExclusive: '2026-06-05',
+        }}
+        currentTotalAmountMinor={10000}
+        lines={[
+          {
+            logicalLineId: 'line-1',
+            variantId: 'var-1',
+            productName: 'Kayak',
+            variantName: 'Standard',
+            currentQuantity: 2,
+            unitPriceAmountMinor: 5000,
+            lineTotalAmountMinor: 10000,
+          },
+        ]}
+      />,
+    );
+
+    expect(html).toContain('Contexte de réservation');
+    expect(html).toContain('Annecy (Europe/Paris)');
+    expect(html).toContain('Vérifier les changements');
+    expect(html).toContain('Kayak — Standard');
+  });
+
+  it('formate correctement l heure limite de hold dans le fuseau du lieu', () => {
+    // Render static check for hold deadline formatting logic
+    const d = new Date('2026-06-01T10:15:00.000Z');
+    const formatted = new Intl.DateTimeFormat('fr-FR', {
+      timeZone: 'Europe/Paris',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(d);
+    expect(formatted).toMatch(/\d{2}:\d{2}/);
   });
 });

@@ -102,3 +102,14 @@ export type {
 } from './types-amendment';
 export { getEffectivePricingIntent } from './get-effective-pricing-intent';
 export type { GetEffectivePricingIntentResult } from './get-effective-pricing-intent';
+
+// G7M-C5-B — Orchestration de confirmation d'amendement de réservation.
+export { confirmBookingAmendment } from './confirm-booking-amendment';
+export type {
+  ConfirmBookingAmendmentCommand,
+  ConfirmBookingAmendmentAppliedNeutral,
+  ConfirmBookingAmendmentAppliedRefund,
+  ConfirmBookingAmendmentPaymentRequired,
+  ConfirmBookingAmendmentSuccess,
+  ConfirmBookingAmendmentResult,
+} from './types-amendment';

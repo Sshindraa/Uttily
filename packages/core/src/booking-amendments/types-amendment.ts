@@ -353,3 +353,78 @@ export class PreviewBookingAmendmentError extends Error {
     this.code = code;
   }
 }
+
+/**
+ * Commande de confirmation d'amendement de réservation (G7M-C5-B).
+ */
+export interface ConfirmBookingAmendmentCommand {
+  readonly bookingId: string;
+  readonly expectedLastAppliedAmendmentNumber: number;
+  readonly intent: NeutralAmendmentIntent;
+  readonly desiredLines: readonly NeutralAmendmentDesiredLine[];
+  readonly idempotencyKey: string;
+  readonly expectedClassification?: 'NEUTRAL' | 'REFUND' | 'SUPPLEMENT';
+  readonly expectedDeltaAmountMinor?: number;
+  readonly expectedNextTotalAmountMinor?: number;
+}
+
+/**
+ * Succès de confirmation pour un amendement NEUTRAL appliqué immédiatement (G7M-C5-B).
+ */
+export interface ConfirmBookingAmendmentAppliedNeutral {
+  readonly kind: 'APPLIED_NEUTRAL';
+  readonly amendmentId: string;
+  readonly amendmentNumber: number;
+  readonly bookingId: string;
+  readonly isReplay: boolean;
+}
+
+/**
+ * Succès de confirmation pour un amendement REFUND appliqué immédiatement avec remboursement PENDING (G7M-C5-B).
+ */
+export interface ConfirmBookingAmendmentAppliedRefund {
+  readonly kind: 'APPLIED_REFUND';
+  readonly amendmentId: string;
+  readonly amendmentNumber: number;
+  readonly bookingId: string;
+  readonly refundAmountMinor: number;
+  readonly currency: 'EUR';
+  readonly isReplay: boolean;
+}
+
+/**
+ * Succès de confirmation pour un amendement SUPPLEMENT avec hold local en attente de paiement (G7M-C5-B).
+ */
+export interface ConfirmBookingAmendmentPaymentRequired {
+  readonly kind: 'PAYMENT_REQUIRED';
+  readonly amendmentId: string;
+  readonly amendmentNumber: number;
+  readonly bookingId: string;
+  readonly supplementAmountMinor: number;
+  readonly currency: 'EUR';
+  readonly holdDeadline: string;
+  readonly isReplay: boolean;
+}
+
+/**
+ * Union des succès de confirmation d'amendement (G7M-C5-B).
+ */
+export type ConfirmBookingAmendmentSuccess =
+  | ConfirmBookingAmendmentAppliedNeutral
+  | ConfirmBookingAmendmentAppliedRefund
+  | ConfirmBookingAmendmentPaymentRequired;
+
+/**
+ * Résultat fermé de confirmBookingAmendment (G7M-C5-B).
+ */
+export type ConfirmBookingAmendmentResult =
+  | ConfirmBookingAmendmentSuccess
+  | { readonly kind: 'NOT_FOUND' }
+  | { readonly kind: 'FORBIDDEN' }
+  | { readonly kind: 'BOOKING_NOT_CONFIRMED' }
+  | { readonly kind: 'ACTIVE_AMENDMENT_EXISTS' }
+  | { readonly kind: 'STALE_EFFECTIVE_BOOKING'; readonly expected: number; readonly actual: number }
+  | { readonly kind: 'AVAILABILITY_CONFLICT'; readonly message: string }
+  | { readonly kind: 'INVALID_INPUT'; readonly message: string }
+  | { readonly kind: 'PREVIEW_CHANGED' }
+  | { readonly kind: 'IDEMPOTENCY_CONFLICT' };
