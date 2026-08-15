@@ -1,6 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import postgres, { type Sql } from 'postgres';
-import { createDatabase, type DatabaseClient } from '@uttily/database';
+import {
+  assertLocalhost,
+  createDatabase,
+  runMigrations,
+  type DatabaseClient,
+} from '@uttily/database';
 import { createSupplementBookingAmendment } from './create-supplement-booking-amendment';
 import { previewBookingAmendment } from './preview-booking-amendment';
 import { createNeutralBookingAmendment } from './create-neutral-booking-amendment';
@@ -9,23 +14,44 @@ import { getEffectiveBooking } from './get-effective-booking';
 import type { AuthenticatedUser } from '../identity/types';
 import type { PreviewBookingAmendmentCommand } from './types-amendment';
 
-const url = process.env.DATABASE_URL;
+const sourceUrl = process.env.DATABASE_URL;
+const testDatabase = `uttily_test_c5a_prev_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+const shouldSkip = !sourceUrl && process.env.CI !== '1' && process.env.CI !== 'true';
 
-describe.skipIf(!url)('previewBookingAmendment — intégration PostgreSQL', () => {
+describe.skipIf(shouldSkip)('previewBookingAmendment — intégration PostgreSQL', () => {
   let db: DatabaseClient;
   let rawSql: Sql;
 
+  let testUrl: string | null = null;
+
   beforeAll(async () => {
-    if (!url) return;
-    db = createDatabase(url);
-    rawSql = postgres(url);
-    await rawSql`SELECT 1`;
-  });
+    if (!sourceUrl) return;
+    assertLocalhost(sourceUrl);
+    const admin = postgres(sourceUrl, { max: 1 });
+    await admin.unsafe(`DROP DATABASE IF EXISTS ${testDatabase}`);
+    await admin.unsafe(`CREATE DATABASE ${testDatabase}`);
+    await admin.end();
+
+    const parsed = new URL(sourceUrl);
+    parsed.pathname = `/${testDatabase}`;
+    testUrl = parsed.toString();
+
+    await runMigrations(testUrl);
+    db = createDatabase(testUrl);
+    rawSql = postgres(testUrl, { max: 10 });
+  }, 600000);
 
   afterAll(async () => {
+    if (db) {
+      await db.$client.end();
+    }
     if (rawSql) {
       await rawSql.end();
     }
+    if (!sourceUrl || !testUrl) return;
+    const admin = postgres(sourceUrl, { max: 1 });
+    await admin.unsafe(`DROP DATABASE IF EXISTS ${testDatabase}`);
+    await admin.end();
   });
 
   interface BaseIds {
