@@ -126,7 +126,7 @@ dupliquer la logique métier.
   actuel reste en place tant que la migration tarifaire future n'est pas
   livrée.
 - Modifications financières append-only des réservations (ADR-023, conception
-  approuvée, implémentation non commencée) : les amendements d'une réservation
+  approuvée, implémentation terminée et fusionnée sur main) : les amendements d'une réservation
   `CONFIRMED` (changement de dates, durée, quantité, variantes, allocations)
   sont tracés dans des tables append-only dédiées (`booking_amendments`,
   `booking_amendment_lines`, `booking_amendment_allocations`,
