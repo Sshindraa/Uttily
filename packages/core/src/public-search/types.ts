@@ -183,3 +183,51 @@ export interface PublicProductPublicationGate {
     productIds: readonly string[],
   ): Promise<ReadonlySet<string>>;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Public offer detail projection (Bridge Public Search → Booking Hold)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface GetPublicOfferDetailsInput {
+  publicProductId: string;
+  publicLocationId: string;
+  locale?: string;
+}
+
+export interface PublicOfferVariant {
+  id: string;
+  name: string;
+  skuSuffix: string | null;
+  attributes: Record<string, unknown>;
+  dailyPriceAmountMinor: number | null;
+  currency: string;
+}
+
+export interface PublicOfferOpeningHour {
+  weekday: number;
+  openTime: string;
+  closeTime: string;
+}
+
+export interface PublicOfferDetails {
+  publicProductId: string;
+  publicLocationId: string;
+  organizationPublicDisplayName: string;
+  productName: string;
+  productDescription: string;
+  locationName: string;
+  timeZone: string;
+  operatingCurrency: string;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string;
+  postalCode: string | null;
+  countryCode: string;
+  variants: PublicOfferVariant[];
+  openingHours: PublicOfferOpeningHour[];
+}
+
+export type GetPublicOfferDetailsResult =
+  | { readonly kind: "SUCCESS"; readonly offer: PublicOfferDetails }
+  | { readonly kind: "NOT_FOUND" }
+  | { readonly kind: "INVALID_INPUT" };

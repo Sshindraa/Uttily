@@ -13,6 +13,7 @@
  */
 
 export { searchPublicOffers } from './search-offers';
+export { getPublicOfferDetails } from './get-public-offer-details';
 export { listPublicSearchFilterOptions } from './list-filters';
 export {
   createPublicSearchCursorCodec,
@@ -43,6 +44,11 @@ export type {
   KeysetTuple,
   CandidateRow,
   PublicProductPublicationGate,
+  GetPublicOfferDetailsInput,
+  GetPublicOfferDetailsResult,
+  PublicOfferDetails,
+  PublicOfferVariant,
+  PublicOfferOpeningHour,
 } from './types';
 export type {
   PublicSearchDestinationOption,

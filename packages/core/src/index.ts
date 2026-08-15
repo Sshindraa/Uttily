@@ -109,6 +109,7 @@ export {
 // G7D-A — Moteur de recherche publique exacte (read-only, informatif).
 export {
   searchPublicOffers,
+  getPublicOfferDetails,
   listPublicSearchFilterOptions,
   createPublicSearchCursorCodec,
   isPointInBbox,
@@ -133,6 +134,11 @@ export {
   type PublicSearchDestinationOption,
   type PublicSearchCategoryOption,
   type PublicSearchFilterOptions,
+  type GetPublicOfferDetailsInput,
+  type GetPublicOfferDetailsResult,
+  type PublicOfferDetails,
+  type PublicOfferVariant,
+  type PublicOfferOpeningHour,
 } from './public-search';
 
 // G7F-A2 — Photos et publication gate.
