@@ -328,6 +328,9 @@ describe('confirmBookingAmendmentAction', () => {
       intent: { kind: 'DAY_RANGE', startDate: '2026-06-01', endDateExclusive: '2026-06-02' },
       lines: [{ variantId, quantity: 1 }],
       idempotencyKey: 'not-a-valid-uuid',
+      expectedClassification: 'NEUTRAL',
+      expectedDeltaAmountMinor: 0,
+      expectedNextTotalAmountMinor: 5000,
     });
     expect(res.ok).toBe(false);
     if (!res.ok) {
@@ -462,6 +465,8 @@ describe('confirmBookingAmendmentAction', () => {
       lines: [{ variantId, quantity: 1 }],
       idempotencyKey,
       expectedClassification: 'NEUTRAL',
+      expectedDeltaAmountMinor: 0,
+      expectedNextTotalAmountMinor: 5000,
     });
 
     expect(res.ok).toBe(false);
@@ -489,12 +494,100 @@ describe('confirmBookingAmendmentAction', () => {
       intent: { kind: 'DAY_RANGE', startDate: '2026-06-01', endDateExclusive: '2026-06-02' },
       lines: [{ variantId, quantity: 1 }],
       idempotencyKey,
+      expectedClassification: 'NEUTRAL',
+      expectedDeltaAmountMinor: 0,
+      expectedNextTotalAmountMinor: 5000,
     });
 
     expect(res.ok).toBe(false);
     if (!res.ok) {
       expect(res.code).toBe('CONFLICT_IDEMPOTENCY');
       expect(res.message).toBe('Une requête différente a déjà été soumise avec la même clé.');
+    }
+  });
+
+  it('rejette si expectedClassification est invalide', async () => {
+    const res = await confirmBookingAmendmentAction(orgId, {
+      bookingId,
+      expectedLastAppliedAmendmentNumber: 0,
+      intent: { kind: 'DAY_RANGE', startDate: '2026-06-01', endDateExclusive: '2026-06-02' },
+      lines: [{ variantId, quantity: 1 }],
+      idempotencyKey,
+      expectedClassification: 'INVALID_ENUM' as unknown as 'NEUTRAL',
+      expectedDeltaAmountMinor: 0,
+      expectedNextTotalAmountMinor: 5000,
+    });
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.code).toBe('VALIDATION');
+      expect(res.message).toContain('Classification attendue invalide');
+    }
+  });
+
+  it('rejette si expectedDeltaAmountMinor est invalide', async () => {
+    const res = await confirmBookingAmendmentAction(orgId, {
+      bookingId,
+      expectedLastAppliedAmendmentNumber: 0,
+      intent: { kind: 'DAY_RANGE', startDate: '2026-06-01', endDateExclusive: '2026-06-02' },
+      lines: [{ variantId, quantity: 1 }],
+      idempotencyKey,
+      expectedClassification: 'NEUTRAL',
+      expectedDeltaAmountMinor: Number.NaN,
+      expectedNextTotalAmountMinor: 5000,
+    });
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.code).toBe('VALIDATION');
+      expect(res.message).toContain('Montant delta attendu invalide');
+    }
+  });
+
+  it('rejette si expectedNextTotalAmountMinor est négatif ou invalide', async () => {
+    const res = await confirmBookingAmendmentAction(orgId, {
+      bookingId,
+      expectedLastAppliedAmendmentNumber: 0,
+      intent: { kind: 'DAY_RANGE', startDate: '2026-06-01', endDateExclusive: '2026-06-02' },
+      lines: [{ variantId, quantity: 1 }],
+      idempotencyKey,
+      expectedClassification: 'NEUTRAL',
+      expectedDeltaAmountMinor: 0,
+      expectedNextTotalAmountMinor: -100,
+    });
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.code).toBe('VALIDATION');
+      expect(res.message).toContain('Nouveau montant total attendu invalide');
+    }
+  });
+
+  it('mappe INVALID_STATE de manière sûre sans fuite technique', async () => {
+    vi.spyOn(amendmentAuth, 'requireAmendmentManagerOf').mockResolvedValueOnce({
+      user: mockUser,
+      db: mockDb,
+      organizationId: orgId,
+    });
+    vi.spyOn(core, 'confirmBookingAmendment').mockResolvedValueOnce({
+      kind: 'INVALID_STATE',
+    });
+
+    const res = await confirmBookingAmendmentAction(orgId, {
+      bookingId,
+      expectedLastAppliedAmendmentNumber: 0,
+      intent: { kind: 'DAY_RANGE', startDate: '2026-06-01', endDateExclusive: '2026-06-02' },
+      lines: [{ variantId, quantity: 1 }],
+      idempotencyKey,
+      expectedClassification: 'NEUTRAL',
+      expectedDeltaAmountMinor: 0,
+      expectedNextTotalAmountMinor: 5000,
+    });
+
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.code).toBe('UNKNOWN');
+      expect(res.message).toBe('État persistant incohérent. Veuillez contacter le support.');
     }
   });
 });

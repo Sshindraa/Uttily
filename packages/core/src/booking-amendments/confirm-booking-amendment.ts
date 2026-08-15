@@ -3,17 +3,22 @@
  *
  * Orchestrateur canonique de confirmation de modification de réservation :
  * 1. Authentification et contrôle de membership strict (OWNER / ADMIN / MANAGER).
- * 2. Vérification idempotente préalable (REPLAY / IDEMPOTENCY_CONFLICT).
- * 3. Recalcul autoritaire de la prévisualisation côté serveur via previewBookingAmendment.
- * 4. Détection de dérive (PREVIEW_CHANGED) si l'attente client diffère de la preview réelle.
- * 5. Dispatch sécurisé et transactionnel vers le flux de mutation canonique :
- *    - NEUTRAL -> createNeutralBookingAmendment (application immédiate).
- *    - REFUND -> createRefundBookingAmendment (application immédiate + refund PENDING).
- *    - SUPPLEMENT -> createSupplementBookingAmendment (hold + paiement local PENDING).
- * 6. Normalisation des résultats dans une union fermée publique (sans fuite d'IDs techniques / provider).
+ * 2. Validation fail-closed des entrées et des 3 champs de liaison obligatoire à la preview :
+ *    - expectedClassification ∈ { NEUTRAL, REFUND, SUPPLEMENT }
+ *    - expectedDeltaAmountMinor (entier sûr)
+ *    - expectedNextTotalAmountMinor (entier sûr >= 0)
+ * 3. Vérification d'idempotence préalable sécurisée :
+ *    - filtrage strict par les opérations autorisées (booking-amendment-neutral, booking-amendment-refund, booking-amendment-supplement) ;
+ *    - ignorance des clés d'opérations étrangères ;
+ *    - détection d'état incohérent si plusieurs records d'amendement existent pour la même clé (INVALID_STATE) ;
+ *    - validation runtime stricte des champs du responseBody persisté (INVALID_STATE si corrompu/incomplet).
+ * 4. Recalcul autoritaire de la prévisualisation côté serveur via previewBookingAmendment.
+ * 5. Comparaison stricte et détection de dérive (PREVIEW_CHANGED).
+ * 6. Dispatch transactionnel vers la mutation canonique (NEUTRAL, REFUND, SUPPLEMENT).
+ * 7. Normalisation sans fuite technique (aucun refundId, amendmentPaymentId, amendmentPaymentAttemptId ni clientSecret).
  */
 
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import { idempotencyRecords } from '@uttily/database';
 import { lockKey } from '../idempotency/idempotency';
@@ -35,6 +40,14 @@ import type {
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const ALLOWED_AMENDMENT_OPERATIONS = [
+  'booking-amendment-neutral',
+  'booking-amendment-refund',
+  'booking-amendment-supplement',
+] as const;
+
+type AllowedAmendmentOperation = (typeof ALLOWED_AMENDMENT_OPERATIONS)[number];
+
 function extractIdempotencyReplay(
   rec: {
     operation: string;
@@ -44,19 +57,19 @@ function extractIdempotencyReplay(
   },
   command: ConfirmBookingAmendmentCommand,
 ): ConfirmBookingAmendmentResult | null {
+  if (!ALLOWED_AMENDMENT_OPERATIONS.includes(rec.operation as AllowedAmendmentOperation)) {
+    return null;
+  }
+
   let expectedFingerprintVersion:
-    'amendment-neutral-v2' | 'amendment-refund-v1' | 'amendment-supplement-v1' | null = null;
+    'amendment-neutral-v2' | 'amendment-refund-v1' | 'amendment-supplement-v1';
 
   if (rec.operation === 'booking-amendment-neutral') {
     expectedFingerprintVersion = 'amendment-neutral-v2';
   } else if (rec.operation === 'booking-amendment-refund') {
     expectedFingerprintVersion = 'amendment-refund-v1';
-  } else if (rec.operation === 'booking-amendment-supplement') {
+  } else {
     expectedFingerprintVersion = 'amendment-supplement-v1';
-  }
-
-  if (expectedFingerprintVersion === null) {
-    return { kind: 'IDEMPOTENCY_CONFLICT' };
   }
 
   const currentFingerprint = computeAmendmentFingerprint(
@@ -75,36 +88,76 @@ function extractIdempotencyReplay(
   }
 
   if (rec.status === 'COMPLETED') {
-    const body = rec.responseBody as Record<string, unknown>;
+    const body = rec.responseBody;
+    if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+      return { kind: 'INVALID_STATE' };
+    }
+
+    const b = body as Record<string, unknown>;
+
+    if (typeof b.amendmentId !== 'string' || !UUID_REGEX.test(b.amendmentId)) {
+      return { kind: 'INVALID_STATE' };
+    }
+
+    if (
+      typeof b.amendmentNumber !== 'number' ||
+      !Number.isSafeInteger(b.amendmentNumber) ||
+      b.amendmentNumber <= 0
+    ) {
+      return { kind: 'INVALID_STATE' };
+    }
+
     if (rec.operation === 'booking-amendment-neutral') {
       return {
         kind: 'APPLIED_NEUTRAL',
-        amendmentId: body.amendmentId as string,
-        amendmentNumber: body.amendmentNumber as number,
+        amendmentId: b.amendmentId,
+        amendmentNumber: b.amendmentNumber,
         bookingId: command.bookingId,
         isReplay: true,
       };
     }
+
     if (rec.operation === 'booking-amendment-refund') {
+      if (
+        typeof b.refundAmountMinor !== 'number' ||
+        !Number.isSafeInteger(b.refundAmountMinor) ||
+        b.refundAmountMinor <= 0
+      ) {
+        return { kind: 'INVALID_STATE' };
+      }
+
       return {
         kind: 'APPLIED_REFUND',
-        amendmentId: body.amendmentId as string,
-        amendmentNumber: body.amendmentNumber as number,
+        amendmentId: b.amendmentId,
+        amendmentNumber: b.amendmentNumber,
         bookingId: command.bookingId,
-        refundAmountMinor: body.refundAmountMinor as number,
+        refundAmountMinor: b.refundAmountMinor,
         currency: 'EUR',
         isReplay: true,
       };
     }
+
     if (rec.operation === 'booking-amendment-supplement') {
+      if (
+        typeof b.supplementAmountMinor !== 'number' ||
+        !Number.isSafeInteger(b.supplementAmountMinor) ||
+        b.supplementAmountMinor <= 0
+      ) {
+        return { kind: 'INVALID_STATE' };
+      }
+
+      if (typeof b.holdDeadline !== 'string' || Number.isNaN(Date.parse(b.holdDeadline))) {
+        return { kind: 'INVALID_STATE' };
+      }
+
       return {
         kind: 'PAYMENT_REQUIRED',
-        amendmentId: body.amendmentId as string,
-        amendmentNumber: body.amendmentNumber as number,
+        amendmentId: b.amendmentId,
+        amendmentNumber: b.amendmentNumber,
         bookingId: command.bookingId,
-        supplementAmountMinor: body.supplementAmountMinor as number,
+        supplementAmountMinor: b.supplementAmountMinor,
         currency: 'EUR',
-        holdDeadline: body.holdDeadline as string,
+        holdDeadline: b.holdDeadline,
         isReplay: true,
       };
     }
@@ -140,6 +193,39 @@ export async function confirmBookingAmendment(
 
   if (typeof command.idempotencyKey !== 'string' || !UUID_REGEX.test(command.idempotencyKey)) {
     return { kind: 'INVALID_INPUT', message: 'idempotencyKey invalide (UUID attendu).' };
+  }
+
+  // Validation fail-closed des 3 champs de liaison à la prévisualisation
+  if (
+    command.expectedClassification !== 'NEUTRAL' &&
+    command.expectedClassification !== 'REFUND' &&
+    command.expectedClassification !== 'SUPPLEMENT'
+  ) {
+    return {
+      kind: 'INVALID_INPUT',
+      message: 'expectedClassification invalide (NEUTRAL, REFUND ou SUPPLEMENT attendu).',
+    };
+  }
+
+  if (
+    typeof command.expectedDeltaAmountMinor !== 'number' ||
+    !Number.isSafeInteger(command.expectedDeltaAmountMinor)
+  ) {
+    return {
+      kind: 'INVALID_INPUT',
+      message: 'expectedDeltaAmountMinor doit être un entier valide.',
+    };
+  }
+
+  if (
+    typeof command.expectedNextTotalAmountMinor !== 'number' ||
+    !Number.isSafeInteger(command.expectedNextTotalAmountMinor) ||
+    command.expectedNextTotalAmountMinor < 0
+  ) {
+    return {
+      kind: 'INVALID_INPUT',
+      message: 'expectedNextTotalAmountMinor doit être un entier positif ou nul.',
+    };
   }
 
   const payloadError = validateCommandPayload(
@@ -183,11 +269,15 @@ export async function confirmBookingAmendment(
       and(
         eq(idempotencyRecords.organizationId, organizationId),
         eq(idempotencyRecords.key, command.idempotencyKey),
+        inArray(idempotencyRecords.operation, [...ALLOWED_AMENDMENT_OPERATIONS]),
       ),
-    )
-    .limit(1);
+    );
 
-  if (existingRecords.length > 0) {
+  if (existingRecords.length > 1) {
+    return { kind: 'INVALID_STATE' };
+  }
+
+  if (existingRecords.length === 1) {
     const rec = existingRecords[0]!;
     const replay = extractIdempotencyReplay(rec, command);
     if (replay) return replay;
@@ -227,11 +317,15 @@ export async function confirmBookingAmendment(
         and(
           eq(idempotencyRecords.organizationId, organizationId),
           eq(idempotencyRecords.key, command.idempotencyKey),
+          inArray(idempotencyRecords.operation, [...ALLOWED_AMENDMENT_OPERATIONS]),
         ),
-      )
-      .limit(1);
+      );
 
-    if (lateRecords.length > 0) {
+    if (lateRecords.length > 1) {
+      return { kind: 'INVALID_STATE' };
+    }
+
+    if (lateRecords.length === 1) {
       const replay = extractIdempotencyReplay(lateRecords[0]!, command);
       if (replay) return replay;
     }
@@ -253,11 +347,15 @@ export async function confirmBookingAmendment(
         and(
           eq(idempotencyRecords.organizationId, organizationId),
           eq(idempotencyRecords.key, command.idempotencyKey),
+          inArray(idempotencyRecords.operation, [...ALLOWED_AMENDMENT_OPERATIONS]),
         ),
-      )
-      .limit(1);
+      );
 
-    if (lateRecords.length > 0) {
+    if (lateRecords.length > 1) {
+      return { kind: 'INVALID_STATE' };
+    }
+
+    if (lateRecords.length === 1) {
       const replay = extractIdempotencyReplay(lateRecords[0]!, command);
       if (replay) return replay;
     }
@@ -282,25 +380,16 @@ export async function confirmBookingAmendment(
     return { kind: 'INVALID_INPUT', message: 'Impossible de calculer la prévisualisation.' };
   }
 
-  // 5. Vérification d'accord avec l'intention de confirmation client (PREVIEW_CHANGED)
-  if (
-    command.expectedClassification !== undefined &&
-    command.expectedClassification !== preview.classification
-  ) {
+  // 5. Comparaison stricte avec les valeurs issues de la prévisualisation (PREVIEW_CHANGED)
+  if (command.expectedClassification !== preview.classification) {
     return { kind: 'PREVIEW_CHANGED' };
   }
 
-  if (
-    command.expectedDeltaAmountMinor !== undefined &&
-    command.expectedDeltaAmountMinor !== preview.deltaAmountMinor
-  ) {
+  if (command.expectedDeltaAmountMinor !== preview.deltaAmountMinor) {
     return { kind: 'PREVIEW_CHANGED' };
   }
 
-  if (
-    command.expectedNextTotalAmountMinor !== undefined &&
-    command.expectedNextTotalAmountMinor !== preview.nextContractualTotalAmountMinor
-  ) {
+  if (command.expectedNextTotalAmountMinor !== preview.nextContractualTotalAmountMinor) {
     return { kind: 'PREVIEW_CHANGED' };
   }
 

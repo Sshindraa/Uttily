@@ -363,9 +363,9 @@ export interface ConfirmBookingAmendmentCommand {
   readonly intent: NeutralAmendmentIntent;
   readonly desiredLines: readonly NeutralAmendmentDesiredLine[];
   readonly idempotencyKey: string;
-  readonly expectedClassification?: 'NEUTRAL' | 'REFUND' | 'SUPPLEMENT';
-  readonly expectedDeltaAmountMinor?: number;
-  readonly expectedNextTotalAmountMinor?: number;
+  readonly expectedClassification: 'NEUTRAL' | 'REFUND' | 'SUPPLEMENT';
+  readonly expectedDeltaAmountMinor: number;
+  readonly expectedNextTotalAmountMinor: number;
 }
 
 /**
@@ -427,4 +427,5 @@ export type ConfirmBookingAmendmentResult =
   | { readonly kind: 'AVAILABILITY_CONFLICT'; readonly message: string }
   | { readonly kind: 'INVALID_INPUT'; readonly message: string }
   | { readonly kind: 'PREVIEW_CHANGED' }
-  | { readonly kind: 'IDEMPOTENCY_CONFLICT' };
+  | { readonly kind: 'IDEMPOTENCY_CONFLICT' }
+  | { readonly kind: 'INVALID_STATE' };

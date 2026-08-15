@@ -8,7 +8,7 @@ Parcours utilisateur exécuté :
 1. Le loueur modifie les dates/horaires et/ou les quantités.
 2. Il clique sur « Vérifier les changements » pour charger la prévisualisation déterministe Avant / Après.
 3. Il clique sur l'unique action principale « Confirmer la modification ».
-4. Le serveur recalcule autoritairement la prévisualisation pour valider les prix et les disponibilités physiques (optimistic locking et protection contre les dérives).
+4. Le serveur valide obligatoirement les 3 valeurs attendues issues de la prévisualisation affichée (`expectedClassification`, `expectedDeltaAmountMinor`, `expectedNextTotalAmountMinor`) et recalcule autoritairement la prévisualisation pour valider les prix et les disponibilités physiques (optimistic locking et détection stricte de dérive `PREVIEW_CHANGED`).
 5. Le serveur dispatche automatiquement vers le flux de mutation canonique correspondant :
    - **`NEUTRAL`** (delta = 0 €) : application transactionnelle immédiate de l'amendement (`createNeutralBookingAmendment`).
    - **`REFUND`** (delta < 0 €) : application transactionnelle immédiate de l'amendement et création durable de la dette de remboursement `PENDING` avec outbox event `REFUND_REQUESTED` (`createRefundBookingAmendment`).
@@ -22,8 +22,18 @@ Parcours utilisateur exécuté :
 - **`confirmBookingAmendment`** (`packages/core/src/booking-amendments/confirm-booking-amendment.ts`) :
   - Signature : `confirmBookingAmendment(db: DatabaseClient, authenticatedActor: AuthenticatedUser, organizationId: string, command: ConfirmBookingAmendmentCommand, options?: { now?: Date })`.
   - Contrôle d'autorisation strict : vérifie que l'acteur possède un membership actif avec rôle `OWNER`, `ADMIN` ou `MANAGER` (`requireMembership(membership, LOCATION_MANAGERS)`). Rejette `STAFF` avec `FORBIDDEN`.
-  - Validation fail-closed des entrées et du format UUID de l'idempotency key (`validateCommandPayload`).
-  - **Gestion d'idempotence préalable** : inspection de `idempotency_records` pour détecter immédiatement les replays (`isReplay: true`) ou les conflits d'empreinte (`IDEMPOTENCY_CONFLICT`) avant tout calcul de prévisualisation, évitant les faux `STALE_EFFECTIVE_BOOKING` sur les rejeux.
+  - **Liaison obligatoire à la preview** : validation fail-closed des 3 champs obligatoires :
+    - `expectedClassification` ∈ { `'NEUTRAL'`, `'REFUND'`, `'SUPPLEMENT'` }
+    - `expectedDeltaAmountMinor` (entier sûr valide)
+    - `expectedNextTotalAmountMinor` (entier sûr $\ge 0$)
+    - Rejet immédiat avec `INVALID_INPUT` si absent ou invalide.
+  - **Gestion d'idempotence préalable et filtrage des opérations** :
+    - Recherche filtrée strictement par les opérations d'amendement autorisées (`'booking-amendment-neutral'`, `'booking-amendment-refund'`, `'booking-amendment-supplement'`).
+    - Ignorance des clés d'opérations étrangères (ex: `booking-draft:create`) utilisant la même valeur par hasard.
+    - Échec fermé `INVALID_STATE` si plusieurs enregistrements d'amendement existent pour la même clé dans l'organisation.
+  - **Validation runtime du replay COMPLETED** :
+    - Validation stricte de `responseBody` (objet JSONB, UUID d'amendement valide, numéro positif, montant de remboursement/supplément valide, date ISO finie de hold).
+    - Retourne `INVALID_STATE` si `responseBody` est null, corrompu ou mal typé, sans déclencher aucune nouvelle mutation.
   - **Recalcul autoritaire serveur** : réexécute `previewBookingAmendment` pour vérifier sous verrou la validité des dates, la cohérence des prix et la disponibilité physique des exemplaires.
   - **Détection de dérive (`PREVIEW_CHANGED`)** : vérifie que la classification, le delta ou le nouveau total attendus par le client correspondent exactement au recalcul serveur. En cas de dérive (ou de course `FINANCIAL_ACTION_REQUIRED`), retourne proprement `PREVIEW_CHANGED` sans altérer la base.
   - **Dispatch transactionnel** :
@@ -41,7 +51,7 @@ Parcours utilisateur exécuté :
 ### 2.2 Web — Server Action sécurisée (`apps/web`)
 
 - **`confirmBookingAmendmentAction`** (`apps/web/src/app/actions/booking-amendments.ts`) :
-  - Server Action validant les formats d'entrée et authentifiant l'utilisateur via `requireAmendmentManagerOf(organizationId)`.
+  - Server Action validant les formats d'entrée, les 3 champs obligatoires de preview, et authentifiant l'utilisateur via `requireAmendmentManagerOf(organizationId)`.
   - Mappe les résultats et erreurs Core vers `ActionResult<ConfirmBookingAmendmentSuccess>` avec codes d'erreur fermés et assainis :
     - `APPLIED_NEUTRAL`, `APPLIED_REFUND`, `PAYMENT_REQUIRED` -> `{ ok: true, data: result }`.
     - `FORBIDDEN` -> `{ ok: false, code: 'FORBIDDEN', message: 'Accès non autorisé.' }`.
@@ -53,6 +63,7 @@ Parcours utilisateur exécuté :
     - `PREVIEW_CHANGED` -> `{ ok: false, code: 'CONFLICT_BLOCK', message: 'Les conditions ou disponibilités ont changé. Veuillez vérifier à nouveau les changements.' }`.
     - `IDEMPOTENCY_CONFLICT` -> `{ ok: false, code: 'CONFLICT_IDEMPOTENCY', message: 'Une requête différente a déjà été soumise avec la même clé.' }`.
     - `INVALID_INPUT` -> `{ ok: false, code: 'VALIDATION', message: 'Les changements demandés ne peuvent pas être confirmés.' }`.
+    - `INVALID_STATE` -> `{ ok: false, code: 'UNKNOWN', message: 'État persistant incohérent. Veuillez contacter le support.' }` (aucun JSONB, UUID ou détail interne divulgué).
 
 ### 2.3 Web — Interface utilisateur & Accessibilité (`apps/web`)
 
@@ -71,13 +82,13 @@ Parcours utilisateur exécuté :
 ## 3. Validation et tests
 
 1. **Tests unitaires Core** (`packages/core/src/booking-amendments/confirm-booking-amendment.test.ts`) :
-   - 21 tests unitaires couvrant la validation fail-closed, le contrôle de rôle STAFF / absence de membership, la propagation d'erreurs preview, la détection de dérive `PREVIEW_CHANGED`, le dispatch NEUTRAL/REFUND/SUPPLEMENT, le rejeu idempotent et l'absence totale de fuite d'identifiants techniques.
+   - 26 tests unitaires couvrant la validation fail-closed des 3 champs de preview, le contrôle de rôle STAFF / absence de membership, la propagation d'erreurs preview, la détection de dérive `PREVIEW_CHANGED`, l'ignorance des clés d'opérations étrangères, la détection `INVALID_STATE` sur records multiples ou responseBody corrompu/incomplet, le dispatch NEUTRAL/REFUND/SUPPLEMENT, le rejeu idempotent et l'absence totale de fuite d'identifiants techniques.
 2. **Tests d'intégration PostgreSQL réels** (`packages/core/src/booking-amendments/confirm-booking-amendment.integration.test.ts`) :
-   - 11 tests réels sans skip prouvant :
+   - 13 tests réels sans skip prouvant :
      1. Confirmation `NEUTRAL` appliquée immédiatement avec projection effective mise à jour.
      2. Confirmation `REFUND` appliquée avec refund `PENDING` et outbox event `REFUND_REQUESTED`.
      3. Confirmation `SUPPLEMENT` avec hold local (`HOLD_PENDING`), paiement local `PENDING_PROVIDER` et échéance de hold de 10 minutes.
-     4. Rejeu idempotent retournant `isReplay: true` sans duplication de lignes ou paiements.
+     4. Replay idempotent retournant `isReplay: true` sans duplication de lignes ou paiements.
      5. Détection de conflit d'idempotence (`IDEMPOTENCY_CONFLICT`).
      6. Verrou optimiste et détection de version obsolète (`STALE_EFFECTIVE_BOOKING`).
      7. Détection de dérive client/serveur (`PREVIEW_CHANGED`).
@@ -85,12 +96,16 @@ Parcours utilisateur exécuté :
      9. Refus du rôle `STAFF` avec `FORBIDDEN`.
      10. Concurrence réelle et double-submit sans corruption ni deadlock.
      11. Zéro appel externe provider : aucune création prématurée d'intent Stripe.
-3. **Tests Web** :
-   - `apps/web/src/app/actions/booking-amendments.test.ts` (17 tests action).
+     12. Ignorance d'une clé d'opération étrangère existant avec la même valeur.
+     13. Replay avec `responseBody` corrompu retournant `INVALID_STATE` sans muter la base.
+3. **Module booking-amendments séquentiel** :
+   - 20 fichiers de test, 333 tests passés à 100% sans régression.
+4. **Tests Web** :
+   - `apps/web/src/app/actions/booking-amendments.test.ts` (21 tests action incluant validation des champs obligatoires et mapping `INVALID_STATE`).
    - `apps/web/src/app/dashboard/[orgId]/operations/[bookingId]/amend/amend-booking.test.tsx` (18 tests UI).
-4. **Vérifications globales du monorepo** :
+   - Suite Web complète : 13 fichiers de tests, 250 tests passés.
+5. **Vérifications globales du monorepo** :
    - `pnpm typecheck` : 100% vert sur tous les 8 packages/apps du workspace.
    - `pnpm lint` : 100% vert (0 warning, 0 error).
    - `pnpm format:check` : 100% vert.
-   - Tests Core : 1379 tests passés à 100%.
-   - Tests Web : 246 tests passés à 100%.
+   - `pnpm --filter @uttily/web build` : 100% vert (Next.js 16.2.12).

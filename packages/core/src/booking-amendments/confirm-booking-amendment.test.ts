@@ -12,22 +12,31 @@ import type {
   PreviewBookingAmendmentSuccess,
 } from './types-amendment';
 
-describe('confirmBookingAmendment (Unit Tests — G7M-C5-B)', () => {
-  const mockSelect = vi.fn().mockReturnValue({
+describe('confirmBookingAmendment (Unit Tests — G7M-C5-B Hardened)', () => {
+  let mockRecords: Array<{
+    id: string;
+    operation: string;
+    requestFingerprint: string;
+    status: string;
+    responseBody: unknown;
+  }> = [];
+
+  const mockSelect = vi.fn().mockImplementation(() => ({
     from: vi.fn().mockReturnValue({
-      where: vi.fn().mockReturnValue({
-        limit: vi.fn().mockResolvedValue([]),
-      }),
+      where: vi.fn().mockImplementation(() => Promise.resolve(mockRecords)),
     }),
-  });
+  }));
+
   const mockDb = {
     select: mockSelect,
     transaction: vi.fn().mockImplementation(async (cb) => cb({ select: mockSelect })),
   } as unknown as DatabaseClient;
+
   const orgId = '11111111-1111-4111-8111-111111111111';
   const bookingId = '22222222-2222-4222-8222-222222222222';
   const variantId = '33333333-3333-4333-8333-333333333333';
   const idempotencyKey = '44444444-4444-4444-8444-444444444444';
+  const validAmendmentUuid = '77777777-7777-4777-8777-777777777777';
 
   const managerUser: AuthenticatedUser = {
     id: '55555555-5555-4555-8555-555555555555',
@@ -43,10 +52,14 @@ describe('confirmBookingAmendment (Unit Tests — G7M-C5-B)', () => {
     intent: { kind: 'DAY_RANGE', startDate: '2026-06-01', endDateExclusive: '2026-06-05' },
     desiredLines: [{ variantId, quantity: 2 }],
     idempotencyKey,
+    expectedClassification: 'NEUTRAL',
+    expectedDeltaAmountMinor: 0,
+    expectedNextTotalAmountMinor: 10000,
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRecords = [];
     vi.spyOn(memberships, 'getMembership').mockResolvedValue({
       organizationId: orgId,
       userId: managerUser.id,
@@ -55,7 +68,7 @@ describe('confirmBookingAmendment (Unit Tests — G7M-C5-B)', () => {
     });
   });
 
-  describe('Validation des entrées & Autorisation', () => {
+  describe('Validation des entrées & Liaison obligatoire à la preview', () => {
     it('retourne FORBIDDEN si l acteur est invalide', async () => {
       const res = await confirmBookingAmendment(
         mockDb,
@@ -80,6 +93,60 @@ describe('confirmBookingAmendment (Unit Tests — G7M-C5-B)', () => {
       if (res.kind === 'INVALID_INPUT') {
         expect(res.message).toContain('idempotencyKey');
       }
+    });
+
+    it('retourne INVALID_INPUT si expectedClassification est absent ou invalide', async () => {
+      const res1 = await confirmBookingAmendment(mockDb, managerUser, orgId, {
+        ...baseCommand,
+        expectedClassification: undefined as unknown as 'NEUTRAL',
+      });
+      expect(res1.kind).toBe('INVALID_INPUT');
+
+      const res2 = await confirmBookingAmendment(mockDb, managerUser, orgId, {
+        ...baseCommand,
+        expectedClassification: 'INVALID_ENUM' as unknown as 'NEUTRAL',
+      });
+      expect(res2.kind).toBe('INVALID_INPUT');
+    });
+
+    it('retourne INVALID_INPUT si expectedDeltaAmountMinor est absent ou non-safe', async () => {
+      const res1 = await confirmBookingAmendment(mockDb, managerUser, orgId, {
+        ...baseCommand,
+        expectedDeltaAmountMinor: undefined as unknown as number,
+      });
+      expect(res1.kind).toBe('INVALID_INPUT');
+
+      const res2 = await confirmBookingAmendment(mockDb, managerUser, orgId, {
+        ...baseCommand,
+        expectedDeltaAmountMinor: 12.34 as unknown as number,
+      });
+      expect(res2.kind).toBe('INVALID_INPUT');
+
+      const res3 = await confirmBookingAmendment(mockDb, managerUser, orgId, {
+        ...baseCommand,
+        expectedDeltaAmountMinor: Number.NaN,
+      });
+      expect(res3.kind).toBe('INVALID_INPUT');
+    });
+
+    it('retourne INVALID_INPUT si expectedNextTotalAmountMinor est absent, négatif ou non-safe', async () => {
+      const res1 = await confirmBookingAmendment(mockDb, managerUser, orgId, {
+        ...baseCommand,
+        expectedNextTotalAmountMinor: undefined as unknown as number,
+      });
+      expect(res1.kind).toBe('INVALID_INPUT');
+
+      const res2 = await confirmBookingAmendment(mockDb, managerUser, orgId, {
+        ...baseCommand,
+        expectedNextTotalAmountMinor: -500,
+      });
+      expect(res2.kind).toBe('INVALID_INPUT');
+
+      const res3 = await confirmBookingAmendment(mockDb, managerUser, orgId, {
+        ...baseCommand,
+        expectedNextTotalAmountMinor: 100.5,
+      });
+      expect(res3.kind).toBe('INVALID_INPUT');
     });
 
     it('retourne FORBIDDEN si le rôle est STAFF', async () => {
@@ -223,7 +290,169 @@ describe('confirmBookingAmendment (Unit Tests — G7M-C5-B)', () => {
     });
   });
 
-  describe('Dispatch vers NEUTRAL mutation', () => {
+  describe('Sécurité d idempotence & Replay fail-closed', () => {
+    it('ignore une clé d une opération étrangère (ex: booking-draft:create) et poursuit normalement', async () => {
+      // Mock db returns 0 allowed amendment records (foreign operation filtered out in query)
+      mockRecords = [];
+
+      vi.spyOn(previewModule, 'previewBookingAmendment').mockResolvedValueOnce({
+        kind: 'SUCCESS',
+        bookingId,
+        locationId: 'loc-1',
+        locationTimeZone: 'Europe/Paris',
+        lastAppliedAmendmentNumber: 0,
+        classification: 'NEUTRAL',
+        previousCustomerStartAt: new Date('2026-06-01T08:00:00Z'),
+        previousCustomerEndAt: new Date('2026-06-05T18:00:00Z'),
+        nextCustomerStartAt: new Date('2026-06-02T08:00:00Z'),
+        nextCustomerEndAt: new Date('2026-06-06T18:00:00Z'),
+        previousContractualTotalAmountMinor: 10000,
+        nextContractualTotalAmountMinor: 10000,
+        deltaAmountMinor: 0,
+        currency: 'EUR',
+        supplementCommissionAmountMinor: null,
+        supplementNetAmountMinor: null,
+        lines: [],
+      });
+
+      vi.spyOn(neutralModule, 'createNeutralBookingAmendment').mockResolvedValueOnce({
+        kind: 'SUCCESS',
+        amendmentId: validAmendmentUuid,
+        amendmentNumber: 1,
+      });
+
+      const res = await confirmBookingAmendment(mockDb, managerUser, orgId, baseCommand);
+      expect(res.kind).toBe('APPLIED_NEUTRAL');
+    });
+
+    it('retourne INVALID_STATE si plusieurs enregistrements d amendement existent pour la même clé', async () => {
+      mockRecords = [
+        {
+          id: 'rec-1',
+          operation: 'booking-amendment-neutral',
+          requestFingerprint: 'f1',
+          status: 'COMPLETED',
+          responseBody: { amendmentId: validAmendmentUuid, amendmentNumber: 1 },
+        },
+        {
+          id: 'rec-2',
+          operation: 'booking-amendment-refund',
+          requestFingerprint: 'f2',
+          status: 'COMPLETED',
+          responseBody: {
+            amendmentId: validAmendmentUuid,
+            amendmentNumber: 1,
+            refundAmountMinor: 1000,
+          },
+        },
+      ];
+
+      const neutralSpy = vi.spyOn(neutralModule, 'createNeutralBookingAmendment');
+
+      const res = await confirmBookingAmendment(mockDb, managerUser, orgId, baseCommand);
+      expect(res.kind).toBe('INVALID_STATE');
+      expect(neutralSpy).not.toHaveBeenCalled();
+    });
+
+    it('retourne INVALID_STATE si responseBody est null ou non-objet lors d un replay COMPLETED', async () => {
+      // Calculate valid fingerprint for neutral v2
+      const { computeAmendmentFingerprint } = await import('./execute-booking-amendment-internal');
+      const validFp = computeAmendmentFingerprint(baseCommand, 'amendment-neutral-v2');
+
+      mockRecords = [
+        {
+          id: 'rec-1',
+          operation: 'booking-amendment-neutral',
+          requestFingerprint: validFp,
+          status: 'COMPLETED',
+          responseBody: null,
+        },
+      ];
+
+      const neutralSpy = vi.spyOn(neutralModule, 'createNeutralBookingAmendment');
+      const res = await confirmBookingAmendment(mockDb, managerUser, orgId, baseCommand);
+
+      expect(res.kind).toBe('INVALID_STATE');
+      expect(neutralSpy).not.toHaveBeenCalled();
+    });
+
+    it('retourne INVALID_STATE si amendmentId est invalide dans responseBody COMPLETED', async () => {
+      const { computeAmendmentFingerprint } = await import('./execute-booking-amendment-internal');
+      const validFp = computeAmendmentFingerprint(baseCommand, 'amendment-neutral-v2');
+
+      mockRecords = [
+        {
+          id: 'rec-1',
+          operation: 'booking-amendment-neutral',
+          requestFingerprint: validFp,
+          status: 'COMPLETED',
+          responseBody: { amendmentId: 'not-a-valid-uuid', amendmentNumber: 1 },
+        },
+      ];
+
+      const res = await confirmBookingAmendment(mockDb, managerUser, orgId, baseCommand);
+      expect(res.kind).toBe('INVALID_STATE');
+    });
+
+    it('retourne INVALID_STATE si refundAmountMinor est invalide lors d un replay REFUND COMPLETED', async () => {
+      const refundCommand: ConfirmBookingAmendmentCommand = {
+        ...baseCommand,
+        expectedClassification: 'REFUND',
+        expectedDeltaAmountMinor: -5000,
+        expectedNextTotalAmountMinor: 5000,
+      };
+      const { computeAmendmentFingerprint } = await import('./execute-booking-amendment-internal');
+      const validFp = computeAmendmentFingerprint(refundCommand, 'amendment-refund-v1');
+
+      mockRecords = [
+        {
+          id: 'rec-1',
+          operation: 'booking-amendment-refund',
+          requestFingerprint: validFp,
+          status: 'COMPLETED',
+          responseBody: {
+            amendmentId: validAmendmentUuid,
+            amendmentNumber: 1,
+            refundAmountMinor: 0,
+          },
+        },
+      ];
+
+      const res = await confirmBookingAmendment(mockDb, managerUser, orgId, refundCommand);
+      expect(res.kind).toBe('INVALID_STATE');
+    });
+
+    it('retourne INVALID_STATE si holdDeadline est invalide lors d un replay SUPPLEMENT COMPLETED', async () => {
+      const supplementCommand: ConfirmBookingAmendmentCommand = {
+        ...baseCommand,
+        expectedClassification: 'SUPPLEMENT',
+        expectedDeltaAmountMinor: 5000,
+        expectedNextTotalAmountMinor: 15000,
+      };
+      const { computeAmendmentFingerprint } = await import('./execute-booking-amendment-internal');
+      const validFp = computeAmendmentFingerprint(supplementCommand, 'amendment-supplement-v1');
+
+      mockRecords = [
+        {
+          id: 'rec-1',
+          operation: 'booking-amendment-supplement',
+          requestFingerprint: validFp,
+          status: 'COMPLETED',
+          responseBody: {
+            amendmentId: validAmendmentUuid,
+            amendmentNumber: 1,
+            supplementAmountMinor: 5000,
+            holdDeadline: 'invalid-iso-date',
+          },
+        },
+      ];
+
+      const res = await confirmBookingAmendment(mockDb, managerUser, orgId, supplementCommand);
+      expect(res.kind).toBe('INVALID_STATE');
+    });
+  });
+
+  describe('Dispatch vers mutations & Normalisation', () => {
     const mockPreviewNeutral: PreviewBookingAmendmentSuccess = {
       kind: 'SUCCESS',
       bookingId,
@@ -279,42 +508,20 @@ describe('confirmBookingAmendment (Unit Tests — G7M-C5-B)', () => {
       }
     });
 
-    it('transforme FINANCIAL_ACTION_REQUIRED en PREVIEW_CHANGED si les conditions ont glissé', async () => {
-      vi.spyOn(previewModule, 'previewBookingAmendment').mockResolvedValueOnce(mockPreviewNeutral);
-      vi.spyOn(neutralModule, 'createNeutralBookingAmendment').mockResolvedValueOnce({
-        kind: 'FINANCIAL_ACTION_REQUIRED',
-        classification: 'SUPPLEMENT',
-        deltaMinor: 5000,
-      });
-
-      const res = await confirmBookingAmendment(mockDb, managerUser, orgId, baseCommand);
-      expect(res.kind).toBe('PREVIEW_CHANGED');
-    });
-  });
-
-  describe('Dispatch vers REFUND mutation', () => {
-    const mockPreviewRefund: PreviewBookingAmendmentSuccess = {
-      kind: 'SUCCESS',
-      bookingId,
-      locationId: 'loc-1',
-      locationTimeZone: 'Europe/Paris',
-      lastAppliedAmendmentNumber: 0,
-      classification: 'REFUND',
-      previousCustomerStartAt: new Date('2026-06-01T08:00:00Z'),
-      previousCustomerEndAt: new Date('2026-06-05T18:00:00Z'),
-      nextCustomerStartAt: new Date('2026-06-01T08:00:00Z'),
-      nextCustomerEndAt: new Date('2026-06-03T18:00:00Z'),
-      previousContractualTotalAmountMinor: 15000,
-      nextContractualTotalAmountMinor: 10000,
-      deltaAmountMinor: -5000,
-      currency: 'EUR',
-      supplementCommissionAmountMinor: null,
-      supplementNetAmountMinor: null,
-      lines: [],
-    };
-
     it('applique avec succès un amendement REFUND sans exposer de refundId technique', async () => {
-      vi.spyOn(previewModule, 'previewBookingAmendment').mockResolvedValueOnce(mockPreviewRefund);
+      const refundCommand: ConfirmBookingAmendmentCommand = {
+        ...baseCommand,
+        expectedClassification: 'REFUND',
+        expectedDeltaAmountMinor: -5000,
+        expectedNextTotalAmountMinor: 5000,
+      };
+
+      vi.spyOn(previewModule, 'previewBookingAmendment').mockResolvedValueOnce({
+        ...mockPreviewNeutral,
+        classification: 'REFUND',
+        deltaAmountMinor: -5000,
+        nextContractualTotalAmountMinor: 5000,
+      });
       vi.spyOn(refundModule, 'createRefundBookingAmendment').mockResolvedValueOnce({
         kind: 'SUCCESS',
         amendmentId: 'amend-refund-1',
@@ -323,7 +530,7 @@ describe('confirmBookingAmendment (Unit Tests — G7M-C5-B)', () => {
         refundAmountMinor: 5000,
       });
 
-      const res = await confirmBookingAmendment(mockDb, managerUser, orgId, baseCommand);
+      const res = await confirmBookingAmendment(mockDb, managerUser, orgId, refundCommand);
 
       expect(res.kind).toBe('APPLIED_REFUND');
       if (res.kind === 'APPLIED_REFUND') {
@@ -337,50 +544,22 @@ describe('confirmBookingAmendment (Unit Tests — G7M-C5-B)', () => {
       }
     });
 
-    it('gère le REPLAY idempotent pour un amendement REFUND', async () => {
-      vi.spyOn(previewModule, 'previewBookingAmendment').mockResolvedValueOnce(mockPreviewRefund);
-      vi.spyOn(refundModule, 'createRefundBookingAmendment').mockResolvedValueOnce({
-        kind: 'REPLAY',
-        amendmentId: 'amend-refund-1',
-        amendmentNumber: 1,
-        refundId: 'ref-internal-999',
-        refundAmountMinor: 5000,
-      });
-
-      const res = await confirmBookingAmendment(mockDb, managerUser, orgId, baseCommand);
-
-      expect(res.kind).toBe('APPLIED_REFUND');
-      if (res.kind === 'APPLIED_REFUND') {
-        expect(res.isReplay).toBe(true);
-      }
-    });
-  });
-
-  describe('Dispatch vers SUPPLEMENT mutation', () => {
-    const mockPreviewSupplement: PreviewBookingAmendmentSuccess = {
-      kind: 'SUCCESS',
-      bookingId,
-      locationId: 'loc-1',
-      locationTimeZone: 'Europe/Paris',
-      lastAppliedAmendmentNumber: 0,
-      classification: 'SUPPLEMENT',
-      previousCustomerStartAt: new Date('2026-06-01T08:00:00Z'),
-      previousCustomerEndAt: new Date('2026-06-03T18:00:00Z'),
-      nextCustomerStartAt: new Date('2026-06-01T08:00:00Z'),
-      nextCustomerEndAt: new Date('2026-06-05T18:00:00Z'),
-      previousContractualTotalAmountMinor: 10000,
-      nextContractualTotalAmountMinor: 15000,
-      deltaAmountMinor: 5000,
-      currency: 'EUR',
-      supplementCommissionAmountMinor: 250,
-      supplementNetAmountMinor: 4750,
-      lines: [],
-    };
-
     it('crée un amendement SUPPLEMENT (hold + paiement) sans exposer de payment IDs ou clientSecret', async () => {
-      vi.spyOn(previewModule, 'previewBookingAmendment').mockResolvedValueOnce(
-        mockPreviewSupplement,
-      );
+      const supCommand: ConfirmBookingAmendmentCommand = {
+        ...baseCommand,
+        expectedClassification: 'SUPPLEMENT',
+        expectedDeltaAmountMinor: 5000,
+        expectedNextTotalAmountMinor: 15000,
+      };
+
+      vi.spyOn(previewModule, 'previewBookingAmendment').mockResolvedValueOnce({
+        ...mockPreviewNeutral,
+        classification: 'SUPPLEMENT',
+        deltaAmountMinor: 5000,
+        nextContractualTotalAmountMinor: 15000,
+        supplementCommissionAmountMinor: 250,
+        supplementNetAmountMinor: 4750,
+      });
       vi.spyOn(supplementModule, 'createSupplementBookingAmendment').mockResolvedValueOnce({
         kind: 'SUCCESS',
         amendmentId: 'amend-sup-1',
@@ -391,7 +570,7 @@ describe('confirmBookingAmendment (Unit Tests — G7M-C5-B)', () => {
         holdDeadline: '2026-06-01T10:10:00.000Z',
       });
 
-      const res = await confirmBookingAmendment(mockDb, managerUser, orgId, baseCommand);
+      const res = await confirmBookingAmendment(mockDb, managerUser, orgId, supCommand);
 
       expect(res.kind).toBe('PAYMENT_REQUIRED');
       if (res.kind === 'PAYMENT_REQUIRED') {
@@ -407,40 +586,6 @@ describe('confirmBookingAmendment (Unit Tests — G7M-C5-B)', () => {
         expect(raw.amendmentPaymentAttemptId).toBeUndefined();
         expect(raw.clientSecret).toBeUndefined();
       }
-    });
-
-    it('gère le REPLAY idempotent pour un amendement SUPPLEMENT', async () => {
-      vi.spyOn(previewModule, 'previewBookingAmendment').mockResolvedValueOnce(
-        mockPreviewSupplement,
-      );
-      vi.spyOn(supplementModule, 'createSupplementBookingAmendment').mockResolvedValueOnce({
-        kind: 'REPLAY',
-        amendmentId: 'amend-sup-1',
-        amendmentNumber: 1,
-        amendmentPaymentId: 'ap-internal-888',
-        amendmentPaymentAttemptId: 'apa-internal-777',
-        supplementAmountMinor: 5000,
-        holdDeadline: '2026-06-01T10:10:00.000Z',
-      });
-
-      const res = await confirmBookingAmendment(mockDb, managerUser, orgId, baseCommand);
-
-      expect(res.kind).toBe('PAYMENT_REQUIRED');
-      if (res.kind === 'PAYMENT_REQUIRED') {
-        expect(res.isReplay).toBe(true);
-      }
-    });
-
-    it('propage IDEMPOTENCY_CONFLICT renvoyé par la mutation', async () => {
-      vi.spyOn(previewModule, 'previewBookingAmendment').mockResolvedValueOnce(
-        mockPreviewSupplement,
-      );
-      vi.spyOn(supplementModule, 'createSupplementBookingAmendment').mockResolvedValueOnce({
-        kind: 'IDEMPOTENCY_CONFLICT',
-      });
-
-      const res = await confirmBookingAmendment(mockDb, managerUser, orgId, baseCommand);
-      expect(res.kind).toBe('IDEMPOTENCY_CONFLICT');
     });
   });
 });

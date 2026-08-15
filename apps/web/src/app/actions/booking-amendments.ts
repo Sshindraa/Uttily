@@ -212,9 +212,9 @@ export async function previewBookingAmendmentAction(
 
 export interface ConfirmBookingAmendmentInput extends PreviewBookingAmendmentInput {
   idempotencyKey: string;
-  expectedClassification?: 'NEUTRAL' | 'REFUND' | 'SUPPLEMENT' | undefined;
-  expectedDeltaAmountMinor?: number | undefined;
-  expectedNextTotalAmountMinor?: number | undefined;
+  expectedClassification: 'NEUTRAL' | 'REFUND' | 'SUPPLEMENT';
+  expectedDeltaAmountMinor: number;
+  expectedNextTotalAmountMinor: number;
 }
 
 /**
@@ -242,6 +242,41 @@ export async function confirmBookingAmendmentAction(
 
   if (!isValidUuid(input.idempotencyKey)) {
     return { ok: false, code: 'VALIDATION', message: 'Clé d idempotence invalide.' };
+  }
+
+  if (
+    input.expectedClassification !== 'NEUTRAL' &&
+    input.expectedClassification !== 'REFUND' &&
+    input.expectedClassification !== 'SUPPLEMENT'
+  ) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Classification attendue invalide (NEUTRAL, REFUND ou SUPPLEMENT attendu).',
+    };
+  }
+
+  if (
+    typeof input.expectedDeltaAmountMinor !== 'number' ||
+    !Number.isSafeInteger(input.expectedDeltaAmountMinor)
+  ) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Montant delta attendu invalide.',
+    };
+  }
+
+  if (
+    typeof input.expectedNextTotalAmountMinor !== 'number' ||
+    !Number.isSafeInteger(input.expectedNextTotalAmountMinor) ||
+    input.expectedNextTotalAmountMinor < 0
+  ) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Nouveau montant total attendu invalide.',
+    };
   }
 
   if (
@@ -349,15 +384,9 @@ export async function confirmBookingAmendmentAction(
         : { variantId: l.variantId, quantity: l.quantity },
     ),
     idempotencyKey: input.idempotencyKey,
-    ...(input.expectedClassification !== undefined
-      ? { expectedClassification: input.expectedClassification }
-      : {}),
-    ...(input.expectedDeltaAmountMinor !== undefined
-      ? { expectedDeltaAmountMinor: input.expectedDeltaAmountMinor }
-      : {}),
-    ...(input.expectedNextTotalAmountMinor !== undefined
-      ? { expectedNextTotalAmountMinor: input.expectedNextTotalAmountMinor }
-      : {}),
+    expectedClassification: input.expectedClassification,
+    expectedDeltaAmountMinor: input.expectedDeltaAmountMinor,
+    expectedNextTotalAmountMinor: input.expectedNextTotalAmountMinor,
   };
 
   try {
@@ -414,6 +443,12 @@ export async function confirmBookingAmendmentAction(
           ok: false,
           code: 'VALIDATION',
           message: 'Les changements demandés ne peuvent pas être confirmés.',
+        };
+      case 'INVALID_STATE':
+        return {
+          ok: false,
+          code: 'UNKNOWN',
+          message: 'État persistant incohérent. Veuillez contacter le support.',
         };
       default:
         return { ok: false, code: 'UNKNOWN', message: 'Une erreur inattendue est survenue.' };
