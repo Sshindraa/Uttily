@@ -88,6 +88,7 @@ export function AmendBookingForm({
   const [preview, setPreview] = useState<PreviewBookingAmendmentSuccess | null>(null);
   const [confirmationResult, setConfirmationResult] =
     useState<ConfirmBookingAmendmentSuccess | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
   // Clé d'idempotence stable pour chaque tentative de confirmation
   const idempotencyKeyRef = useRef<string>(crypto.randomUUID());
@@ -100,9 +101,25 @@ export function AmendBookingForm({
   const invalidateWorkflow = () => {
     setPreview(null);
     setConfirmationResult(null);
+    setCopyFeedback(null);
     setPreviewError(null);
     setConfirmError(null);
     idempotencyKeyRef.current = crypto.randomUUID();
+  };
+
+  const handleCopyPaymentLink = async (amendmentId: string) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const shareableUrl = `${origin}/checkout/amendment/${amendmentId}`;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareableUrl);
+        setCopyFeedback('Lien de paiement copié !');
+      } else {
+        setCopyFeedback('Lien : ' + shareableUrl);
+      }
+    } catch {
+      setCopyFeedback('Impossible de copier automatiquement.');
+    }
   };
 
   const handleQuantityChange = (logicalLineId: string, value: string) => {
@@ -286,23 +303,103 @@ export function AmendBookingForm({
           )}
         </div>
 
-        <div>
-          <Link
-            href={`/dashboard/${organizationId}/operations/${bookingId}`}
-            style={{
-              display: 'inline-block',
-              padding: '0.625rem 1.25rem',
-              backgroundColor: '#2563eb',
-              color: '#ffffff',
-              borderRadius: '0.375rem',
-              fontWeight: 500,
-              fontSize: '0.875rem',
-              textDecoration: 'none',
-            }}
-          >
-            Voir la réservation
-          </Link>
-        </div>
+        {confirmationResult.kind === 'PAYMENT_REQUIRED' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label
+                htmlFor="amendment-payment-link"
+                style={{ fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}
+              >
+                Lien de paiement à transmettre au client :
+              </label>
+              <input
+                id="amendment-payment-link"
+                type="text"
+                readOnly
+                value={
+                  typeof window !== 'undefined'
+                    ? `${window.location.origin}/checkout/amendment/${confirmationResult.amendmentId}`
+                    : `/checkout/amendment/${confirmationResult.amendmentId}`
+                }
+                style={{
+                  width: '100%',
+                  padding: '0.5rem 0.75rem',
+                  backgroundColor: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.375rem',
+                  fontSize: '0.875rem',
+                  color: '#374151',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => handleCopyPaymentLink(confirmationResult.amendmentId)}
+                data-testid="copy-payment-link-button"
+                style={{
+                  padding: '0.625rem 1.25rem',
+                  backgroundColor: '#2563eb',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '0.375rem',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                }}
+              >
+                Copier le lien de paiement
+              </button>
+
+              <Link
+                href={`/dashboard/${organizationId}/operations/${bookingId}`}
+                style={{
+                  display: 'inline-block',
+                  padding: '0.625rem 1rem',
+                  backgroundColor: 'transparent',
+                  color: '#4b5563',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '0.375rem',
+                  fontWeight: 500,
+                  fontSize: '0.875rem',
+                  textDecoration: 'none',
+                }}
+              >
+                Voir la réservation
+              </Link>
+            </div>
+
+            {copyFeedback && (
+              <p
+                role="status"
+                aria-live="polite"
+                data-testid="copy-feedback"
+                style={{ margin: 0, fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}
+              >
+                {copyFeedback}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div>
+            <Link
+              href={`/dashboard/${organizationId}/operations/${bookingId}`}
+              style={{
+                display: 'inline-block',
+                padding: '0.625rem 1.25rem',
+                backgroundColor: '#2563eb',
+                color: '#ffffff',
+                borderRadius: '0.375rem',
+                fontWeight: 500,
+                fontSize: '0.875rem',
+                textDecoration: 'none',
+              }}
+            >
+              Voir la réservation
+            </Link>
+          </div>
+        )}
       </div>
     );
   }

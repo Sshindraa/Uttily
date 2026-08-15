@@ -1,11 +1,30 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { DatabaseClient } from '@uttily/database';
-import { previewBookingAmendmentAction, confirmBookingAmendmentAction } from './booking-amendments';
+import {
+  previewBookingAmendmentAction,
+  confirmBookingAmendmentAction,
+  initiateSupplementPaymentAction,
+} from './booking-amendments';
 import * as amendmentAuth from '@/lib/amendment-auth';
+import * as auth from '@/lib/auth';
+import * as dbModule from '@/lib/db';
+import * as stripeModule from '@/lib/stripe';
 import * as core from '@uttily/core';
 
 vi.mock('@/lib/amendment-auth', () => ({
   requireAmendmentManagerOf: vi.fn(),
+}));
+
+vi.mock('@/lib/auth', () => ({
+  getAuthenticatedUser: vi.fn(),
+}));
+
+vi.mock('@/lib/db', () => ({
+  getDb: vi.fn(),
+}));
+
+vi.mock('@/lib/stripe', () => ({
+  getStripeAdapter: vi.fn(),
 }));
 
 vi.mock('@uttily/core', async (importOriginal) => {
@@ -14,6 +33,7 @@ vi.mock('@uttily/core', async (importOriginal) => {
     ...actual,
     previewBookingAmendment: vi.fn(),
     confirmBookingAmendment: vi.fn(),
+    initiateSupplementPayment: vi.fn(),
   };
 });
 
@@ -589,5 +609,253 @@ describe('confirmBookingAmendmentAction', () => {
       expect(res.code).toBe('UNKNOWN');
       expect(res.message).toBe('État persistant incohérent. Veuillez contacter le support.');
     }
+  });
+});
+
+describe('initiateSupplementPaymentAction', () => {
+  const amendmentId = '11111111-1111-4111-8111-111111111111';
+  const orgId = '22222222-2222-4222-8222-222222222222';
+  const bookingId = '33333333-3333-4333-8333-333333333333';
+  const customerId = '44444444-4444-4444-8444-444444444444';
+  const mockUser = {
+    id: customerId,
+    email: 'customer@example.com',
+    oidcSubject: 'sub_444',
+    emailVerified: true,
+    isPlatformAdmin: false,
+  };
+
+  const defaultRow = {
+    organizationId: orgId,
+    bookingId,
+    type: 'SUPPLEMENT',
+    status: 'HOLD_PENDING',
+    holdDeadline: new Date(Date.now() + 10 * 60_000),
+    customerUserId: customerId,
+  };
+
+  function createMockDb(rows: Array<typeof defaultRow> = [defaultRow]) {
+    return {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          innerJoin: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue(rows),
+            }),
+          }),
+        }),
+      }),
+    } as unknown as DatabaseClient;
+  }
+
+  const mockProvider = {
+    environment: 'TEST',
+    createPaymentIntent: vi.fn(),
+    retrievePaymentIntent: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.STRIPE_ENVIRONMENT = 'TEST';
+    delete process.env.PAYMENTS_LIVE_ENABLED;
+  });
+
+  it('rejette si utilisateur non authentifié', async () => {
+    vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(null);
+
+    const res = await initiateSupplementPaymentAction({ amendmentId });
+    expect(res).toEqual({
+      kind: 'ERROR',
+      code: 'UNAUTHENTICATED',
+      message: 'Vous devez être connecté.',
+    });
+  });
+
+  it('rejette un amendmentId invalide', async () => {
+    vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(mockUser);
+
+    const res = await initiateSupplementPaymentAction({ amendmentId: 'invalid-uuid' });
+    expect(res).toEqual({
+      kind: 'ERROR',
+      code: 'NOT_FOUND',
+      message: 'Paiement introuvable ou non autorisé.',
+    });
+  });
+
+  it('rejette avec NOT_FOUND si l amendement n existe pas', async () => {
+    vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(mockUser);
+    vi.spyOn(dbModule, 'getDb').mockReturnValueOnce(createMockDb([]));
+
+    const res = await initiateSupplementPaymentAction({ amendmentId });
+    expect(res).toEqual({
+      kind: 'ERROR',
+      code: 'NOT_FOUND',
+      message: 'Paiement introuvable ou non autorisé.',
+    });
+  });
+
+  it('rejette avec NOT_FOUND si l amendement appartient à un autre client', async () => {
+    vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(mockUser);
+    vi.spyOn(dbModule, 'getDb').mockReturnValueOnce(
+      createMockDb([
+        {
+          ...defaultRow,
+          customerUserId: '99999999-9999-4999-8999-999999999999',
+        },
+      ]),
+    );
+
+    const res = await initiateSupplementPaymentAction({ amendmentId });
+    expect(res).toEqual({
+      kind: 'ERROR',
+      code: 'NOT_FOUND',
+      message: 'Paiement introuvable ou non autorisé.',
+    });
+  });
+
+  it('rejette avec NOT_FOUND si le type n est pas SUPPLEMENT', async () => {
+    vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(mockUser);
+    vi.spyOn(dbModule, 'getDb').mockReturnValueOnce(
+      createMockDb([
+        {
+          ...defaultRow,
+          type: 'REFUND',
+        },
+      ]),
+    );
+
+    const res = await initiateSupplementPaymentAction({ amendmentId });
+    expect(res).toEqual({
+      kind: 'ERROR',
+      code: 'NOT_FOUND',
+      message: 'Paiement introuvable ou non autorisé.',
+    });
+  });
+
+  it('rejette avec EXPIRED si le délai de hold est dépassé', async () => {
+    vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(mockUser);
+    vi.spyOn(dbModule, 'getDb').mockReturnValueOnce(
+      createMockDb([
+        {
+          ...defaultRow,
+          holdDeadline: new Date(Date.now() - 10_000),
+        },
+      ]),
+    );
+
+    const res = await initiateSupplementPaymentAction({ amendmentId });
+    expect(res).toEqual({
+      kind: 'ERROR',
+      code: 'EXPIRED',
+      message: 'Le délai de paiement a expiré.',
+    });
+  });
+
+  it('rejette avec UNAVAILABLE si l environnement Stripe est invalide', async () => {
+    vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(mockUser);
+    vi.spyOn(dbModule, 'getDb').mockReturnValueOnce(createMockDb());
+    process.env.STRIPE_ENVIRONMENT = 'INVALID';
+
+    const res = await initiateSupplementPaymentAction({ amendmentId });
+    expect(res).toEqual({
+      kind: 'ERROR',
+      code: 'UNAVAILABLE',
+      message: 'Paiement indisponible.',
+    });
+  });
+
+  it('rejette avec UNAVAILABLE si getStripeAdapter échoue', async () => {
+    vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(mockUser);
+    vi.spyOn(dbModule, 'getDb').mockReturnValueOnce(createMockDb());
+    vi.spyOn(stripeModule, 'getStripeAdapter').mockImplementationOnce(() => {
+      throw new Error('Missing secret key');
+    });
+
+    const res = await initiateSupplementPaymentAction({ amendmentId });
+    expect(res).toEqual({
+      kind: 'ERROR',
+      code: 'UNAVAILABLE',
+      message: 'Paiement indisponible.',
+    });
+  });
+
+  it('retourne READY avec clientSecret sans fuite d identifiants techniques', async () => {
+    vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(mockUser);
+    vi.spyOn(dbModule, 'getDb').mockReturnValueOnce(createMockDb());
+    vi.spyOn(stripeModule, 'getStripeAdapter').mockReturnValueOnce(
+      mockProvider as unknown as PaymentProviderAdapter,
+    );
+    vi.spyOn(core, 'initiateSupplementPayment').mockResolvedValueOnce({
+      kind: 'SUCCESS',
+      amendmentId,
+      amendmentPaymentId: 'pay_123',
+      amendmentPaymentAttemptId: 'att_123',
+      providerPaymentIntentId: 'pi_123',
+      providerStatus: 'requires_payment_method',
+      clientSecret: 'pi_123_secret_xyz',
+    });
+
+    const res = await initiateSupplementPaymentAction({ amendmentId });
+    expect(res).toEqual({
+      kind: 'READY',
+      clientSecret: 'pi_123_secret_xyz',
+    });
+    expect((res as Record<string, unknown>).amendmentPaymentId).toBeUndefined();
+    expect((res as Record<string, unknown>).amendmentPaymentAttemptId).toBeUndefined();
+    expect((res as Record<string, unknown>).providerPaymentIntentId).toBeUndefined();
+  });
+
+  it('mappe HOLD_EXPIRED vers EXPIRED', async () => {
+    vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(mockUser);
+    vi.spyOn(dbModule, 'getDb').mockReturnValueOnce(createMockDb());
+    vi.spyOn(stripeModule, 'getStripeAdapter').mockReturnValueOnce(
+      mockProvider as unknown as PaymentProviderAdapter,
+    );
+    vi.spyOn(core, 'initiateSupplementPayment').mockResolvedValueOnce({
+      kind: 'HOLD_EXPIRED',
+    });
+
+    const res = await initiateSupplementPaymentAction({ amendmentId });
+    expect(res).toEqual({
+      kind: 'ERROR',
+      code: 'EXPIRED',
+      message: 'Le délai de paiement a expiré.',
+    });
+  });
+
+  it('mappe IN_PROGRESS vers IN_PROGRESS', async () => {
+    vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(mockUser);
+    vi.spyOn(dbModule, 'getDb').mockReturnValueOnce(createMockDb());
+    vi.spyOn(stripeModule, 'getStripeAdapter').mockReturnValueOnce(
+      mockProvider as unknown as PaymentProviderAdapter,
+    );
+    vi.spyOn(core, 'initiateSupplementPayment').mockResolvedValueOnce({
+      kind: 'IN_PROGRESS',
+    });
+
+    const res = await initiateSupplementPaymentAction({ amendmentId });
+    expect(res).toEqual({
+      kind: 'ERROR',
+      code: 'IN_PROGRESS',
+      message: 'Un paiement est déjà en cours de traitement.',
+    });
+  });
+
+  it('mappe PROVIDER_ERROR vers TEMPORARY_ERROR sans fuite de payload', async () => {
+    vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(mockUser);
+    vi.spyOn(dbModule, 'getDb').mockReturnValueOnce(createMockDb());
+    vi.spyOn(stripeModule, 'getStripeAdapter').mockReturnValueOnce(
+      mockProvider as unknown as PaymentProviderAdapter,
+    );
+    vi.spyOn(core, 'initiateSupplementPayment').mockResolvedValueOnce({
+      kind: 'PROVIDER_ERROR',
+    });
+
+    const res = await initiateSupplementPaymentAction({ amendmentId });
+    expect(res).toEqual({
+      kind: 'ERROR',
+      code: 'TEMPORARY_ERROR',
+      message: 'Une erreur temporaire est survenue. Veuillez réessayer.',
+    });
   });
 });

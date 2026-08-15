@@ -113,3 +113,12 @@ export type {
   ConfirmBookingAmendmentSuccess,
   ConfirmBookingAmendmentResult,
 } from './types-amendment';
+
+// G7M-C5-C — Read model de checkout du supplément client.
+export { getSupplementCheckoutSummary } from './get-supplement-checkout-summary';
+export type {
+  GetSupplementCheckoutInput,
+  GetSupplementCheckoutOptions,
+  SupplementCheckoutPayable,
+  GetSupplementCheckoutResult,
+} from './types-amendment';

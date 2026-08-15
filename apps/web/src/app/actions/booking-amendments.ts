@@ -1,9 +1,15 @@
 'use server';
 
 import type { ActionResult } from '@uttily/contracts';
+import { eq, and } from 'drizzle-orm';
+import { bookingAmendments, bookings } from '@uttily/database';
+import { getAuthenticatedUser } from '@/lib/auth';
+import { getDb } from '@/lib/db';
+import { getStripeAdapter } from '@/lib/stripe';
 import {
   previewBookingAmendment,
   confirmBookingAmendment,
+  initiateSupplementPayment,
   type PreviewBookingAmendmentCommand,
   type PreviewBookingAmendmentSuccess,
   type ConfirmBookingAmendmentCommand,
@@ -458,6 +464,182 @@ export async function confirmBookingAmendmentAction(
       ok: false,
       code: 'UNKNOWN',
       message: 'Une erreur interne est survenue lors de la confirmation.',
+    };
+  }
+}
+
+export type InitiateSupplementPaymentActionResult =
+  | { readonly kind: 'READY'; readonly clientSecret: string }
+  | {
+      readonly kind: 'ERROR';
+      readonly code:
+        | 'UNAUTHENTICATED'
+        | 'NOT_FOUND'
+        | 'EXPIRED'
+        | 'IN_PROGRESS'
+        | 'UNAVAILABLE'
+        | 'TEMPORARY_ERROR';
+      readonly message: string;
+    };
+
+/**
+ * Server Action : initie le paiement Stripe du supplément d'amendement (G7M-C5-C).
+ *
+ * Résout côté serveur le tuple amendment → booking → organization → customer.
+ * Le clientSecret n'est retourné qu'au composant client en mémoire et n'est JAMAIS
+ * persisté, loggé ou inclus dans les erreurs.
+ */
+export async function initiateSupplementPaymentAction(input: {
+  amendmentId: string;
+}): Promise<InitiateSupplementPaymentActionResult> {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return {
+      kind: 'ERROR',
+      code: 'UNAUTHENTICATED',
+      message: 'Vous devez être connecté.',
+    };
+  }
+
+  if (typeof input !== 'object' || input === null || !isValidUuid(input.amendmentId)) {
+    return {
+      kind: 'ERROR',
+      code: 'NOT_FOUND',
+      message: 'Paiement introuvable ou non autorisé.',
+    };
+  }
+
+  const db = getDb();
+
+  const rows = await db
+    .select({
+      organizationId: bookingAmendments.organizationId,
+      bookingId: bookingAmendments.bookingId,
+      type: bookingAmendments.type,
+      status: bookingAmendments.status,
+      holdDeadline: bookingAmendments.holdDeadline,
+      customerUserId: bookings.customerUserId,
+    })
+    .from(bookingAmendments)
+    .innerJoin(
+      bookings,
+      and(
+        eq(bookings.id, bookingAmendments.bookingId),
+        eq(bookings.organizationId, bookingAmendments.organizationId),
+      ),
+    )
+    .where(eq(bookingAmendments.id, input.amendmentId))
+    .limit(1);
+
+  if (rows.length === 0) {
+    return {
+      kind: 'ERROR',
+      code: 'NOT_FOUND',
+      message: 'Paiement introuvable ou non autorisé.',
+    };
+  }
+
+  const row = rows[0]!;
+
+  if (row.customerUserId !== user.id || row.type !== 'SUPPLEMENT') {
+    return {
+      kind: 'ERROR',
+      code: 'NOT_FOUND',
+      message: 'Paiement introuvable ou non autorisé.',
+    };
+  }
+
+  if (row.holdDeadline && Date.now() >= row.holdDeadline.getTime()) {
+    return {
+      kind: 'ERROR',
+      code: 'EXPIRED',
+      message: 'Le délai de paiement a expiré.',
+    };
+  }
+
+  const rawEnv = process.env.STRIPE_ENVIRONMENT ?? 'TEST';
+  if (rawEnv !== 'TEST' && rawEnv !== 'LIVE') {
+    return {
+      kind: 'ERROR',
+      code: 'UNAVAILABLE',
+      message: 'Paiement indisponible.',
+    };
+  }
+  if (rawEnv === 'LIVE' && process.env.PAYMENTS_LIVE_ENABLED !== 'true') {
+    return {
+      kind: 'ERROR',
+      code: 'UNAVAILABLE',
+      message: 'Paiement indisponible.',
+    };
+  }
+  const environment = rawEnv as 'TEST' | 'LIVE';
+
+  let provider;
+  try {
+    provider = getStripeAdapter();
+  } catch {
+    return {
+      kind: 'ERROR',
+      code: 'UNAVAILABLE',
+      message: 'Paiement indisponible.',
+    };
+  }
+
+  try {
+    const result = await initiateSupplementPayment(db, provider, {
+      organizationId: row.organizationId,
+      amendmentId: input.amendmentId,
+      customerUserId: user.id,
+      environment,
+    });
+
+    switch (result.kind) {
+      case 'SUCCESS':
+        return {
+          kind: 'READY',
+          clientSecret: result.clientSecret,
+        };
+      case 'HOLD_EXPIRED':
+        return {
+          kind: 'ERROR',
+          code: 'EXPIRED',
+          message: 'Le délai de paiement a expiré.',
+        };
+      case 'IN_PROGRESS':
+        return {
+          kind: 'ERROR',
+          code: 'IN_PROGRESS',
+          message: 'Un paiement est déjà en cours de traitement.',
+        };
+      case 'NOT_FOUND':
+      case 'FORBIDDEN':
+        return {
+          kind: 'ERROR',
+          code: 'NOT_FOUND',
+          message: 'Paiement introuvable ou non autorisé.',
+        };
+      case 'ENVIRONMENT_MISMATCH':
+      case 'INVALID_STATE':
+        return {
+          kind: 'ERROR',
+          code: 'UNAVAILABLE',
+          message: 'Paiement indisponible.',
+        };
+      case 'PROVIDER_ERROR':
+      case 'PROVIDER_STATE_INCONSISTENT':
+      case 'INVALID_INPUT':
+      default:
+        return {
+          kind: 'ERROR',
+          code: 'TEMPORARY_ERROR',
+          message: 'Une erreur temporaire est survenue. Veuillez réessayer.',
+        };
+    }
+  } catch {
+    return {
+      kind: 'ERROR',
+      code: 'TEMPORARY_ERROR',
+      message: 'Une erreur temporaire est survenue. Veuillez réessayer.',
     };
   }
 }

@@ -429,3 +429,41 @@ export type ConfirmBookingAmendmentResult =
   | { readonly kind: 'PREVIEW_CHANGED' }
   | { readonly kind: 'IDEMPOTENCY_CONFLICT' }
   | { readonly kind: 'INVALID_STATE' };
+
+/**
+ * Paramètres d'entrée pour le read model du checkout de supplément (G7M-C5-C).
+ */
+export interface GetSupplementCheckoutInput {
+  readonly amendmentId: string;
+  readonly customerUserId: string;
+}
+
+/**
+ * Options d'exécution pour getSupplementCheckoutSummary.
+ */
+export interface GetSupplementCheckoutOptions {
+  /** Horloge applicative injectable pour tester l'échéance du hold. */
+  readonly asOf?: Date;
+}
+
+/**
+ * État PAYABLE du checkout de supplément (G7M-C5-C).
+ */
+export interface SupplementCheckoutPayable {
+  readonly kind: 'PAYABLE';
+  readonly amountMinor: number;
+  readonly currency: 'EUR';
+  readonly holdDeadline: string;
+  readonly timeZone: string;
+}
+
+/**
+ * Résultat fermé à 6 états du read model getSupplementCheckoutSummary (G7M-C5-C).
+ */
+export type GetSupplementCheckoutResult =
+  | SupplementCheckoutPayable
+  | { readonly kind: 'PROCESSING' }
+  | { readonly kind: 'PAID' }
+  | { readonly kind: 'EXPIRED' }
+  | { readonly kind: 'NOT_FOUND' }
+  | { readonly kind: 'INVALID_STATE' };

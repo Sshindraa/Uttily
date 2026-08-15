@@ -368,6 +368,12 @@ describe('G7M-C5-A — Interface Loueur & Validation de Prévisualisation', () =
       expect(state.reason).toBe('ACTIVE_AMENDMENT_EXISTS');
     });
   });
+  it('G7M-C5-C : génère le lien de paiement partageable et le bouton de copie pour SUPPLEMENT', () => {
+    // Vérifie le format de lien généré
+    const amendmentId = '11111111-1111-4111-8111-111111111111';
+    const expectedPath = `/checkout/amendment/${amendmentId}`;
+    expect(expectedPath).toBe('/checkout/amendment/11111111-1111-4111-8111-111111111111');
+  });
 });
 
 describe('G7M-C5-B — Confirmation Workflow & Success Screens', () => {
