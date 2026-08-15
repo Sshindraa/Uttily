@@ -117,11 +117,12 @@ plus cher.
 du chargement DB (`loadPricingContext`). Le use case `quoteFlexiblePricing(db,
 input)` orchestre les deux. Le moteur est read-only (aucun effet de bord) et
 produit un devis déterministe avec `algorithmVersion: 'flexible-pricing-v1'` et
-`roundingRuleVersion: 'half-up-v1'`. Il n'est pas encore intégré au flux de
-réservation (création de brouillon, hold, paiement) — c'est l'objet de G7P-B2.
+`roundingRuleVersion: 'half-up-v1'`. Le moteur est ensuite intégré au flux de
+réservation via G7P-B2-B (`createBookingDraftWithHold`) et G7P-B2-C (`applyBookingConfirmation`).
 
-L'implémentation daily-only actuelle reste en place tant que G7P-B2 n'est pas
-livré. Le flux de réservation existant décrit ci-dessus n'est pas modifié.
+L'implémentation daily-only coexiste avec le moteur flexible après la livraison de
+G7P-B2 (voir ci-dessous). Le flux de réservation existant décrit ci-dessus reste
+applicable pour les snapshots `legacy-daily-v1`.
 
 **G7P-B2-A Round 3 (implémenté)** : Les fondations du schéma de snapshot de prix
 flexible sont en place (migration 0033). Les tables `booking_drafts`,
@@ -151,8 +152,8 @@ du snapshot financier après création (seuls `status`, `expires_at` et
 `updated_at` sont modifiables sur les drafts ; les lignes et les bookings sont
 insert-only) et la cohérence multi-tenant (plan et draft de même organisation
 et même devise). Les snapshots legacy (`legacy-daily-v1`) restent lisibles et
-ne sont pas convertis. Cette fondation n'est pas encore intégrée au flux de
-réservation — c'est l'objet de G7P-B2-B.
+ne sont pas convertis. Cette fondation est intégrée au flux de réservation via
+G7P-B2-B et G7P-B2-C (voir ci-dessous).
 
 **G7P-B2-B (Round 2 terminé et validé)** : Le moteur flexible est intégré au flux de réservation
 via `createBookingDraftWithHold`. Deux modes de tarification coexistent :
@@ -250,8 +251,8 @@ réservation.
 
 ### Modifications financières append-only (ADR-023, conception approuvée)
 
-> ADR-023 (2026-08-10, Accepted — conception approuvée, implémentation non
-> commencée). Voir
+> ADR-023 (2026-08-10, Accepted — conception approuvée, implémentation terminée
+> et fusionnée sur main). Voir
 > `docs/decisions/ADR-023-booking-financial-amendments.md`.
 
 Les modifications d'une réservation `CONFIRMED` (dates, durée, quantité,

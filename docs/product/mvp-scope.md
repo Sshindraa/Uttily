@@ -25,7 +25,7 @@ Permettre à un client de trouver et réserver un équipement réellement dispon
 10. Modifications financières d'une réservation confirmée avant retrait
     (amendements append-only : changement de dates, durée, quantité, variantes
     et allocations ; supplément via Stripe Elements, remboursement sur le moyen
-    d'origine ; ADR-023, conception approuvée, implémentation non commencée).
+    d'origine ; ADR-023, conception approuvée, implémentation terminée et fusionnée sur main).
 
 ## Explicitement hors MVP
 
