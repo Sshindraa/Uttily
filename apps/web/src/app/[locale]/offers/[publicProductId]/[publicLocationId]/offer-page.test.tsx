@@ -5,7 +5,11 @@ import * as auth from '@/lib/auth';
 import * as core from '@uttily/core';
 import type { PublicOfferDetails } from '@uttily/core';
 import PublicOfferPage from './page';
-import { OfferBookingForm } from './offer-booking-form';
+import {
+  OfferBookingForm,
+  computeBookingFormFingerprint,
+  getOrCreateIdempotencyKey,
+} from './offer-booking-form';
 
 vi.mock('@/lib/auth', () => ({
   getAuthenticatedUser: vi.fn(),
@@ -34,10 +38,11 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
-describe('PublicOfferPage — Server Component & OfferBookingForm', () => {
+describe('PublicOfferPage & OfferBookingForm — SSR et Idempotence', () => {
   const publicProductId = '11111111-1111-4111-8111-111111111111';
   const publicLocationId = '22222222-2222-4222-8222-222222222222';
-  const internalOrgId = '99999999-9999-4999-8999-999999999999';
+  const publicVariant1Id = '33333333-3333-4333-8333-333333333333';
+  const publicVariant2Id = '44444444-4444-4444-8444-444444444444';
 
   const mockOffer: PublicOfferDetails = {
     publicProductId,
@@ -55,12 +60,8 @@ describe('PublicOfferPage — Server Component & OfferBookingForm', () => {
     countryCode: 'FR',
     variants: [
       {
-        id: '33333333-3333-4333-8333-333333333333',
+        publicVariantId: publicVariant1Id,
         name: 'Modèle Standard',
-        skuSuffix: null,
-        attributes: {},
-        dailyPriceAmountMinor: 4500,
-        currency: 'EUR',
       },
     ],
     openingHours: [
@@ -102,12 +103,35 @@ describe('PublicOfferPage — Server Component & OfferBookingForm', () => {
     expect(html).toContain('Réserver');
     expect(html).toContain('value="2026-09-01"');
     expect(html).toContain('value="2026-09-03"');
-
-    // Absence de fuite d'IDs internes sensibles
-    expect(html).not.toContain(internalOrgId);
+    expect(html).toContain('montant contractuel exact');
   });
 
-  it('2. Renders public offer details in English', async () => {
+  it('2. Sentinelles : prouve qu’aucun ID interne ou secret n’apparaît dans le HTML SSR', async () => {
+    const internalOrgId = '99999999-9999-4999-8999-999999999999';
+    const internalVariantId = '88888888-8888-4888-8888-888888888888';
+    const sentinelSku = 'SENTINEL_SKU_TEST_123';
+
+    vi.mocked(auth.getAuthenticatedUser).mockResolvedValue(null);
+    vi.mocked(core.getPublicOfferDetails).mockResolvedValue({
+      kind: 'SUCCESS',
+      offer: mockOffer,
+    });
+
+    const page = await PublicOfferPage({
+      params: Promise.resolve({ locale: 'fr', publicProductId, publicLocationId }),
+      searchParams: Promise.resolve({}),
+    });
+
+    const html = renderToStaticMarkup(page);
+
+    expect(html).not.toContain(internalOrgId);
+    expect(html).not.toContain(internalVariantId);
+    expect(html).not.toContain(sentinelSku);
+    expect(html).toContain(publicProductId);
+    expect(html).toContain(publicLocationId);
+  });
+
+  it('3. Renders public offer details in English', async () => {
     vi.mocked(auth.getAuthenticatedUser).mockResolvedValue(null);
     vi.mocked(core.getPublicOfferDetails).mockResolvedValue({
       kind: 'SUCCESS',
@@ -133,7 +157,7 @@ describe('PublicOfferPage — Server Component & OfferBookingForm', () => {
     expect(html).toContain('value="2026-09-01T14:00"');
   });
 
-  it('3. Appelle notFound() si getPublicOfferDetails retourne NOT_FOUND', async () => {
+  it('4. Appelle notFound() si getPublicOfferDetails retourne NOT_FOUND', async () => {
     vi.mocked(auth.getAuthenticatedUser).mockResolvedValue(null);
     vi.mocked(core.getPublicOfferDetails).mockResolvedValue({
       kind: 'NOT_FOUND',
@@ -149,41 +173,80 @@ describe('PublicOfferPage — Server Component & OfferBookingForm', () => {
     expect(mockNotFound).toHaveBeenCalled();
   });
 
-  it('4. OfferBookingForm renders multi-variants option list if more than 1 variant', () => {
+  it('5. OfferBookingForm affiche les options de variantes sans prix individuel', () => {
     const multiVariantOffer: PublicOfferDetails = {
       ...mockOffer,
       variants: [
         {
-          id: '11111111-0000-0000-0000-000000000001',
+          publicVariantId: publicVariant1Id,
           name: 'Taille M',
-          skuSuffix: 'M',
-          attributes: {},
-          dailyPriceAmountMinor: 4000,
-          currency: 'EUR',
         },
         {
-          id: '11111111-0000-0000-0000-000000000002',
+          publicVariantId: publicVariant2Id,
           name: 'Taille L',
-          skuSuffix: 'L',
-          attributes: {},
-          dailyPriceAmountMinor: 5000,
-          currency: 'EUR',
         },
       ],
     };
 
     const html = renderToStaticMarkup(
-      <OfferBookingForm
-        offer={multiVariantOffer}
-        locale="fr"
-        isAuthenticated={false}
-      />,
+      <OfferBookingForm offer={multiVariantOffer} locale="fr" isAuthenticated={false} />,
     );
 
     expect(html).toContain('Taille M');
-    expect(html).toContain('40.00 EUR');
     expect(html).toContain('Taille L');
-    expect(html).toContain('50.00 EUR');
+    expect(html).toContain(publicVariant1Id);
+    expect(html).toContain(publicVariant2Id);
+    // Absence de prix individuel sur les variantes
+    expect(html).not.toContain('40.00 EUR');
+    expect(html).not.toContain('50.00 EUR');
     expect(html).toContain('Réserver');
+  });
+
+  describe('Fonctions pures d’idempotence de formulaire', () => {
+    const baseParams = {
+      publicProductId,
+      publicLocationId,
+      publicVariantId: publicVariant1Id,
+      intentKind: 'DAY_RANGE' as const,
+      startDate: '2026-09-01',
+      endDateExclusive: '2026-09-03',
+    };
+
+    it('A. Même payload soumis deux fois produit la même empreinte et réutilise la même clé', () => {
+      const fp1 = computeBookingFormFingerprint(baseParams);
+      const fp2 = computeBookingFormFingerprint(baseParams);
+      expect(fp1).toBe(fp2);
+
+      const mockUuidGen = vi.fn().mockReturnValue('uuid-key-1');
+      const rec1 = getOrCreateIdempotencyKey(null, fp1, mockUuidGen);
+      expect(rec1.idempotencyKey).toBe('uuid-key-1');
+      expect(mockUuidGen).toHaveBeenCalledTimes(1);
+
+      // Deuxième soumission identique (ex: retry après incident réseau)
+      const rec2 = getOrCreateIdempotencyKey(rec1, fp2, mockUuidGen);
+      expect(rec2.idempotencyKey).toBe('uuid-key-1');
+      expect(mockUuidGen).toHaveBeenCalledTimes(1); // pas de nouvel appel UUID
+    });
+
+    it('B. Payload modifié produit une nouvelle empreinte et génère une nouvelle clé', () => {
+      const fp1 = computeBookingFormFingerprint(baseParams);
+      const fp2 = computeBookingFormFingerprint({
+        ...baseParams,
+        endDateExclusive: '2026-09-04',
+      });
+      expect(fp1).not.toBe(fp2);
+
+      const mockUuidGen = vi
+        .fn()
+        .mockReturnValueOnce('uuid-key-1')
+        .mockReturnValueOnce('uuid-key-2');
+
+      const rec1 = getOrCreateIdempotencyKey(null, fp1, mockUuidGen);
+      expect(rec1.idempotencyKey).toBe('uuid-key-1');
+
+      const rec2 = getOrCreateIdempotencyKey(rec1, fp2, mockUuidGen);
+      expect(rec2.idempotencyKey).toBe('uuid-key-2');
+      expect(mockUuidGen).toHaveBeenCalledTimes(2);
+    });
   });
 });

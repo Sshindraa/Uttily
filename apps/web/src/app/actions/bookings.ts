@@ -1,9 +1,12 @@
 'use server';
 
-import type { ActionResult } from '@uttily/contracts';
-import { and, eq, isNull } from 'drizzle-orm';
-import { locations, products, productVariants } from '@uttily/database';
-import { createBookingDraftWithHold, type FlexibleCreateBookingDraftInput } from '@uttily/core';
+import type { ActionErrorCode, ActionResult } from '@uttily/contracts';
+import {
+  createBookingDraftWithHold,
+  PostgresPhotoPublicationGate,
+  resolvePublicBookingAuthority,
+  type FlexibleCreateBookingDraftInput,
+} from '@uttily/core';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 
@@ -22,7 +25,7 @@ export interface CreateBookingDraftIntentInput {
 export interface CreateBookingDraftActionInput {
   publicProductId: string;
   publicLocationId: string;
-  variantId: string;
+  publicVariantId: string;
   quantity?: number;
   intent: CreateBookingDraftIntentInput;
   locale?: string;
@@ -35,27 +38,87 @@ export interface CreateBookingDraftActionSuccess {
 }
 
 /**
+ * Mapping fermé et exhaustif des erreurs Core vers des messages utilisateurs sûrs.
+ * Ne divulgue aucun message SQL, nom de table, secret ou UUID interne.
+ */
+export async function mapBookingDraftError(
+  error: string | undefined,
+  locale: 'fr' | 'en',
+): Promise<{ code: ActionErrorCode; message: string }> {
+  const fr = locale === 'fr';
+  switch (error) {
+    case 'CONFLICT_BLOCK':
+      return {
+        code: 'CONFLICT_BLOCK',
+        message: fr
+          ? 'Cet équipement n’est plus disponible pour la période sélectionnée.'
+          : 'This equipment is no longer available for the selected dates.',
+      };
+    case 'CONFLICT_IDEMPOTENCY':
+      return {
+        code: 'CONFLICT_IDEMPOTENCY',
+        message: fr
+          ? 'Une requête différente a déjà été soumise avec la même clé.'
+          : 'A conflicting request was already submitted with this key.',
+      };
+    case 'OUTSIDE_OPENING_HOURS':
+    case 'LOCATION_CLOSED':
+      return {
+        code: 'VALIDATION',
+        message: fr
+          ? 'Le lieu est fermé sur ce créneau ou les horaires sont en dehors des heures d’ouverture.'
+          : 'The location is closed during this time or outside opening hours.',
+      };
+    case 'VALIDATION':
+      return {
+        code: 'VALIDATION',
+        message: fr
+          ? 'Les paramètres de réservation sont invalides.'
+          : 'The booking parameters are invalid.',
+      };
+    default:
+      return {
+        code: 'UNKNOWN',
+        message: fr
+          ? 'La réservation n’a pas pu être créée. Veuillez vérifier les informations et réessayer.'
+          : 'The booking could not be created. Please verify your details and try again.',
+      };
+  }
+}
+
+/**
  * Server Action : Crée atomiquement un booking draft avec hold temporaire (G7E / Pont Checkout).
  *
- * Résout côté serveur les identifiants internes (organizationId, locationId, productId)
- * à partir des identifiants publics autorisés (publicProductId, publicLocationId).
- * Aucune autorité de réservation n'est déléguée au navigateur.
+ * Résout côté serveur les identifiants internes transactionnels (organizationId, locationId,
+ * productId, variantId) à partir des identifiants publics autorisés (publicProductId,
+ * publicLocationId, publicVariantId) en appliquant les mêmes règles d'éligibilité que la consultation.
+ *
+ * Aucune autorité de tarification ou de réservation n'est déléguée au navigateur.
  */
 export async function createBookingDraftAction(
   input: CreateBookingDraftActionInput,
 ): Promise<ActionResult<CreateBookingDraftActionSuccess>> {
+  const locale: 'fr' | 'en' = input?.locale === 'en' ? 'en' : 'fr';
+  const fr = locale === 'fr';
+
   const user = await getAuthenticatedUser();
   if (!user) {
     return {
       ok: false,
       code: 'UNAUTHENTICATED',
-      message: 'Vous devez être connecté pour effectuer une réservation.',
+      message: fr
+        ? 'Vous devez être connecté pour effectuer une réservation.'
+        : 'You must be signed in to make a booking.',
     };
   }
 
   // 1. Validation de l'entrée
   if (!input || typeof input !== 'object') {
-    return { ok: false, code: 'VALIDATION', message: 'Paramètres invalides.' };
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: fr ? 'Paramètres invalides.' : 'Invalid parameters.',
+    };
   }
 
   if (
@@ -63,7 +126,11 @@ export async function createBookingDraftAction(
     typeof input.publicProductId !== 'string' ||
     !UUID_RE.test(input.publicProductId.trim())
   ) {
-    return { ok: false, code: 'VALIDATION', message: 'Identifiant de produit invalide.' };
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: fr ? 'Identifiant de produit invalide.' : 'Invalid product identifier.',
+    };
   }
 
   if (
@@ -71,15 +138,23 @@ export async function createBookingDraftAction(
     typeof input.publicLocationId !== 'string' ||
     !UUID_RE.test(input.publicLocationId.trim())
   ) {
-    return { ok: false, code: 'VALIDATION', message: 'Identifiant de lieu invalide.' };
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: fr ? 'Identifiant de lieu invalide.' : 'Invalid location identifier.',
+    };
   }
 
   if (
-    !input.variantId ||
-    typeof input.variantId !== 'string' ||
-    !UUID_RE.test(input.variantId.trim())
+    !input.publicVariantId ||
+    typeof input.publicVariantId !== 'string' ||
+    !UUID_RE.test(input.publicVariantId.trim())
   ) {
-    return { ok: false, code: 'VALIDATION', message: 'Identifiant de variante invalide.' };
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: fr ? 'Identifiant de variante invalide.' : 'Invalid variant identifier.',
+    };
   }
 
   if (
@@ -87,7 +162,11 @@ export async function createBookingDraftAction(
     typeof input.idempotencyKey !== 'string' ||
     !UUID_RE.test(input.idempotencyKey.trim())
   ) {
-    return { ok: false, code: 'VALIDATION', message: 'Clé d’idempotence invalide.' };
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: fr ? 'Clé d’idempotence invalide.' : 'Invalid idempotency key.',
+    };
   }
 
   const quantity = input.quantity ?? 1;
@@ -95,12 +174,18 @@ export async function createBookingDraftAction(
     return {
       ok: false,
       code: 'VALIDATION',
-      message: 'La quantité doit être supérieure ou égale à 1.',
+      message: fr
+        ? 'La quantité doit être supérieure ou égale à 1.'
+        : 'Quantity must be at least 1.',
     };
   }
 
   if (!input.intent || typeof input.intent !== 'object') {
-    return { ok: false, code: 'VALIDATION', message: 'Période de réservation invalide.' };
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: fr ? 'Période de réservation invalide.' : 'Invalid booking period.',
+    };
   }
 
   let flexibleIntent: FlexibleCreateBookingDraftInput['intent'];
@@ -114,14 +199,18 @@ export async function createBookingDraftAction(
       return {
         ok: false,
         code: 'VALIDATION',
-        message: 'Dates de réservation invalides (format YYYY-MM-DD attendu).',
+        message: fr
+          ? 'Dates de réservation invalides (format YYYY-MM-DD attendu).'
+          : 'Invalid booking dates (YYYY-MM-DD format expected).',
       };
     }
     if (input.intent.endDateExclusive <= input.intent.startDate) {
       return {
         ok: false,
         code: 'VALIDATION',
-        message: 'La date de fin doit être postérieure à la date de début.',
+        message: fr
+          ? 'La date de fin doit être postérieure à la date de début.'
+          : 'End date must be after start date.',
       };
     }
     flexibleIntent = {
@@ -139,7 +228,9 @@ export async function createBookingDraftAction(
       return {
         ok: false,
         code: 'VALIDATION',
-        message: 'Horaires de réservation invalides (format YYYY-MM-DDTHH:mm attendu).',
+        message: fr
+          ? 'Horaires de réservation invalides (format YYYY-MM-DDTHH:mm attendu).'
+          : 'Invalid booking times (YYYY-MM-DDTHH:mm format expected).',
       };
     }
     const cleanStartAt =
@@ -150,7 +241,9 @@ export async function createBookingDraftAction(
       return {
         ok: false,
         code: 'VALIDATION',
-        message: 'L’heure de fin doit être postérieure à l’heure de début.',
+        message: fr
+          ? 'L’heure de fin doit être postérieure à l’heure de début.'
+          : 'End time must be after start time.',
       };
     }
     flexibleIntent = {
@@ -159,83 +252,51 @@ export async function createBookingDraftAction(
       endAt: cleanEndAt,
     };
   } else {
-    return { ok: false, code: 'VALIDATION', message: 'Type de période invalide.' };
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: fr ? 'Type de période invalide.' : 'Invalid period type.',
+    };
   }
 
   const db = getDb();
   const cleanPublicProductId = input.publicProductId.trim();
   const cleanPublicLocationId = input.publicLocationId.trim();
-  const cleanVariantId = input.variantId.trim();
+  const cleanPublicVariantId = input.publicVariantId.trim();
   const cleanIdempotencyKey = input.idempotencyKey.trim();
-  const locale = input.locale === 'en' ? 'en' : 'fr';
 
-  // 2. Résolution d'autorité côté serveur (produit, organisation, lieu, variante)
-  const rows = await db
-    .select({
-      productId: products.id,
-      productOrgId: products.organizationId,
-      productPublicationStatus: products.publicationStatus,
-      productDeletedAt: products.deletedAt,
-      locationId: locations.id,
-      locationOrgId: locations.organizationId,
-      locationDeletedAt: locations.deletedAt,
-      isPubliclyListed: locations.isPubliclyListed,
-      pickupEnabled: locations.pickupEnabled,
-    })
-    .from(products)
-    .innerJoin(locations, eq(locations.publicId, cleanPublicLocationId))
-    .where(eq(products.publicId, cleanPublicProductId))
-    .limit(1);
+  // 2. Résolution d'autorité côté serveur (mêmes règles d'éligibilité que la fiche publique)
+  const authorityRes = await resolvePublicBookingAuthority(
+    db,
+    {
+      publicProductId: cleanPublicProductId,
+      publicLocationId: cleanPublicLocationId,
+      publicVariantId: cleanPublicVariantId,
+    },
+    { publicationGate: new PostgresPhotoPublicationGate() },
+  );
 
-  if (rows.length === 0) {
-    return { ok: false, code: 'NOT_FOUND', message: 'Offre introuvable ou non disponible.' };
+  if (authorityRes.kind !== 'SUCCESS') {
+    return {
+      ok: false,
+      code: 'NOT_FOUND',
+      message: fr
+        ? 'Offre ou option d’équipement introuvable ou non disponible.'
+        : 'Offer or equipment option not found or unavailable.',
+    };
   }
 
-  const r = rows[0]!;
-  if (r.productOrgId !== r.locationOrgId) {
-    return { ok: false, code: 'NOT_FOUND', message: 'Offre introuvable ou non disponible.' };
-  }
-
-  if (
-    r.productPublicationStatus !== 'PUBLISHED' ||
-    r.productDeletedAt !== null ||
-    r.locationDeletedAt !== null ||
-    !r.isPubliclyListed ||
-    !r.pickupEnabled
-  ) {
-    return { ok: false, code: 'NOT_FOUND', message: 'Offre introuvable ou non disponible.' };
-  }
-
-  // Vérifier la variante
-  const variantRows = await db
-    .select({
-      id: productVariants.id,
-      isActive: productVariants.isActive,
-      deletedAt: productVariants.deletedAt,
-    })
-    .from(productVariants)
-    .where(
-      and(
-        eq(productVariants.id, cleanVariantId),
-        eq(productVariants.productId, r.productId),
-        isNull(productVariants.deletedAt),
-      ),
-    )
-    .limit(1);
-
-  if (variantRows.length === 0 || !variantRows[0]!.isActive) {
-    return { ok: false, code: 'NOT_FOUND', message: 'Variante introuvable ou non disponible.' };
-  }
+  const { authority } = authorityRes;
 
   // 3. Appel de la primitive Core createBookingDraftWithHold
   const draftInput: FlexibleCreateBookingDraftInput = {
     pricingMode: 'FLEXIBLE',
-    organizationId: r.productOrgId,
-    locationId: r.locationId,
+    organizationId: authority.organizationId,
+    locationId: authority.locationId,
     customerUserId: user.id,
     locale,
     intent: flexibleIntent,
-    lines: [{ variantId: cleanVariantId, quantity }],
+    lines: [{ variantId: authority.variantId, quantity }],
     idempotencyKey: cleanIdempotencyKey,
   };
 
@@ -252,40 +313,15 @@ export async function createBookingDraftAction(
       };
     }
 
-    // Mapping d'erreur fermé et typé
-    switch (result.body.error) {
-      case 'CONFLICT_BLOCK':
-        return {
-          ok: false,
-          code: 'CONFLICT_BLOCK',
-          message: 'Cet équipement n’est plus disponible pour la période sélectionnée.',
-        };
-      case 'CONFLICT_IDEMPOTENCY':
-        return {
-          ok: false,
-          code: 'CONFLICT_IDEMPOTENCY',
-          message: 'Une requête différente a déjà été soumise avec la même clé.',
-        };
-      case 'VALIDATION':
-        return {
-          ok: false,
-          code: 'VALIDATION',
-          message:
-            result.body.message ||
-            'Les paramètres de réservation sont invalides ou le lieu est fermé.',
-        };
-      default:
-        return {
-          ok: false,
-          code: 'UNKNOWN',
-          message: 'La réservation n’a pas pu être créée. Veuillez réessayer.',
-        };
-    }
+    const { code, message } = await mapBookingDraftError(result.body?.error, locale);
+    return { ok: false, code, message };
   } catch {
     return {
       ok: false,
       code: 'UNKNOWN',
-      message: 'Une erreur interne est survenue lors de la création de la réservation.',
+      message: fr
+        ? 'Une erreur interne est survenue lors de la création de la réservation.'
+        : 'An internal error occurred while creating the booking.',
     };
   }
 }

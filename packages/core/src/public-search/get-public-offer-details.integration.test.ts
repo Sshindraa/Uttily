@@ -55,7 +55,11 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
     publicLocationId: string;
     locationId: string;
     variant1Id: string;
+    variant1PublicId: string;
     variant2Id: string;
+    variant2PublicId: string;
+    skuSuffixSentinel?: string | undefined;
+    attrSentinel?: string | undefined;
   }
 
   async function seedOfferFixture(
@@ -72,12 +76,14 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
       variant1Active?: boolean;
       variant2Active?: boolean;
       seedPhotos?: boolean;
+      skuSuffixSentinel?: string;
+      attrSentinel?: string;
     } = {},
   ): Promise<SeedResult> {
     const tag = opts.tag ?? Math.random().toString(36).slice(2, 8);
     const targetPubStatus = opts.publicationStatus ?? 'PUBLISHED';
     const countryActive = opts.countryActive ?? true;
-    const shouldSeedPhotos = opts.seedPhotos ?? (targetPubStatus === 'PUBLISHED');
+    const shouldSeedPhotos = opts.seedPhotos ?? targetPubStatus === 'PUBLISHED';
 
     // 1. Pays
     const countryCode = 'FR';
@@ -111,8 +117,6 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
     const isPubliclyListed = opts.isPubliclyListed ?? true;
     const pickupEnabled = opts.pickupEnabled ?? true;
     const locationDeleted = opts.locationDeleted ?? false;
-    // Si pickupEnabled = false ou locationDeleted = true, is_publicly_listed DOIT être false
-    // selon la contrainte locations_public_listing_requirements.
     const effectiveIsPubliclyListed = isPubliclyListed && pickupEnabled && !locationDeleted;
 
     const loc = await sql`
@@ -140,7 +144,7 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
         (${loc.id}, 2, '08:00:00', '18:00:00')
     `;
 
-    // 5. Produit : inséré initialement en DRAFT
+    // 5. Produit
     const prod = await sql`
       INSERT INTO "products" (
         "organization_id", "category_id", "name", "slug", "description",
@@ -181,15 +185,17 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
     }
 
     // 6. Variantes
+    const skuSuffix1 = opts.skuSuffixSentinel ?? 'M';
+    const attr1 = opts.attrSentinel ? { sentinel_key: opts.attrSentinel } : { size: 'M' };
     const v1 = await sql`
       INSERT INTO "product_variants" (
         "product_id", "name", "sku_suffix", "attributes", "is_active", "daily_price_amount_minor", "currency"
       )
       VALUES (
-        ${prod.id}, 'Taille M', 'M', '{"size": "M"}'::jsonb,
+        ${prod.id}, 'Taille M', ${skuSuffix1}, ${sql.json(attr1)},
         ${opts.variant1Active ?? true}, 4500, 'EUR'
       )
-      RETURNING "id"
+      RETURNING "id", "public_id"
     `.then((r) => r[0]!);
 
     const v2 = await sql`
@@ -200,7 +206,7 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
         ${prod.id}, 'Taille L', 'L', '{"size": "L"}'::jsonb,
         ${opts.variant2Active ?? true}, 5000, 'EUR'
       )
-      RETURNING "id"
+      RETURNING "id", "public_id"
     `.then((r) => r[0]!);
 
     return {
@@ -210,11 +216,15 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
       locationId: loc.id as string,
       publicLocationId: loc.public_id as string,
       variant1Id: v1.id as string,
+      variant1PublicId: v1.public_id as string,
       variant2Id: v2.id as string,
+      variant2PublicId: v2.public_id as string,
+      skuSuffixSentinel: opts.skuSuffixSentinel,
+      attrSentinel: opts.attrSentinel,
     };
   }
 
-  it('1. Charge avec succès une offre complète et ordonnée', async () => {
+  it('1. Charge avec succès une offre complète avec publicVariantId sans fuite interne', async () => {
     const f = await seedOfferFixture(rawSql, { tag: 'happy' });
 
     const res = await getPublicOfferDetails(db, {
@@ -239,11 +249,11 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
     expect(res.offer.postalCode).toBe('75001');
     expect(res.offer.countryCode).toBe('FR');
 
-    // Variantes
+    // Variantes : projection minimale (publicVariantId et name uniquement)
     expect(res.offer.variants).toHaveLength(2);
-    expect(res.offer.variants[0]!.id).toBe(f.variant1Id);
+    expect(res.offer.variants[0]!.publicVariantId).toBe(f.variant1PublicId);
     expect(res.offer.variants[0]!.name).toBe('Taille M');
-    expect(res.offer.variants[1]!.id).toBe(f.variant2Id);
+    expect(res.offer.variants[1]!.publicVariantId).toBe(f.variant2PublicId);
     expect(res.offer.variants[1]!.name).toBe('Taille L');
 
     // Horaires
@@ -251,11 +261,45 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
     expect(res.offer.openingHours[0]!.weekday).toBe(1);
   });
 
-  it('2. Tenant isolation : Rejette NOT_FOUND si produit et établissement appartiennent à des organisations différentes', async () => {
+  it('2. Sentinelles : prouve qu’aucun ID interne, SKU suffix ou attribut JSON n’apparaît dans le read model', async () => {
+    const skuSentinel = 'SENTINEL_SKU_SUFFIX_XYZ_999';
+    const attrSentinel = 'SENTINEL_JSON_ATTRIBUTE_VALUE_123';
+    const f = await seedOfferFixture(rawSql, {
+      tag: 'sentinel',
+      skuSuffixSentinel: skuSentinel,
+      attrSentinel: attrSentinel,
+    });
+
+    const res = await getPublicOfferDetails(db, {
+      publicProductId: f.publicProductId,
+      publicLocationId: f.publicLocationId,
+    });
+
+    expect(res.kind).toBe('SUCCESS');
+    if (res.kind !== 'SUCCESS') return;
+
+    const offerJson = JSON.stringify(res.offer);
+
+    // Aucune sentinelle interne
+    expect(offerJson).not.toContain(f.orgId);
+    expect(offerJson).not.toContain(f.productId);
+    expect(offerJson).not.toContain(f.locationId);
+    expect(offerJson).not.toContain(f.variant1Id);
+    expect(offerJson).not.toContain(f.variant2Id);
+    expect(offerJson).not.toContain(skuSentinel);
+    expect(offerJson).not.toContain(attrSentinel);
+
+    // Seuls les public IDs apparaissent
+    expect(offerJson).toContain(f.publicProductId);
+    expect(offerJson).toContain(f.publicLocationId);
+    expect(offerJson).toContain(f.variant1PublicId);
+    expect(offerJson).toContain(f.variant2PublicId);
+  });
+
+  it('3. Tenant isolation : Rejette NOT_FOUND si produit et établissement appartiennent à des organisations différentes', async () => {
     const f1 = await seedOfferFixture(rawSql, { tag: 'org1' });
     const f2 = await seedOfferFixture(rawSql, { tag: 'org2' });
 
-    // Produit de Org1 avec Établissement de Org2
     const res = await getPublicOfferDetails(db, {
       publicProductId: f1.publicProductId,
       publicLocationId: f2.publicLocationId,
@@ -264,7 +308,7 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
     expect(res.kind).toBe('NOT_FOUND');
   });
 
-  it('3. Rejette NOT_FOUND si le produit est en statut DRAFT', async () => {
+  it('4. Rejette NOT_FOUND si le produit est en statut DRAFT', async () => {
     const f = await seedOfferFixture(rawSql, { tag: 'draft', publicationStatus: 'DRAFT' });
 
     const res = await getPublicOfferDetails(db, {
@@ -275,7 +319,7 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
     expect(res.kind).toBe('NOT_FOUND');
   });
 
-  it('4. Rejette NOT_FOUND si le produit est supprimé (deletedAt)', async () => {
+  it('5. Rejette NOT_FOUND si le produit est supprimé (deletedAt)', async () => {
     const f = await seedOfferFixture(rawSql, { tag: 'pdel', productDeleted: true });
 
     const res = await getPublicOfferDetails(db, {
@@ -286,7 +330,7 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
     expect(res.kind).toBe('NOT_FOUND');
   });
 
-  it("5. Rejette NOT_FOUND si l'établissement n'est pas publicly listed", async () => {
+  it("6. Rejette NOT_FOUND si l'établissement n'est pas publicly listed", async () => {
     const f = await seedOfferFixture(rawSql, { tag: 'nolist', isPubliclyListed: false });
 
     const res = await getPublicOfferDetails(db, {
@@ -297,7 +341,7 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
     expect(res.kind).toBe('NOT_FOUND');
   });
 
-  it('6. Rejette NOT_FOUND si le retrait est désactivé (pickupEnabled = false)', async () => {
+  it('7. Rejette NOT_FOUND si le retrait est désactivé (pickupEnabled = false)', async () => {
     const f = await seedOfferFixture(rawSql, { tag: 'nopick', pickupEnabled: false });
 
     const res = await getPublicOfferDetails(db, {
@@ -308,7 +352,7 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
     expect(res.kind).toBe('NOT_FOUND');
   });
 
-  it("7. Rejette NOT_FOUND si l'établissement est supprimé", async () => {
+  it("8. Rejette NOT_FOUND si l'établissement est supprimé", async () => {
     const f = await seedOfferFixture(rawSql, { tag: 'locdel', locationDeleted: true });
 
     const res = await getPublicOfferDetails(db, {
@@ -319,7 +363,7 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
     expect(res.kind).toBe('NOT_FOUND');
   });
 
-  it("8. Rejette NOT_FOUND si l'organisation est supprimée", async () => {
+  it("9. Rejette NOT_FOUND si l'organisation est supprimée", async () => {
     const f = await seedOfferFixture(rawSql, { tag: 'orgdel', orgDeleted: true });
 
     const res = await getPublicOfferDetails(db, {
@@ -330,7 +374,7 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
     expect(res.kind).toBe('NOT_FOUND');
   });
 
-  it('9. Rejette NOT_FOUND si le pays est inactif', async () => {
+  it('10. Rejette NOT_FOUND si le pays est inactif', async () => {
     const f = await seedOfferFixture(rawSql, { tag: 'badctry', countryActive: false });
 
     const res = await getPublicOfferDetails(db, {
@@ -341,7 +385,7 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
     expect(res.kind).toBe('NOT_FOUND');
   });
 
-  it('10. Filtre les variantes inactives et retourne NOT_FOUND si aucune variante active', async () => {
+  it('11. Filtre les variantes inactives et retourne NOT_FOUND si aucune variante active', async () => {
     const f = await seedOfferFixture(rawSql, {
       tag: 'novar',
       variant1Active: false,
@@ -356,7 +400,7 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
     expect(res.kind).toBe('NOT_FOUND');
   });
 
-  it('11. Gating photos : rejette NOT_FOUND si le gate refuse le produit, accepte si le gate valide', async () => {
+  it('12. Gating photos : rejette NOT_FOUND si le gate refuse le produit, accepte si le gate valide', async () => {
     const f = await seedOfferFixture(rawSql, { tag: 'gate' });
 
     const rejectingGate: PublicProductPublicationGate = {
@@ -382,7 +426,7 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
     expect(resAccepted.kind).toBe('SUCCESS');
   });
 
-  it('12. Retourne NOT_FOUND pour des identifiants inconnus', async () => {
+  it('13. Retourne NOT_FOUND pour des identifiants inconnus', async () => {
     const res = await getPublicOfferDetails(db, {
       publicProductId: '00000000-0000-4000-8000-000000000001',
       publicLocationId: '00000000-0000-4000-8000-000000000002',

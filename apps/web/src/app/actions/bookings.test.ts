@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { DatabaseClient } from '@uttily/database';
-import { createBookingDraftAction } from './bookings';
+import { createBookingDraftAction, mapBookingDraftError } from './bookings';
 import * as auth from '@/lib/auth';
-import * as dbModule from '@/lib/db';
 import * as core from '@uttily/core';
 
 vi.mock('@/lib/auth', () => ({
@@ -10,18 +8,19 @@ vi.mock('@/lib/auth', () => ({
 }));
 
 vi.mock('@/lib/db', () => ({
-  getDb: vi.fn(),
+  getDb: vi.fn(() => ({})),
 }));
 
 vi.mock('@uttily/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@uttily/core')>();
   return {
     ...actual,
+    resolvePublicBookingAuthority: vi.fn(),
     createBookingDraftWithHold: vi.fn(),
   };
 });
 
-describe('createBookingDraftAction', () => {
+describe('createBookingDraftAction — tests unitaires', () => {
   const mockUser = {
     id: '11111111-1111-4111-8111-111111111111',
     email: 'client@example.com',
@@ -33,89 +32,63 @@ describe('createBookingDraftAction', () => {
 
   const validPublicProductId = '22222222-2222-4222-8222-222222222222';
   const validPublicLocationId = '33333333-3333-4333-8333-333333333333';
-  const validVariantId = '44444444-4444-4444-8444-444444444444';
+  const validPublicVariantId = '44444444-4444-4444-8444-444444444444';
   const validIdempotencyKey = '55555555-5555-4555-8555-555555555555';
 
-  const defaultResolvedProductLocation = [
-    {
-      productId: 'aaaa0000-0000-4000-8000-000000000000',
-      productOrgId: 'bbbb0000-0000-4000-8000-000000000000',
-      productPublicationStatus: 'PUBLISHED',
-      productDeletedAt: null,
-      locationId: 'cccc0000-0000-4000-8000-000000000000',
-      locationOrgId: 'bbbb0000-0000-4000-8000-000000000000',
-      locationDeletedAt: null,
-      isPubliclyListed: true,
-      pickupEnabled: true,
-    },
-  ];
-
-  const defaultResolvedVariant = [
-    {
-      id: validVariantId,
-      isActive: true,
-      deletedAt: null,
-    },
-  ];
-
-  function createMockDb(
-    productLocationRows = defaultResolvedProductLocation,
-    variantRows = defaultResolvedVariant,
-  ): DatabaseClient {
-    let callCount = 0;
-    const mockDb = {
-      select: vi.fn().mockImplementation(() => ({
-        from: vi.fn().mockImplementation(() => ({
-          innerJoin: vi.fn().mockImplementation(() => ({
-            where: vi.fn().mockImplementation(() => ({
-              limit: vi.fn().mockImplementation(() => {
-                callCount++;
-                if (callCount === 1) return Promise.resolve(productLocationRows);
-                return Promise.resolve(variantRows);
-              }),
-            })),
-          })),
-          where: vi.fn().mockImplementation(() => ({
-            limit: vi.fn().mockImplementation(() => {
-              callCount++;
-              return Promise.resolve(variantRows);
-            }),
-          })),
-        })),
-      })),
-    };
-    return mockDb as unknown as DatabaseClient;
-  }
+  const mockResolvedAuthority: core.ResolvedPublicBookingAuthority = {
+    organizationId: 'aaaa0000-0000-4000-8000-000000000000',
+    locationId: 'bbbb0000-0000-4000-8000-000000000000',
+    productId: 'cccc0000-0000-4000-8000-000000000000',
+    variantId: 'dddd0000-0000-4000-8000-000000000000',
+    timeZone: 'Europe/Paris',
+    operatingCurrency: 'EUR',
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('1. Rejette UNAUTHENTICATED si l’utilisateur n’est pas connecté', async () => {
+  it('1. Rejette UNAUTHENTICATED si l’utilisateur n’est pas connecté (FR et EN)', async () => {
     vi.mocked(auth.getAuthenticatedUser).mockResolvedValue(null);
 
-    const res = await createBookingDraftAction({
+    const resFr = await createBookingDraftAction({
       publicProductId: validPublicProductId,
       publicLocationId: validPublicLocationId,
-      variantId: validVariantId,
+      publicVariantId: validPublicVariantId,
       quantity: 1,
       intent: { kind: 'DAY_RANGE', startDate: '2026-09-01', endDateExclusive: '2026-09-05' },
       idempotencyKey: validIdempotencyKey,
+      locale: 'fr',
     });
+    expect(resFr.ok).toBe(false);
+    if (!resFr.ok) {
+      expect(resFr.code).toBe('UNAUTHENTICATED');
+      expect(resFr.message).toBe('Vous devez être connecté pour effectuer une réservation.');
+    }
 
-    expect(res.ok).toBe(false);
-    if (!res.ok) {
-      expect(res.code).toBe('UNAUTHENTICATED');
+    const resEn = await createBookingDraftAction({
+      publicProductId: validPublicProductId,
+      publicLocationId: validPublicLocationId,
+      publicVariantId: validPublicVariantId,
+      quantity: 1,
+      intent: { kind: 'DAY_RANGE', startDate: '2026-09-01', endDateExclusive: '2026-09-05' },
+      idempotencyKey: validIdempotencyKey,
+      locale: 'en',
+    });
+    expect(resEn.ok).toBe(false);
+    if (!resEn.ok) {
+      expect(resEn.code).toBe('UNAUTHENTICATED');
+      expect(resEn.message).toBe('You must be signed in to make a booking.');
     }
   });
 
-  it('2. Rejette VALIDATION pour un UUID de produit invalide', async () => {
+  it('2. Rejette VALIDATION pour un publicVariantId manquant ou non-UUID', async () => {
     vi.mocked(auth.getAuthenticatedUser).mockResolvedValue(mockUser);
 
     const res = await createBookingDraftAction({
-      publicProductId: 'invalid-uuid',
+      publicProductId: validPublicProductId,
       publicLocationId: validPublicLocationId,
-      variantId: validVariantId,
+      publicVariantId: 'not-a-uuid',
       quantity: 1,
       intent: { kind: 'DAY_RANGE', startDate: '2026-09-01', endDateExclusive: '2026-09-05' },
       idempotencyKey: validIdempotencyKey,
@@ -127,32 +100,16 @@ describe('createBookingDraftAction', () => {
     }
   });
 
-  it('3. Rejette VALIDATION si les dates DAY_RANGE sont invalides ou inversées', async () => {
+  it('3. Rejette NOT_FOUND si resolvePublicBookingAuthority retourne NOT_FOUND', async () => {
     vi.mocked(auth.getAuthenticatedUser).mockResolvedValue(mockUser);
-
-    const res = await createBookingDraftAction({
-      publicProductId: validPublicProductId,
-      publicLocationId: validPublicLocationId,
-      variantId: validVariantId,
-      quantity: 1,
-      intent: { kind: 'DAY_RANGE', startDate: '2026-09-10', endDateExclusive: '2026-09-05' },
-      idempotencyKey: validIdempotencyKey,
+    vi.mocked(core.resolvePublicBookingAuthority).mockResolvedValue({
+      kind: 'NOT_FOUND',
     });
 
-    expect(res.ok).toBe(false);
-    if (!res.ok) {
-      expect(res.code).toBe('VALIDATION');
-    }
-  });
-
-  it('4. Rejette NOT_FOUND si le produit ou l’établissement n’est pas trouvé ou non publié', async () => {
-    vi.mocked(auth.getAuthenticatedUser).mockResolvedValue(mockUser);
-    vi.mocked(dbModule.getDb).mockReturnValue(createMockDb([]));
-
     const res = await createBookingDraftAction({
       publicProductId: validPublicProductId,
       publicLocationId: validPublicLocationId,
-      variantId: validVariantId,
+      publicVariantId: validPublicVariantId,
       quantity: 1,
       intent: { kind: 'DAY_RANGE', startDate: '2026-09-01', endDateExclusive: '2026-09-05' },
       idempotencyKey: validIdempotencyKey,
@@ -164,11 +121,14 @@ describe('createBookingDraftAction', () => {
     }
   });
 
-  it('5. Succès : crée le booking draft avec hold et retourne la redirection vers checkout', async () => {
+  it('4. Succès : résout l’autorité et appelle createBookingDraftWithHold avec les IDs internes', async () => {
     vi.mocked(auth.getAuthenticatedUser).mockResolvedValue(mockUser);
-    vi.mocked(dbModule.getDb).mockReturnValue(createMockDb());
+    vi.mocked(core.resolvePublicBookingAuthority).mockResolvedValue({
+      kind: 'SUCCESS',
+      authority: mockResolvedAuthority,
+    });
 
-    const draftId = 'dddd0000-0000-4000-8000-000000000000';
+    const draftId = 'eeee0000-0000-4000-8000-000000000000';
     vi.mocked(core.createBookingDraftWithHold).mockResolvedValue({
       kind: 'SUCCESS',
       statusCode: 201,
@@ -179,7 +139,7 @@ describe('createBookingDraftAction', () => {
     const res = await createBookingDraftAction({
       publicProductId: validPublicProductId,
       publicLocationId: validPublicLocationId,
-      variantId: validVariantId,
+      publicVariantId: validPublicVariantId,
       quantity: 1,
       intent: { kind: 'DAY_RANGE', startDate: '2026-09-01', endDateExclusive: '2026-09-05' },
       idempotencyKey: validIdempotencyKey,
@@ -190,26 +150,43 @@ describe('createBookingDraftAction', () => {
       expect(res.data.draftId).toBe(draftId);
       expect(res.data.redirectUrl).toBe(`/checkout/${draftId}`);
     }
+
+    expect(core.createBookingDraftWithHold).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        organizationId: mockResolvedAuthority.organizationId,
+        locationId: mockResolvedAuthority.locationId,
+        customerUserId: mockUser.id,
+        lines: [{ variantId: mockResolvedAuthority.variantId, quantity: 1 }],
+      }),
+    );
   });
 
-  it('6. Mappe CONFLICT_BLOCK de Core vers un message d’indisponibilité clair', async () => {
+  it('5. Messages d’erreur fermés et assainis : prouve qu’aucun secret, SQL ou UUID interne ne fuite', async () => {
     vi.mocked(auth.getAuthenticatedUser).mockResolvedValue(mockUser);
-    vi.mocked(dbModule.getDb).mockReturnValue(createMockDb());
+    vi.mocked(core.resolvePublicBookingAuthority).mockResolvedValue({
+      kind: 'SUCCESS',
+      authority: mockResolvedAuthority,
+    });
+
+    const sentinelSecret = 'sk_live_secret_token_abcdef123456';
+    const sentinelTable = 'internal_db_table_xyz';
+    const sentinelInternalUuid = '99998888-7777-6666-5555-444433332222';
 
     vi.mocked(core.createBookingDraftWithHold).mockResolvedValue({
       kind: 'FAILURE',
-      statusCode: 409,
+      statusCode: 400,
       resourceId: null,
       body: {
-        error: 'CONFLICT_BLOCK',
-        message: 'No available items for this slot',
+        error: 'DATABASE_ERROR' as unknown as 'VALIDATION',
+        message: `FATAL: table ${sentinelTable} with id ${sentinelInternalUuid} key=${sentinelSecret}`,
       },
     });
 
     const res = await createBookingDraftAction({
       publicProductId: validPublicProductId,
       publicLocationId: validPublicLocationId,
-      variantId: validVariantId,
+      publicVariantId: validPublicVariantId,
       quantity: 1,
       intent: { kind: 'DAY_RANGE', startDate: '2026-09-01', endDateExclusive: '2026-09-05' },
       idempotencyKey: validIdempotencyKey,
@@ -217,8 +194,27 @@ describe('createBookingDraftAction', () => {
 
     expect(res.ok).toBe(false);
     if (!res.ok) {
-      expect(res.code).toBe('CONFLICT_BLOCK');
-      expect(res.message).toContain('plus disponible');
+      expect(res.code).toBe('UNKNOWN');
+      expect(res.message).not.toContain(sentinelSecret);
+      expect(res.message).not.toContain(sentinelTable);
+      expect(res.message).not.toContain(sentinelInternalUuid);
     }
+  });
+
+  it('6. mapBookingDraftError couvre tous les codes d’erreur avec traductions FR et EN', async () => {
+    const conflictFr = await mapBookingDraftError('CONFLICT_BLOCK', 'fr');
+    expect(conflictFr.code).toBe('CONFLICT_BLOCK');
+    expect(conflictFr.message).toContain('plus disponible');
+
+    const conflictEn = await mapBookingDraftError('CONFLICT_BLOCK', 'en');
+    expect(conflictEn.code).toBe('CONFLICT_BLOCK');
+    expect(conflictEn.message).toContain('no longer available');
+
+    const idemFr = await mapBookingDraftError('CONFLICT_IDEMPOTENCY', 'fr');
+    expect(idemFr.code).toBe('CONFLICT_IDEMPOTENCY');
+
+    const hoursFr = await mapBookingDraftError('LOCATION_CLOSED', 'fr');
+    expect(hoursFr.code).toBe('VALIDATION');
+    expect(hoursFr.message).toContain('fermé');
   });
 });

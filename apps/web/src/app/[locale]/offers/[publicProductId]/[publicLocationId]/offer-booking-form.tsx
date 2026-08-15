@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useTransition } from 'react';
+import React, { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { PublicOfferDetails } from '@uttily/core';
 import { createBookingDraftAction } from '@/app/actions/bookings';
@@ -18,6 +18,51 @@ export interface OfferBookingFormProps {
   isAuthenticated: boolean;
 }
 
+export interface BookingFormFingerprintParams {
+  publicProductId: string;
+  publicLocationId: string;
+  publicVariantId: string;
+  intentKind: 'DAY_RANGE' | 'TIME_RANGE';
+  startDate?: string;
+  endDateExclusive?: string;
+  startAt?: string;
+  endAt?: string;
+}
+
+/**
+ * Calcule une empreinte déterministe des champs métier du formulaire de réservation.
+ */
+export function computeBookingFormFingerprint(params: BookingFormFingerprintParams): string {
+  return [
+    params.publicProductId.trim(),
+    params.publicLocationId.trim(),
+    params.publicVariantId.trim(),
+    params.intentKind,
+    params.intentKind === 'DAY_RANGE' ? (params.startDate ?? '') : '',
+    params.intentKind === 'DAY_RANGE' ? (params.endDateExclusive ?? '') : '',
+    params.intentKind === 'TIME_RANGE' ? (params.startAt ?? '') : '',
+    params.intentKind === 'TIME_RANGE' ? (params.endAt ?? '') : '',
+  ].join('|');
+}
+
+/**
+ * Retourne la clé d'idempotence existante si le payload métier n'a pas changé,
+ * ou génère une nouvelle clé UUID si le payload a été modifié.
+ */
+export function getOrCreateIdempotencyKey(
+  currentRecord: { fingerprint: string; idempotencyKey: string } | null,
+  newFingerprint: string,
+  generateUuid: () => string = () => crypto.randomUUID(),
+): { fingerprint: string; idempotencyKey: string } {
+  if (currentRecord && currentRecord.fingerprint === newFingerprint) {
+    return currentRecord;
+  }
+  return {
+    fingerprint: newFingerprint,
+    idempotencyKey: generateUuid(),
+  };
+}
+
 export function OfferBookingForm({
   offer,
   locale,
@@ -33,9 +78,9 @@ export function OfferBookingForm({
   const fr = locale === 'fr';
 
   const defaultVariantId =
-    initialVariantId && offer.variants.some((v) => v.id === initialVariantId)
+    initialVariantId && offer.variants.some((v) => v.publicVariantId === initialVariantId)
       ? initialVariantId
-      : (offer.variants[0]?.id ?? '');
+      : (offer.variants[0]?.publicVariantId ?? '');
 
   const [selectedVariantId, setSelectedVariantId] = useState(defaultVariantId);
   const [intentKind, setIntentKind] = useState<'DAY_RANGE' | 'TIME_RANGE'>(initialIntent);
@@ -45,6 +90,8 @@ export function OfferBookingForm({
   const [endAt, setEndAt] = useState(initialEndAt);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const idempotencyRef = useRef<{ fingerprint: string; idempotencyKey: string } | null>(null);
 
   const handleBooking = (e: React.FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
@@ -108,17 +155,30 @@ export function OfferBookingForm({
 
     if (!selectedVariantId) {
       setErrorMessage(
-        fr ? 'Veuillez sélectionner une option.' : 'Please select an equipment variant.',
+        fr ? 'Veuillez sélectionner une option.' : 'Please select an equipment option.',
       );
       return;
     }
 
+    // Clé d'idempotence stable par empreinte métier
+    const fingerprint = computeBookingFormFingerprint({
+      publicProductId: offer.publicProductId,
+      publicLocationId: offer.publicLocationId,
+      publicVariantId: selectedVariantId,
+      intentKind,
+      startDate,
+      endDateExclusive,
+      startAt,
+      endAt,
+    });
+    const { idempotencyKey } = getOrCreateIdempotencyKey(idempotencyRef.current, fingerprint);
+    idempotencyRef.current = { fingerprint, idempotencyKey };
+
     startTransition(async () => {
-      const idempotencyKey = crypto.randomUUID();
       const res = await createBookingDraftAction({
         publicProductId: offer.publicProductId,
         publicLocationId: offer.publicLocationId,
-        variantId: selectedVariantId,
+        publicVariantId: selectedVariantId,
         quantity: 1,
         intent:
           intentKind === 'DAY_RANGE'
@@ -138,7 +198,9 @@ export function OfferBookingForm({
 
   return (
     <form className={styles.bookingCard} onSubmit={handleBooking} noValidate>
-      <h2 className={styles.bookingCardTitle}>{fr ? 'Configurer la réservation' : 'Book this item'}</h2>
+      <h2 className={styles.bookingCardTitle}>
+        {fr ? 'Configurer la réservation' : 'Book this item'}
+      </h2>
 
       {errorMessage ? (
         <div role="alert" className={styles.alert}>
@@ -148,31 +210,28 @@ export function OfferBookingForm({
 
       {offer.variants.length > 1 ? (
         <fieldset className={styles.formGroup}>
-          <legend className={styles.label}>{fr ? 'Variante d’équipement' : 'Equipment option'}</legend>
+          <legend className={styles.label}>
+            {fr ? 'Option d’équipement' : 'Equipment option'}
+          </legend>
           <div className={styles.variantGroup}>
             {offer.variants.map((variant) => {
-              const isSelected = variant.id === selectedVariantId;
+              const isSelected = variant.publicVariantId === selectedVariantId;
               return (
                 <label
-                  key={variant.id}
+                  key={variant.publicVariantId}
                   className={`${styles.variantOption} ${isSelected ? styles.variantOptionSelected : ''}`}
                 >
                   <div>
                     <input
                       type="radio"
                       name="variantId"
-                      value={variant.id}
+                      value={variant.publicVariantId}
                       checked={isSelected}
-                      onChange={() => setSelectedVariantId(variant.id)}
+                      onChange={() => setSelectedVariantId(variant.publicVariantId)}
                       className={styles.radioInput}
                     />
                     <span>{variant.name}</span>
                   </div>
-                  {variant.dailyPriceAmountMinor !== null ? (
-                    <span>
-                      {(variant.dailyPriceAmountMinor / 100).toFixed(2)} {variant.currency}
-                    </span>
-                  ) : null}
                 </label>
               );
             })}
@@ -283,24 +342,14 @@ export function OfferBookingForm({
         </div>
       )}
 
-      <button
-        type="submit"
-        className={styles.submitButton}
-        disabled={isPending}
-      >
-        {isPending
-          ? fr
-            ? 'Réservation en cours...'
-            : 'Booking...'
-          : fr
-            ? 'Réserver'
-            : 'Book now'}
+      <button type="submit" className={styles.submitButton} disabled={isPending}>
+        {isPending ? (fr ? 'Réservation en cours...' : 'Booking...') : fr ? 'Réserver' : 'Book now'}
       </button>
 
       <p className={styles.guaranteeNote}>
         {fr
-          ? 'Le créneau et l’équipement physique sont bloqués instantanément par un hold temporaire de 10 minutes lors de la confirmation.'
-          : 'The time slot and equipment are reserved immediately with a 10-minute temporary hold upon confirmation.'}
+          ? 'Le montant contractuel exact calculé pour votre créneau sera affiché et confirmé au checkout avant paiement. Le créneau et l’équipement physique sont bloqués instantanément par un hold temporaire de 10 minutes.'
+          : 'The exact contractual amount for your booking period will be calculated and confirmed at checkout prior to payment. The time slot and equipment are reserved immediately with a 10-minute temporary hold.'}
       </p>
     </form>
   );

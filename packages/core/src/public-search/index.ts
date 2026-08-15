@@ -14,6 +14,7 @@
 
 export { searchPublicOffers } from './search-offers';
 export { getPublicOfferDetails } from './get-public-offer-details';
+export { resolvePublicBookingAuthority } from './resolve-public-booking-authority';
 export { listPublicSearchFilterOptions } from './list-filters';
 export {
   createPublicSearchCursorCodec,
@@ -49,6 +50,9 @@ export type {
   PublicOfferDetails,
   PublicOfferVariant,
   PublicOfferOpeningHour,
+  ResolvePublicBookingAuthorityInput,
+  ResolvedPublicBookingAuthority,
+  ResolvePublicBookingAuthorityResult,
 } from './types';
 export type {
   PublicSearchDestinationOption,

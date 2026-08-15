@@ -110,6 +110,7 @@ export {
 export {
   searchPublicOffers,
   getPublicOfferDetails,
+  resolvePublicBookingAuthority,
   listPublicSearchFilterOptions,
   createPublicSearchCursorCodec,
   isPointInBbox,
@@ -139,6 +140,9 @@ export {
   type PublicOfferDetails,
   type PublicOfferVariant,
   type PublicOfferOpeningHour,
+  type ResolvePublicBookingAuthorityInput,
+  type ResolvedPublicBookingAuthority,
+  type ResolvePublicBookingAuthorityResult,
 } from './public-search';
 
 // G7F-A2 — Photos et publication gate.

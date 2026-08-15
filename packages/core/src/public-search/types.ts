@@ -1,21 +1,12 @@
 import type { DatabaseClient } from '@uttily/database';
 
-/**
- * @uttily/core — Module Public Search (G7E-B).
- *
- * Types d'entrée/sortie du moteur de recherche publique exacte et viewport.
- * Aucune écriture. Le moteur est read-only et informatif : seul le hold
- * transactionnel (createBookingDraftWithHold) décide de l'allocation réelle.
- */
-
 // ─────────────────────────────────────────────────────────────────────────────
-// Intent — discriminated union (même format que FlexiblePricingIntent)
+// Intent & Constraints
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type PublicSearchIntent =
   /**
-   * `startAt` et `endAt` sont des chaînes de date+heure locale au format
-   * ISO 8601 SANS offset de fuseau horaire (ex : "2026-08-08T22:08:00").
+   * `startAt` et `endAt` sont des chaînes ISO strictes (YYYY-MM-DDTHH:mm).
    * Elles représentent l'heure locale dans le fuseau IANA du lieu de location.
    * La conversion en UTC est effectuée PAR LOCATION via localDateTimeStringToUtc.
    */
@@ -195,12 +186,8 @@ export interface GetPublicOfferDetailsInput {
 }
 
 export interface PublicOfferVariant {
-  id: string;
+  publicVariantId: string;
   name: string;
-  skuSuffix: string | null;
-  attributes: Record<string, unknown>;
-  dailyPriceAmountMinor: number | null;
-  currency: string;
 }
 
 export interface PublicOfferOpeningHour {
@@ -228,6 +215,30 @@ export interface PublicOfferDetails {
 }
 
 export type GetPublicOfferDetailsResult =
-  | { readonly kind: "SUCCESS"; readonly offer: PublicOfferDetails }
-  | { readonly kind: "NOT_FOUND" }
-  | { readonly kind: "INVALID_INPUT" };
+  | { readonly kind: 'SUCCESS'; readonly offer: PublicOfferDetails }
+  | { readonly kind: 'NOT_FOUND' }
+  | { readonly kind: 'INVALID_INPUT' };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Public booking authority resolver (Bridge Server Action / Security Guards)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface ResolvePublicBookingAuthorityInput {
+  publicProductId: string;
+  publicLocationId: string;
+  publicVariantId: string;
+}
+
+export interface ResolvedPublicBookingAuthority {
+  organizationId: string;
+  locationId: string;
+  productId: string;
+  variantId: string;
+  timeZone: string;
+  operatingCurrency: string;
+}
+
+export type ResolvePublicBookingAuthorityResult =
+  | { readonly kind: 'SUCCESS'; readonly authority: ResolvedPublicBookingAuthority }
+  | { readonly kind: 'NOT_FOUND' }
+  | { readonly kind: 'INVALID_INPUT' };
