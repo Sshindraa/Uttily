@@ -2805,6 +2805,50 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
     expect(account[0]!.last_provider_event_at).not.toBeNull();
   });
 
+  it('27b. account.updated prêt → onboarding local ENABLED', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData('acct-ready');
+    await seedPaymentAccount(ids, 'acct_ready_123');
+    await rawSql`
+      UPDATE organization_payment_accounts
+      SET onboarding_status = 'SUBMITTED', charges_enabled = false,
+          payouts_enabled = false, transfers_capability_status = 'PENDING'
+      WHERE provider_account_id = 'acct_ready_123'
+    `;
+
+    const deps = makeDeps();
+    const body = JSON.stringify({
+      id: `evt_acct_ready_${Math.random().toString(36).slice(2, 12)}`,
+      type: 'account.updated',
+      created: Math.floor(Date.now() / 1000),
+      api_version: '2026-06-24.dahlia',
+      account: 'acct_ready_123',
+      data: {
+        object: {
+          id: 'acct_ready_123',
+          object: 'account',
+          charges_enabled: true,
+          payouts_enabled: true,
+          capabilities: { transfers: 'active' },
+        },
+      },
+    });
+
+    const result = await handleWebhook(deps, makeWebhookInput(body, deps.adapter, 'connect'));
+    expect(result.kind).toBe('SUCCESS');
+
+    const account = await rawSql`
+      SELECT onboarding_status, charges_enabled, payouts_enabled,
+             transfers_capability_status
+      FROM organization_payment_accounts
+      WHERE provider_account_id = 'acct_ready_123'
+    `;
+    expect(account[0]!.onboarding_status).toBe('ENABLED');
+    expect(account[0]!.charges_enabled).toBe(true);
+    expect(account[0]!.payouts_enabled).toBe(true);
+    expect(account[0]!.transfers_capability_status).toBe('ACTIVE');
+  });
+
   // 28. Test de deadlock/ordre global : deux webhooks concurrents sur des drafts différents (même org)
   it('28. concurrence : deux webhooks simultanés sur des drafts différents (même org) → aucun deadlock, les deux traitent', async () => {
     if (!db || !rawSql) return;

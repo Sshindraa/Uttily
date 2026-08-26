@@ -1098,6 +1098,15 @@ async function projectAccountUpdated(
           return 'FAILED';
       }
       updates.transfersCapabilityStatus = mapped;
+
+      // Stripe ne fournit pas un statut local `onboarding_status`. Une fois
+      // les trois capacités nécessaires aux destination charges actives, le
+      // compte est suffisamment vérifié pour passer de SUBMITTED à ENABLED.
+      // Le statut ne devient jamais ENABLED sur la seule base du retour
+      // navigateur ou d'un champ isolé.
+      if (obj.charges_enabled === true && obj.payouts_enabled === true && mapped === 'ACTIVE') {
+        updates.onboardingStatus = 'ENABLED';
+      }
     }
   }
   // requirements et controller sont des objets complexes.
