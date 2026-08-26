@@ -11,6 +11,7 @@
     "build": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:seed:local": "node scripts/seed-local.mjs",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

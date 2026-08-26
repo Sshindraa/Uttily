@@ -16,7 +16,10 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "build": "pnpm -r build",
-    "dev": "pnpm --filter web dev"
+    "db:seed": "UTTILY_LOCAL_DEV=1 pnpm --filter @uttily/database db:seed:local",
+    "dev": "pnpm --filter web dev",
+    "dev:full": "node scripts/dev-local.mjs",
+    "test:dev-local": "node --test scripts/dev-local.test.mjs"
   },
   "devDependencies": {
     "eslint": "^9.0.0",

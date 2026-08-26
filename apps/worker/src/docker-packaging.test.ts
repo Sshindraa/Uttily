@@ -406,6 +406,11 @@ describe('.dockerignore', () => {
     expect(dockerignore).toMatch(/^node_modules$/m);
   });
 
+  it('exclut le store pnpm à la racine et dans les workspaces', () => {
+    expect(dockerignore).toMatch(/^\.pnpm-store\/$/m);
+    expect(dockerignore).toMatch(/^\*\*\/\.pnpm-store\/$/m);
+  });
+
   it('exclut tous les fichiers .env* via règle générale **/.env*', () => {
     expect(dockerignore).toMatch(/\*\*\/\.env\*/);
   });

@@ -10,14 +10,13 @@
 services:
   postgres:
     image: postgis/postgis:16-3.4
-    container_name: uttily-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: uttily
       POSTGRES_PASSWORD: uttily
       POSTGRES_DB: uttily
     ports:
-      - '5432:5432'
+      - '127.0.0.1:5432:5432'
     volumes:
       - uttily-postgres-data:/var/lib/postgresql/data
     healthcheck:

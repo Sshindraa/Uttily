@@ -7,11 +7,11 @@ import { resolveMigrationUrl, MigrationUrlError } from './resolve-migration-url'
 
 describe('resolveMigrationUrl', () => {
   // ─────────────────────────────────────────────────────────────────────────
-  // Cas 1 : aucune variable → fallback localhost
+  // Cas 1 : aucune variable → fallback local IPv4
   // ─────────────────────────────────────────────────────────────────────────
-  it('retourne le fallback localhost si aucune variable n est fournie', () => {
+  it('retourne le fallback local IPv4 si aucune variable n est fournie', () => {
     const url = resolveMigrationUrl({ databaseUrl: '', databaseDirectUrl: '' });
-    expect(url).toBe('postgresql://uttily:uttily@localhost:5432/uttily');
+    expect(url).toBe('postgresql://uttily:uttily@127.0.0.1:5432/uttily');
   });
 
   // ─────────────────────────────────────────────────────────────────────────

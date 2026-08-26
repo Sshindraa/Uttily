@@ -26,7 +26,7 @@
  * toute URL distante dans DATABASE_URL pendant les tests).
  */
 
-const LOCAL_FALLBACK = 'postgresql://uttily:uttily@localhost:5432/uttily';
+const LOCAL_FALLBACK = 'postgresql://uttily:uttily@127.0.0.1:5432/uttily';
 
 const LOCALHOST_HOSTS = ['localhost', '127.0.0.1', '::1'];
 
@@ -152,8 +152,16 @@ export interface ResolveMigrationUrlOptions {
  * @throws {MigrationUrlError} si la configuration est invalide ou dangereuse
  */
 export function resolveMigrationUrl(options: ResolveMigrationUrlOptions = {}): string {
-  const directUrl = options.databaseDirectUrl ?? process.env.DATABASE_DIRECT_URL;
-  const runtimeUrl = options.databaseUrl ?? process.env.DATABASE_URL;
+  // Une chaîne vide passée explicitement signifie « aucune valeur » et doit
+  // aussi neutraliser process.env : les tests et les appelants de configuration
+  // doivent pouvoir fournir un environnement hermétique.
+  const hasInjectedOptions =
+    Object.prototype.hasOwnProperty.call(options, 'databaseUrl') ||
+    Object.prototype.hasOwnProperty.call(options, 'databaseDirectUrl');
+  const directUrl = hasInjectedOptions
+    ? options.databaseDirectUrl
+    : process.env.DATABASE_DIRECT_URL;
+  const runtimeUrl = hasInjectedOptions ? options.databaseUrl : process.env.DATABASE_URL;
 
   // 1. DATABASE_DIRECT_URL a la priorité.
   if (directUrl) {

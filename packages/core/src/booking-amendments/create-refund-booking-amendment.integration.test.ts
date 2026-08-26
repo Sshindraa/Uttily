@@ -1,19 +1,27 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import postgres from 'postgres';
-import { runMigrations, createDatabase, type DatabaseClient } from '@uttily/database';
+import {
+  runMigrations,
+  createDatabase,
+  assertLocalhost,
+  type DatabaseClient,
+} from '@uttily/database';
 import { createRefundBookingAmendment } from './create-refund-booking-amendment';
 import { getEffectiveBooking } from './get-effective-booking';
 import type { AuthenticatedUser } from '../identity/types';
 import { parseBookingAmendedV1Event, parseRefundRequestedV1Event } from '@uttily/contracts';
 
 const TEST_DB_NAME = 'uttily_test_g7m_b2b1_refund';
+const shouldSkip = !process.env.DATABASE_URL && process.env.CI !== '1' && process.env.CI !== 'true';
 
-describe('createRefundBookingAmendment — intégration PostgreSQL', () => {
+describe.skipIf(shouldSkip)('createRefundBookingAmendment — intégration PostgreSQL', () => {
   let db: DatabaseClient | null = null;
   let rawSql: postgres.Sql | null = null;
 
   beforeAll(async () => {
-    const url = process.env['DATABASE_URL'] ?? 'postgres://uttily:uttily@127.0.0.1:5432/uttily';
+    const url = process.env['DATABASE_URL'];
+    if (!url) throw new Error('CI: DATABASE_URL est requise pour le test refund.');
+    assertLocalhost(url);
 
     const adminSql = postgres(url, { max: 1 });
     try {

@@ -49,16 +49,110 @@ pnpm typecheck        # vérifier les types sur tout le workspace
 pnpm test             # exécuter les tests
 pnpm build            # builder tous les packages et apps
 pnpm dev              # démarrer apps/web en développement
+pnpm dev:full         # démarrer PostgreSQL, migrer, puis Web + worker fake
+pnpm db:seed          # appliquer la fixture publique locale idempotente
+pnpm test:dev-local   # tester les garde-fous du workflow local
 ```
 
-## Base de données locale (optionnelle)
+## Workflow local SaaS complet
+
+La commande explicite `pnpm dev:full` démarre le service `postgres` existant de
+Docker Compose, attend que le healthcheck `pg_isready` confirme que PostgreSQL
+est prêt, applique les migrations locales, puis lance Next.js et le worker local.
+Le worker utilise uniquement `FakeDeterministicDocumentRenderer`,
+`InMemoryObjectStorage` et `FakeTransactionalEmailSender` : aucun appel R2 ou
+Resend réel n'est effectué.
 
 ```bash
-docker compose up -d  # PostgreSQL 16 + PostGIS sur localhost:5432
-docker compose down   # arrêter
+pnpm dev:full
+pnpm dev:full -- --no-worker          # parcours Web + PostgreSQL uniquement
+pnpm db:seed                           # seed local/dev-only, sans démarrer Web/worker
+pnpm dev:full -- --seed                # migrer, seed local, puis Web + worker fake
+pnpm dev:full -- --seed --no-worker    # migrer, seed local, puis Web uniquement
 ```
 
-Sans Docker, `lint`, `typecheck`, `test` et `build` restent fonctionnels.
+Le workflow refuse fail-closed les URLs de base existantes qui ne pointent pas
+vers `localhost`, `127.0.0.1` ou `::1`, puis impose les URLs PostgreSQL locales
+aux processus enfants. Le CLI Docker et l'inspection réussie du contexte Docker
+local actif et de son endpoint sont requis avant toute commande Compose, sans
+afficher ces valeurs. Si le CLI Docker est absent ou si cette inspection échoue,
+le workflow échoue fail-closed avant toute commande `docker-compose`. Une fois
+validé, l'endpoint local inspecté est verrouillé pour toute la séquence : le
+plugin reçoit `docker compose` avec `DOCKER_HOST=<endpoint-local-inspecté>` et
+`DOCKER_CONTEXT` retiré, tandis que le fallback `docker-compose` reçoit le même
+`DOCKER_HOST=<endpoint-local-inspecté>` et `DOCKER_CONTEXT` retiré. Le nom du
+contexte sert uniquement à sélectionner et inspecter le moteur avant l'exécution
+et ne pilote jamais Compose après validation. Tout moteur distant est refusé
+fail-closed. La détection essaie d'abord `docker compose`, puis le binaire
+`docker-compose` si le plugin est absent, uniquement après validation du contexte
+et de son endpoint local. Les contextes autres que `default`, `colima`,
+`desktop-linux` ou `docker-desktop` sont également refusés.
+Chaque commande Docker/Compose, y compris l'inspection du contexte et
+`pg_isready`, reçoit uniquement `PATH` et les variables Docker/Compose autorisées ;
+les secrets applicatifs ne sont jamais transmis à ces processus enfants.
+`Ctrl+C` arrête proprement Web et le
+worker, mais laisse PostgreSQL actif. Une interruption pendant l'inspection
+Docker, la détection Compose, le démarrage Compose, le healthcheck ou les
+migrations termine l'étape en cours, sort avec le code 0 et ne lance pas
+l'étape suivante. La garantie d'arrêt complet des descendants est validée et
+supportée sur macOS/Linux (POSIX) : les commandes orchestrées et Web/worker y
+utilisent des groupes de processus pour éviter de laisser des descendants actifs
+ou orphelins lors de l'arrêt. Sous Windows, le workflow peut démarrer, mais la
+terminaison des descendants n'est pas garantie tant qu'une stratégie Job Objects
+n'est pas implémentée.
+Les migrations sont automatiques, mais `pnpm dev:full` sans `--seed` ne crée
+aucune donnée métier : après migration, la base reste inchangée. La fixture
+`pnpm db:seed` (ou `pnpm dev:full -- --seed`) est strictement locale/dev-only.
+Le seed est fail-closed : il refuse toute exécution si `UTTILY_LOCAL_DEV` n'est
+pas exactement `1` ou si `NODE_ENV` vaut `production`. `pnpm db:seed` fournit
+explicitement ce marqueur, et `dev:full -- --seed` l'injecte dans son
+environnement enfant ; aucun de ces chemins ne révèle l'URL de base ou un secret.
+La fixture reste idempotente et sans utilisateur Clerk, provider réel, Stripe,
+réservation ou paiement. Elle crée une offre publique de démonstration recherchable dans
+`/fr/search` avec la destination `annecy-dev`, l'organisation
+`test-org-dev`, le lieu `annecy-shop-dev`, le produit `kayak-dev` et le SKU
+`KAY-DEV-001`. Elle n'appelle aucun service externe et ne supprime aucune ligne.
+
+Pour protéger strictement le Web local contre une configuration héritée, `dev:full`
+refuse toute clé Stripe non-TEST, accepte une chaîne vide comme absence, impose
+`STRIPE_ENVIRONMENT=TEST` et `PAYMENTS_LIVE_ENABLED=false`, et transmet
+explicitement des clés TEST ou des chaînes vides aux processus enfants. Toute
+clé Stripe LIVE Web est ainsi désactivée, y compris celle qui pourrait être
+présente dans `.env.local`. `pnpm dev:full` exige que
+`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` et `CLERK_SECRET_KEY` soient exportées avec
+de vraies clés Clerk TEST valides (`pk_test_...` et `sk_test_...`). Les valeurs
+absentes, vides, trop courtes ou LIVE sont refusées avant Docker et les
+migrations, sans afficher les clés ; il n'existe aucun fallback placeholder.
+Sans ces clés TEST réelles, seules les validations statiques du dépôt passent
+et le Web ne démarre pas : aucune route, publique ou authentifiée, n'est
+promise avec des placeholders. Les clés Clerk TEST validées sont transmises
+aux processus Web et worker. Les secrets de webhook Clerk/Stripe hérités sont
+neutralisés par des chaînes vides et `CRON_SECRET` est fixé à
+`dev-cron-secret-local`. Les variables de credentials R2 et Resend héritées
+sont également neutralisées par une chaîne vide dans l'environnement enfant ;
+cela empêche Next.js de les recharger depuis `apps/web/.env.local`. Le worker
+fake et le Web local ne reçoivent aucun credential R2/Resend effectif.
+`dev:full` injecte aussi `PUBLIC_SEARCH_CURSOR_SECRET` avec la valeur fixe
+`uttily-local-dev-public-search-cursor-v1`, une valeur dev/test uniquement et non
+sensible, qui ne doit jamais être réutilisée en staging ou production. Il force
+`ALLOWED_ORIGINS` à une chaîne vide dans l'environnement enfant : aucune valeur
+héritée ni valeur de `apps/web/.env.local` ne peut ainsi réintroduire des origins
+de production. Le fichier `.env` racine reste destiné aux commandes locales
+exécutées hors de cette orchestration ; `dev:full` impose ses propres valeurs
+locales. Pour effectuer de vrais appels Stripe TEST ou utiliser des flows Clerk
+authentifiés, utilisez un environnement séparé dédié ; `dev:full` ne doit jamais
+être utilisé pour des appels Stripe LIVE.
+
+## Base de données locale (commande manuelle, optionnelle)
+
+```bash
+docker compose up -d  # PostgreSQL 16 + PostGIS sur 127.0.0.1:5432
+docker compose down   # arrêter manuellement le service
+```
+
+Sans Docker CLI, contexte local inspectable ou daemon Docker, `lint`,
+`typecheck`, `test` et `build` restent fonctionnels. Le workflow `dev:full`
+échoue proprement si l'inspection Docker ou Docker Compose est indisponible.
 
 ## Environnements
 

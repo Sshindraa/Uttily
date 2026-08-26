@@ -38,6 +38,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Test dev-local guardrails
+        run: pnpm test:dev-local
+
       - name: Lint
         run: pnpm lint
 
@@ -126,7 +129,7 @@ jobs:
       - name: Test package
         run: |
           if [ -n "${{ matrix.shard }}" ]; then
-            pnpm --filter "${{ matrix.package }}" test -- --shard="${{ matrix.shard }}"
+            pnpm --filter "${{ matrix.package }}" exec vitest run --shard="${{ matrix.shard }}"
           else
             pnpm --filter "${{ matrix.package }}" test
           fi
