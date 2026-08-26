@@ -87,7 +87,7 @@ beforeAll(async () => {
   testUrlObj.pathname = `/${TEST_DB_NAME}`;
   testUrl = testUrlObj.toString();
   await runMigrations(testUrl);
-});
+}, 300000);
 
 afterAll(async () => {
   if (!url || !testUrl) return;
@@ -814,7 +814,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Migration 0029 → 0030 avec donn
     rollbackUrlObj.pathname = `/${ROLLBACK_TEST_DB}`;
     rollbackTestUrl = rollbackUrlObj.toString();
     await applyMigrationsUntilBefore0030(rollbackTestUrl);
-  });
+  }, 300000);
 
   afterAll(async () => {
     if (migrationAdminSql) {
