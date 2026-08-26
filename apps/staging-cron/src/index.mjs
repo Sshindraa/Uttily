@@ -80,6 +80,18 @@ export async function runScheduledJobs(env, fetchImpl = fetch, logger = console)
 }
 
 export default {
+  async fetch(request) {
+    const url = new URL(request.url);
+    if (url.pathname !== '/health') {
+      return new Response('Not Found', { status: 404 });
+    }
+
+    return new Response('ok', {
+      status: 200,
+      headers: { 'content-type': 'text/plain; charset=utf-8' },
+    });
+  },
+
   async scheduled(_controller, env, executionContext) {
     executionContext.waitUntil(runScheduledJobs(env));
   },
