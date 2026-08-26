@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { eq } from 'drizzle-orm';
 import {
   setupIntegrationTestDb,
   shouldSkipIntegrationTests,
   type IntegrationTestContext,
 } from './setup';
-import { createDatabase } from '@uttily/database';
+import { createDatabase, users } from '@uttily/database';
 import {
   createOrganizationForUser,
   listOrganizationsForUser,
@@ -330,6 +331,25 @@ describe.skipIf(shouldSkipIntegrationTests())('Identity integration — multi-te
     });
     expect(second.id).toBe(first.id);
     expect(second.oidcSubject).toBe('clerk-b');
+  });
+
+  it('provisioning : deux synchronisations concurrentes créent un seul utilisateur', async () => {
+    if (!ctx || !db) return;
+    const input = {
+      oidcSubject: 'clerk-concurrent',
+      oidcProvider: 'clerk',
+      email: 'concurrent@example.com',
+      emailVerified: true,
+    };
+
+    const [first, second] = await Promise.all([
+      provisionUserFromOidc(db, input),
+      provisionUserFromOidc(db, input),
+    ]);
+
+    expect(second.id).toBe(first.id);
+    const rows = await db.select({ id: users.id }).from(users).where(eq(users.email, input.email));
+    expect(rows).toHaveLength(1);
   });
 
   it('getOrganizationBySlug récupère une organisation par slug', async () => {

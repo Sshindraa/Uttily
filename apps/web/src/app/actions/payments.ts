@@ -1,10 +1,11 @@
 'use server';
 
-import { eq } from 'drizzle-orm';
-import { bookingDrafts } from '@uttily/database';
+import { and, eq } from 'drizzle-orm';
+import { bookingDrafts, organizationPaymentAccounts } from '@uttily/database';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { getStripeAdapter } from '@/lib/stripe';
+import { loadFinancialTermsConfig, resolveStripeEnvironment } from '@/lib/payment-config';
 import { initiatePayment, type InitiatePaymentResult } from '@uttily/core';
 
 /**
@@ -31,7 +32,7 @@ export async function initiatePaymentAction(input: {
     };
   }
   const db = getDb();
-  const environment = (process.env.STRIPE_ENVIRONMENT ?? 'TEST') as 'TEST' | 'LIVE';
+  const environment = resolveStripeEnvironment();
   const provider = getStripeAdapter();
 
   // Résoudre l'organizationId depuis le brouillon côté serveur.
@@ -41,6 +42,7 @@ export async function initiatePaymentAction(input: {
     .select({
       organizationId: bookingDrafts.organizationId,
       customerUserId: bookingDrafts.customerUserId,
+      totalAmountMinor: bookingDrafts.totalAmountMinor,
     })
     .from(bookingDrafts)
     .where(eq(bookingDrafts.id, input.draftId))
@@ -65,7 +67,43 @@ export async function initiatePaymentAction(input: {
     };
   }
 
-  const financialTermsConfig = loadFinancialTermsConfig();
+  // Récupérer le compte connecté Stripe de l'organisation pour cet environment.
+  // resolveFinancialTerms exige un connectedAccount non null ; on l'enrichit
+  // depuis la DB avant l'appel au use case.
+  const accountRows = await db
+    .select({
+      providerAccountId: organizationPaymentAccounts.providerAccountId,
+      chargesEnabled: organizationPaymentAccounts.chargesEnabled,
+      transfersCapabilityStatus: organizationPaymentAccounts.transfersCapabilityStatus,
+      settlementMerchantMode: organizationPaymentAccounts.settlementMerchantMode,
+    })
+    .from(organizationPaymentAccounts)
+    .where(
+      and(
+        eq(organizationPaymentAccounts.organizationId, draft.organizationId),
+        eq(organizationPaymentAccounts.environment, environment),
+      ),
+    )
+    .limit(1);
+
+  const account = accountRows[0];
+  if (!account) {
+    return {
+      kind: 'FAILURE',
+      statusCode: 409,
+      error: 'FINANCIAL_TERMS_UNRESOLVED',
+      message: 'Aucun compte de paiement configuré pour cette organisation.',
+    };
+  }
+
+  const financialTermsConfig = loadFinancialTermsConfig(draft.totalAmountMinor);
+  financialTermsConfig.connectedAccount = {
+    accountId: account.providerAccountId,
+    chargesEnabled: account.chargesEnabled,
+    transfersCapabilityStatus: account.transfersCapabilityStatus,
+    settlementMerchantMode: account.settlementMerchantMode,
+    onBehalfOfAccountId: null,
+  };
 
   return initiatePayment(
     { db, provider },
@@ -83,19 +121,4 @@ export async function initiatePaymentAction(input: {
       },
     },
   );
-}
-
-/**
- * Charge la configuration financière depuis les variables d'environnement.
- * En l'absence de configuration réelle, retourne une config vide qui fera
- * répondre FINANCIAL_TERMS_UNRESOLVED par le résolveur.
- * En production LIVE, cette config sera chargée depuis une source sécurisée.
- */
-function loadFinancialTermsConfig() {
-  return {
-    tax: null,
-    commission: null,
-    connectedAccount: null,
-    legalTermsVersion: 'v1',
-  };
 }

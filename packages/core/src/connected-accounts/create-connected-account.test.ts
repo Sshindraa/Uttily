@@ -237,7 +237,7 @@ describe('createConnectedAccount', () => {
     });
   });
 
-  it('utilise DEFAULT_CONTROLLER_CONFIG quand aucun controller fourni', async () => {
+  it('utilise exactement le preset Express France sans controller explicite', async () => {
     const db = makeMockDb(state);
     const createFn = vi.fn().mockResolvedValue(makeProviderResult());
     const provider = {
@@ -250,7 +250,12 @@ describe('createConnectedAccount', () => {
 
     expect(createFn).toHaveBeenCalledOnce();
     const calledParams = createFn.mock.calls[0]![0];
-    expect(calledParams.controller).toEqual(DEFAULT_CONTROLLER_CONFIG);
+    expect(calledParams.controller).toEqual({
+      feesPayer: 'PLATFORM',
+      lossesCollector: 'PLATFORM',
+      stripeDashboard: 'EXPRESS',
+      requirementCollection: 'STRIPE',
+    });
   });
 });
 

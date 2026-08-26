@@ -23,6 +23,8 @@
  * La signature Stripe reste obligatoire même quand l'IP est autorisée.
  */
 
+import { resolveStripeEnvironment } from '@/lib/payment-config';
+
 /** Résultat du check IP. */
 export interface IpAllowlistResult {
   /** true si l'IP est autorisée ou si le check est skippé (allowlist non définie). */
@@ -60,7 +62,13 @@ function extractClientIp(request: Request): string | null {
 export function checkWebhookIpAllowlist(request: Request): IpAllowlistResult {
   const allowlistRaw = process.env.STRIPE_WEBHOOK_IP_ALLOWLIST;
   const clientIp = extractClientIp(request);
-  const environment = process.env.STRIPE_ENVIRONMENT ?? 'TEST';
+  let environment: 'TEST' | 'LIVE';
+  try {
+    environment = resolveStripeEnvironment();
+  } catch {
+    // Une configuration absente ou invalide est refusée sans ouvrir le chemin TEST.
+    return { allowed: false, clientIp, skipped: false };
+  }
   const isLive = environment === 'LIVE';
 
   // P2-2 : Fail-closed en LIVE — l'allow-list est obligatoire.

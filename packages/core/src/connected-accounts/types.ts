@@ -9,8 +9,9 @@
  *   verrou FOR UPDATE.
  * - `organizationId` et `environment` proviennent du contexte serveur, jamais
  *   du navigateur.
- * - Le controller config par défaut est PLATFORM-pays-fees, PLATFORM-collects
- *   losses, pas de dashboard Stripe, PLATFORM-collects requirements.
+ * - Le controller config par défaut du parcours France suit ADR-024 : PLATFORM
+ *   paie les frais et porte les pertes, Dashboard Express, Stripe collecte les
+ *   exigences (onboarding Express hébergé).
  */
 
 import type { DatabaseClient } from '@uttily/database';
@@ -21,16 +22,17 @@ import type {
 } from '../payments/types';
 
 /**
- * Configuration controller par défaut pour le MVP (ADR-010 §3.2).
+ * Configuration controller par défaut pour l'onboarding France du MVP
+ * (ADR-024, qui supersède uniquement le défaut d'onboarding d'ADR-010 §3.2).
  *
- * PLATFORM paie les frais Stripe, PLATFORM collecte les pertes, pas d'accès au
- * Dashboard Stripe, PLATFORM collecte les requirements (onboarding hébergé).
+ * PLATFORM paie les frais Stripe et porte les pertes, le compte dispose du
+ * Dashboard Express et Stripe collecte les exigences (onboarding Express hébergé).
  */
 export const DEFAULT_CONTROLLER_CONFIG: ConnectedAccountControllerConfig = {
   feesPayer: 'PLATFORM',
   lossesCollector: 'PLATFORM',
-  stripeDashboard: 'NONE',
-  requirementCollection: 'PLATFORM',
+  stripeDashboard: 'EXPRESS',
+  requirementCollection: 'STRIPE',
 };
 
 /** Entrée du use case createConnectedAccount. */

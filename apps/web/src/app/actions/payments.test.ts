@@ -350,9 +350,8 @@ describe.skipIf(shouldSkipIntegrationTests())(
       const ids = await seedBaseData(owner);
       const customer = await makeUser('customer-noterms@example.com');
 
-      // Aucun compte connecté créé pour cette org → la config financière
-      // servie par loadFinancialTermsConfig() est vide (MVP) → le résolveur
-      // répond FINANCIAL_TERMS_UNRESOLVED avant tout appel provider.
+      // Aucun compte connecté créé pour cette org → l'action refuse le
+      // paiement avant tout appel provider.
       const draftId = await createHeldDraft(ids, customer.id);
 
       mockClerkUser(customer);
@@ -363,8 +362,8 @@ describe.skipIf(shouldSkipIntegrationTests())(
       });
       expect(result.kind).toBe('FAILURE');
       if (result.kind === 'FAILURE') {
-        // La config financière est vide (connectedAccount: null) →
-        // FINANCIAL_TERMS_UNRESOLVED. Aucun appel Stripe n'est effectué.
+        // Aucun compte connecté n'est disponible ; aucun appel Stripe n'est
+        // effectué.
         expect(result.error).toBe('FINANCIAL_TERMS_UNRESOLVED');
       }
     });

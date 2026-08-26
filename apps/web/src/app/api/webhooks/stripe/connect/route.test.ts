@@ -271,6 +271,7 @@ describe('POST /api/webhooks/stripe/connect — sécurité HTTP avec FakeStripeA
 
 describe('POST /api/webhooks/stripe/connect — verrou rate limiting LIVE', () => {
   const prevEnv = process.env.STRIPE_ENVIRONMENT;
+  const prevLiveEnabled = process.env.PAYMENTS_LIVE_ENABLED;
   const prevVerified = process.env.STRIPE_WEBHOOK_RATE_LIMIT_VERIFIED;
   const prevAllowlist = process.env.STRIPE_WEBHOOK_IP_ALLOWLIST;
 
@@ -282,10 +283,13 @@ describe('POST /api/webhooks/stripe/connect — verrou rate limiting LIVE', () =
     // fail-closed. Définir une allow-list + un header x-forwarded-for pour
     // passer le check IP et isoler le test du verrou rate limiting.
     process.env.STRIPE_WEBHOOK_IP_ALLOWLIST = '1.2.3.4';
+    process.env.PAYMENTS_LIVE_ENABLED = 'true';
   });
 
   afterAll(() => {
     process.env.STRIPE_ENVIRONMENT = prevEnv;
+    if (prevLiveEnabled === undefined) delete process.env.PAYMENTS_LIVE_ENABLED;
+    else process.env.PAYMENTS_LIVE_ENABLED = prevLiveEnabled;
     if (prevVerified === undefined) delete process.env.STRIPE_WEBHOOK_RATE_LIMIT_VERIFIED;
     else process.env.STRIPE_WEBHOOK_RATE_LIMIT_VERIFIED = prevVerified;
     if (prevAllowlist === undefined) delete process.env.STRIPE_WEBHOOK_IP_ALLOWLIST;

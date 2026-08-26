@@ -18,6 +18,7 @@ interface DraftLine {
 
 interface CheckoutClientProps {
   draftId: string;
+  returnUrl: string;
   totalAmountMinor: number;
   currency: string;
   lines: DraftLine[];
@@ -65,6 +66,8 @@ function formatAmount(minor: number, currency: string): string {
 // ---------------------------------------------------------------------------
 
 interface PaymentFormProps {
+  clientSecret: string;
+  returnUrl: string;
   totalLabel: string;
   onConfirming: () => void;
   onSuccess: () => void;
@@ -72,6 +75,8 @@ interface PaymentFormProps {
 }
 
 function PaymentForm({
+  clientSecret,
+  returnUrl,
   totalLabel,
   onConfirming,
   onSuccess,
@@ -81,18 +86,38 @@ function PaymentForm({
   const elements = useElements();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [paymentElementReady, setPaymentElementReady] = useState(false);
+  const [paymentElementMounted, setPaymentElementMounted] = useState(false);
+  const handlePaymentReady = useCallback(() => setPaymentElementReady(true), []);
+
+  useEffect(() => {
+    if (!elements || !paymentElementReady) return;
+    if (elements.getElement('payment')) {
+      setPaymentElementMounted(true);
+    }
+  }, [elements, paymentElementReady]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
     if (!stripe || !elements) return;
+    const paymentEl = elements.getElement('payment');
+    if (!paymentEl) {
+      const message = "Le formulaire de paiement n'est pas encore initialisé.";
+      setError(message);
+      onError(message);
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     onConfirming();
 
-    // confirmPayment avec redirect: 'if_required' gère automatiquement SCA/3DS :
-    // Stripe affiche le challenge 3DS dans une iframe ou redirige si nécessaire.
     const result = await stripe.confirmPayment({
       elements,
+      clientSecret,
+      confirmParams: {
+        return_url: returnUrl,
+      },
       redirect: 'if_required',
     });
 
@@ -110,17 +135,36 @@ function PaymentForm({
     <form onSubmit={handleSubmit} style={formStyle}>
       <PaymentElement
         options={{
-          layout: { type: 'accordion', defaultCollapsed: false, radios: true },
+          layout: 'tabs',
         }}
+        onReady={handlePaymentReady}
       />
       <button
         type="submit"
-        disabled={!stripe || submitting}
-        aria-busy={submitting}
+        disabled={!paymentElementMounted || !paymentElementReady || !stripe || submitting}
+        aria-busy={!paymentElementMounted || !paymentElementReady || submitting}
+        aria-label={
+          !paymentElementReady || !paymentElementMounted
+            ? 'Formulaire de paiement en cours de chargement'
+            : submitting
+              ? 'Traitement en cours'
+              : `Payer ${totalLabel}`
+        }
         style={submitButtonStyle}
       >
-        {submitting ? 'Traitement…' : `Payer ${totalLabel}`}
+        {!stripe
+          ? 'Chargement du paiement...'
+          : !paymentElementReady || !paymentElementMounted
+            ? 'Préparation du paiement...'
+            : submitting
+              ? 'Traitement…'
+              : `Payer ${totalLabel}`}
       </button>
+      {(!paymentElementReady || !paymentElementMounted) && stripe && (
+        <p role="status" aria-live="polite" style={mutedStyle}>
+          Préparation du formulaire de paiement…
+        </p>
+      )}
       {error && (
         <p role="alert" style={errorStyle}>
           {error}
@@ -136,6 +180,7 @@ function PaymentForm({
 
 export function CheckoutClient({
   draftId,
+  returnUrl,
   totalAmountMinor,
   currency,
   lines,
@@ -291,6 +336,8 @@ export function CheckoutClient({
               }}
             >
               <PaymentForm
+                clientSecret={clientSecret}
+                returnUrl={returnUrl}
                 totalLabel={totalLabel}
                 onConfirming={() => setPhase('confirming')}
                 onSuccess={() => setPhase('success')}

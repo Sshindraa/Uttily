@@ -15,12 +15,12 @@ Permettre à un client de trouver et réserver un équipement réellement dispon
 
 1. Comptes, entreprises et rôles.
 2. Établissements et horaires de retrait.
-3. Catalogue de produits et exemplaires physiques.
-4. Prix simples par durée et périodes de blocage opérationnel.
-5. Recherche par destination, dates et catégorie.
-6. Allocation d'exemplaires, hold temporaire et réservation confirmée.
-7. Paiement pour un seul loueur par panier.
-8. Confirmation, contrat simple et emails transactionnels.
+3. Catalogue de produits et exemplaires physiques (gating strict de publication : 3 photos conformes minimum par produit, ADR-020).
+4. Prix par durée et périodes de blocage opérationnel (modèle journalier initial, plans horaires/forfaits préparés par ADR-018).
+5. Recherche par destination, dates et catégorie avec carte interactive (bilingue FR/EN dès l'activation d'une destination, ADR-017/ADR-021).
+6. Allocation d'exemplaires réels, hold temporaire (10 min) et réservation confirmée sans surbooking.
+7. Paiement pour un seul loueur par panier via Stripe Connect (*destination charges* avec commission plateforme `application_fee_amount`).
+8. Confirmation, contrat simple et emails transactionnels via outbox worker.
 9. Retrait, retour, état du matériel et signalement de dommages.
 10. Modifications financières d'une réservation confirmée avant retrait
     (amendements append-only : changement de dates, durée, quantité, variantes
@@ -29,7 +29,9 @@ Permettre à un client de trouver et réserver un équipement réellement dispon
 
 ## Explicitement hors MVP
 
-- Location entre particuliers.
+- Abonnements mensuels payants pour les loueurs (SaaS gratuit pour capter l'inventaire, modèle 100 % commission).
+- Dépôt de garantie / caution intégrée au paiement initial (gestion de la caution traitée séparément post-MVP).
+- Location entre particuliers (C2C).
 - Panier multi-loueurs.
 - Livraison, casiers autonomes et points relais.
 - Tarification dynamique avancée.

@@ -170,6 +170,29 @@ Le lot fonctionnel G7M est ainsi complet. Aucun C5-D n'est prévu. G7M C1–C5 s
 
 Le pont direct de réservation publique vers le checkout initial (G7E / Pont Checkout) est entièrement durci et validé : migration 0038 (`public_id` sur les variantes avec trigger d'immutabilité), read model canonique public `getPublicOfferDetails` sans fuite interne, résolveur d'autorité côté serveur `resolvePublicBookingAuthority` appliquant les mêmes règles d'éligibilité que la consultation, Server Action `createBookingDraftAction` avec hold atomique de 10 minutes et empreinte d'idempotence stable. Preuves de tests : 4 tests PostgreSQL Database, 31 tests Core, 17 tests ciblés Web, 429 tests globaux Web passés, 0 erreur lint/typecheck/build. Voir `docs/implementation/public-offer-booking-bridge.md`.
 
+## G8A-0 — Baseline verte et déployable
+
+**But** : transformer la branche actuelle en release candidate configurable et
+fiable pour le staging, sans ajouter de fonctionnalité.
+
+Critères d'acceptation :
+
+- changement local séparé et validé pour le workflow sécurisé PostgreSQL et le
+  seed ; changement Stripe/checkout séparé et validé ;
+- ADR-025 explicitement rejetée pour ce lot ; l'onboarding Stripe-hosted de
+  l'ADR-024 reste la solution autorisée et testée ;
+- URL de retour Stripe issue de `PUBLIC_APP_URL`, validée par environnement ;
+  commission issue de `PLATFORM_COMMISSION_RATE_BPS`, sans défaut implicite ;
+  compte connecté vérifié prêt avant création d'un paiement ;
+- PostgreSQL local démarré depuis une base vierge, migrations et suites Web,
+  Core PostgreSQL et worker vertes ; le test d'intégration hors PostgreSQL est
+  explicitement sauté hors CI ;
+- lint, format, types, tests et build verts ; dépôt propre après commits ; aucun
+  secret LIVE ni fournisseur réel utilisé par le workflow local.
+
+**Après ce lot uniquement** : G8A déploiera Vercel, Neon, Clerk, Stripe TEST,
+R2 et Resend pour un test staging réel.
+
 ## Horizons stratégiques post-MVP — option C
 
 > Direction approuvée par ADR-019. Cette section n'est pas une autorisation

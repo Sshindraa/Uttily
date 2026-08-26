@@ -100,17 +100,16 @@ Le critère de succès principal est :
 
 ## Modèle économique
 
-Les prix ci-dessous sont des hypothèses à valider lors des entretiens avec les loueurs.
+Uttily adopte un modèle **100 % transactionnel à la commission** (*take rate*), couplé à un logiciel de gestion (**Uttily OS**) mis à disposition **gratuitement** des loueurs professionnels partenaires pour capter leur inventaire physique sans friction d'onboarding ni risque lié à la saisonnalité.
 
-| Offre | Abonnement indicatif | Commission marketplace indicative | Cible |
-| --- | ---: | ---: | --- |
-| Starter | 0 à 29 € / mois | 12 à 15 % | Petit loueur et acquisition initiale |
-| Pro | 79 à 119 € / mois | 8 à 10 % | Loueur avec besoins opérationnels avancés |
-| Network | 249 à 499 € / mois | 4 à 7 % | Réseau multi-sites et intégrations |
+| Flux | Rémunération indicative | Modalité |
+| --- | ---: | --- |
+| Commission Marketplace | 10 à 15 % par transaction | Prélevée automatiquement via Stripe Connect (`application_fee_amount`) sur chaque réservation confirmée |
+| Logiciel opérationnel (Uttily OS) | 0 € / mois (Gratuit) | Gestion d'inventaire, exemplaires physiques, retraits/retours, états des lieux et disponibilité |
 
-Revenus potentiels complémentaires : frais de service client, options de protection, livraison, mise en avant locale, marque blanche, affiliation et outils analytiques.
+Revenus potentiels complémentaires : frais de service client, options de protection/assurance, livraison, mise en avant locale, marque blanche, affiliation et outils analytiques.
 
-La commission, les frais de paiement, les remboursements, les litiges et la responsabilité financière devront être validés avec Stripe, un avocat spécialisé et un expert-comptable avant la commercialisation.
+La commission, les frais de paiement, les remboursements, les litiges et la responsabilité financière devront être validés avec Stripe, un avocat spécialisé et un expert-comptable avant la commercialisation (Lot 5, ADR-010).
 
 ## Indicateurs
 
@@ -120,14 +119,15 @@ La commission, les frais de paiement, les remboursements, les litiges et la resp
 - équipements disponibles ;
 - taux de résultats disponibles ;
 - conversion recherche → réservation ;
-- volume de locations et panier moyen ;
+- volume d'affaires brut (GMV), locations et panier moyen ;
+- revenu net de commission Uttily ;
 - annulations, remboursements et litiges.
 
-### SaaS
+### Performance & Écosystème Loueurs
 
-- revenu mensuel récurrent ;
-- revenu moyen par loueur ;
-- activation et rétention des loueurs ;
+- nombre d'exemplaires physiques actifs et synchronisés ;
+- volume de chiffre d'affaires généré par loueur ;
+- activation et rétention des loueurs sur Uttily OS ;
 - réservations et taux d'utilisation par équipement.
 
 ### Opérations
@@ -159,7 +159,7 @@ La commission, les frais de paiement, les remboursements, les litiges et la resp
 
 ## Hypothèses à valider avant de bâtir ces extensions
 
-- volonté des loueurs de payer un abonnement, une commission, ou les deux ;
+- niveau d'acceptation du taux de commission par catégorie et profil de loueur ;
 - besoin réel de caution numérique par catégorie ;
 - responsabilité juridique d'Uttily dans chaque flux de paiement ;
 - catégorie et destination pilote les plus liquides ;

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getStripeAdapter } from '@/lib/stripe';
+import { resolveStripeEnvironment } from '@/lib/payment-config';
 import { executeCompensationBatch } from '@uttily/core';
 
 // Désactive l'optimisation statique : cet endpoint doit toujours s'exécuter
@@ -64,13 +65,15 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // 2. Déterminer l'environnement depuis STRIPE_ENVIRONMENT (défaut : TEST).
-  const rawEnvironment = process.env.STRIPE_ENVIRONMENT ?? 'TEST';
-  if (rawEnvironment !== 'TEST' && rawEnvironment !== 'LIVE') {
-    console.error(`cron.process-compensations: STRIPE_ENVIRONMENT invalide : "${rawEnvironment}"`);
+  // 2. Déterminer l'environnement. En production, l'absence de configuration
+  // est une erreur : aucun traitement ne doit tomber silencieusement en TEST.
+  let environment;
+  try {
+    environment = resolveStripeEnvironment();
+  } catch {
+    console.error('cron.process-compensations: configuration Stripe invalide.');
     return NextResponse.json({ error: 'Configuration Error' }, { status: 500 });
   }
-  const environment = rawEnvironment;
 
   // 3. Exécuter le batch.
   const startTime = Date.now();

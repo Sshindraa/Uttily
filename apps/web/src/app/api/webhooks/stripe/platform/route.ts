@@ -22,6 +22,7 @@ import { getStripeAdapter } from '@/lib/stripe';
 import { handleWebhook } from '@uttily/core';
 import { checkWebhookIpAllowlist } from '../_lib/ip-allowlist';
 import { isRateLimitAttested } from '../_lib/rate-limit-notice';
+import { resolveStripeEnvironment } from '@/lib/payment-config';
 
 // Désactive l'optimisation statique : cet endpoint doit toujours s'exécuter
 // dynamiquement (webhook Stripe).
@@ -53,6 +54,22 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: 'Missing signature' }, { status: 400 });
   }
 
+  // 3. Déterminer l'environnement avec validation runtime. En production,
+  // l'absence de configuration ne doit jamais devenir TEST implicitement.
+  let environment;
+  try {
+    environment = resolveStripeEnvironment();
+  } catch {
+    console.error(
+      JSON.stringify({
+        event: 'webhook.stripe',
+        endpoint: 'platform',
+        result: 'invalid_environment',
+      }),
+    );
+    return NextResponse.json({ error: 'Invalid environment' }, { status: 500 });
+  }
+
   // P2-1 : Allow-list IP conditionnelle (ADR-010 §14). Si
   // STRIPE_WEBHOOK_IP_ALLOWLIST est défini, vérifier que l'IP du client est
   // dans la liste. Sinon, skip (en TEST/dev, pas de check).
@@ -68,21 +85,6 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
-
-  // 3. Déterminer l'environnement (défaut : TEST) avec validation runtime.
-  const rawEnv = process.env.STRIPE_ENVIRONMENT ?? 'TEST';
-  if (rawEnv !== 'TEST' && rawEnv !== 'LIVE') {
-    console.error(
-      JSON.stringify({
-        event: 'webhook.stripe',
-        endpoint: 'platform',
-        result: 'invalid_environment',
-        value: rawEnv,
-      }),
-    );
-    return NextResponse.json({ error: 'Invalid environment' }, { status: 500 });
-  }
-  const environment = rawEnv;
 
   // P2-2 : Verrou technique d'activation LIVE — le rate limiting edge doit
   // être attesté (STRIPE_WEBHOOK_RATE_LIMIT_VERIFIED=true) en LIVE (fail-closed).

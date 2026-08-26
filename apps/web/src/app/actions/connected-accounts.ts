@@ -5,6 +5,7 @@ import { headers } from 'next/headers';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { getStripeAdapter } from '@/lib/stripe';
+import { resolveStripeEnvironment } from '@/lib/payment-config';
 import {
   createConnectedAccount,
   createOnboardingLink,
@@ -26,7 +27,7 @@ export async function getConnectedAccountReadinessAction(organizationId: string)
   const db = getDb();
   const membership = await getMembership(db, organizationId, user.id);
   requireMembership(membership, ROLE_MANAGERS);
-  const environment = (process.env.STRIPE_ENVIRONMENT ?? 'TEST') as 'TEST' | 'LIVE';
+  const environment = resolveStripeEnvironment();
   return getConnectedAccountReadiness({ db }, organizationId, environment);
 }
 
@@ -44,7 +45,7 @@ export async function createConnectedAccountAction(
   const db = getDb();
   const membership = await getMembership(db, organizationId, user.id);
   requireMembership(membership, ROLE_MANAGERS);
-  const environment = (process.env.STRIPE_ENVIRONMENT ?? 'TEST') as 'TEST' | 'LIVE';
+  const environment = resolveStripeEnvironment();
   // P3 : Valider le country code contre une allow-list configurable.
   // La validation côté client (SUPPORTED_COUNTRIES dans payments-settings-client.tsx)
   // est contournable ; on valide aussi côté serveur.
@@ -84,7 +85,7 @@ export async function createOnboardingLinkAction(
   const db = getDb();
   const membership = await getMembership(db, organizationId, user.id);
   requireMembership(membership, ROLE_MANAGERS);
-  const environment = (process.env.STRIPE_ENVIRONMENT ?? 'TEST') as 'TEST' | 'LIVE';
+  const environment = resolveStripeEnvironment();
 
   // Construire les URLs côté serveur — jamais trustées depuis le client.
   // P2 : Valider l'origin contre une allow-list pour éviter qu'un client malveillant

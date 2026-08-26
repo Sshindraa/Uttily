@@ -524,6 +524,13 @@ async function executeTakeover(
       { statusCode: 400 },
     );
   }
+  if (!account.payoutsEnabled) {
+    throw new PaymentInitiationError(
+      'CONNECTED_ACCOUNT_NOT_READY',
+      "Le compte connecté n'est pas autorisé à recevoir des virements (payouts désactivés).",
+      { statusCode: 400 },
+    );
+  }
   if (account.onboardingStatus !== 'ENABLED') {
     throw new PaymentInitiationError(
       'CONNECTED_ACCOUNT_NOT_READY',

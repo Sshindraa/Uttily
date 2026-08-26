@@ -55,6 +55,13 @@ suivantes. `pnpm dev` lance `next dev` depuis `apps/web/`, donc Next.js charge
 | `STRIPE_ENVIRONMENT` | `TEST` | Fixe pour le test |
 | `PAYMENTS_LIVE_ENABLED` | `false` | Verrou ADR-010 §4, JAMAIS true en test |
 
+**Configuration serveur obligatoire** :
+
+| Variable | Valeur attendue | Note |
+| --- | --- | --- |
+| `PUBLIC_APP_URL` | `http://localhost:3000` | URL absolue sans chemin ; HTTPS + hostname public en staging/production |
+| `PLATFORM_COMMISSION_RATE_BPS` | `1000` | 10 % dans cet exemple ; même `0` doit être explicite |
+
 **Options facultatives (non bloquantes)** :
 
 | Variable | Valeur attendue | Note |
@@ -65,6 +72,11 @@ suivantes. `pnpm dev` lance `next dev` depuis `apps/web/`, donc Next.js charge
 > `PAYMENTS_LIVE_ENABLED` doit rester `false` tant que les 6 verrous
 > finance/juridique (ADR-010 §4) ne sont pas fermés. Un test ne peut **jamais**
 > contourner ce verrou.
+
+Le serveur refuse l'initiation si `PUBLIC_APP_URL` ou
+`PLATFORM_COMMISSION_RATE_BPS` est absente/invalide. Une commission nulle est
+également refusée en environnement Stripe LIVE ; aucune valeur de test ne peut
+donc passer silencieusement vers un paiement LIVE.
 
 ## Création du fichier .env.local
 

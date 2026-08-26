@@ -454,13 +454,20 @@ describe.skipIf(shouldSkipIntegrationTests())(
       // uniquement la DB par (org, STRIPE, environment). Aucun compte LIVE
       // n'a été créé → notConfigured = true (isolation par environment).
       const previous = process.env.STRIPE_ENVIRONMENT;
+      const previousLiveEnabled = process.env.PAYMENTS_LIVE_ENABLED;
       process.env.STRIPE_ENVIRONMENT = 'LIVE';
+      process.env.PAYMENTS_LIVE_ENABLED = 'true';
       try {
         const readinessLive = await getConnectedAccountReadinessAction(organizationId);
         expect(readinessLive.notConfigured).toBe(true);
         expect(readinessLive.environment).toBe('LIVE');
       } finally {
         process.env.STRIPE_ENVIRONMENT = previous ?? 'TEST';
+        if (previousLiveEnabled === undefined) {
+          delete process.env.PAYMENTS_LIVE_ENABLED;
+        } else {
+          process.env.PAYMENTS_LIVE_ENABLED = previousLiveEnabled;
+        }
       }
     });
   },

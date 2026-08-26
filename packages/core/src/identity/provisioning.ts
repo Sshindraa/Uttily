@@ -24,49 +24,72 @@ export async function provisionUserFromOidc(
 ): Promise<AuthenticatedUser> {
   const email = input.email.trim().toLowerCase();
 
-  // Recherche par oidc_subject d'abord.
-  const [bySubject] = await db
-    .select()
-    .from(users)
-    .where(eq(users.oidcSubject, input.oidcSubject))
-    .limit(1);
+  return db.transaction(async (tx) => {
+    // Recherche par oidc_subject d'abord.
+    const [bySubject] = await tx
+      .select()
+      .from(users)
+      .where(eq(users.oidcSubject, input.oidcSubject))
+      .limit(1);
 
-  if (bySubject) {
-    return mapUser(bySubject);
-  }
+    if (bySubject) {
+      return mapUser(bySubject);
+    }
 
-  // Sinon, recherche par email (un utilisateur peut avoir été invité / créé).
-  const [byEmail] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+    // Sinon, recherche par email (un utilisateur peut avoir été invité / créé).
+    // Le verrou sérialise les liaisons concurrentes sur un utilisateur existant.
+    const [byEmail] = await tx
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .for('update')
+      .limit(1);
 
-  if (byEmail) {
-    // Relie le compte à l'identité OIDC.
-    const [updated] = await db
-      .update(users)
-      .set({
+    if (byEmail) {
+      // Relie le compte à l'identité OIDC.
+      const [updated] = await tx
+        .update(users)
+        .set({
+          oidcSubject: input.oidcSubject,
+          oidcProvider: input.oidcProvider,
+          emailVerifiedAt: input.emailVerified ? new Date() : byEmail.emailVerifiedAt,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, byEmail.id))
+        .returning();
+      if (!updated) throw new Error('Échec de mise à jour utilisateur.');
+      return mapUser(updated);
+    }
+
+    // Sinon, crée l'utilisateur. Sans cible explicite, PostgreSQL ignore un
+    // conflit sur email ou oidc_subject, les deux colonnes étant uniques.
+    const [created] = await tx
+      .insert(users)
+      .values({
+        email,
         oidcSubject: input.oidcSubject,
         oidcProvider: input.oidcProvider,
-        emailVerifiedAt: input.emailVerified ? new Date() : byEmail.emailVerifiedAt,
-        updatedAt: new Date(),
+        emailVerifiedAt: input.emailVerified ? new Date() : null,
+        displayName: input.displayName ?? null,
       })
-      .where(eq(users.id, byEmail.id))
+      .onConflictDoNothing()
       .returning();
-    if (!updated) throw new Error('Échec de mise à jour utilisateur.');
-    return mapUser(updated);
-  }
+    if (created) return mapUser(created);
 
-  // Sinon, crée l'utilisateur.
-  const [created] = await db
-    .insert(users)
-    .values({
-      email,
-      oidcSubject: input.oidcSubject,
-      oidcProvider: input.oidcProvider,
-      emailVerifiedAt: input.emailVerified ? new Date() : null,
-      displayName: input.displayName ?? null,
-    })
-    .returning();
-  if (!created) throw new Error('Échec de création utilisateur.');
-  return mapUser(created);
+    // Une autre transaction a gagné l'insertion. Relire dans le même ordre
+    // métier pour retourner le même utilisateur sans violer une contrainte.
+    const [winnerBySubject] = await tx
+      .select()
+      .from(users)
+      .where(eq(users.oidcSubject, input.oidcSubject))
+      .limit(1);
+    if (winnerBySubject) return mapUser(winnerBySubject);
+
+    const [winnerByEmail] = await tx.select().from(users).where(eq(users.email, email)).limit(1);
+    if (winnerByEmail) return mapUser(winnerByEmail);
+
+    throw new Error('Échec de création utilisateur.');
+  });
 }
 
 function mapUser(row: typeof users.$inferSelect): AuthenticatedUser {

@@ -52,7 +52,7 @@ export function StatusCard({
 }: {
   readiness: ConnectedAccountReadiness;
 }): React.ReactElement {
-  const transfersActive = readiness.transfersCapabilityStatus === 'active';
+  const transfersActive = readiness.transfersCapabilityStatus === 'ACTIVE';
 
   return (
     <section

@@ -272,6 +272,7 @@ integrationDescribe('GET /api/cron/process-refund-requests — PostgreSQL/Web', 
   afterAll(async () => {
     delete process.env.CRON_SECRET;
     delete process.env.STRIPE_ENVIRONMENT;
+    delete process.env.PAYMENTS_LIVE_ENABLED;
     if (rawSql) await rawSql.end();
     if (testDb) await testDb.$client.end();
     if (DATABASE_URL) {
@@ -297,6 +298,7 @@ integrationDescribe('GET /api/cron/process-refund-requests — PostgreSQL/Web', 
     provider = new RouteRefundProvider('TEST');
     process.env.CRON_SECRET = CRON_SECRET;
     process.env.STRIPE_ENVIRONMENT = 'TEST';
+    delete process.env.PAYMENTS_LIVE_ENABLED;
   });
 
   it('1. refuse une requête sans Authorization', async () => {
@@ -362,6 +364,7 @@ integrationDescribe('GET /api/cron/process-refund-requests — PostgreSQL/Web', 
     expect(provider.calls).toHaveLength(1);
 
     process.env.STRIPE_ENVIRONMENT = 'LIVE';
+    process.env.PAYMENTS_LIVE_ENABLED = 'true';
     provider = new RouteRefundProvider('LIVE');
     const liveResponse = await GET(makeRequest());
     const liveBody = await liveResponse.json();

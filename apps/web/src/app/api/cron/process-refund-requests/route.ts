@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { executeRefundRequestBatch } from '@uttily/core';
 import { getDb } from '@/lib/db';
 import { getStripeAdapter } from '@/lib/stripe';
+import { resolveStripeEnvironment } from '@/lib/payment-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,10 +74,6 @@ function verifyCronSecret(request: Request): boolean {
   return difference === 0;
 }
 
-function isStripeEnvironment(value: string): value is 'TEST' | 'LIVE' {
-  return value === 'TEST' || value === 'LIVE';
-}
-
 export async function GET(request: Request): Promise<NextResponse> {
   if (!verifyCronSecret(request)) {
     console.warn(
@@ -88,8 +85,10 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const rawEnvironment = process.env.STRIPE_ENVIRONMENT ?? 'TEST';
-  if (!isStripeEnvironment(rawEnvironment)) {
+  let environment;
+  try {
+    environment = resolveStripeEnvironment();
+  } catch {
     console.error(
       JSON.stringify({
         event: 'cron.process-refund-requests.error',
@@ -103,7 +102,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   try {
     const result = await executeRefundRequestBatch(
       { db: getDb(), provider: getStripeAdapter() },
-      { environment: rawEnvironment },
+      { environment },
     );
     const durationMs = Date.now() - startTime;
     const anomalyCount = result.anomalies.length;
@@ -121,7 +120,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       JSON.stringify({
         event: 'cron.process-refund-requests',
         durationMs,
-        environment: rawEnvironment,
+        environment,
         ...counters,
       }),
     );
@@ -131,7 +130,7 @@ export async function GET(request: Request): Promise<NextResponse> {
         JSON.stringify({
           event: 'cron.process-refund-requests.alert',
           durationMs,
-          environment: rawEnvironment,
+          environment,
           failedCount: result.failedCount,
           leaseLostCount: result.leaseLostCount,
           anomalyCount,
@@ -142,7 +141,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     return NextResponse.json({
       ok: true,
-      environment: rawEnvironment,
+      environment,
       ...counters,
     });
   } catch {
@@ -151,7 +150,7 @@ export async function GET(request: Request): Promise<NextResponse> {
       JSON.stringify({
         event: 'cron.process-refund-requests.error',
         durationMs,
-        environment: rawEnvironment,
+        environment,
         errorCode: 'INTERNAL_ERROR',
       }),
     );

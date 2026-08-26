@@ -12,7 +12,7 @@ Uttily accepte uniquement les loueurs professionnels dans le MVP.
 - Stocks plus structurés et plus importants.
 - Retrait, horaires et conditions mieux définis.
 - Moins de fraude et de litiges.
-- Modèle SaaS B2B immédiatement viable.
+- Modèle d'acquisition B2B avec monétisation transactionnelle à la commission.
 - Complexité fiscale, assurance et identité nettement réduite.
 
 ## Conséquence

@@ -548,6 +548,27 @@ describe.skipIf(shouldSkipIntegrationTests())('initiatePayment — intégration 
     expect(draft[0]!.status).toBe('HELD');
   });
 
+  // 5b-bis. Compte connecté non prêt (payouts disabled)
+  it('5b-bis. compte connecté non prêt (payouts disabled) : PAYMENT_ACCOUNT_NOT_READY', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData();
+    await seedPaymentAccount(ids, { payoutsEnabled: false });
+    const draftId = await createHeldDraft(ids, 'payouts-not-ready');
+
+    const result = await initiatePayment(
+      makeDeps(),
+      makeInitiateInput(ids, draftId, 'payouts-not-ready'),
+    );
+
+    expect(result.kind).toBe('FAILURE');
+    if (result.kind !== 'FAILURE') return;
+    expect(result.error).toBe('PAYMENT_ACCOUNT_NOT_READY');
+
+    // Le compte est contrôlé avant l'appel provider et le draft reste HELD.
+    const draft = await rawSql`SELECT status FROM booking_drafts WHERE id = ${draftId}`;
+    expect(draft[0]!.status).toBe('HELD');
+  });
+
   // 5c. Mauvais environnement
   it('5c. mauvais environnement : CONNECTED_ACCOUNT_NOT_FOUND (TEST vs LIVE)', async () => {
     if (!db || !rawSql) return;

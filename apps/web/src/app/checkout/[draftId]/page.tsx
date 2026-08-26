@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { bookingDrafts, bookingDraftLines } from '@uttily/database';
 import { CheckoutClient } from './checkout-client';
+import { getPublicAppUrl } from '@/lib/public-app-url';
 
 /**
  * Page de checkout — récapitulatif du brouillon de réservation puis paiement.
@@ -56,6 +57,8 @@ export default async function CheckoutPage({
     );
   }
 
+  const publicAppUrl = getPublicAppUrl();
+
   // Lire les lignes du brouillon pour le récapitulatif.
   const lines = await db
     .select({
@@ -71,6 +74,7 @@ export default async function CheckoutPage({
       <h1>Paiement</h1>
       <CheckoutClient
         draftId={draftId}
+        returnUrl={`${publicAppUrl}/checkout/${draftId}`}
         totalAmountMinor={d.totalAmountMinor}
         currency={d.currency}
         lines={lines}

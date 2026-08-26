@@ -68,9 +68,10 @@ describe('getConnectedAccountReadiness', () => {
     vi.clearAllMocks();
   });
 
-  it('ready = true quand chargesEnabled ET transfers ACTIVE', async () => {
+  it('ready = true quand onboarding, charges, payouts et transfers sont actifs', async () => {
     const accountRow = baseAccountRow({
       chargesEnabled: true,
+      payoutsEnabled: true,
       transfersCapabilityStatus: 'ACTIVE',
       onboardingStatus: 'ENABLED',
     });
@@ -101,6 +102,21 @@ describe('getConnectedAccountReadiness', () => {
     expect(result.notConfigured).toBe(false);
     expect(result.ready).toBe(false);
     expect(result.chargesEnabled).toBe(false);
+  });
+
+  it('ready = false quand payoutsEnabled = false', async () => {
+    const accountRow = baseAccountRow({
+      onboardingStatus: 'ENABLED',
+      chargesEnabled: true,
+      payoutsEnabled: false,
+      transfersCapabilityStatus: 'ACTIVE',
+    });
+    const db = makeMockDb(accountRow);
+    const deps: Pick<ConnectedAccountDependencies, 'db'> = { db };
+
+    const result = await getConnectedAccountReadiness(deps, ORG_ID, 'TEST');
+
+    expect(result.ready).toBe(false);
   });
 
   it('notConfigured = true quand aucun compte trouvé', async () => {

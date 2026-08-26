@@ -3,10 +3,13 @@
  *
  * Construit une instance de StripeAdapter depuis les variables d'environnement.
  * Les secrets sont lus côté serveur uniquement, jamais exposés au client.
- * L'environnement est déterminé par STRIPE_ENVIRONMENT (défaut : TEST).
+ * L'environnement est déterminé par STRIPE_ENVIRONMENT ; le helper partagé
+ * refuse l'absence de valeur en production pour éviter un basculement implicite
+ * en TEST.
  */
 
 import { StripeAdapter, type StripeAdapterConfig } from '@uttily/core';
+import { resolveStripeEnvironment } from './payment-config';
 
 let cached: StripeAdapter | null = null;
 
@@ -33,11 +36,12 @@ export function getStripeAdapter(): StripeAdapter {
     throw new Error('STRIPE_CONNECT_WEBHOOK_SECRET est requis');
   }
 
-  const rawEnvironment = process.env.STRIPE_ENVIRONMENT ?? 'TEST';
-  if (rawEnvironment !== 'TEST' && rawEnvironment !== 'LIVE') {
-    throw new Error(`STRIPE_ENVIRONMENT invalide : "${rawEnvironment}" (attendu : TEST ou LIVE)`);
+  const environment = resolveStripeEnvironment();
+
+  const expectedSecretPrefix = environment === 'TEST' ? 'sk_test_' : 'sk_live_';
+  if (!secretKey.startsWith(expectedSecretPrefix)) {
+    throw new Error('STRIPE_SECRET_KEY ne correspond pas à STRIPE_ENVIRONMENT.');
   }
-  const environment = rawEnvironment;
 
   // P1 : Défense en profondeur — verrou LIVE fail-closed (ADR-010 §4).
   // Le constructeur StripeAdapter vérifie aussi cette condition, mais on échoue

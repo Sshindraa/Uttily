@@ -7,7 +7,8 @@
  *
  * Contraintes critiques (ADR-010 §3.3) :
  * - `organizationId` et `environment` proviennent du contexte serveur.
- * - `ready = chargesEnabled && transfersCapabilityStatus === 'ACTIVE'`.
+ * - `ready = onboarding ENABLED && chargesEnabled && payoutsEnabled &&
+ *   transfersCapabilityStatus === 'ACTIVE'`.
  * - Si aucun compte n'existe, retourne un read model avec `notConfigured: true`.
  */
 
@@ -37,7 +38,8 @@ function validateInput(organizationId: string, environment: StripeEnvironment): 
  * 2. Lire le compte depuis `organization_payment_accounts` par
  *    (organizationId, 'STRIPE', environment).
  * 3. Si non trouvé, retourner `{ notConfigured: true, ready: false, ... }`.
- * 4. Sinon, calculer `ready = chargesEnabled && transfersCapabilityStatus === 'ACTIVE'`.
+ * 4. Sinon, calculer `ready = onboarding ENABLED && chargesEnabled &&
+ *    payoutsEnabled && transfersCapabilityStatus === 'ACTIVE'`.
  * 5. Retourner le read model.
  */
 export async function getConnectedAccountReadiness(
@@ -81,7 +83,11 @@ export async function getConnectedAccountReadiness(
   const account = rows[0]!;
 
   // 4. Calculer readiness.
-  const ready = account.chargesEnabled && account.transfersCapabilityStatus === 'ACTIVE';
+  const ready =
+    account.onboardingStatus === 'ENABLED' &&
+    account.chargesEnabled &&
+    account.payoutsEnabled &&
+    account.transfersCapabilityStatus === 'ACTIVE';
 
   // 5. Retourner le read model.
   return {

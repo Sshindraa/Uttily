@@ -6,6 +6,7 @@ import { bookingAmendments, bookings } from '@uttily/database';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { getStripeAdapter } from '@/lib/stripe';
+import { resolveStripeEnvironment } from '@/lib/payment-config';
 import {
   previewBookingAmendment,
   confirmBookingAmendment,
@@ -571,22 +572,16 @@ export async function initiateSupplementPaymentAction(input: {
     };
   }
 
-  const rawEnv = process.env.STRIPE_ENVIRONMENT ?? 'TEST';
-  if (rawEnv !== 'TEST' && rawEnv !== 'LIVE') {
+  let environment;
+  try {
+    environment = resolveStripeEnvironment();
+  } catch {
     return {
       kind: 'ERROR',
       code: 'UNAVAILABLE',
       message: 'Paiement indisponible.',
     };
   }
-  if (rawEnv === 'LIVE' && process.env.PAYMENTS_LIVE_ENABLED !== 'true') {
-    return {
-      kind: 'ERROR',
-      code: 'UNAVAILABLE',
-      message: 'Paiement indisponible.',
-    };
-  }
-  const environment = rawEnv as 'TEST' | 'LIVE';
 
   let provider;
   try {

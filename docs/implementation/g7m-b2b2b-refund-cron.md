@@ -29,7 +29,8 @@ l'environnement Vercel de production et n'est jamais versionné.
 ## Contrat HTTP
 
 - secret absent, vide ou incorrect : `401 { error: 'Unauthorized' }` ;
-- `STRIPE_ENVIRONMENT` absent : `TEST` ;
+- `STRIPE_ENVIRONMENT` absent hors production : `TEST` ; absent en
+  production : `500 { error: 'Configuration Error' }` (aucun défaut silencieux) ;
 - environnement différent de `TEST` ou `LIVE` : `500 { error: 'Configuration Error' }` ;
 - erreur technique : `500 { error: 'Internal Server Error' }` ;
 - succès : `200` avec `ok`, `environment`, `claimedCount`,

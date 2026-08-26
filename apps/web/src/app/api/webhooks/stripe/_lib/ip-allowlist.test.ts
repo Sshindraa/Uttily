@@ -74,6 +74,7 @@ describe('checkWebhookIpAllowlist', () => {
   describe('LIVE environment (fail-closed)', () => {
     beforeEach(() => {
       process.env.STRIPE_ENVIRONMENT = 'LIVE';
+      process.env.PAYMENTS_LIVE_ENABLED = 'true';
     });
 
     it('refusé si allow-list non définie (fail-closed)', () => {
