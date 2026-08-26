@@ -1,4 +1,4 @@
-import { CatalogError, AuthorizationError, FulfillmentError } from '@uttily/core';
+import { CatalogError, AuthorizationError, FulfillmentError, PhotoError } from '@uttily/core';
 import type { FulfillmentErrorCode } from '@uttily/core';
 import type { ActionResult, ActionErrorCode } from '@uttily/contracts';
 
@@ -55,11 +55,33 @@ function mapError<T>(err: unknown): ActionResult<T> {
   if (err instanceof FulfillmentError) {
     return mapFulfillmentError<T>(err);
   }
+  if (err instanceof PhotoError) {
+    return mapPhotoError<T>(err);
+  }
   if (err instanceof Error && err.message === 'UNAUTHENTICATED') {
     return { ok: false, code: 'UNAUTHENTICATED', message: 'Non authentifié.' };
   }
   // Erreur inattendue : ne pas exposer le message brut.
   return { ok: false, code: 'UNKNOWN', message: 'Une erreur inattendue est survenue.' };
+}
+
+function mapPhotoError<T>(err: PhotoError): ActionResult<T> {
+  switch (err.code) {
+    case 'PHOTO_NOT_FOUND':
+      return { ok: false, code: 'NOT_FOUND', message: err.message };
+    case 'PHOTO_VALIDATION_FAILED':
+      return { ok: false, code: 'VALIDATION', message: err.message };
+    case 'PHOTO_CONFLICT':
+      return { ok: false, code: 'CONFLICT_IDEMPOTENCY', message: err.message };
+    case 'PHOTO_DELETION_WOULD_BREAK_PUBLICATION':
+      return { ok: false, code: 'VALIDATION', message: err.message };
+    case 'PHOTO_UPLOAD_FAILED':
+      return { ok: false, code: 'UNKNOWN', message: 'La photo n’a pas pu être enregistrée.' };
+    default: {
+      const _exhaustive: never = err.code as never;
+      return _exhaustive;
+    }
+  }
 }
 
 /**

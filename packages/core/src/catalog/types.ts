@@ -154,10 +154,23 @@ export interface PublicationReadiness {
   failures: string[];
 }
 
+export interface ProductPhotoSummary {
+  id: string;
+  publicId: string;
+  fileState: 'PENDING_UPLOAD' | 'AVAILABLE' | 'REJECTED' | 'DELETED';
+  contentType: string | null;
+  byteSize: number | null;
+  widthPx: number | null;
+  heightPx: number | null;
+  sortOrder: number;
+  rejectionReason: string | null;
+}
+
 export interface ProductDetails {
   product: ProductRecord;
   category: { id: string; name: string; isActive: boolean };
   variants: ProductVariantRecord[];
+  photos: ProductPhotoSummary[];
   activeVariantCount: number;
   activeInventoryCount: number;
   publicationReadiness: PublicationReadiness;

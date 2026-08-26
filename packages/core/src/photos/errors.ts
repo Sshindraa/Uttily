@@ -10,7 +10,12 @@
  * de tables ne sont jamais exposés dans les messages publics.
  */
 
-export type PhotoErrorCode = 'PHOTO_NOT_FOUND' | 'PHOTO_DELETION_WOULD_BREAK_PUBLICATION';
+export type PhotoErrorCode =
+  | 'PHOTO_NOT_FOUND'
+  | 'PHOTO_DELETION_WOULD_BREAK_PUBLICATION'
+  | 'PHOTO_VALIDATION_FAILED'
+  | 'PHOTO_CONFLICT'
+  | 'PHOTO_UPLOAD_FAILED';
 
 export class PhotoError extends Error {
   readonly code: PhotoErrorCode;

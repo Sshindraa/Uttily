@@ -2,6 +2,11 @@
 const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@uttily/core', '@uttily/database', '@uttily/config'],
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '12mb',
+    },
+  },
 };
 
 export default nextConfig;

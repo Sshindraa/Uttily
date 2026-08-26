@@ -64,6 +64,7 @@ describe('PublicOfferPage & OfferBookingForm — SSR et Idempotence', () => {
         name: 'Modèle Standard',
       },
     ],
+    photos: [],
     openingHours: [
       { weekday: 1, openTime: '08:00:00', closeTime: '18:00:00' },
       { weekday: 2, openTime: '08:00:00', closeTime: '18:00:00' },

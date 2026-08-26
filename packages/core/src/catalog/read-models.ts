@@ -6,6 +6,7 @@ import {
   inventoryMovements,
   locations,
   productVariants,
+  productPhotos,
   products,
 } from '@uttily/database';
 import type {
@@ -157,6 +158,22 @@ export async function getProductDetails(
     .where(and(eq(productVariants.productId, productId), isNull(productVariants.deletedAt)))
     .orderBy(asc(productVariants.createdAt), asc(productVariants.id));
 
+  const photoRows = await db
+    .select({
+      id: productPhotos.id,
+      publicId: productPhotos.publicId,
+      fileState: productPhotos.fileState,
+      contentType: productPhotos.contentType,
+      byteSize: productPhotos.byteSize,
+      widthPx: productPhotos.widthPx,
+      heightPx: productPhotos.heightPx,
+      sortOrder: productPhotos.sortOrder,
+      rejectionReason: productPhotos.rejectionReason,
+    })
+    .from(productPhotos)
+    .where(and(eq(productPhotos.productId, productId), isNull(productPhotos.deletedAt)))
+    .orderBy(asc(productPhotos.sortOrder), asc(productPhotos.createdAt));
+
   const variantIds = variantRows.map((v) => v.id);
 
   // Comptage des variantes actives.
@@ -211,6 +228,17 @@ export async function getProductDetails(
       skuSuffix: v.skuSuffix,
       attributes: v.attributes as Record<string, unknown>,
       isActive: v.isActive,
+    })),
+    photos: photoRows.map((photo) => ({
+      id: photo.id,
+      publicId: photo.publicId,
+      fileState: photo.fileState,
+      contentType: photo.contentType,
+      byteSize: photo.byteSize,
+      widthPx: photo.widthPx,
+      heightPx: photo.heightPx,
+      sortOrder: photo.sortOrder,
+      rejectionReason: photo.rejectionReason,
     })),
     activeVariantCount,
     activeInventoryCount,

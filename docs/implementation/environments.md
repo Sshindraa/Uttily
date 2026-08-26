@@ -107,8 +107,10 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
   `dev:full` échoue proprement. `lint`, `typecheck`, `test` et `build` restent
   fonctionnels sans Docker. `pnpm test` désigne la boucle rapide sans
   PostgreSQL, E2E ni reproductibilité PDF ; `pnpm check:fast` ajoute les
-  garde-fous locaux et le typecheck. La validation exhaustive reste
-  `pnpm test:full` et la matrice CI.
+  garde-fous locaux et le typecheck. `pnpm test:postgres` exige PostgreSQL
+  local joignable et exécute les suites Database sans parallélisme entre
+  fichiers, afin d'éviter la contention entre bases de test. La validation
+  exhaustive reste `pnpm test:full` et la matrice CI.
 - Le fichier `.env` racine reste destiné aux commandes locales exécutées hors
   orchestration. Pour `dev:full`, les valeurs de l'environnement enfant sont
   imposées par le workflow, indépendamment de ces fichiers, notamment les URLs
@@ -121,6 +123,9 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
 - Documents : bucket Cloudflare R2 privé `uttily-staging-documents`,
   juridiction européenne ; l'endpoint régional est dérivé par l'adaptateur et
   n'est pas une variable configurable librement.
+- Photos produit : bucket Cloudflare R2 privé dédié, configuré par
+  `R2_PHOTOS_BUCKET_NAME` ; aucune URL R2 n'est exposée au navigateur, les
+  lectures passent par les routes applicatives contrôlées.
 - Emails : domaine Resend `sokar.tech` vérifié, expéditeur
   `Uttily <noreply@sokar.tech>` et template de confirmation publié.
 - Worker : conteneur `uttily-worker-staging` isolé sur l'hôte staging existant,
@@ -156,6 +161,7 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
 | `PAYMENTS_LIVE_ENABLED` | `false` | `false` tant que les verrous ADR-010 ne sont pas fermés | Le serveur refuse `LIVE` sans `true`. |
 | `PLATFORM_COMMISSION_RATE_BPS` | `1000` | valeur décidée et versionnée par environnement | Configuration serveur obligatoire ; `1000` = 10 %, et même `0` doit être explicite. Une commission LIVE nulle est refusée. |
 | `CRON_SECRET` | `dev-cron-secret-local` | générée (voir ci-dessous) | Authentification des endpoints Vercel Cron (`expire-holds`, `process-compensations` et `process-refund-requests`) |
+| `R2_PHOTOS_BUCKET_NAME` | vide en local | bucket R2 privé dédié au staging / à la production | Obligatoire pour les uploads photo ; le serveur refuse l'absence de bucket et ne réutilise `R2_BUCKET_NAME` qu'en repli explicite |
 
 ## Connexions Neon — pooled vs direct (G5G-C)
 

@@ -5,6 +5,7 @@ import {
   locationOpeningHours,
   locations,
   organizations,
+  productPhotos,
   products,
   productVariants,
 } from '@uttily/database';
@@ -172,6 +173,39 @@ export async function getPublicOfferDetails(
     closeTime: h.closeTime,
   }));
 
+  const photoRows = await db
+    .select({
+      publicPhotoId: productPhotos.publicId,
+      contentType: productPhotos.contentType,
+      widthPx: productPhotos.widthPx,
+      heightPx: productPhotos.heightPx,
+    })
+    .from(productPhotos)
+    .where(
+      and(
+        eq(productPhotos.productId, r.productId),
+        eq(productPhotos.organizationId, r.productOrgId),
+        eq(productPhotos.fileState, 'AVAILABLE'),
+        isNull(productPhotos.deletedAt),
+      ),
+    )
+    .orderBy(asc(productPhotos.sortOrder), asc(productPhotos.createdAt));
+
+  const photos = photoRows.filter(
+    (
+      photo,
+    ): photo is typeof photo & {
+      contentType: 'image/jpeg' | 'image/png' | 'image/webp';
+      widthPx: number;
+      heightPx: number;
+    } =>
+      (photo.contentType === 'image/jpeg' ||
+        photo.contentType === 'image/png' ||
+        photo.contentType === 'image/webp') &&
+      photo.widthPx !== null &&
+      photo.heightPx !== null,
+  );
+
   const offer: PublicOfferDetails = {
     publicProductId: r.publicProductId,
     publicLocationId: r.publicLocationId,
@@ -187,6 +221,7 @@ export async function getPublicOfferDetails(
     postalCode: r.postalCode,
     countryCode: r.countryCode,
     variants,
+    photos,
     openingHours,
   };
 

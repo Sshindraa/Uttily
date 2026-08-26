@@ -95,6 +95,25 @@ export default async function PublicOfferPage({
             <article className={styles.productCard}>
               <p className={styles.eyebrow}>{offer.organizationPublicDisplayName}</p>
               <h1 className={styles.productTitle}>{offer.productName}</h1>
+              {offer.photos.length > 0 ? (
+                <div
+                  className={styles.photoGallery}
+                  aria-label={fr ? 'Photos du produit' : 'Product photos'}
+                >
+                  {offer.photos.map((photo, index) => (
+                    <img
+                      key={photo.publicPhotoId}
+                      src={`/api/public/product-photos/${photo.publicPhotoId}`}
+                      alt={
+                        fr
+                          ? `Photo ${index + 1} de ${offer.productName}`
+                          : `Photo ${index + 1} of ${offer.productName}`
+                      }
+                      className={styles.productPhoto}
+                    />
+                  ))}
+                </div>
+              ) : null}
               {offer.productDescription ? (
                 <p className={styles.productDescription}>{offer.productDescription}</p>
               ) : null}

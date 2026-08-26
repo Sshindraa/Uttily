@@ -1,0 +1,57 @@
+.section {
+  margin-block: 2rem;
+  padding: 1rem;
+  border: 1px solid #d8ddd7;
+  border-radius: 0.75rem;
+}
+
+.form {
+  display: grid;
+  gap: 0.5rem;
+  margin-block: 0.75rem;
+}
+
+.help {
+  margin: 0;
+  color: #5d6a62;
+  font-size: 0.9rem;
+}
+
+.error {
+  color: #9b1c1c;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid #d8ddd7;
+  border-radius: 0.5rem;
+}
+
+.preview,
+.placeholder {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: #f7f4ed;
+}
+
+.placeholder {
+  display: grid;
+  place-items: center;
+  color: #5d6a62;
+}
+
+.deleteButton {
+  color: #9b1c1c;
+}

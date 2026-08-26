@@ -196,6 +196,14 @@ export interface PublicOfferOpeningHour {
   closeTime: string;
 }
 
+export interface PublicOfferPhoto {
+  /** Identifiant public uniquement ; l'ID primaire n'est jamais exposé. */
+  publicPhotoId: string;
+  contentType: 'image/jpeg' | 'image/png' | 'image/webp';
+  widthPx: number;
+  heightPx: number;
+}
+
 export interface PublicOfferDetails {
   publicProductId: string;
   publicLocationId: string;
@@ -211,6 +219,7 @@ export interface PublicOfferDetails {
   postalCode: string | null;
   countryCode: string;
   variants: PublicOfferVariant[];
+  photos: PublicOfferPhoto[];
   openingHours: PublicOfferOpeningHour[];
 }
 

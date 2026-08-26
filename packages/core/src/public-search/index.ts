@@ -50,6 +50,7 @@ export type {
   PublicOfferDetails,
   PublicOfferVariant,
   PublicOfferOpeningHour,
+  PublicOfferPhoto,
   ResolvePublicBookingAuthorityInput,
   ResolvedPublicBookingAuthority,
   ResolvePublicBookingAuthorityResult,

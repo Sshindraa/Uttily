@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { getProductDetails, getMembership, CATALOG_MANAGERS } from '@uttily/core';
 import { requireCatalogViewerOf } from '@/lib/catalog-auth';
 import { ProductActions } from './product-actions';
+import { ProductPhotosManager } from './product-photos-manager';
 
 export default async function ProductDetailPage({
   params,
@@ -51,6 +52,14 @@ export default async function ProductDetailPage({
             </ul>
           )}
         </section>
+      )}
+
+      {canManage && (
+        <ProductPhotosManager
+          orgId={organizationId}
+          productId={product.id}
+          photos={details.photos}
+        />
       )}
 
       {canManage && (

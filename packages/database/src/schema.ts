@@ -2179,6 +2179,9 @@ export const productPhotos = pgTable(
   'product_photos',
   {
     id: uuid('id').primaryKey().defaultRandom(),
+    // Identifiant exposable dans les URLs publiques. L'ID primaire reste
+    // réservé aux requêtes internes et aux contrôles d'appartenance.
+    publicId: uuid('public_id').notNull().unique().defaultRandom(),
     organizationId: uuid('organization_id')
       .notNull()
       .references(() => organizations.id, { onDelete: 'restrict' }),

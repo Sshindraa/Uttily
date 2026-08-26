@@ -158,11 +158,11 @@ describe.skipIf(shouldSkipIntegrationTests())(
       if (!testUrl) return;
       const sql = postgres(testUrl, { max: 1 });
       try {
-        expect(await migrationCount(sql)).toBe(38);
+        expect(await migrationCount(sql)).toBe(39);
         const rows = await sql`
         SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at
       `;
-        expect(rows).toHaveLength(38);
+        expect(rows).toHaveLength(39);
 
         const { readFileSync } = await import('node:fs');
         const { dirname, join } = await import('node:path');
@@ -177,7 +177,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
         const journal = JSON.parse(readFileSync(journalPath, 'utf8')) as {
           entries: Array<{ tag: string }>;
         };
-        expect(journal.entries.at(-1)!.tag).toBe('0038_product_variants_public_id');
+        expect(journal.entries.at(-1)!.tag).toBe('0039_product_photos_public_id');
       } finally {
         await sql.end();
       }

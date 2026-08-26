@@ -140,6 +140,7 @@ export {
   type PublicOfferDetails,
   type PublicOfferVariant,
   type PublicOfferOpeningHour,
+  type PublicOfferPhoto,
   type ResolvePublicBookingAuthorityInput,
   type ResolvedPublicBookingAuthority,
   type ResolvePublicBookingAuthorityResult,

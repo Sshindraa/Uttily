@@ -29,7 +29,7 @@ géocodage réel, photos réelles) restent à lever avant tout lancement public 
 | Documents transactionnels | Implémenté (G5B–G5D) | Tests unitaires + PostgreSQL, CI verte | R2 staging bucket | Oui (R2 staging) | Oui (R2 production) |
 | Emails transactionnels | Implémenté (G5E, G5H) | 40 tests PostgreSQL, CI verte | Resend staging domaine | Oui (Resend staging) | Oui (Resend production) |
 | Analytics | Implémenté (G7H-A/B) | Migration 0035, tests Core, CI verte | Validation privacy PRODUCTION | Non (gate staging) | Oui (validation privacy) |
-| Photos et gating publication | Code + gate implémentés (G7F-A2) | Migration 0034, contraintes CHECK, gate PostgreSQL | Upload/CDN réel, photos valides | Non (fixtures contrôlées) | Oui (sans photos valides, pas de publication publique) |
+| Photos et gating publication | Upload réel G8B-1 + gate PostgreSQL | Migration 0039, validation octets, R2 privé, routes contrôlées, tests PostgreSQL | Bucket R2 photo staging et trois photos réelles | Oui pour le smoke photo staging | Oui (sans photos valides, pas de publication publique) |
 | Dashboard loueur | Implémenté (G7G) | Projection Core, UI, tests, CI verte | Aucune | Non | Non |
 | Multi-tenant et sécurité | Implémenté | Tests d'isolation PostgreSQL, sentinelles fail-closed, CI verte | Aucune | Non | Non |
 | Worker et outbox | Implémenté (G5F, G5H-C2C) | 441 tests worker, bundle smoke-testé, CI verte | Vercel Cron staging, R2/Resend staging | Oui (cron staging) | Oui (cron production) |
@@ -72,13 +72,13 @@ publication publique sans trois photos valides).
 
 ### P1 — Expérience pilote
 
-- Photos réelles volontairement reportées (G7F-B : UI guidée upload).
+- Photos réelles : G8B-1 implémenté ; smoke test R2 staging encore requis.
 - Calibration des seuils viewport avec données réelles.
 - Traduction du contenu libre des loueurs (FR+EN).
 
 ### Volontairement reporté
 
-- Photos réelles : code et gate existent, upload/CDN et UI guidée reportés.
+- Modération automatique et consignes détaillées par catégorie restent reportées.
 - Webhooks de délivrabilité et bounce (groupe futur post-G5E).
 - Modération et re-encoding EXIF des images (G7F-B).
 

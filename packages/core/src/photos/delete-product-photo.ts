@@ -20,6 +20,7 @@ import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import { productPhotos, products } from '@uttily/database';
 import { PhotoError } from './errors';
+import type { ProductPhotoStorage } from './storage';
 
 /**
  * Supprime (soft delete) une photo produit.
@@ -36,7 +37,9 @@ export async function deleteProductPhoto(
   db: DatabaseClient,
   organizationId: string,
   photoId: string,
+  storage?: ProductPhotoStorage,
 ): Promise<void> {
+  let storageKey: string | null = null;
   await db.transaction(async (tx) => {
     // 1. Charge la photo et vérifie l'appartenance multi-tenant.
     const [photo] = await tx
@@ -56,8 +59,11 @@ export async function deleteProductPhoto(
 
     // Idempotence : si déjà DELETED, retour sans erreur (replay sûr).
     if (photo.fileState === 'DELETED') {
+      storageKey = photo.storageKey;
       return;
     }
+
+    storageKey = photo.storageKey;
 
     // 2. SELECT FOR UPDATE sur le produit parent.
     // Ordre de verrouillage : products avant product_photos (anti-deadlock).
@@ -118,4 +124,8 @@ export async function deleteProductPhoto(
       })
       .where(eq(productPhotos.id, photoId));
   });
+
+  // La suppression physique est effectuée après le commit DB. Si le
+  // fournisseur échoue, un rejeu retrouve DELETED et retente l'opération.
+  if (storage && storageKey) await storage.deleteIfPresent(storageKey);
 }
