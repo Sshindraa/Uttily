@@ -109,6 +109,15 @@ function PaymentForm({
     setSubmitting(true);
     setError(null);
 
+    const submitResult = await elements.submit();
+    if (submitResult.error) {
+      const message = submitResult.error.message ?? 'Formulaire de paiement invalide';
+      setError(message);
+      onError(message);
+      setSubmitting(false);
+      return;
+    }
+
     const result = await stripe.confirmPayment({
       elements,
       clientSecret,
