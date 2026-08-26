@@ -498,6 +498,7 @@ export {
   R2ObjectStorage,
   R2ConfigError,
   validateR2Config,
+  createR2Endpoint,
   createR2ConfigFromEnv,
   createR2ObjectStorageFromEnv,
 } from './adapters/r2-object-storage.js';

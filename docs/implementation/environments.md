@@ -118,12 +118,19 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
 
 - Web : Vercel (preview / staging).
 - Base : Neon (branche de staging), région européenne.
+- Documents : bucket Cloudflare R2 privé `uttily-staging-documents`,
+  juridiction européenne ; l'endpoint régional est dérivé par l'adaptateur et
+  n'est pas une variable configurable librement.
+- Emails : domaine Resend `sokar.tech` vérifié, expéditeur
+  `Uttily <noreply@sokar.tech>` et template de confirmation publié.
 - Scheduler : Worker Cloudflare `uttily-staging-cron`, déclenché chaque minute
   sur le plan Workers Free ; il appelle séquentiellement les quatre routes
   `/api/cron/*` avec `CRON_SECRET`. Les Cron Jobs Vercel sont désactivés pour
   rester compatible avec le plan Hobby.
 - Variables : configurées dans le projet Vercel et Neon.
 - Aucune donnée de production.
+- Le premier smoke test connecté R2/Resend/worker est consigné dans
+  `docs/implementation/g8a-staging-r2-resend-worker-smoke-test.md`.
 
 ## Production
 

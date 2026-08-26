@@ -7,6 +7,8 @@
  *
  * Caractéristiques :
  * - Bucket privé, juridiction `eu` (configurée côté Cloudflare, pas ici).
+ * - Endpoint S3 explicitement régionalisé en `eu` : l'endpoint générique du
+ *   compte ne permet pas l'accès aux buckets de la juridiction européenne.
  * - `putIfAbsent` utilise une écriture conditionnelle atomique
  *   (`IfNoneMatch: '*'`).
  * - Aucun overwrite autorisé. Un objet existant avec un checksum différent est
@@ -145,9 +147,13 @@ export function validateR2Config(config: R2Config): void {
 /**
  * Construit la configuration S3Client pour R2 à partir d'une R2Config validée.
  */
+export function createR2Endpoint(accountId: string): string {
+  return `https://${accountId}.eu.r2.cloudflarestorage.com`;
+}
+
 function buildS3ClientConfig(config: R2Config): S3ClientConfig {
   return {
-    endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
+    endpoint: createR2Endpoint(config.accountId),
     region: 'auto',
     credentials: {
       accessKeyId: config.accessKeyId,

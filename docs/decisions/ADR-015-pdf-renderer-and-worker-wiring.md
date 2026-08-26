@@ -280,7 +280,7 @@ Option A retenue (plus petit changement cohérent) :
 | Variable | Rôle | Validation |
 | --- | --- | --- |
 | `DATABASE_URL` | Connexion PostgreSQL poolée | Non vide, format URL |
-| `R2_ACCOUNT_ID` | Identifiant de compte Cloudflare R2 | Alphanumérique, 6-64 caractères |
+| `R2_ACCOUNT_ID` | Identifiant de compte Cloudflare R2 ; l'adaptateur cible automatiquement l'endpoint EU de la juridiction du bucket | Alphanumérique, 6-64 caractères |
 | `R2_ACCESS_KEY_ID` | Clé d'accès R2 | Non vide |
 | `R2_SECRET_ACCESS_KEY` | Clé secrète R2 | Non vide |
 | `R2_BUCKET_NAME` | Nom du bucket R2 | 3-63 caractères, lowercase |

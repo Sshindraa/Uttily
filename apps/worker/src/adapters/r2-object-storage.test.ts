@@ -5,6 +5,7 @@ import {
   R2StorageError,
   validateR2Config,
   createR2ConfigFromEnv,
+  createR2Endpoint,
   type R2Config,
   type S3ClientLike,
 } from './r2-object-storage';
@@ -218,6 +219,14 @@ describe('R2ObjectStorage', () => {
       }
       expect(caught).toBeInstanceOf(R2ConfigError);
       expect((caught as Error).message).not.toContain('SUPERSECRET_VALUE_123');
+    });
+  });
+
+  describe('endpoint régional', () => {
+    it("utilise l'endpoint R2 de la juridiction européenne", () => {
+      expect(createR2Endpoint(VALID_CONFIG.accountId)).toBe(
+        'https://testaccount123.eu.r2.cloudflarestorage.com',
+      );
     });
   });
 
