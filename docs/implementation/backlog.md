@@ -192,6 +192,14 @@ Critères d'acceptation :
   Vercel Hobby, les quatre routes cron sont déclenchées par le Worker Cloudflare
   `uttily-staging-cron` ; aucun Cron Job Vercel à la minute n'est requis.
 
+**Statut : clôturé le 2026-08-26.** La validation connectée a été effectuée avec un
+utilisateur Clerk TEST dédié, membre `OWNER` de l'organisation de démonstration :
+recherche Annecy → hold → paiement Stripe TEST → webhook signé → réservation
+`CONFIRMED`. Le compte Connect a été projeté `ENABLED` après confirmation des
+capacités Stripe. La preuve détaillée, sans secret ni donnée de carte, est conservée
+dans `docs/implementation/g8a-0-smoke-test.md`. La CI complète post-merge est verte
+au run [33003910905](https://github.com/Sshindraa/Uttily/actions/runs/33003910905).
+
 **Après ce lot uniquement** : G8A déploiera Vercel, Neon, Clerk, Stripe TEST,
 R2 et Resend pour un test staging réel.
 
