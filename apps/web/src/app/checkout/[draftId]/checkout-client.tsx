@@ -25,7 +25,7 @@ interface CheckoutClientProps {
   expiresAt: string | null;
 }
 
-type Phase = 'idle' | 'initiating' | 'elements' | 'confirming' | 'success' | 'error';
+type Phase = 'idle' | 'initiating' | 'elements' | 'success' | 'error';
 
 // ---------------------------------------------------------------------------
 // Stripe.js singleton — chargé une seule fois pour toute la session.
@@ -69,7 +69,6 @@ interface PaymentFormProps {
   clientSecret: string;
   returnUrl: string;
   totalLabel: string;
-  onConfirming: () => void;
   onSuccess: () => void;
   onError: (message: string) => void;
 }
@@ -78,7 +77,6 @@ function PaymentForm({
   clientSecret,
   returnUrl,
   totalLabel,
-  onConfirming,
   onSuccess,
   onError,
 }: PaymentFormProps): ReactElement {
@@ -110,7 +108,6 @@ function PaymentForm({
 
     setSubmitting(true);
     setError(null);
-    onConfirming();
 
     const result = await stripe.confirmPayment({
       elements,
@@ -339,7 +336,6 @@ export function CheckoutClient({
                 clientSecret={clientSecret}
                 returnUrl={returnUrl}
                 totalLabel={totalLabel}
-                onConfirming={() => setPhase('confirming')}
                 onSuccess={() => setPhase('success')}
                 onError={(msg) => {
                   setErrorMessage(msg);
@@ -349,12 +345,6 @@ export function CheckoutClient({
             </Elements>
           ) : null}
         </>
-      )}
-
-      {phase === 'confirming' && (
-        <p role="status" aria-busy="true">
-          Confirmation du paiement…
-        </p>
       )}
     </section>
   );
