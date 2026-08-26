@@ -3,7 +3,7 @@ main = "src/index.mjs"
 compatibility_date = "2026-08-26"
 
 [vars]
-CRON_TARGET_URL = "https://uttily-staging-uttily.vercel.app"
+CRON_TARGET_URL = "https://uttily-staging.vercel.app"
 
 [triggers]
 crons = ["* * * * *"]

@@ -1,0 +1,76 @@
+# G8A — Déploiement Web staging et smoke test complet
+
+**Date** : 2026-08-27  
+**Statut** : livré et validé en staging  
+**Périmètre** : Vercel, Neon, Clerk TEST, Stripe TEST, worker, R2, Resend et scheduler
+
+Ce document clôt le déploiement Web staging après le ticket R2/Resend/worker
+décrit dans `g8a-staging-r2-resend-worker-smoke-test.md`. Aucun fournisseur LIVE,
+aucune donnée de production et aucun contournement d'authentification n'ont été
+utilisés.
+
+## Configuration déployée
+
+- **Web** : projet Vercel `uttily-staging`, branche `main`, domaine
+  `https://uttily-staging.vercel.app`, build prêt sur le commit `bb5384d`.
+- **Neon** : projet `Uttily-dev`, branche `staging`, région Frankfurt, 38
+  migrations présentes ; l'application et le worker utilisent l'endpoint pooled.
+- **Paiement** : `STRIPE_ENVIRONMENT=TEST`, `PAYMENTS_LIVE_ENABLED=false`,
+  `PLATFORM_COMMISSION_RATE_BPS=1000` (10 %), `PUBLIC_APP_URL` égal au domaine
+  staging. Les valeurs sont configurées côté serveur et ne possèdent pas de
+  défaut silencieux en production.
+- **Clerk** : instance development/test, utilisateur pilote
+  `uttily-staging-e2e+clerk_test@example.com`, authentifié par le flux Clerk
+  réel. Dans Uttily, il est `OWNER` et `ACTIVE` dans `Uttily Demo Rental` ; les
+  rôles applicatifs restent autoritaires côté base Uttily.
+- **Stripe Connect** : compte TEST prêt et destinations webhook actives sur
+  `/api/webhooks/stripe/connect` et `/api/webhooks/stripe/platform`.
+- **Worker** : conteneur `uttily-worker-staging` sur l'hôte staging existant,
+  construit avec `Dockerfile.worker`, non-root, limites CPU/mémoire et fichier
+  d'environnement hors dépôt. R2 est limité au bucket staging EU et Resend aux
+  droits d'envoi.
+- **Scheduler** : Worker Cloudflare `uttily-staging-cron`, version déployée
+  `4b014a9b-ffc5-4c3f-8aef-522fe87e279e`, déclenchement chaque minute et cible
+  `https://uttily-staging.vercel.app`. Les quatre routes sont authentifiées par
+  `CRON_SECRET` ; les Cron Jobs Vercel restent désactivés sur le plan Hobby.
+
+## Smoke test connecté
+
+Le test a été exécuté avec la session Clerk du pilote : recherche → hold →
+checkout Stripe TEST → webhook signé → confirmation → worker → R2 → Resend.
+
+| Contrôle | Preuve | Résultat |
+| --- | --- | --- |
+| Hold et paiement | draft `80c53b96-7c5f-44d8-9771-246f180dc77e`, paiement `115b6d81-ddcc-49ad-8b7b-1d79de4aaf5d` | `CONVERTED`, `SUCCEEDED` |
+| Commission | snapshot serveur | `850` centimes sur `8500` centimes, règle `1000 bps` |
+| Stripe | événement `payment_intent.succeeded` reçu | webhook `PROCESSED` |
+| Réservation | booking `7000b6b0-181a-4c10-8549-22ca95f05d29` | `CONFIRMED` |
+| Outbox | événement `e92c167e-a364-47ed-ac64-d56d3a49847a` | `PROCESSED`, 4 effets `COMPLETED` |
+| Documents | confirmation, contrat et reçu | 3 PDF générés dans R2 EU et vérifiés |
+| Email | template de confirmation, destinataire sink Resend TEST | `delivered` dans Resend |
+
+Les clés de stockage, identifiants de provider et credentials ne sont pas
+reproduits ici. Le destinataire email est le sink officiel `delivered@resend.dev`;
+aucune adresse réelle n'a été contactée.
+
+## Crons et rollback
+
+- Les appels directs aux quatre routes avec le secret staging ont répondu HTTP
+  200. Le scheduler Cloudflare a ensuite été redéployé avec le domaine correct.
+- Le rollback Web consiste à promouvoir la dernière deployment Vercel connue
+  comme `Ready`, puis à conserver les migrations forward-only. Il ne faut pas
+  modifier manuellement Neon.
+- Le rollback worker consiste à arrêter le conteneur staging et relancer
+  l'image précédente ; les événements outbox sont idempotents et restent
+  rejouables.
+- Les logs Vercel, Cloudflare, Neon, worker et Resend constituent l'observabilité
+  minimale du staging. Toute erreur worker doit être traitée avant promotion.
+
+## Contrôles de sécurité
+
+- Aucun secret n'est versionné ni écrit dans ce document.
+- Les clés Stripe utilisées sont TEST ; `LIVE` est refusé tant que les garde-fous
+  ne sont pas explicitement activés.
+- Le parcours ne contourne pas Clerk et n'ajoute aucune authentification factice.
+- Les données du smoke test sont limitées à la branche Neon staging et aux
+  fournisseurs TEST.

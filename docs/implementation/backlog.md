@@ -205,16 +205,17 @@ R2 et Resend pour un test staging réel.
 
 ## G8A — Staging réel
 
-**Statut : en cours.** Le premier ticket « provisionner R2 et Resend staging,
+**Statut : clôturé le 2026-08-27.** Le premier ticket « provisionner R2 et Resend staging,
 puis valider le traitement complet d'un événement `BOOKING_CONFIRMED` par le
 worker » est validé le 2026-08-26 : bucket R2 EU privé, domaine Resend vérifié,
 3 documents générés et vérifiés, email Resend TEST envoyé, événement outbox
 `PROCESSED` avec 4 effets `COMPLETED`. Voir
 `docs/implementation/g8a-staging-r2-resend-worker-smoke-test.md`.
 
-Il reste le déploiement et la configuration Web staging (Vercel, Clerk,
-variables Neon/R2/Resend), le scheduler, l'observabilité/rollback et le smoke
-test authentifié complet.
+Le déploiement Web staging, Clerk TEST, les variables Neon, le worker, le
+scheduler, l'observabilité minimale, le rollback et le smoke test authentifié
+complet sont validés dans
+`docs/implementation/g8a-web-staging-deployment.md`.
 
 ## Horizons stratégiques post-MVP — option C
 

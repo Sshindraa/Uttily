@@ -123,6 +123,8 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
   n'est pas une variable configurable librement.
 - Emails : domaine Resend `sokar.tech` vérifié, expéditeur
   `Uttily <noreply@sokar.tech>` et template de confirmation publié.
+- Worker : conteneur `uttily-worker-staging` isolé sur l'hôte staging existant,
+  avec credentials R2/Resend hors dépôt et droits minimaux.
 - Scheduler : Worker Cloudflare `uttily-staging-cron`, déclenché chaque minute
   sur le plan Workers Free ; il appelle séquentiellement les quatre routes
   `/api/cron/*` avec `CRON_SECRET`. Les Cron Jobs Vercel sont désactivés pour
@@ -131,6 +133,8 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
 - Aucune donnée de production.
 - Le premier smoke test connecté R2/Resend/worker est consigné dans
   `docs/implementation/g8a-staging-r2-resend-worker-smoke-test.md`.
+- Le smoke test authentifié Web complet et les preuves de rollback sont consignés
+  dans `docs/implementation/g8a-web-staging-deployment.md`.
 
 ## Production
 
