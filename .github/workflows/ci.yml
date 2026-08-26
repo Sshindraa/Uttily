@@ -94,6 +94,9 @@ jobs:
           - package: '@uttily/worker'
             label: '@uttily/worker'
             shard: ''
+          - package: '@uttily/staging-cron'
+            label: '@uttily/staging-cron'
+            shard: ''
 
     services:
       postgres:

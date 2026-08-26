@@ -188,7 +188,9 @@ Critères d'acceptation :
   Core PostgreSQL et worker vertes ; le test d'intégration hors PostgreSQL est
   explicitement sauté hors CI ;
 - lint, format, types, tests et build verts ; dépôt propre après commits ; aucun
-  secret LIVE ni fournisseur réel utilisé par le workflow local.
+  secret LIVE ni fournisseur réel utilisé par le workflow local. Pour le staging
+  Vercel Hobby, les quatre routes cron sont déclenchées par le Worker Cloudflare
+  `uttily-staging-cron` ; aucun Cron Job Vercel à la minute n'est requis.
 
 **Après ce lot uniquement** : G8A déploiera Vercel, Neon, Clerk, Stripe TEST,
 R2 et Resend pour un test staging réel.

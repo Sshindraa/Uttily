@@ -1,0 +1,12 @@
+{
+  "name": "@uttily/staging-cron",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "node --check src/index.mjs",
+    "test": "node --test src/index.test.mjs",
+    "test:fast": "node --test src/index.test.mjs",
+    "build": "node --check src/index.mjs"
+  }
+}

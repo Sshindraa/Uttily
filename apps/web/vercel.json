@@ -1,20 +1,3 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/expire-holds",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/reconcile-payments",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/process-compensations",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/process-refund-requests",
-      "schedule": "* * * * *"
-    }
-  ]
+  "crons": []
 }
