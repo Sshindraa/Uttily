@@ -604,15 +604,10 @@ integrationDescribe('GET /api/cron/process-refund-requests — PostgreSQL/Web', 
     }
   });
 
-  it('20. reste dynamique et conserve exactement les quatre crons Vercel', async () => {
+  it('20. reste dynamique et délègue la planification au scheduler externe', async () => {
     const route = await import('./route');
     expect(route.dynamic).toBe('force-dynamic');
     const config = await import('../../../../../vercel.json', { with: { type: 'json' } });
-    expect(config.default.crons).toEqual([
-      { path: '/api/cron/expire-holds', schedule: '* * * * *' },
-      { path: '/api/cron/reconcile-payments', schedule: '* * * * *' },
-      { path: '/api/cron/process-compensations', schedule: '* * * * *' },
-      { path: '/api/cron/process-refund-requests', schedule: '* * * * *' },
-    ]);
+    expect(config.default.crons).toEqual([]);
   });
 });
