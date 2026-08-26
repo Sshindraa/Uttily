@@ -8,7 +8,8 @@
     "build": "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_dummy CLERK_SECRET_KEY=sk_test_dummy next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "test:fast": "vitest run --passWithNoTests --exclude '**/*.integration.test.ts' --exclude 'src/e2e/**' --exclude 'src/app/api/cron/**' --exclude 'src/app/actions/catalog.test.ts' --exclude 'src/app/actions/connected-accounts.test.ts' --exclude 'src/app/actions/fulfillment.test.ts' --exclude 'src/app/actions/payments.test.ts'"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.0.0",

@@ -53,8 +53,14 @@ Avant toute tâche, lire dans cet ordre :
 1. Identifier le lot et ses critères d'acceptation.
 2. Vérifier si une décision d'architecture est nécessaire.
 3. Implémenter le plus petit changement cohérent.
-4. Ajouter ou adapter les tests concernés.
-5. Mettre à jour la documentation si le comportement, le schéma ou l'API évolue.
+4. Pendant le développement, exécuter d'abord les tests ciblés du package puis
+   `pnpm test` ; cette boucle rapide doit rester sous 45 secondes sur une machine
+   locale chaude. `pnpm check:fast`, typecheck inclus, doit rester sous 90 secondes.
+5. Réserver `pnpm test:full` aux validations finales et à la CI. Ne pas relancer
+   toute la matrice PostgreSQL pour une correction locale ciblée ; exécuter le
+   fichier ou le shard concerné.
+6. Ajouter ou adapter les tests concernés.
+7. Mettre à jour la documentation si le comportement, le schéma ou l'API évolue.
 
 ## En cas d'ambiguïté
 

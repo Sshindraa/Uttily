@@ -46,13 +46,22 @@ pnpm lint             # lint
 pnpm format:check     # vérifier le formatage
 pnpm format           # formater
 pnpm typecheck        # vérifier les types sur tout le workspace
-pnpm test             # exécuter les tests
+pnpm test             # boucle rapide de développement, sans PostgreSQL ni tests lourds
+pnpm check:fast       # garde-fous locaux + tests rapides + types
+pnpm test:full        # toutes les suites ; réservé à la CI ou à une validation finale
 pnpm build            # builder tous les packages et apps
 pnpm dev              # démarrer apps/web en développement
 pnpm dev:full         # démarrer PostgreSQL, migrer, puis Web + worker fake
 pnpm db:seed          # appliquer la fixture publique locale idempotente
 pnpm test:dev-local   # tester les garde-fous du workflow local
 ```
+
+La boucle normale de développement est `pnpm test` ou `pnpm check:fast`.
+Elle exclut explicitement les intégrations PostgreSQL, les parcours E2E et les
+tests de reproductibilité PDF. Ces suites restent obligatoires dans la matrice
+CI et sont disponibles localement avec `pnpm test:full`. Une modification
+ciblée peut aussi être validée directement avec le script `test:fast` du package
+concerné.
 
 ## Workflow local SaaS complet
 

@@ -18,6 +18,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:fast": "vitest run --exclude '**/*.integration.test.ts' --exclude 'src/integration/**' --exclude 'src/photos/delete-product-photo.test.ts' --exclude 'src/photos/postgres-publication-gate.test.ts'",
     "build": "tsc --noEmit"
   },
   "dependencies": {

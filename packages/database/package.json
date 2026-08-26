@@ -8,6 +8,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:fast": "vitest run --exclude 'src/schema-*.test.ts' --exclude 'src/migrate.test.ts'",
     "build": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

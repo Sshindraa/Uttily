@@ -105,7 +105,10 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
   Clerk ni provider réel et n'effectue aucun appel réseau externe.
 - Sans CLI Docker, contexte local inspectable ou daemon Docker/Colima,
   `dev:full` échoue proprement. `lint`, `typecheck`, `test` et `build` restent
-  fonctionnels sans Docker.
+  fonctionnels sans Docker. `pnpm test` désigne la boucle rapide sans
+  PostgreSQL, E2E ni reproductibilité PDF ; `pnpm check:fast` ajoute les
+  garde-fous locaux et le typecheck. La validation exhaustive reste
+  `pnpm test:full` et la matrice CI.
 - Le fichier `.env` racine reste destiné aux commandes locales exécutées hors
   orchestration. Pour `dev:full`, les valeurs de l'environnement enfant sont
   imposées par le workflow, indépendamment de ces fichiers, notamment les URLs
