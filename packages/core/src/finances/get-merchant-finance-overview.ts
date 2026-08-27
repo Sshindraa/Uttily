@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import {
   bookings,
@@ -92,8 +92,8 @@ export async function getMerchantFinanceOverview(
     .where(
       and(
         eq(payments.organizationId, organizationId),
-        gte(sql`COALESCE(${payments.succeededAt}, ${payments.createdAt})`, from),
-        lte(sql`COALESCE(${payments.succeededAt}, ${payments.createdAt})`, to),
+        sql`COALESCE(${payments.succeededAt}, ${payments.createdAt}) >= ${from.toISOString()}::timestamptz`,
+        sql`COALESCE(${payments.succeededAt}, ${payments.createdAt}) <= ${to.toISOString()}::timestamptz`,
         options?.locationId ? eq(bookings.locationId, options.locationId) : undefined,
       ),
     )
@@ -134,8 +134,8 @@ export async function getMerchantFinanceOverview(
     .where(
       and(
         eq(refunds.organizationId, organizationId),
-        gte(sql`COALESCE(${refunds.succeededAt}, ${refunds.createdAt})`, from),
-        lte(sql`COALESCE(${refunds.succeededAt}, ${refunds.createdAt})`, to),
+        sql`COALESCE(${refunds.succeededAt}, ${refunds.createdAt}) >= ${from.toISOString()}::timestamptz`,
+        sql`COALESCE(${refunds.succeededAt}, ${refunds.createdAt}) <= ${to.toISOString()}::timestamptz`,
       ),
     )
     .orderBy(desc(sql`COALESCE(${refunds.succeededAt}, ${refunds.createdAt})`));
