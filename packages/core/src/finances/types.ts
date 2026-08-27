@@ -1,4 +1,4 @@
-export type MerchantFinanceActivityType = 'PAYMENT' | 'REFUND' | 'PAYOUT';
+export type MerchantFinanceActivityType = 'PAYMENT' | 'REFUND';
 
 export interface MerchantFinanceSales {
   grossAmountMinor: number;
@@ -19,6 +19,18 @@ export interface MerchantFinanceMerchant {
   netAfterCommissionMinor: number;
 }
 
+export interface MerchantFinancePayoutItem {
+  id: string;
+  providerPayoutId: string;
+  amountMinor: number;
+  currency: string;
+  status: 'PENDING' | 'IN_TRANSIT' | 'PAID' | 'FAILED' | 'CANCELLED';
+  statusLabel: string;
+  arrivalDate: Date | null;
+  paidAt: Date | null;
+  createdAt: Date;
+}
+
 export interface MerchantFinancePayouts {
   totalPaidAmountMinor: number;
   inTransitAmountMinor: number;
@@ -28,6 +40,7 @@ export interface MerchantFinancePayouts {
     status: string;
   } | null;
   nextPayoutSchedule: string;
+  history: MerchantFinancePayoutItem[];
 }
 
 export interface MerchantFinanceActivityItem {
@@ -43,7 +56,6 @@ export interface MerchantFinanceActivityItem {
   currency: string;
   status: string;
   statusLabel: string;
-  payoutStatus: 'NOT_APPLICABLE' | 'PENDING' | 'IN_TRANSIT' | 'PAID';
   date: Date;
 }
 
@@ -66,6 +78,6 @@ export interface MerchantFinanceFilterOptions {
   from?: Date | undefined;
   to?: Date | undefined;
   locationId?: string | undefined;
-  type?: 'ALL' | 'PAYMENTS' | 'REFUNDS' | 'PAYOUTS' | undefined;
+  type?: 'ALL' | 'PAYMENTS' | 'REFUNDS' | undefined;
   query?: string | undefined;
 }

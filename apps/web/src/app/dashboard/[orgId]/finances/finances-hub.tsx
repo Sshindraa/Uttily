@@ -7,7 +7,6 @@ import {
   createConnectedAccountAction,
   createAccountSessionAction,
   createOnboardingLinkAction,
-  completeEmbeddedOnboardingSimulationAction,
 } from '@/app/actions/connected-accounts';
 import styles from './finances.module.css';
 
@@ -31,27 +30,21 @@ export function FinancesHub({
   status,
   overview,
 }: FinancesHubProps): React.ReactElement {
-  const [filterType, setFilterType] = useState<'ALL' | 'PAYMENTS' | 'REFUNDS' | 'PAYOUTS'>('ALL');
+  const [filterType, setFilterType] = useState<'ALL' | 'PAYMENTS' | 'REFUNDS'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [showBankSettings, setShowBankSettings] = useState(!status.isReady);
 
   // State pour l'onboarding bancaire embedded
   const [country, setCountry] = useState<string>('FR');
   const [isEmbeddedActive, setIsEmbeddedActive] = useState(false);
-  const [companyName, setCompanyName] = useState('');
-  const [siren, setSiren] = useState('');
-  const [repName, setRepName] = useState('');
-  const [iban, setIban] = useState('');
-  const [bic, setBic] = useState('');
+  const [sessionClientSecret, setSessionClientSecret] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Filtrage local interactif
   const filteredActivity = overview.activity.filter((item) => {
     if (filterType === 'PAYMENTS' && item.type !== 'PAYMENT') return false;
     if (filterType === 'REFUNDS' && item.type !== 'REFUND') return false;
-    if (filterType === 'PAYOUTS' && item.type !== 'PAYOUT') return false;
 
     if (searchQuery.trim().length > 0) {
       const q = searchQuery.toLowerCase().trim();
@@ -64,7 +57,7 @@ export function FinancesHub({
     return true;
   });
 
-  // Gestion de l'onboarding bancaire
+  // Gestion de la session Connect Embedded
   async function handleStartEmbeddedSession(): Promise<void> {
     setError(null);
     setIsLoading(true);
@@ -76,31 +69,12 @@ export function FinancesHub({
         });
       }
 
-      await createAccountSessionAction(organizationId);
+      const session = await createAccountSessionAction(organizationId);
+      setSessionClientSecret(session.clientSecret);
       setIsEmbeddedActive(true);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Erreur lors de l’ouverture de l’espace bancaire.',
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function handleCompleteEmbeddedOnboarding(e: React.FormEvent): Promise<void> {
-    e.preventDefault();
-    setError(null);
-    setIsLoading(true);
-    try {
-      await completeEmbeddedOnboardingSimulationAction(organizationId);
-      setSuccessMsg('Vos coordonnées bancaires ont été enregistrées et validées avec succès !');
-      setIsEmbeddedActive(false);
-      window.location.reload();
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Erreur lors de l’enregistrement de vos informations bancaires.',
       );
     } finally {
       setIsLoading(false);
@@ -159,12 +133,6 @@ export function FinancesHub({
         </div>
       )}
 
-      {successMsg && (
-        <div role="status" className={styles.successAlert}>
-          ✓ {successMsg}
-        </div>
-      )}
-
       {/* 4 Chiffres Clés Financiers */}
       <div className={styles.statsGrid}>
         <div className={`${styles.statCard} ${styles.statCardHighlight}`}>
@@ -192,7 +160,7 @@ export function FinancesHub({
           <span className={`${styles.statNumber} ${styles.statBlue}`}>
             {formatEur(overview.commissions.platformAmountMinor)}
           </span>
-          <span className={styles.statSubText}>Frais de service &amp; passerelle bancaire</span>
+          <span className={styles.statSubText}>Frais de service plateforme</span>
         </div>
 
         <div className={styles.statCard}>
@@ -252,7 +220,60 @@ export function FinancesHub({
           </div>
         </div>
 
-        {/* Formulaire de coordonnées bancaires déroulable */}
+        {/* Historique des Versements Reçus */}
+        {overview.payouts.history.length > 0 && (
+          <div className={styles.payoutsHistoryBlock}>
+            <h3 className={styles.payoutsHistoryTitle}>Historique récent des virements</h3>
+            <div className={styles.tableWrapper}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Date d'arrivée</th>
+                    <th>Référence versement</th>
+                    <th>Montant viré</th>
+                    <th>Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {overview.payouts.history.map((p) => (
+                    <tr key={p.id}>
+                      <td className={styles.dateCell}>
+                        {p.arrivalDate
+                          ? new Date(p.arrivalDate).toLocaleDateString('fr-FR', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })
+                          : new Date(p.createdAt).toLocaleDateString('fr-FR', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                      </td>
+                      <td className={styles.refBadge}>{p.providerPayoutId}</td>
+                      <td className={styles.netCell}>{formatEur(p.amountMinor)}</td>
+                      <td>
+                        <span
+                          className={`${styles.statusBadge} ${
+                            p.status === 'PAID'
+                              ? styles.badgeSuccess
+                              : p.status === 'IN_TRANSIT'
+                                ? styles.badgeInTransit
+                                : styles.badgePending
+                          }`}
+                        >
+                          {p.statusLabel}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Espace de configuration bancaire Connect */}
         {showBankSettings && (
           <div className={styles.bankDrawer}>
             {!isEmbeddedActive ? (
@@ -261,7 +282,9 @@ export function FinancesHub({
                   {status.description}
                 </p>
                 {status.readiness === 'NOT_STARTED' && (
-                  <div style={{ marginTop: '12px', display: 'flex', gap: '10px' }}>
+                  <div
+                    style={{ marginTop: '12px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}
+                  >
                     <select
                       value={country}
                       onChange={(e) => setCountry(e.target.value)}
@@ -293,110 +316,62 @@ export function FinancesHub({
                     className={styles.btnSecondary}
                     style={{ marginTop: '12px' }}
                   >
-                    {isLoading ? 'Chargement…' : 'Modifier mes coordonnées bancaires (IBAN)'}
+                    {isLoading ? 'Chargement…' : 'Accéder à la gestion du compte bancaire'}
                   </button>
                 )}
               </div>
             ) : (
-              <form onSubmit={handleCompleteEmbeddedOnboarding} className={styles.embeddedForm}>
-                <div className={styles.formGrid}>
-                  <div className={styles.inputGroup}>
-                    <label htmlFor="company-name" className={styles.formLabel}>
-                      Nom légal de l'entreprise :
-                    </label>
-                    <input
-                      id="company-name"
-                      type="text"
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                      placeholder="ex: SAS Vélo Lyon Pro"
-                      required
-                      disabled={isLoading}
-                      className={styles.textInput}
-                    />
+              <div className={styles.embeddedContainer}>
+                <div className={styles.embeddedHeader}>
+                  <div>
+                    <h3
+                      style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}
+                    >
+                      🔒 Espace Sécurisé Partenaire Bancaire
+                    </h3>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                      Vos informations bancaires et d'identité sont saisies directement auprès de
+                      notre partenaire agréé.
+                    </p>
                   </div>
-
-                  <div className={styles.inputGroup}>
-                    <label htmlFor="company-siren" className={styles.formLabel}>
-                      Numéro SIREN / Registre :
-                    </label>
-                    <input
-                      id="company-siren"
-                      type="text"
-                      value={siren}
-                      onChange={(e) => setSiren(e.target.value)}
-                      placeholder="ex: 891 234 567"
-                      required
-                      disabled={isLoading}
-                      className={styles.textInput}
-                    />
-                  </div>
-                </div>
-
-                <div className={styles.inputGroup}>
-                  <label htmlFor="rep-name" className={styles.formLabel}>
-                    Représentant légal (Prénom &amp; Nom) :
-                  </label>
-                  <input
-                    id="rep-name"
-                    type="text"
-                    value={repName}
-                    onChange={(e) => setRepName(e.target.value)}
-                    placeholder="ex: Thomas Martin"
-                    required
-                    disabled={isLoading}
-                    className={styles.textInput}
-                  />
-                </div>
-
-                <div className={styles.formGrid}>
-                  <div className={styles.inputGroup}>
-                    <label htmlFor="bank-iban" className={styles.formLabel}>
-                      IBAN du compte professionnel :
-                    </label>
-                    <input
-                      id="bank-iban"
-                      type="text"
-                      value={iban}
-                      onChange={(e) => setIban(e.target.value)}
-                      placeholder="FR76 3000 6000 0112 3456 7890 189"
-                      required
-                      disabled={isLoading}
-                      className={styles.textInput}
-                    />
-                  </div>
-
-                  <div className={styles.inputGroup}>
-                    <label htmlFor="bank-bic" className={styles.formLabel}>
-                      BIC / SWIFT :
-                    </label>
-                    <input
-                      id="bank-bic"
-                      type="text"
-                      value={bic}
-                      onChange={(e) => setBic(e.target.value)}
-                      placeholder="BNPAFRPP"
-                      required
-                      disabled={isLoading}
-                      className={styles.textInput}
-                    />
-                  </div>
-                </div>
-
-                <div className={styles.embeddedFooter}>
                   <button
                     type="button"
-                    onClick={handleHostedFallback}
-                    className={styles.fallbackLinkBtn}
+                    onClick={() => setIsEmbeddedActive(false)}
+                    className={styles.btnSecondary}
                   >
-                    Portail de secours ↗
-                  </button>
-
-                  <button type="submit" disabled={isLoading} className={styles.btnPrimary}>
-                    {isLoading ? 'Enregistrement…' : 'Valider mes coordonnées bancaires ✓'}
+                    ✕ Fermer
                   </button>
                 </div>
-              </form>
+
+                <div className={styles.embeddedContentBox}>
+                  {sessionClientSecret ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <p style={{ margin: 0, fontSize: '0.88rem', color: '#334155' }}>
+                        Session sécurisée active. Une fois vos coordonnées saisies ou mises à jour
+                        sur le portail sécurisé, cliquez sur Actualiser.
+                      </p>
+                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => window.location.reload()}
+                          className={styles.btnPrimary}
+                        >
+                          🔄 Actualiser le statut
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleHostedFallback}
+                          className={styles.fallbackLinkBtn}
+                        >
+                          Ouvrir la page de configuration externe ↗
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p>Chargement de la session…</p>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -407,7 +382,7 @@ export function FinancesHub({
         <div className={styles.activityHeaderRow}>
           <div>
             <h2 id="activity-section-title" className={styles.activityTitle}>
-              📋 Activité &amp; Historique financier
+              📋 Activité &amp; Encaissements
             </h2>
             <span className={styles.activitySubtitle}>
               {filteredActivity.length} mouvement{filteredActivity.length > 1 ? 's' : ''} sur la
@@ -448,13 +423,6 @@ export function FinancesHub({
               >
                 Remboursements
               </button>
-              <button
-                type="button"
-                className={`${styles.typeBtn} ${filterType === 'PAYOUTS' ? styles.typeBtnActive : ''}`}
-                onClick={() => setFilterType('PAYOUTS')}
-              >
-                Versements
-              </button>
             </div>
           </div>
         </div>
@@ -470,14 +438,13 @@ export function FinancesHub({
                 <th>Montant Brut</th>
                 <th>Commission Uttily</th>
                 <th>Revenus Nets</th>
-                <th>Paiement</th>
-                <th>Versement</th>
+                <th>Statut Paiement</th>
               </tr>
             </thead>
             <tbody>
               {filteredActivity.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className={styles.emptyTable}>
+                  <td colSpan={7} className={styles.emptyTable}>
                     Aucune transaction financière trouvée pour ces critères.
                   </td>
                 </tr>
@@ -534,24 +501,6 @@ export function FinancesHub({
                         {item.statusLabel}
                       </span>
                     </td>
-
-                    <td>
-                      <span
-                        className={`${styles.statusBadge} ${
-                          item.payoutStatus === 'PAID'
-                            ? styles.badgeSuccess
-                            : item.payoutStatus === 'IN_TRANSIT'
-                              ? styles.badgeInTransit
-                              : styles.badgeMuted
-                        }`}
-                      >
-                        {item.payoutStatus === 'PAID'
-                          ? '✓ Versé'
-                          : item.payoutStatus === 'IN_TRANSIT'
-                            ? '⏳ En cours'
-                            : 'En attente'}
-                      </span>
-                    </td>
                   </tr>
                 ))
               )}
@@ -564,11 +513,11 @@ export function FinancesHub({
       <aside className={styles.securityNote}>
         <span style={{ fontSize: '1.25rem' }}>🔒</span>
         <div>
-          <strong>Séquestre des fonds &amp; Sécurité bancaire</strong>
+          <strong>Infrastructure de paiement sécurisée</strong>
           <p style={{ margin: '4px 0 0 0' }}>
-            Tous les paiements locataires sont sécurisés et séquestrés auprès de notre partenaire
-            bancaire agréé. Vos revenus sont versés automatiquement sur votre compte dès le début de
-            la location.
+            Vos paiements et versements sont traités via notre infrastructure de paiement sécurisée.
+            Le statut et la date de chaque versement sont affichés dès qu'ils sont confirmés par
+            l'établissement bancaire.
           </p>
         </div>
       </aside>

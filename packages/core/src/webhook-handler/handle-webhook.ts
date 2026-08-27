@@ -24,6 +24,7 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import {
   bookings,
+  connectedAccountPayouts,
   organizationPaymentAccounts,
   paymentAttempts,
   paymentWebhookEvents,
@@ -177,8 +178,8 @@ export async function handleWebhook(
       return await handleRefundEvent(db, event, rawBody, environment, endpoint, startTime);
     }
 
-    // Événements Connect (account.updated) — journaliser, projeter et marquer PROCESSED/IGNORED.
-    if (endpoint === 'connect') {
+    // Événements Connect (account.updated, payout.*) — journaliser, projeter et marquer PROCESSED/IGNORED.
+    if (endpoint === 'connect' || event.type.startsWith('payout.')) {
       return await handleConnectEvent(db, event, rawBody, environment, startTime);
     }
 
@@ -934,11 +935,14 @@ async function handleConnectEvent(
     const webhookEventId = ingest.row.id;
     const now = sql`transaction_timestamp()`;
 
-    // P1-3/P1-6 : Projeter account.updated dans organization_payment_accounts.
-    // projectAccountUpdated retourne 'PROCESSED', 'IGNORED' ou 'FAILED'.
+    // P1-3/P1-6 : Projeter account.updated ou payout.* dans la projection locale.
+    // projectAccountUpdated / projectPayoutFromWebhook retourne 'PROCESSED', 'IGNORED' ou 'FAILED'.
     let finalStatus: 'PROCESSED' | 'IGNORED' | 'FAILED' = orgId === null ? 'IGNORED' : 'PROCESSED';
     if (event.type === 'account.updated' && event.accountId && orgId !== null) {
       const projectionStatus = await projectAccountUpdated(tx, event, environment, orgId);
+      finalStatus = projectionStatus;
+    } else if (event.type.startsWith('payout.') && orgId !== null) {
+      const projectionStatus = await projectPayoutFromWebhook(tx, event, environment, orgId);
       finalStatus = projectionStatus;
     }
 
@@ -979,6 +983,81 @@ async function handleConnectEvent(
     // P1-3 : FAILED retourne 200 (pas 500) pour arrêter les retries Stripe.
     return { kind: 'SUCCESS', statusCode: 200 };
   });
+}
+
+/**
+ * Projette un événement payout.* (payout.created, payout.updated, payout.paid, payout.failed)
+ * dans la table connected_account_payouts de manière idempotente (Chantier 11.1).
+ */
+async function projectPayoutFromWebhook(
+  tx: DatabaseTransaction,
+  event: VerifiedWebhookEvent,
+  environment: 'TEST' | 'LIVE',
+  orgId: string,
+): Promise<'PROCESSED' | 'IGNORED' | 'FAILED'> {
+  const obj = event.data;
+  if (!obj || typeof obj !== 'object') return 'IGNORED';
+
+  const providerPayoutId = typeof obj.id === 'string' ? obj.id : null;
+  if (!providerPayoutId) return 'FAILED';
+
+  const amount = typeof obj.amount === 'number' ? obj.amount : 0;
+  const currency = typeof obj.currency === 'string' ? obj.currency.toUpperCase() : 'EUR';
+  const rawStatus = typeof obj.status === 'string' ? obj.status : '';
+
+  let status: 'PENDING' | 'IN_TRANSIT' | 'PAID' | 'FAILED' | 'CANCELLED' = 'PENDING';
+  if (rawStatus === 'paid') status = 'PAID';
+  else if (rawStatus === 'in_transit') status = 'IN_TRANSIT';
+  else if (rawStatus === 'failed') status = 'FAILED';
+  else if (rawStatus === 'canceled') status = 'CANCELLED';
+
+  const arrivalTimestamp = typeof obj.arrival_date === 'number' ? obj.arrival_date : null;
+  const arrivalDate = arrivalTimestamp ? new Date(arrivalTimestamp * 1000) : null;
+  const paidAt =
+    status === 'PAID' ? (event.created ? new Date(event.created * 1000) : new Date()) : null;
+  const failedAt =
+    status === 'FAILED' ? (event.created ? new Date(event.created * 1000) : new Date()) : null;
+  const failureCode = typeof obj.failure_code === 'string' ? obj.failure_code : null;
+  const failureMessage = typeof obj.failure_message === 'string' ? obj.failure_message : null;
+
+  await tx
+    .insert(connectedAccountPayouts)
+    .values({
+      organizationId: orgId,
+      provider: 'STRIPE',
+      environment,
+      providerPayoutId,
+      providerAccountId: event.accountId ?? '',
+      amountMinor: amount,
+      currency,
+      status,
+      arrivalDate,
+      paidAt,
+      failedAt,
+      failureCode,
+      failureMessage,
+      providerCreatedAt: typeof obj.created === 'number' ? obj.created : null,
+      lastProviderEventAt: sql`now()`,
+    })
+    .onConflictDoUpdate({
+      target: [
+        connectedAccountPayouts.provider,
+        connectedAccountPayouts.environment,
+        connectedAccountPayouts.providerPayoutId,
+      ],
+      set: {
+        status,
+        arrivalDate: arrivalDate ?? sql`${connectedAccountPayouts.arrivalDate}`,
+        paidAt: paidAt ?? sql`${connectedAccountPayouts.paidAt}`,
+        failedAt: failedAt ?? sql`${connectedAccountPayouts.failedAt}`,
+        failureCode: failureCode ?? sql`${connectedAccountPayouts.failureCode}`,
+        failureMessage: failureMessage ?? sql`${connectedAccountPayouts.failureMessage}`,
+        lastProviderEventAt: sql`now()`,
+        updatedAt: sql`now()`,
+      },
+    });
+
+  return 'PROCESSED';
 }
 
 /**

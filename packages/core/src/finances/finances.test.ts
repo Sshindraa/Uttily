@@ -26,7 +26,7 @@ describe('Chantier 11 — Domaine Finances & Revenus', () => {
     ).rejects.toThrow('organizationId');
   });
 
-  it('génère un export CSV correct avec les colonnes attendues', () => {
+  it('génère un export CSV correct avec les colonnes attendues sans faux statut versement', () => {
     const mockOverview: MerchantFinanceOverview = {
       currency: 'EUR',
       period: {
@@ -54,6 +54,7 @@ describe('Chantier 11 — Domaine Finances & Revenus', () => {
         inTransitAmountMinor: 0,
         lastPayout: null,
         nextPayoutSchedule: 'Quotidien',
+        history: [],
       },
       activity: [
         {
@@ -69,7 +70,6 @@ describe('Chantier 11 — Domaine Finances & Revenus', () => {
           currency: 'EUR',
           status: 'SUCCEEDED',
           statusLabel: '✓ Paiement confirmé',
-          payoutStatus: 'PAID',
           date: new Date('2026-08-28T08:30:00Z'),
         },
       ],
@@ -81,5 +81,6 @@ describe('Chantier 11 — Domaine Finances & Revenus', () => {
     expect(csv).toContain('75.00');
     expect(csv).toContain('7.50');
     expect(csv).toContain('67.50');
+    expect(csv).toContain('✓ Paiement confirmé');
   });
 });

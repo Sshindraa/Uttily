@@ -562,3 +562,41 @@
   color: #0369a1;
   line-height: 1.5;
 }
+
+.payoutsHistoryBlock {
+  border-top: 1px solid #f1f5f9;
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.payoutsHistoryTitle {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0;
+}
+
+.embeddedContainer {
+  background: #ffffff;
+  border: 1.5px solid #0284c7;
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.embeddedHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 12px;
+}
+
+.embeddedContentBox {
+  padding: 8px 0;
+}

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 const PAGE_PATH = join(__dirname, 'page.tsx');
 const HUB_PATH = join(__dirname, 'finances-hub.tsx');
 
-describe('FinancesPage (Revenus & Versements V2 - Chantier 11)', () => {
+describe('FinancesPage (Revenus & Versements V2 - Chantier 11.1 Hardening)', () => {
   const pageSource = readFileSync(PAGE_PATH, 'utf8');
   const hubSource = readFileSync(HUB_PATH, 'utf8');
 
@@ -20,14 +20,16 @@ describe('FinancesPage (Revenus & Versements V2 - Chantier 11)', () => {
     expect(pageSource).toContain('resolvePayoutAccountStatus(readiness)');
     expect(hubSource).toContain('Revenus &amp; Versements');
     expect(hubSource).toContain('Revenus après commission Uttily');
-    expect(hubSource).toContain('Séquestre des fonds &amp; Sécurité bancaire');
+    expect(hubSource).toContain('Infrastructure de paiement sécurisée');
     expect(hubSource).not.toContain('Stripe Connect Express');
   });
 
-  it('intègre l’onboarding financier embedded sans redirection externe obligatoire et l’export CSV', () => {
+  it('intègre l’onboarding financier embedded sans redirection externe obligatoire et sans formulaire local sensible', () => {
     expect(hubSource).toContain('createAccountSessionAction');
-    expect(hubSource).toContain('completeEmbeddedOnboardingSimulationAction');
     expect(hubSource).toContain('handleHostedFallback');
     expect(hubSource).toContain('export-csv');
+    expect(hubSource).not.toContain('completeEmbeddedOnboardingSimulationAction');
+    expect(hubSource).not.toContain('iban');
+    expect(hubSource).not.toContain('siren');
   });
 });

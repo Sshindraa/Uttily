@@ -10,8 +10,7 @@ export function exportFinancesCsv(overview: MerchantFinanceOverview): string {
     'Montant Brut (EUR)',
     'Commission Uttily (EUR)',
     'Revenus Nets (EUR)',
-    'Statut Paiement',
-    'Statut Versement',
+    'Statut',
   ];
 
   const lines = [headers.join(';')];
@@ -34,7 +33,6 @@ export function exportFinancesCsv(overview: MerchantFinanceOverview): string {
       commEur,
       netEur,
       escapeCsv(item.statusLabel),
-      escapeCsv(item.payoutStatus),
     ];
 
     lines.push(row.join(';'));

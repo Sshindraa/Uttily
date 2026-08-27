@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, isNull, lte } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import {
   bookings,
@@ -17,9 +17,25 @@ import type {
   MerchantFinanceActivityItem,
   MerchantFinanceFilterOptions,
   MerchantFinanceOverview,
+  MerchantFinancePayoutItem,
 } from './types';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function getPayoutStatusLabel(status: string): string {
+  switch (status) {
+    case 'PAID':
+      return '✓ Versé sur votre compte';
+    case 'IN_TRANSIT':
+      return '⏳ En cours de transfert';
+    case 'FAILED':
+      return '⚠️ Échec du versement';
+    case 'CANCELLED':
+      return 'Annulé';
+    default:
+      return 'En attente';
+  }
+}
 
 export async function getMerchantFinanceOverview(
   db: DatabaseClient,
@@ -45,7 +61,7 @@ export async function getMerchantFinanceOverview(
   const periodLabel = from.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
   const formattedPeriodLabel = periodLabel.charAt(0).toUpperCase() + periodLabel.slice(1);
 
-  // 2. Requête des Paiements et Réservations associés
+  // 2. Requête des Paiements et Réservations associés (filtrage sur date effective)
   const paymentRows = await db
     .select({
       paymentId: payments.id,
@@ -76,12 +92,12 @@ export async function getMerchantFinanceOverview(
     .where(
       and(
         eq(payments.organizationId, organizationId),
-        gte(payments.createdAt, from),
-        lte(payments.createdAt, to),
+        gte(sql`COALESCE(${payments.succeededAt}, ${payments.createdAt})`, from),
+        lte(sql`COALESCE(${payments.succeededAt}, ${payments.createdAt})`, to),
         options?.locationId ? eq(bookings.locationId, options.locationId) : undefined,
       ),
     )
-    .orderBy(desc(payments.createdAt));
+    .orderBy(desc(sql`COALESCE(${payments.succeededAt}, ${payments.createdAt})`));
 
   // Dédoublonnage par paymentId (au cas où plusieurs bookingItems sont rattachés)
   const uniquePaymentsMap = new Map<string, (typeof paymentRows)[0]>();
@@ -92,7 +108,7 @@ export async function getMerchantFinanceOverview(
   }
   const uniquePayments = Array.from(uniquePaymentsMap.values());
 
-  // 3. Requête des Remboursements (Refunds)
+  // 3. Requête des Remboursements (Refunds sur date effective)
   const refundRows = await db
     .select({
       refundId: refunds.id,
@@ -118,11 +134,11 @@ export async function getMerchantFinanceOverview(
     .where(
       and(
         eq(refunds.organizationId, organizationId),
-        gte(refunds.createdAt, from),
-        lte(refunds.createdAt, to),
+        gte(sql`COALESCE(${refunds.succeededAt}, ${refunds.createdAt})`, from),
+        lte(sql`COALESCE(${refunds.succeededAt}, ${refunds.createdAt})`, to),
       ),
     )
-    .orderBy(desc(refunds.createdAt));
+    .orderBy(desc(sql`COALESCE(${refunds.succeededAt}, ${refunds.createdAt})`));
 
   const uniqueRefundsMap = new Map<string, (typeof refundRows)[0]>();
   for (const r of refundRows) {
@@ -179,8 +195,22 @@ export async function getMerchantFinanceOverview(
   let totalPaidAmountMinor = 0;
   let inTransitAmountMinor = 0;
   let lastPayout: MerchantFinanceOverview['payouts']['lastPayout'] = null;
+  const payoutHistory: MerchantFinancePayoutItem[] = [];
 
   for (const po of payoutRows) {
+    const item: MerchantFinancePayoutItem = {
+      id: po.id,
+      providerPayoutId: po.providerPayoutId,
+      amountMinor: po.amountMinor,
+      currency: po.currency,
+      status: po.status,
+      statusLabel: getPayoutStatusLabel(po.status),
+      arrivalDate: po.arrivalDate,
+      paidAt: po.paidAt,
+      createdAt: po.createdAt,
+    };
+    payoutHistory.push(item);
+
     if (po.status === 'PAID') {
       totalPaidAmountMinor += po.amountMinor;
       if (!lastPayout) {
@@ -195,7 +225,7 @@ export async function getMerchantFinanceOverview(
     }
   }
 
-  // 6. Construction de l'activité financière unifiée
+  // 6. Construction de l'activité financière unifiée (Paiements et Remboursements)
   const activityItems: MerchantFinanceActivityItem[] = [];
 
   for (const p of uniquePayments) {
@@ -219,7 +249,6 @@ export async function getMerchantFinanceOverview(
       currency: 'EUR',
       status: p.paymentStatus,
       statusLabel: isSucceeded ? '✓ Paiement confirmé' : '⏳ En attente',
-      payoutStatus: isSucceeded ? 'PENDING' : 'NOT_APPLICABLE',
       date: p.succeededAt ?? p.createdAt,
     });
   }
@@ -242,28 +271,8 @@ export async function getMerchantFinanceOverview(
       currency: 'EUR',
       status: r.refundStatus,
       statusLabel: '↩ Remboursement',
-      payoutStatus: 'NOT_APPLICABLE',
       date: r.succeededAt ?? r.createdAt,
     });
-  }
-
-  for (const po of payoutRows) {
-    if (po.createdAt >= from && po.createdAt <= to) {
-      activityItems.push({
-        id: `payout_${po.id}`,
-        type: 'PAYOUT',
-        bookingReference: `Versement ${po.providerPayoutId.slice(0, 10)}`,
-        productName: 'Virement bancaire vers votre compte',
-        grossAmountMinor: po.amountMinor,
-        commissionAmountMinor: 0,
-        netAmountMinor: po.amountMinor,
-        currency: 'EUR',
-        status: po.status,
-        statusLabel: po.status === 'PAID' ? '✓ Versé sur votre compte' : '⏳ En cours de transfert',
-        payoutStatus: po.status === 'PAID' ? 'PAID' : 'IN_TRANSIT',
-        date: po.arrivalDate ?? po.paidAt ?? po.createdAt,
-      });
-    }
   }
 
   // Tri antichronologique
@@ -276,8 +285,6 @@ export async function getMerchantFinanceOverview(
       filteredActivity = filteredActivity.filter((a) => a.type === 'PAYMENT');
     } else if (options.type === 'REFUNDS') {
       filteredActivity = filteredActivity.filter((a) => a.type === 'REFUND');
-    } else if (options.type === 'PAYOUTS') {
-      filteredActivity = filteredActivity.filter((a) => a.type === 'PAYOUT');
     }
   }
 
@@ -318,6 +325,7 @@ export async function getMerchantFinanceOverview(
       inTransitAmountMinor,
       lastPayout,
       nextPayoutSchedule: 'Automatique selon calendrier bancaire Stripe',
+      history: payoutHistory,
     },
     activity: filteredActivity,
   };
