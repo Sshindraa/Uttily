@@ -11,6 +11,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/webhooks/stripe(.*)',
   '/sign-in(.*)',
   '/sign-up(.*)',
+  '/photo-coach-demo(.*)',
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
