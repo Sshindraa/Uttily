@@ -8,6 +8,7 @@ import styles from './page.module.css';
 
 function SlotIcon({ slotType }: { slotType: PhotoSlotType }): ReactElement | null {
   switch (slotType) {
+    case 'HERO_PROFILE':
     case 'FULL_BIKE':
       return (
         <svg
@@ -24,6 +25,7 @@ function SlotIcon({ slotType }: { slotType: PhotoSlotType }): ReactElement | nul
           <path d="M12 17.5V14l-3.5-3" />
         </svg>
       );
+    case 'THREE_QUARTER':
     case 'DRIVETRAIN':
       return (
         <svg
@@ -34,10 +36,11 @@ function SlotIcon({ slotType }: { slotType: PhotoSlotType }): ReactElement | nul
           stroke="currentColor"
           strokeWidth="2"
         >
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" />
+          <path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" />
         </svg>
       );
+    case 'SIGNATURE_DETAIL':
     case 'BRAKES_TIRES':
       return (
         <svg
@@ -50,7 +53,7 @@ function SlotIcon({ slotType }: { slotType: PhotoSlotType }): ReactElement | nul
         >
           <circle cx="12" cy="12" r="9" />
           <circle cx="12" cy="12" r="3" />
-          <path d="M12 3v3m0 12v3M3 12h3m12 0h3" strokeDasharray="2 2" />
+          <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
         </svg>
       );
     case 'BATTERY':
@@ -88,21 +91,27 @@ function SlotIcon({ slotType }: { slotType: PhotoSlotType }): ReactElement | nul
 }
 
 export default function PhotoCoachDemoPage(): ReactElement {
-  const [selectedSlot, setSelectedSlot] = useState<PhotoSlotType>('FULL_BIKE');
+  const [selectedSlot, setSelectedSlot] = useState<PhotoSlotType>('HERO_PROFILE');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mockPhotos, setMockPhotos] = useState<ProductPhotoSummary[]>([]);
 
-  const hasFullBike = mockPhotos.some((p) => p.slotType === 'FULL_BIKE');
-  const hasDrivetrain = mockPhotos.some((p) => p.slotType === 'DRIVETRAIN');
-  const hasBrakesTires = mockPhotos.some((p) => p.slotType === 'BRAKES_TIRES');
+  const hasHeroProfile = mockPhotos.some(
+    (p) => p.slotType === 'HERO_PROFILE' || p.slotType === 'FULL_BIKE',
+  );
+  const hasThreeQuarter = mockPhotos.some(
+    (p) => p.slotType === 'THREE_QUARTER' || p.slotType === 'DRIVETRAIN',
+  );
+  const hasSignatureDetail = mockPhotos.some(
+    (p) => p.slotType === 'SIGNATURE_DETAIL' || p.slotType === 'BRAKES_TIRES',
+  );
 
-  const nextSuggestedSlot: PhotoSlotType = !hasFullBike
-    ? 'FULL_BIKE'
-    : !hasDrivetrain
-      ? 'DRIVETRAIN'
-      : !hasBrakesTires
-        ? 'BRAKES_TIRES'
-        : 'FULL_BIKE';
+  const nextSuggestedSlot: PhotoSlotType = !hasHeroProfile
+    ? 'HERO_PROFILE'
+    : !hasThreeQuarter
+      ? 'THREE_QUARTER'
+      : !hasSignatureDetail
+        ? 'SIGNATURE_DETAIL'
+        : 'HERO_PROFILE';
 
   const handleOpenCoach = (slot: PhotoSlotType = nextSuggestedSlot) => {
     setSelectedSlot(slot);
@@ -114,9 +123,9 @@ export default function PhotoCoachDemoPage(): ReactElement {
   };
 
   const availableSlots: PhotoSlotType[] = [
-    'FULL_BIKE',
-    'DRIVETRAIN',
-    'BRAKES_TIRES',
+    'HERO_PROFILE',
+    'THREE_QUARTER',
+    'SIGNATURE_DETAIL',
     'BATTERY',
     'MOTOR',
   ];
@@ -128,15 +137,15 @@ export default function PhotoCoachDemoPage(): ReactElement {
           <div className={styles.tagline}>Standard de confiance visuelle • Prise de vue guidée</div>
           <h1 className={styles.title}>Photo Coach Vélo Uttily</h1>
           <p className={styles.description}>
-            Expérimentez le tunnel complet de prise de vue guidée : micro-animation d'exemple,
-            viseur caméra avec Ghost Overlay SVG, checklist humaine active et enchaînement
-            automatique.
+            Expérimentez le tunnel de prise de vue guidée en 3 images e-commerce :
+            <strong> Profil Hero</strong> (accroche), <strong>Vue 3/4</strong> (volume & dynamisme)
+            et <strong>Détail Signature</strong> (praticité & atouts).
           </p>
         </header>
 
         <section className={styles.card}>
           <PhotoProgress
-            slots={{ hasFullBike, hasDrivetrain, hasBrakesTires }}
+            slots={{ hasHeroProfile, hasThreeQuarter, hasSignatureDetail }}
             totalRequiredSlots={3}
           />
 

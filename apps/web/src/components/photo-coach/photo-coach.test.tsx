@@ -2,16 +2,24 @@ import React from 'react';
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { BIKE_PHOTO_SLOTS } from '@uttily/contracts';
-import { FullBikeOverlay, DrivetrainOverlay, BrakesTiresOverlay } from './overlays';
+import {
+  FullBikeOverlay,
+  DrivetrainOverlay,
+  BrakesTiresOverlay,
+  ThreeQuarterOverlay,
+  SignatureDetailOverlay,
+} from './overlays';
 import { PhotoGuideAnimationAdapter } from './adapter';
 import { PhotoChecklist } from './PhotoChecklist';
 import { PhotoProgress } from './PhotoProgress';
 
 describe('PhotoCoach Overlays & Adapter', () => {
-  it('résout correctement les overlays sémantiques depuis les clés de guide', () => {
-    expect(PhotoGuideAnimationAdapter.resolveOverlay('full-bike')).toBe(FullBikeOverlay);
-    expect(PhotoGuideAnimationAdapter.resolveOverlay('drivetrain-anatomy')).toBe(DrivetrainOverlay);
-    expect(PhotoGuideAnimationAdapter.resolveOverlay('brakes-tires')).toBe(BrakesTiresOverlay);
+  it('résout correctement les overlays sémantiques de la narration 3 vues', () => {
+    expect(PhotoGuideAnimationAdapter.resolveOverlay('hero-profile')).toBe(FullBikeOverlay);
+    expect(PhotoGuideAnimationAdapter.resolveOverlay('three-quarter')).toBe(ThreeQuarterOverlay);
+    expect(PhotoGuideAnimationAdapter.resolveOverlay('signature-detail')).toBe(
+      SignatureDetailOverlay,
+    );
   });
 
   it('rend FullBikeOverlay comme calque SVG accessible avec viewBox standard', () => {
@@ -22,23 +30,30 @@ describe('PhotoCoach Overlays & Adapter', () => {
     expect(html).toContain('test-overlay');
   });
 
-  it('rend DrivetrainOverlay avec ses repères anatomiques', () => {
-    const html = renderToStaticMarkup(<DrivetrainOverlay />);
+  it('rend ThreeQuarterOverlay avec ses repères en perspective 3/4', () => {
+    const html = renderToStaticMarkup(<ThreeQuarterOverlay />);
     expect(html).toContain('<svg');
     expect(html).toContain('viewBox="0 0 1000 600"');
     expect(html).toContain('aria-hidden="true"');
   });
 
-  it('rend BrakesTiresOverlay avec ses repères de freins et pneumatiques', () => {
-    const html = renderToStaticMarkup(<BrakesTiresOverlay />);
+  it('rend SignatureDetailOverlay avec son réticule macro', () => {
+    const html = renderToStaticMarkup(<SignatureDetailOverlay />);
     expect(html).toContain('<svg');
     expect(html).toContain('viewBox="0 0 1000 600"');
     expect(html).toContain('aria-hidden="true"');
+  });
+
+  it('rend DrivetrainOverlay et BrakesTiresOverlay pour les slots techniques', () => {
+    const drivetrainHtml = renderToStaticMarkup(<DrivetrainOverlay />);
+    expect(drivetrainHtml).toContain('<svg');
+    const brakesHtml = renderToStaticMarkup(<BrakesTiresOverlay />);
+    expect(brakesHtml).toContain('<svg');
   });
 });
 
 describe('PhotoChecklist Component', () => {
-  const slot = BIKE_PHOTO_SLOTS.FULL_BIKE;
+  const slot = BIKE_PHOTO_SLOTS.HERO_PROFILE;
   const dummyBlob = new Blob(['dummy-image-content'], { type: 'image/jpeg' });
 
   it('rend les éléments de checklist non cochés et le bouton désactivé par défaut', () => {
@@ -73,19 +88,25 @@ describe('PhotoProgress Component', () => {
     expect(html3).toContain('3/3 complétés');
   });
 
-  it('calcule la complétude exacte à partir des slots présents', () => {
+  it('calcule la complétude exacte à partir des slots narratifs présents', () => {
     const htmlExact1 = renderToStaticMarkup(
-      <PhotoProgress slots={{ hasFullBike: true, hasDrivetrain: false, hasBrakesTires: false }} />,
+      <PhotoProgress
+        slots={{ hasHeroProfile: true, hasThreeQuarter: false, hasSignatureDetail: false }}
+      />,
     );
     expect(htmlExact1).toContain('1/3 complétés');
 
     const htmlExact2 = renderToStaticMarkup(
-      <PhotoProgress slots={{ hasFullBike: true, hasDrivetrain: true, hasBrakesTires: false }} />,
+      <PhotoProgress
+        slots={{ hasHeroProfile: true, hasThreeQuarter: true, hasSignatureDetail: false }}
+      />,
     );
     expect(htmlExact2).toContain('2/3 complétés');
 
     const htmlExact3 = renderToStaticMarkup(
-      <PhotoProgress slots={{ hasFullBike: true, hasDrivetrain: true, hasBrakesTires: true }} />,
+      <PhotoProgress
+        slots={{ hasHeroProfile: true, hasThreeQuarter: true, hasSignatureDetail: true }}
+      />,
     );
     expect(htmlExact3).toContain('3/3 complétés');
   });

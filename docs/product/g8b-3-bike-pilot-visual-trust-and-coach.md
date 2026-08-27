@@ -238,7 +238,7 @@ l'organisation. Une rupture temporaire de stock ne retire pas le badge de l'orga
 | Situation et données réelles | Affichage et formulation autorisés | Formulations et promesses strictement interdites |
 | :--- | :--- | :--- |
 | **3 photos valides techniquement** (gate actuel, pas de slots typés) | Galerie photo du produit, vue d'ensemble | « 3 vues contrôlées », « Standard visuel vérifié » |
-| **Slots sémantiques renseignés** (`FULL_BIKE`, `DRIVETRAIN`, `BRAKES_TIRES`) | Présentation guidée et détaillée des composants clés | Promesse d'analyse d'image automatisée par IA |
+| **Slots sémantiques renseignés** (`HERO_PROFILE`, `THREE_QUARTER`, `SIGNATURE_DETAIL`) | Présentation guidée et détaillée des composants clés | Promesse d'analyse d'image automatisée par IA |
 | **Photos rattachées au `product`** (aucun `inventory_item` alloué) | Modèle et configuration générale illustrés | « Photo de votre vélo exact », « État d'usure contractuel » |
 | **`inventory_item` alloué** + rapport d'état contradictoire | Fiche d'état de l'exemplaire (retrait / retour) | Assimilation des photos catalogue comme preuve de dommage |
 | **Tous critères d'éligibilité satisfaits** (`eligible`) | Badge « Loueur professionnel vérifié » + explication | « Meilleur loueur », « Garantie zéro défaut » |
@@ -251,44 +251,44 @@ l'organisation. Une rupture temporaire de stock ne retire pas le badge de l'orga
 
 ---
 
-## 3. Le Standard Visuel par Slots Sémantiques
+## 3. Le Standard Visuel par Slots Sémantiques (Narration en 3 Vues)
 
-Les photos publiques de catalogue sont organisées en **slots sémantiques logiques**.
-Un slot définit une intention de vue métier et accepte un ou plusieurs fichiers médias
-($1 \text{ slot} \neq 1 \text{ fichier obligatoire}$), ce qui permet de présenter des
-détails distincts sans compromettre le cadrage.
+Pour un service de location haut de gamme, le client recherche avant tout **une expérience désirable, claire et rassurante**. Les caractéristiques techniques (transmission, freins, motorisation, autonomie) figurent dans les données structurées de la fiche. 
+
+La galerie photo obéit ainsi à une **narration visuelle en 3 temps forts** :
+
+> **1. Je découvre le vélo (Profil Hero) → 2. Je visualise son volume et son style (Vue 3/4) → 3. Je découvre ce qui le rend pratique ou unique (Détail Signature).**
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                          SLOTS SÉMANTIQUES VÉLO                             │
+│                   NARRATION VISUELLE VÉLO EN 3 TEMPS FORTS                  │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ 1. FULL_BIKE (Obligatoire, min 1, max 3)                                    │
-│    Vue complète de profil, côté transmission, cadré respirant (10% marge).  │
+│ 1. HERO_PROFILE (Obligatoire, min 1, max 3)                                 │
+│    Vue Hero de profil complet : accroche principale, proportions, fond net. │
 │                                                                             │
-│ 2. DRIVETRAIN (Obligatoire, min 1, max 3)                                   │
-│    Ensemble de transmission : pédalier, chaîne/courroie, dérailleur, pignon.│
+│ 2. THREE_QUARTER (Obligatoire, min 1, max 3)                                │
+│    Vue 3/4 dynamique avant : volume, perspective, guidon et dynamisme.      │
 │                                                                             │
-│ 3. BRAKES_TIRES (Obligatoire, min 1, max 5, multi-médias recommandé)        │
-│    Système de freinage (disques/étriers) et bande/profil des pneumatiques.  │
+│ 3. SIGNATURE_DETAIL (Obligatoire, min 1, max 5, multi-médias recommandé)    │
+│    Détail signature : cockpit, console VAE, panier, finitions, confort.     │
 │                                                                             │
-│ 4. SLOTS VAE (Optionnels non bloquants, min 0, max 2)                       │
+│ 4. SLOTS VAE / COMPLÉMENTAIRES (Optionnels non bloquants, min 0, max 2)     │
 │    BATTERY · MOTOR · DISPLAY · CHARGER                                      │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 3.1 Slots obligatoires (tout vélo)
 
-1. **`FULL_BIKE`** ($\ge 1$ média, max 3) :
-   - Vélo entier de profil, orienté côté transmission (côté droit) ;
-   - Cadré sans coupure des roues ni du guidon, arrière-plan lisible ;
+1. **`HERO_PROFILE`** ($\ge 1$ média, max 3) :
+   - Vélo entier de profil, lumière homogène, belle accroche commerciale ;
+   - Cadré sans coupure des roues ni du guidon, arrière-plan dégagé et valorisant ;
    - Marge de respiration d'environ 10 % autour des extrémités.
-2. **`DRIVETRAIN`** ($\ge 1$ média, max 3) :
-   - Cadrage rapproché sur le bloc transmission : plateau, pédalier, chaîne ou
-     courroie, cassette arrière et dérailleur ;
-   - Éclairage net sur les dentures et composants.
-3. **`BRAKES_TIRES`** ($\ge 1$ média, max 5, multi-médias recommandé) :
-   - Vue sur les étriers/disques/patins de frein et sur la bande de roulement des pneus ;
-   - Plusieurs photos autorisées pour présenter séparément le frein avant/arrière et le profil du pneumatique.
+2. **`THREE_QUARTER`** ($\ge 1$ média, max 3) :
+   - Prise de vue à 45° avant valorisant le volume, la perspective et le poste de pilotage ;
+   - Donne vie au produit et projette l'utilisateur dans l'expérience de conduite.
+3. **`SIGNATURE_DETAIL`** ($\ge 1$ média, max 5, multi-médias recommandé) :
+   - Gros plan valorisant sur l'élément distinctif : cockpit, écran VAE, panier, finitions ou selle grand confort ;
+   - Met en valeur un vrai atout confort ou technologique.
 
 ### 3.2 Slots complémentaires VAE (non bloquants)
 
@@ -305,13 +305,16 @@ Le contrat de domaine reste **strictement agnostique vis-à-vis du moteur de ren
 
 ```typescript
 export type PhotoSlotType =
-  | "FULL_BIKE"
-  | "DRIVETRAIN"
-  | "BRAKES_TIRES"
-  | "BATTERY"
-  | "MOTOR"
-  | "DISPLAY"
-  | "CHARGER";
+  | 'HERO_PROFILE'
+  | 'THREE_QUARTER'
+  | 'SIGNATURE_DETAIL'
+  | 'FULL_BIKE'
+  | 'DRIVETRAIN'
+  | 'BRAKES_TIRES'
+  | 'BATTERY'
+  | 'MOTOR'
+  | 'DISPLAY'
+  | 'CHARGER';
 
 export interface PhotoSlotDefinition {
   type: PhotoSlotType;

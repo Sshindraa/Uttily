@@ -2176,6 +2176,9 @@ export const productPhotoFileState = pgEnum('product_photo_file_state', [
 ]);
 
 export const productPhotoSlotType = pgEnum('product_photo_slot_type', [
+  'HERO_PROFILE',
+  'THREE_QUARTER',
+  'SIGNATURE_DETAIL',
   'FULL_BIKE',
   'DRIVETRAIN',
   'BRAKES_TIRES',

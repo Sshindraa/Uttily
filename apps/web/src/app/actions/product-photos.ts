@@ -14,6 +14,9 @@ import {
 import type { ActionResult, PhotoSlotType } from '@uttily/contracts';
 
 const VALID_SLOT_TYPES = new Set<PhotoSlotType>([
+  'HERO_PROFILE',
+  'THREE_QUARTER',
+  'SIGNATURE_DETAIL',
   'FULL_BIKE',
   'DRIVETRAIN',
   'BRAKES_TIRES',

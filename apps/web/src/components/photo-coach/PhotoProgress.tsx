@@ -5,6 +5,9 @@ export interface PhotoProgressProps {
   completedSlotsCount?: number | undefined;
   slots?:
     | {
+        hasHeroProfile?: boolean | undefined;
+        hasThreeQuarter?: boolean | undefined;
+        hasSignatureDetail?: boolean | undefined;
         hasFullBike?: boolean | undefined;
         hasDrivetrain?: boolean | undefined;
         hasBrakesTires?: boolean | undefined;
@@ -18,12 +21,18 @@ export function PhotoProgress({
   slots,
   totalRequiredSlots = 3,
 }: PhotoProgressProps): ReactElement {
-  const hasFullBike = slots ? !!slots.hasFullBike : (completedSlotsCount ?? 0) >= 1;
-  const hasDrivetrain = slots ? !!slots.hasDrivetrain : (completedSlotsCount ?? 0) >= 2;
-  const hasBrakesTires = slots ? !!slots.hasBrakesTires : (completedSlotsCount ?? 0) >= 3;
+  const hasHero = slots
+    ? !!(slots.hasHeroProfile || slots.hasFullBike)
+    : (completedSlotsCount ?? 0) >= 1;
+  const hasThreeQ = slots
+    ? !!(slots.hasThreeQuarter || slots.hasDrivetrain)
+    : (completedSlotsCount ?? 0) >= 2;
+  const hasSig = slots
+    ? !!(slots.hasSignatureDetail || slots.hasBrakesTires)
+    : (completedSlotsCount ?? 0) >= 3;
 
   const actualCompletedCount = slots
-    ? (hasFullBike ? 1 : 0) + (hasDrivetrain ? 1 : 0) + (hasBrakesTires ? 1 : 0)
+    ? (hasHero ? 1 : 0) + (hasThreeQ ? 1 : 0) + (hasSig ? 1 : 0)
     : (completedSlotsCount ?? 0);
 
   return (
@@ -37,8 +46,8 @@ export function PhotoProgress({
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        {/* Slot 1 : Roues et cadre principal */}
-        <g opacity={hasFullBike ? 1 : 0.2} strokeWidth="8">
+        {/* Slot 1 : Vue Hero Profil (roues et cadre principal) */}
+        <g opacity={hasHero ? 1 : 0.2} strokeWidth="8">
           <circle cx="260" cy="400" r="115" />
           <circle cx="740" cy="400" r="115" />
           <line x1="260" y1="400" x2="470" y2="400" />
@@ -51,8 +60,8 @@ export function PhotoProgress({
           <path d="M410 240 L395 190 M365 190 H435" />
         </g>
 
-        {/* Slot 2 : Pédalier, chaîne et cassette */}
-        <g opacity={hasDrivetrain ? 1 : 0.2} strokeWidth="6">
+        {/* Slot 2 : Vue 3/4 Dynamique (poste de pilotage et transmission) */}
+        <g opacity={hasThreeQ ? 1 : 0.2} strokeWidth="6">
           <circle cx="470" cy="400" r="34" />
           <line x1="470" y1="400" x2="470" y2="455" />
           <rect x="455" y="455" width="30" height="7" rx="3" fill="currentColor" />
@@ -60,8 +69,8 @@ export function PhotoProgress({
           <path d="M470 366 L260 378 M260 422 L470 434" strokeDasharray="8 4" />
         </g>
 
-        {/* Slot 3 : Freins et détails pneus */}
-        <g opacity={hasBrakesTires ? 1 : 0.2} strokeWidth="5">
+        {/* Slot 3 : Détail Signature (accessoires, finitions et focus) */}
+        <g opacity={hasSig ? 1 : 0.2} strokeWidth="5">
           <path d="M720 330 Q725 340 730 350" />
           <path d="M295 305 Q290 315 285 325" />
           <circle cx="740" cy="400" r="125" strokeWidth="3" strokeDasharray="6 4" />

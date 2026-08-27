@@ -27,21 +27,27 @@ export function ProductPhotosManager({
 }): React.ReactElement {
   const router = useRouter();
   const [isCoachOpen, setIsCoachOpen] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<PhotoSlotType>('FULL_BIKE');
+  const [selectedSlot, setSelectedSlot] = useState<PhotoSlotType>('HERO_PROFILE');
   const availablePhotos = photos.filter((photo) => photo.fileState === 'AVAILABLE');
   const availableCount = availablePhotos.length;
 
-  const hasFullBike = availablePhotos.some((p) => p.slotType === 'FULL_BIKE');
-  const hasDrivetrain = availablePhotos.some((p) => p.slotType === 'DRIVETRAIN');
-  const hasBrakesTires = availablePhotos.some((p) => p.slotType === 'BRAKES_TIRES');
+  const hasHeroProfile = availablePhotos.some(
+    (p) => p.slotType === 'HERO_PROFILE' || p.slotType === 'FULL_BIKE',
+  );
+  const hasThreeQuarter = availablePhotos.some(
+    (p) => p.slotType === 'THREE_QUARTER' || p.slotType === 'DRIVETRAIN',
+  );
+  const hasSignatureDetail = availablePhotos.some(
+    (p) => p.slotType === 'SIGNATURE_DETAIL' || p.slotType === 'BRAKES_TIRES',
+  );
 
-  const nextSuggestedSlot: PhotoSlotType = !hasFullBike
-    ? 'FULL_BIKE'
-    : !hasDrivetrain
-      ? 'DRIVETRAIN'
-      : !hasBrakesTires
-        ? 'BRAKES_TIRES'
-        : 'FULL_BIKE';
+  const nextSuggestedSlot: PhotoSlotType = !hasHeroProfile
+    ? 'HERO_PROFILE'
+    : !hasThreeQuarter
+      ? 'THREE_QUARTER'
+      : !hasSignatureDetail
+        ? 'SIGNATURE_DETAIL'
+        : 'HERO_PROFILE';
 
   const handleOpenCoach = (slot: PhotoSlotType = nextSuggestedSlot) => {
     setSelectedSlot(slot);
@@ -58,7 +64,7 @@ export function ProductPhotosManager({
 
       <div className={styles.coachBar}>
         <PhotoProgress
-          slots={{ hasFullBike, hasDrivetrain, hasBrakesTires }}
+          slots={{ hasHeroProfile, hasThreeQuarter, hasSignatureDetail }}
           totalRequiredSlots={3}
         />
         <div>

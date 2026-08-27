@@ -1,6 +1,12 @@
 import type { ComponentType } from 'react';
 import type { OverlayProps } from './overlays/FullBikeOverlay';
-import { BrakesTiresOverlay, DrivetrainOverlay, FullBikeOverlay } from './overlays';
+import {
+  BrakesTiresOverlay,
+  DrivetrainOverlay,
+  FullBikeOverlay,
+  SignatureDetailOverlay,
+  ThreeQuarterOverlay,
+} from './overlays';
 
 export interface PhotoGuideAnimationDescriptor {
   src?: string;
@@ -10,31 +16,33 @@ export interface PhotoGuideAnimationDescriptor {
 }
 
 const OVERLAYS_REGISTRY: Record<string, ComponentType<OverlayProps>> = {
+  'hero-profile': FullBikeOverlay,
+  'three-quarter': ThreeQuarterOverlay,
+  'signature-detail': SignatureDetailOverlay,
   'full-bike': FullBikeOverlay,
   'drivetrain-anatomy': DrivetrainOverlay,
   'brakes-tires': BrakesTiresOverlay,
-  // Fallbacks pour les slots complémentaires VAE vers FullBikeOverlay
-  battery: FullBikeOverlay,
-  motor: DrivetrainOverlay,
-  display: FullBikeOverlay,
-  charger: FullBikeOverlay,
+  battery: SignatureDetailOverlay,
+  motor: SignatureDetailOverlay,
+  display: SignatureDetailOverlay,
+  charger: SignatureDetailOverlay,
 };
 
 const ANIMATIONS_REGISTRY: Record<string, PhotoGuideAnimationDescriptor> = {
-  'full-bike-intro': {
-    animationKey: 'full-bike-intro',
+  'hero-profile-intro': {
+    animationKey: 'hero-profile-intro',
     src: '/animations/BikePhotoGuide.riv',
     artboard: 'BikePhotoCoach',
     stateMachine: 'PhotoCoachStateMachine',
   },
-  'drivetrain-zoom': {
-    animationKey: 'drivetrain-zoom',
+  'three-quarter-intro': {
+    animationKey: 'three-quarter-intro',
     src: '/animations/BikePhotoGuide.riv',
     artboard: 'BikePhotoCoach',
     stateMachine: 'PhotoCoachStateMachine',
   },
-  'brakes-tires-spotlight': {
-    animationKey: 'brakes-tires-spotlight',
+  'signature-detail-intro': {
+    animationKey: 'signature-detail-intro',
     src: '/animations/BikePhotoGuide.riv',
     artboard: 'BikePhotoCoach',
     stateMachine: 'PhotoCoachStateMachine',

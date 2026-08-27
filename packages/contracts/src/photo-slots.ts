@@ -1,11 +1,23 @@
 /**
  * @uttily/contracts — Définitions sémantiques des slots photo et guide vélo (G8B-3).
  *
- * Contrat de domaine strictement agnostique du moteur de rendu UI.
+ * Nouvelle narration désirable e-commerce / location :
+ * 1. HERO_PROFILE   : Vue Hero profil complet (accroche & proportion)
+ * 2. THREE_QUARTER  : Vue 3/4 dynamique (volume & projection d'usage)
+ * 3. SIGNATURE_DETAIL : Détail signature (cockpit, écran, panier, finitions)
  */
 
 export type PhotoSlotType =
-  'FULL_BIKE' | 'DRIVETRAIN' | 'BRAKES_TIRES' | 'BATTERY' | 'MOTOR' | 'DISPLAY' | 'CHARGER';
+  | 'HERO_PROFILE'
+  | 'THREE_QUARTER'
+  | 'SIGNATURE_DETAIL'
+  | 'FULL_BIKE'
+  | 'DRIVETRAIN'
+  | 'BRAKES_TIRES'
+  | 'BATTERY'
+  | 'MOTOR'
+  | 'DISPLAY'
+  | 'CHARGER';
 
 export interface PhotoSlotDefinition {
   type: PhotoSlotType;
@@ -24,61 +36,109 @@ export interface PhotoSlotDefinition {
 }
 
 export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
-  FULL_BIKE: {
-    type: 'FULL_BIKE',
-    title: 'Vue complète',
-    shortDescription: 'Vélo entier de profil, côté transmission (côté droit / chaîne)',
+  HERO_PROFILE: {
+    type: 'HERO_PROFILE',
+    title: 'Vue Profil Hero',
+    shortDescription: 'Vélo entier de profil, lumière homogène et arrière-plan dégagé',
     required: true,
     minMediaCount: 1,
     maxMediaCount: 3,
     multiMediaRecommended: false,
     checklistItems: [
       'Vélo entier visible sans coupure des roues ni du guidon',
-      'Pris de profil avec la transmission (chaîne/pédalier) face à vous',
-      'Arrière-plan dégagé et contraste net avec le vélo',
+      'Pris bien de profil avec un arrière-plan propre et contrasté',
+      'Vélo propre, droit et correctement éclairé',
     ],
     guide: {
-      animationKey: 'full-bike-intro',
-      overlayKey: 'full-bike',
-      helperHint: 'Placez le vélo dans le repère, sans couper les roues',
+      animationKey: 'hero-profile-intro',
+      overlayKey: 'hero-profile',
+      helperHint: 'Cadrez le vélo entier dans le repère de profil',
     },
   },
-  DRIVETRAIN: {
-    type: 'DRIVETRAIN',
-    title: 'Transmission',
-    shortDescription: 'Pédalier, chaîne, cassette et dérailleur',
+  THREE_QUARTER: {
+    type: 'THREE_QUARTER',
+    title: 'Vue 3/4 Dynamique',
+    shortDescription: 'Angle 3/4 avant valorisant le volume, la profondeur et le poste de pilotage',
     required: true,
     minMediaCount: 1,
     maxMediaCount: 3,
     multiMediaRecommended: false,
     checklistItems: [
-      'Plateau, manivelle et chaîne bien nets et éclairés',
-      'Cassette ou pignon arrière visible',
-      'Cadrage de proximité sans élément masquant',
+      'Prise de vue à 45° mettant en valeur le volume et la perspective',
+      'Guidon légèrement orienté et vue d’ensemble dégagée',
+      'Hauteur d’homme ou légère plongée naturelle',
     ],
     guide: {
-      animationKey: 'drivetrain-zoom',
-      overlayKey: 'drivetrain-anatomy',
-      helperHint: 'Rapprochez-vous du bloc pédalier et dérailleur',
+      animationKey: 'three-quarter-intro',
+      overlayKey: 'three-quarter',
+      helperHint: 'Placez-vous à 45° à l’avant du vélo pour donner du volume',
     },
   },
-  BRAKES_TIRES: {
-    type: 'BRAKES_TIRES',
-    title: 'Freins et pneus',
-    shortDescription: 'Système de freinage et profil des pneumatiques',
+  SIGNATURE_DETAIL: {
+    type: 'SIGNATURE_DETAIL',
+    title: 'Détail Signature',
+    shortDescription:
+      'Gros plan valorisant sur l’équipement distinctif (cockpit, écran, panier, finitions)',
     required: true,
     minMediaCount: 1,
     maxMediaCount: 5,
     multiMediaRecommended: true,
     checklistItems: [
-      'Système de freinage (étrier / disque / patin) clairement identifiable',
-      'Sculpture ou profil de la bande de roulement du pneu net',
-      'Plusieurs photos recommandées pour dissocier freins et pneus',
+      'Équipement attractif ou pratique cadré de près avec netteté',
+      'Mise en valeur d’un point fort (écran VAE, panier, poste de conduite, selle)',
+      'Éclairage précis sans reflet gênant',
     ],
     guide: {
-      animationKey: 'brakes-tires-spotlight',
-      overlayKey: 'brakes-tires',
-      helperHint: 'Montrez les étriers/disques et la surface du pneu',
+      animationKey: 'signature-detail-intro',
+      overlayKey: 'signature-detail',
+      helperHint: 'Rapprochez-vous de l’atout ou de l’équipement distinctif',
+    },
+  },
+
+  // Rétrocompatibilité slots techniques
+  FULL_BIKE: {
+    type: 'FULL_BIKE',
+    title: 'Vue complète',
+    shortDescription: 'Vélo entier de profil',
+    required: false,
+    minMediaCount: 1,
+    maxMediaCount: 3,
+    multiMediaRecommended: false,
+    checklistItems: ['Vélo entier visible', 'Arrière-plan dégagé'],
+    guide: {
+      animationKey: 'hero-profile-intro',
+      overlayKey: 'hero-profile',
+      helperHint: 'Placez le vélo dans le repère',
+    },
+  },
+  DRIVETRAIN: {
+    type: 'DRIVETRAIN',
+    title: 'Transmission',
+    shortDescription: 'Pédalier, chaîne et cassette',
+    required: false,
+    minMediaCount: 1,
+    maxMediaCount: 3,
+    multiMediaRecommended: false,
+    checklistItems: ['Plateau et chaîne bien nets'],
+    guide: {
+      animationKey: 'signature-detail-intro',
+      overlayKey: 'signature-detail',
+      helperHint: 'Rapprochez-vous de la transmission',
+    },
+  },
+  BRAKES_TIRES: {
+    type: 'BRAKES_TIRES',
+    title: 'Freins et pneus',
+    shortDescription: 'Freins et surface des pneus',
+    required: false,
+    minMediaCount: 1,
+    maxMediaCount: 5,
+    multiMediaRecommended: true,
+    checklistItems: ['Freins et pneus nets'],
+    guide: {
+      animationKey: 'signature-detail-intro',
+      overlayKey: 'signature-detail',
+      helperHint: 'Montrez les freins et pneus',
     },
   },
   BATTERY: {
@@ -91,8 +151,8 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
     multiMediaRecommended: false,
     checklistItems: ['Batterie en place', 'Serrure ou connecteur visible'],
     guide: {
-      animationKey: 'battery-highlight',
-      overlayKey: 'battery',
+      animationKey: 'signature-detail-intro',
+      overlayKey: 'signature-detail',
       helperHint: 'Cadrez le logement et le verrou de la batterie',
     },
   },
@@ -106,8 +166,8 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
     multiMediaRecommended: false,
     checklistItems: ['Marque ou bloc moteur visible'],
     guide: {
-      animationKey: 'motor-highlight',
-      overlayKey: 'motor',
+      animationKey: 'signature-detail-intro',
+      overlayKey: 'signature-detail',
       helperHint: 'Cadrez le bloc moteur au niveau du pédalier ou du moyeu',
     },
   },
@@ -121,8 +181,8 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
     multiMediaRecommended: false,
     checklistItems: ['Écran allumé ou commandes visibles'],
     guide: {
-      animationKey: 'display-highlight',
-      overlayKey: 'display',
+      animationKey: 'signature-detail-intro',
+      overlayKey: 'signature-detail',
       helperHint: "Cadrez l'afficheur au guidon sans reflet gênant",
     },
   },
@@ -136,8 +196,8 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
     multiMediaRecommended: false,
     checklistItems: ['Chargeur et embout de charge nets'],
     guide: {
-      animationKey: 'charger-highlight',
-      overlayKey: 'charger',
+      animationKey: 'signature-detail-intro',
+      overlayKey: 'signature-detail',
       helperHint: "Posez le chargeur à plat et montrez l'embout",
     },
   },

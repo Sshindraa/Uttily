@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { BIKE_PHOTO_SLOTS, type PhotoSlotType } from './photo-slots';
 
-describe('BIKE_PHOTO_SLOTS', () => {
-  it('définit les trois slots obligatoires tout vélo', () => {
-    const requiredSlots: PhotoSlotType[] = ['FULL_BIKE', 'DRIVETRAIN', 'BRAKES_TIRES'];
+describe('BIKE_PHOTO_SLOTS — Narration désirabilité & confiance', () => {
+  it('définit les trois slots obligatoires de la narration en 3 vues', () => {
+    const requiredSlots: PhotoSlotType[] = ['HERO_PROFILE', 'THREE_QUARTER', 'SIGNATURE_DETAIL'];
 
     for (const slotType of requiredSlots) {
       const slot = BIKE_PHOTO_SLOTS[slotType];
@@ -30,12 +30,8 @@ describe('BIKE_PHOTO_SLOTS', () => {
     }
   });
 
-  it('utilise un overlay anatomique spécifique pour la transmission', () => {
-    expect(BIKE_PHOTO_SLOTS.DRIVETRAIN.guide.overlayKey).toBe('drivetrain-anatomy');
-  });
-
-  it('recommande le multi-médias pour les freins et pneus', () => {
-    expect(BIKE_PHOTO_SLOTS.BRAKES_TIRES.multiMediaRecommended).toBe(true);
-    expect(BIKE_PHOTO_SLOTS.BRAKES_TIRES.maxMediaCount).toBe(5);
+  it('recommande le multi-médias pour le détail signature', () => {
+    expect(BIKE_PHOTO_SLOTS.SIGNATURE_DETAIL.multiMediaRecommended).toBe(true);
+    expect(BIKE_PHOTO_SLOTS.SIGNATURE_DETAIL.maxMediaCount).toBe(5);
   });
 });
