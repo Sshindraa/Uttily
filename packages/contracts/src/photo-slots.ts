@@ -40,8 +40,8 @@ export interface PhotoSlotDefinition {
 export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
   HERO_PROFILE: {
     type: 'HERO_PROFILE',
-    title: 'Vue Profil Hero',
-    shortDescription: 'Vélo entier de profil, lumière homogène et arrière-plan dégagé',
+    title: 'Profil Hero',
+    shortDescription: 'Vélo entier de profil, fond dégagé',
     required: true,
     minMediaCount: 1,
     maxMediaCount: 3,
@@ -59,8 +59,8 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
   },
   THREE_QUARTER_FRONT: {
     type: 'THREE_QUARTER_FRONT',
-    title: 'Vue 3/4 Avant',
-    shortDescription: 'Angle 3/4 avant valorisant le volume, la profondeur et le poste de pilotage',
+    title: '3/4 Avant',
+    shortDescription: 'Montrez le volume et le poste de pilotage',
     required: true,
     minMediaCount: 1,
     maxMediaCount: 3,
@@ -78,8 +78,8 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
   },
   SECONDARY_VIEW: {
     type: 'SECONDARY_VIEW',
-    title: 'Détail ou angle libre',
-    shortDescription: 'Détail utile (cockpit, panier, écran, selle) ou vue 3/4 arrière',
+    title: 'Vue libre',
+    shortDescription: 'Choisissez le détail ou l’angle le plus valorisant',
     required: true,
     minMediaCount: 1,
     maxMediaCount: 5,

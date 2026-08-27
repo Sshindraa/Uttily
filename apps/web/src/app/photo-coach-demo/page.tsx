@@ -175,7 +175,7 @@ export default function PhotoCoachDemoPage(): ReactElement {
   const getCtaLabel = (slot: PhotoSlotType): string => {
     if (slot === 'HERO_PROFILE') return '📸 Commencer par la vue profil';
     if (slot === 'THREE_QUARTER_FRONT') return '📸 Continuer avec la vue 3/4 avant';
-    return '📸 Compléter avec le détail ou angle libre';
+    return '📸 Compléter avec la vue libre';
   };
 
   return (
