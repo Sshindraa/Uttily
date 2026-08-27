@@ -1,7 +1,12 @@
 import { redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
-import { getMembership, requireMembership, ROLE_MANAGERS } from '@uttily/core';
+import {
+  getMembership,
+  requireMembership,
+  ROLE_MANAGERS,
+  resolvePayoutAccountStatus,
+} from '@uttily/core';
 import { getConnectedAccountReadinessAction } from '@/app/actions/connected-accounts';
 import { FinancesClient } from './finances-client';
 
@@ -18,6 +23,7 @@ export default async function FinancesPage({
   requireMembership(membership, ROLE_MANAGERS);
 
   const readiness = await getConnectedAccountReadinessAction(orgId);
+  const status = resolvePayoutAccountStatus(readiness);
 
-  return <FinancesClient organizationId={orgId} readiness={readiness} />;
+  return <FinancesClient organizationId={orgId} status={status} />;
 }

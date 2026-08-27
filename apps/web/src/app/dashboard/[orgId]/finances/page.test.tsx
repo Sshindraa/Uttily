@@ -16,7 +16,7 @@ describe('FinancesPage (Revenus & Versements)', () => {
   });
 
   it('utilise resolvePayoutAccountStatus et présente un vocabulaire centré sur les revenus et versements', () => {
-    expect(clientSource).toContain('resolvePayoutAccountStatus(readiness)');
+    expect(pageSource).toContain('resolvePayoutAccountStatus(readiness)');
     expect(clientSource).toContain('Mes Revenus & Versements');
     expect(clientSource).toContain('Séquestre des fonds & Sécurité bancaire');
     expect(clientSource).not.toContain('Stripe Connect Express');

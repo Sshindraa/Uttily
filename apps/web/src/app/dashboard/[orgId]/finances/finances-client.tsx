@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { ConnectedAccountReadiness } from '@uttily/core';
-import { resolvePayoutAccountStatus } from '@uttily/core';
+import type { PayoutAccountStatus } from '@uttily/core';
 import {
   createConnectedAccountAction,
   createOnboardingLinkAction,
@@ -20,16 +19,14 @@ const SUPPORTED_COUNTRIES = [
 
 export function FinancesClient({
   organizationId,
-  readiness,
+  status,
 }: {
   organizationId: string;
-  readiness: ConnectedAccountReadiness;
+  status: PayoutAccountStatus;
 }): React.ReactElement {
   const [country, setCountry] = useState<string>('FR');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-
-  const status = resolvePayoutAccountStatus(readiness);
 
   async function handleStartSetup(): Promise<void> {
     setError(null);
