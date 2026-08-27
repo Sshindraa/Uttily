@@ -2961,3 +2961,50 @@ export type AmendmentPayment = typeof amendmentPayments.$inferSelect;
 export type NewAmendmentPayment = typeof amendmentPayments.$inferInsert;
 export type AmendmentPaymentAttempt = typeof amendmentPaymentAttempts.$inferSelect;
 export type NewAmendmentPaymentAttempt = typeof amendmentPaymentAttempts.$inferInsert;
+
+// Chantier 9.1 — Domaine Maintenance & Atelier persistant
+export const maintenanceCaseStatus = pgEnum('maintenance_case_status', [
+  'OPEN',
+  'IN_PROGRESS',
+  'RESOLVED',
+]);
+
+export const maintenanceCases = pgTable(
+  'maintenance_cases',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    inventoryItemId: uuid('inventory_item_id')
+      .notNull()
+      .references(() => inventoryItems.id),
+    maintenanceBlockId: uuid('maintenance_block_id')
+      .notNull()
+      .references(() => inventoryBlocks.id),
+    sourceDamageReportId: uuid('source_damage_report_id').references(() => damageReports.id),
+    status: maintenanceCaseStatus('status').notNull().default('OPEN'),
+    reason: text('reason').notNull(),
+    openedNotes: text('opened_notes'),
+    openedBy: uuid('opened_by')
+      .notNull()
+      .references(() => users.id),
+    openedAt: timestamp('opened_at', { withTimezone: true }).notNull().defaultNow(),
+    startedBy: uuid('started_by').references(() => users.id),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    resolutionNotes: text('resolution_notes'),
+    resolvedBy: uuid('resolved_by').references(() => users.id),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('maintenance_cases_org_status_index').on(t.organizationId, t.status),
+    index('maintenance_cases_item_index').on(t.inventoryItemId),
+    index('maintenance_cases_block_index').on(t.maintenanceBlockId),
+  ],
+);
+
+export type MaintenanceCase = typeof maintenanceCases.$inferSelect;
+export type NewMaintenanceCase = typeof maintenanceCases.$inferInsert;

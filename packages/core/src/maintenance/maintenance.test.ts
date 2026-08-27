@@ -26,11 +26,11 @@ describe('Chantier 8.1 & 9 — Domain Maintenance & Invariant de Disponibilité'
     await expect(
       resolveMaintenanceCase(fakeDb, {
         organizationId: orgId,
-        maintenanceBlockId: 'invalid',
+        maintenanceCaseId: 'invalid',
         actorUserId: userId,
         targetCondition: 'GOOD',
         idempotencyKey: 'k2',
       }),
-    ).rejects.toThrow('maintenanceBlockId');
+    ).rejects.toThrow('maintenanceCaseId');
   });
 });

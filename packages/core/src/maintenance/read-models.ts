@@ -1,6 +1,7 @@
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import {
+  maintenanceCases,
   inventoryBlocks,
   inventoryItems,
   productVariants,
@@ -16,8 +17,9 @@ export async function listMaintenanceCases(
 ): Promise<MaintenanceCaseSummary[]> {
   const rows = await db
     .select({
-      id: inventoryBlocks.id,
-      inventoryItemId: inventoryItems.id,
+      id: maintenanceCases.id,
+      maintenanceBlockId: maintenanceCases.maintenanceBlockId,
+      inventoryItemId: maintenanceCases.inventoryItemId,
       internalSku: inventoryItems.internalSku,
       serialNumber: inventoryItems.serialNumber,
       productName: products.name,
@@ -25,37 +27,45 @@ export async function listMaintenanceCases(
       locationId: locations.id,
       locationName: locations.name,
       locationTimeZone: locations.timeZone,
-      blockStatus: inventoryBlocks.status,
+      status: maintenanceCases.status,
       condition: inventoryItems.condition,
-      sourceId: inventoryBlocks.sourceId,
-      openedAt: inventoryBlocks.createdAt,
-      resolvedAt: inventoryBlocks.updatedAt,
+      reason: maintenanceCases.reason,
+      openedNotes: maintenanceCases.openedNotes,
+      resolutionNotes: maintenanceCases.resolutionNotes,
+      sourceDamageReportId: maintenanceCases.sourceDamageReportId,
+      openedBy: maintenanceCases.openedBy,
+      openedAt: maintenanceCases.openedAt,
+      startedBy: maintenanceCases.startedBy,
+      startedAt: maintenanceCases.startedAt,
+      resolvedBy: maintenanceCases.resolvedBy,
+      resolvedAt: maintenanceCases.resolvedAt,
+      blockStatus: inventoryBlocks.status,
       damageDescription: damageReports.description,
     })
-    .from(inventoryBlocks)
-    .innerJoin(inventoryItems, eq(inventoryBlocks.inventoryItemId, inventoryItems.id))
+    .from(maintenanceCases)
+    .innerJoin(inventoryItems, eq(maintenanceCases.inventoryItemId, inventoryItems.id))
+    .innerJoin(inventoryBlocks, eq(maintenanceCases.maintenanceBlockId, inventoryBlocks.id))
     .innerJoin(productVariants, eq(inventoryItems.productVariantId, productVariants.id))
     .innerJoin(products, eq(productVariants.productId, products.id))
     .innerJoin(locations, eq(inventoryItems.currentLocationId, locations.id))
-    .leftJoin(damageReports, eq(inventoryBlocks.sourceId, damageReports.id))
+    .leftJoin(damageReports, eq(maintenanceCases.sourceDamageReportId, damageReports.id))
     .where(
       and(
-        eq(inventoryBlocks.organizationId, organizationId),
-        eq(inventoryBlocks.type, 'MAINTENANCE'),
-        isNull(inventoryBlocks.deletedAt),
+        eq(maintenanceCases.organizationId, organizationId),
+        isNull(maintenanceCases.deletedAt),
         isNull(inventoryItems.deletedAt),
+        isNull(inventoryBlocks.deletedAt),
       ),
     )
-    .orderBy(desc(inventoryBlocks.createdAt));
+    .orderBy(desc(maintenanceCases.openedAt));
 
   return rows.map((r) => {
-    const status: MaintenanceCaseStatus =
-      r.blockStatus === 'RELEASED' ? 'RESOLVED' : r.condition === 'BROKEN' ? 'OPEN' : 'IN_PROGRESS';
-
-    const reason = r.damageDescription ?? 'Maintenance préventive / Atelier';
+    const status: MaintenanceCaseStatus = r.status;
+    const reason = r.reason || r.damageDescription || 'Maintenance préventive / Atelier';
 
     return {
       id: r.id,
+      maintenanceBlockId: r.maintenanceBlockId,
       inventoryItemId: r.inventoryItemId,
       internalSku: r.internalSku,
       serialNumber: r.serialNumber,
@@ -67,10 +77,15 @@ export async function listMaintenanceCases(
       status,
       condition: r.condition,
       reason,
-      notes: null,
-      sourceDamageReportId: r.sourceId,
+      openedNotes: r.openedNotes,
+      resolutionNotes: r.resolutionNotes,
+      sourceDamageReportId: r.sourceDamageReportId,
+      openedBy: r.openedBy,
       openedAt: r.openedAt,
-      resolvedAt: r.blockStatus === 'RELEASED' ? r.resolvedAt : null,
+      startedBy: r.startedBy,
+      startedAt: r.startedAt,
+      resolvedBy: r.resolvedBy,
+      resolvedAt: r.resolvedAt,
     };
   });
 }
@@ -78,8 +93,10 @@ export async function listMaintenanceCases(
 export async function getMaintenanceCaseDetails(
   db: DatabaseClient,
   organizationId: string,
-  maintenanceBlockId: string,
+  caseIdOrBlockId: string,
 ): Promise<MaintenanceCaseSummary | null> {
   const cases = await listMaintenanceCases(db, organizationId);
-  return cases.find((c) => c.id === maintenanceBlockId) ?? null;
+  return (
+    cases.find((c) => c.id === caseIdOrBlockId || c.maintenanceBlockId === caseIdOrBlockId) ?? null
+  );
 }

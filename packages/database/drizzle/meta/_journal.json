@@ -281,6 +281,13 @@
       "when": 1786800000002,
       "tag": "0040_product_photos_slot_type",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1786800000003,
+      "tag": "0041_create_maintenance_cases",
+      "breakpoints": true
     }
   ]
 }

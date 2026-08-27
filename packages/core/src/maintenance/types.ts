@@ -1,7 +1,8 @@
 export type MaintenanceCaseStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
 
 export interface MaintenanceCaseSummary {
-  id: string;
+  id: string; // maintenanceCaseId
+  maintenanceBlockId: string;
   inventoryItemId: string;
   internalSku: string;
   serialNumber: string | null;
@@ -13,9 +14,14 @@ export interface MaintenanceCaseSummary {
   status: MaintenanceCaseStatus;
   condition: string;
   reason: string;
-  notes: string | null;
+  openedNotes: string | null;
+  resolutionNotes: string | null;
   sourceDamageReportId: string | null;
+  openedBy: string;
   openedAt: Date;
+  startedBy: string | null;
+  startedAt: Date | null;
+  resolvedBy: string | null;
   resolvedAt: Date | null;
 }
 
@@ -30,13 +36,27 @@ export interface OpenMaintenanceInput {
 
 export interface OpenMaintenanceResult {
   kind: 'APPLIED';
+  maintenanceCaseId: string;
   maintenanceBlockId: string;
   inventoryItemId: string;
 }
 
+export interface StartMaintenanceInput {
+  organizationId: string;
+  maintenanceCaseId: string;
+  actorUserId: string;
+  idempotencyKey: string;
+}
+
+export interface StartMaintenanceResult {
+  kind: 'APPLIED';
+  maintenanceCaseId: string;
+  status: 'IN_PROGRESS';
+}
+
 export interface ResolveMaintenanceInput {
   organizationId: string;
-  maintenanceBlockId: string;
+  maintenanceCaseId: string; // id du maintenance_case ou maintenanceBlockId
   actorUserId: string;
   targetCondition: 'GOOD' | 'FAIR' | 'NEW';
   notes?: string | null | undefined;
@@ -45,6 +65,7 @@ export interface ResolveMaintenanceInput {
 
 export interface ResolveMaintenanceResult {
   kind: 'APPLIED';
+  maintenanceCaseId: string;
   maintenanceBlockId: string;
   inventoryItemId: string;
   releasedCondition: string;

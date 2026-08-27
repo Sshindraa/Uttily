@@ -6,6 +6,7 @@ import {
   damageReports,
   inventoryBlocks,
   inventoryItems,
+  maintenanceCases,
   outboxEvents,
 } from '@uttily/database';
 import { lockOrganization } from '@uttily/database';
@@ -176,25 +177,41 @@ export async function createDamageReport(
       const reportId = reportRows[0]!.id;
       const createdAt = reportRows[0]!.createdAt;
 
-      // Si blocksInventory est activé (Chantiers 8D / 8.1) :
+      // Si blocksInventory est activé (Chantiers 8D / 8.1 / 9.1) :
       // 1. Marquer l'exemplaire comme BROKEN
       // 2. Créer un inventoryBlock de type MAINTENANCE indéfini (horizon 9999) jusqu'à résolution explicite
+      // 3. Créer un maintenance_case persistant
       if (input.blocksInventory) {
         await tx
           .update(inventoryItems)
           .set({ condition: 'BROKEN', updatedAt: sql`now()` })
           .where(eq(inventoryItems.id, inventoryItemId));
 
-        await tx.insert(inventoryBlocks).values({
+        const blockRows = await tx
+          .insert(inventoryBlocks)
+          .values({
+            organizationId: input.organizationId,
+            inventoryItemId,
+            type: 'MAINTENANCE',
+            status: 'ACTIVE',
+            customerStartAt: sql`now()`,
+            customerEndAt: new Date('9999-12-31T23:59:59.999Z'),
+            blockedStartAt: sql`now()`,
+            blockedEndAt: new Date('9999-12-31T23:59:59.999Z'),
+            sourceId: reportId,
+          })
+          .returning({ id: inventoryBlocks.id });
+
+        const maintenanceBlockId = blockRows[0]!.id;
+
+        await tx.insert(maintenanceCases).values({
           organizationId: input.organizationId,
           inventoryItemId,
-          type: 'MAINTENANCE',
-          status: 'ACTIVE',
-          customerStartAt: sql`now()`,
-          customerEndAt: new Date('9999-12-31T23:59:59.999Z'),
-          blockedStartAt: sql`now()`,
-          blockedEndAt: new Date('9999-12-31T23:59:59.999Z'),
-          sourceId: reportId,
+          maintenanceBlockId,
+          sourceDamageReportId: reportId,
+          status: 'OPEN',
+          reason: normalized.description,
+          openedBy: input.actorUserId,
         });
       }
 

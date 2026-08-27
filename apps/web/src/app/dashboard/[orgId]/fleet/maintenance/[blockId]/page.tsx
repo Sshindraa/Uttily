@@ -49,10 +49,18 @@ export default async function MaintenanceCaseDetailPage({
 
           <span
             className={`${styles.statusBadge} ${
-              isResolved ? styles.statusResolved : styles.statusOpen
+              isResolved
+                ? styles.statusResolved
+                : caseDetails.status === 'IN_PROGRESS'
+                  ? styles.statusOpen
+                  : styles.statusOpen
             }`}
           >
-            {isResolved ? '✓ Réparation terminée' : '⚠️ En maintenance'}
+            {isResolved
+              ? '✓ Réparation terminée'
+              : caseDetails.status === 'IN_PROGRESS'
+                ? '🔧 Intervention en cours'
+                : '⚠️ À traiter'}
           </span>
         </div>
 
@@ -61,8 +69,9 @@ export default async function MaintenanceCaseDetailPage({
           <div className={styles.actionHero}>
             <ResolveMaintenanceModal
               orgId={organizationId}
-              maintenanceBlockId={caseDetails.id}
+              maintenanceCaseId={caseDetails.id}
               internalSku={caseDetails.internalSku}
+              currentStatus={caseDetails.status}
             />
           </div>
         )}
@@ -79,6 +88,16 @@ export default async function MaintenanceCaseDetailPage({
           <div className={styles.issueBox}>
             <span className={styles.issueLabel}>Description du problème :</span>
             <strong className={styles.issueText}>« {caseDetails.reason} »</strong>
+            {caseDetails.openedNotes && (
+              <p style={{ margin: '6px 0 0 0', fontSize: '0.85rem', color: '#78350f' }}>
+                Note : {caseDetails.openedNotes}
+              </p>
+            )}
+            {caseDetails.resolutionNotes && (
+              <p style={{ margin: '6px 0 0 0', fontSize: '0.85rem', color: '#166534' }}>
+                Travaux réalisés : {caseDetails.resolutionNotes}
+              </p>
+            )}
           </div>
 
           <div className={styles.detailsList}>

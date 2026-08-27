@@ -94,6 +94,27 @@
   align-items: center;
 }
 
+.startActionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 20px;
+  background: #d97706;
+  color: #ffffff;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.92rem;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.25);
+  transition: all 0.15s ease;
+}
+
+.startActionBtn:hover {
+  background: #b45309;
+  transform: translateY(-1px);
+}
+
 .resolvePrimaryBtn {
   display: inline-flex;
   align-items: center;

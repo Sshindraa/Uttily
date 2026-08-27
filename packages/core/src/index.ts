@@ -167,3 +167,6 @@ export * from './booking-amendments';
 
 // Chantier 9 — Domaine Maintenance & Atelier.
 export * from './maintenance';
+
+// Chantier 10 — Planning Opérationnel.
+export * from './planning';
