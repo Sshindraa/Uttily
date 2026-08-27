@@ -222,8 +222,17 @@ complet sont validés dans
 | Lot | Résultat | Dépendances | Statut |
 | --- | --- | --- | --- |
 | G8B-1 — Upload réel des photos produit | upload R2 sécurisé, validation serveur, trois photos avant publication, suppression/remplacement idempotents, URLs publiques contrôlées, UI accessible et tests | G7F-A2, ADR-026 | **Terminé le 2026-08-27 ; smoke test staging R2 validé** |
-| G8B-2 — Géocodage réel | registre local-first, autocomplétion, benchmark fournisseur, cache et droits documentés, recherche réelle | ADR-017, ADR-021, ADR-027 | **En cours — G8B-2A et G8B-2B livrés le 2026-08-27 ; moteur runtime PostgreSQL/PostGIS retenu, ingestion externe différée** |
+| G8B-2 — Géocodage réel | registre local-first, autocomplétion, benchmark fournisseur, cache et droits documentés, recherche réelle | ADR-017, ADR-021, ADR-027 | **En cours — G8B-2A, G8B-2B et G8B-2D livrés le 2026-08-27 ; moteur runtime PostgreSQL/PostGIS retenu, ingestion externe différée** |
+| G8B-2D — Élargissement géographique PostGIS | paliers exact → 10 km → 25 km → 50 km, alternatives séparées, contrat de curseur versionné et tests PostgreSQL/UI | G8B-2A, G8B-2B, ADR-021, ADR-027 | **Terminé le 2026-08-27 ; validation locale Core/Web, PostgreSQL, lint, format, types et build** |
 | G8B-3 — Contenu pilote et validations | contenu loueurs, juridique/RGPD, checklist Go/No-Go | décision commerciale et juridique | À planifier |
+
+### Maintenance CI
+
+Les actions GitHub utilisées ont signalé une dépréciation prochaine du runtime
+Node.js 20 interne à certaines actions. Le dépôt exécute déjà Node.js 24 et
+aucune action actuellement utilisée ne force Node.js 20 côté projet. La mise à
+jour des actions concernées sera traitée comme maintenance CI non bloquante,
+avant leur échéance, sans modifier le périmètre fonctionnel de G8B.
 
 ## Horizons stratégiques post-MVP — option C
 

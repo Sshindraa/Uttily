@@ -84,6 +84,15 @@ describe('G7I — static accessibility guardrails', () => {
     // Headings with id for aria-labelledby references
     expect(searchResults).toContain('id="search-results-heading"');
     expect(searchResults).toContain('aria-labelledby="exact-results-heading"');
+
+    // Geographic alternatives remain visible in distinct, accessible sections
+    expect(searchResults).toContain("item.geographicMatch === 'RADIUS_10KM'");
+    expect(searchResults).toContain("item.geographicMatch === 'RADIUS_25KM'");
+    expect(searchResults).toContain("item.geographicMatch === 'RADIUS_50KM'");
+    expect(searchResults).toContain("id: 'radius-10-results'");
+    expect(searchResults).toContain("id: 'radius-25-results'");
+    expect(searchResults).toContain("id: 'radius-50-results'");
+    expect(searchResults).toContain('Alternative à moins de 10 km');
   });
 
   it('checkout-client.tsx: aria-live, role="alert" for errors, loading states', () => {

@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { Component, type ErrorInfo, type ReactNode, useEffect, useRef, useState } from 'react';
 import type {
   PublicOfferSearchItem,
+  PublicSearchGeographicMatch,
   PublicSearchDestinationOption,
   PublicSearchViewport,
   SearchPublicOffersResult,
@@ -113,8 +114,57 @@ export function SearchResults({
   };
 
   const exactItems = result?.items.filter((item) => item.geographicMatch === 'EXACT') ?? [];
-  const alternativeItems =
+  const radius10Items =
+    result?.items.filter((item) => item.geographicMatch === 'RADIUS_10KM') ?? [];
+  const radius25Items =
+    result?.items.filter((item) => item.geographicMatch === 'RADIUS_25KM') ?? [];
+  const radius50Items =
+    result?.items.filter((item) => item.geographicMatch === 'RADIUS_50KM') ?? [];
+  const viewportAlternativeItems =
     result?.items.filter((item) => item.geographicMatch === 'VIEWPORT_ALTERNATIVE') ?? [];
+  const radiusSections: Array<{
+    id: string;
+    match: Extract<PublicSearchGeographicMatch, `RADIUS_${string}`>;
+    titleFr: string;
+    titleEn: string;
+    descriptionFr: string;
+    descriptionEn: string;
+    items: PublicOfferSearchItem[];
+  }> = [
+    {
+      id: 'radius-10-results',
+      match: 'RADIUS_10KM',
+      titleFr: 'Alternative à moins de 10 km',
+      titleEn: 'Alternative within 10 km',
+      descriptionFr:
+        'Ces offres sont hors de la destination sélectionnée, dans un rayon maximal de 10 km.',
+      descriptionEn:
+        'These offers are outside the selected destination, within a maximum radius of 10 km.',
+      items: radius10Items,
+    },
+    {
+      id: 'radius-25-results',
+      match: 'RADIUS_25KM',
+      titleFr: 'Alternative entre 10 et 25 km',
+      titleEn: 'Alternative between 10 and 25 km',
+      descriptionFr:
+        'Ces offres sont hors de la destination sélectionnée, entre 10 et 25 km du centre.',
+      descriptionEn:
+        'These offers are outside the selected destination, between 10 and 25 km from its centre.',
+      items: radius25Items,
+    },
+    {
+      id: 'radius-50-results',
+      match: 'RADIUS_50KM',
+      titleFr: 'Alternative entre 25 et 50 km',
+      titleEn: 'Alternative between 25 and 50 km',
+      descriptionFr:
+        'Ces offres sont hors de la destination sélectionnée, entre 25 et 50 km du centre.',
+      descriptionEn:
+        'These offers are outside the selected destination, between 25 and 50 km from its centre.',
+      items: radius50Items,
+    },
+  ];
 
   return (
     <section className={styles.results} aria-live="polite" aria-busy={isFetching}>
@@ -202,12 +252,30 @@ export function SearchResults({
             )}
           </section>
 
-          {alternativeItems.length > 0 ? (
+          {radiusSections.map((section) =>
+            section.items.length > 0 ? (
+              <section
+                className={styles.resultSection}
+                aria-labelledby={section.id}
+                key={section.id}
+              >
+                <h3 id={section.id}>{fr ? section.titleFr : section.titleEn}</h3>
+                <p className={styles.alternativeExplanation}>
+                  {fr ? section.descriptionFr : section.descriptionEn}
+                </p>
+                <div className={styles.grid}>
+                  {section.items.map((item) => renderCard(item, locale, activeSearchParams))}
+                </div>
+              </section>
+            ) : null,
+          )}
+
+          {viewportAlternativeItems.length > 0 ? (
             <section className={styles.resultSection} aria-labelledby="alternative-results-heading">
               <h3 id="alternative-results-heading">
                 {fr
-                  ? `Dans la zone de carte choisie (${alternativeItems.length})`
-                  : `In the selected map area (${alternativeItems.length})`}
+                  ? `Dans la zone de carte choisie (${viewportAlternativeItems.length})`
+                  : `In the selected map area (${viewportAlternativeItems.length})`}
               </h3>
               <p className={styles.alternativeExplanation}>
                 {fr
@@ -215,7 +283,9 @@ export function SearchResults({
                   : 'These offers are outside the selected destination but inside the chosen map area.'}
               </p>
               <div className={styles.grid}>
-                {alternativeItems.map((item) => renderCard(item, locale, activeSearchParams))}
+                {viewportAlternativeItems.map((item) =>
+                  renderCard(item, locale, activeSearchParams),
+                )}
               </div>
             </section>
           ) : null}

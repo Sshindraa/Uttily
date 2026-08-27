@@ -794,8 +794,18 @@ describe.skipIf(shouldSkipIntegrationTests())('searchPublicOffers — intégrati
     });
 
     const exactSearch = await testSearch(db, searchInput(dest.publicId, DAY_RANGE_10_12));
-    expect(exactSearch.items.map((item) => item.publicProductId)).toEqual([exact.publicProductId]);
-    expect(exactSearch.items[0]!.geographicMatch).toBe('EXACT');
+    expect(exactSearch.items.map((item) => item.publicProductId)).toEqual(
+      expect.arrayContaining([exact.publicProductId, alternative.publicProductId]),
+    );
+    expect(exactSearch.items).toHaveLength(2);
+    expect(
+      exactSearch.items.find((item) => item.publicProductId === exact.publicProductId)
+        ?.geographicMatch,
+    ).toBe('EXACT');
+    expect(
+      exactSearch.items.find((item) => item.publicProductId === alternative.publicProductId)
+        ?.geographicMatch,
+    ).toBe('RADIUS_10KM');
 
     const viewportSearch = await testSearch(
       db,
@@ -821,6 +831,48 @@ describe.skipIf(shouldSkipIntegrationTests())('searchPublicOffers — intégrati
       viewportSearch.items.find((item) => item.publicProductId === alternative.publicProductId)
         ?.geographicMatch,
     ).toBe('VIEWPORT_ALTERNATIVE');
+  });
+
+  it('G8B-2D : élargit par paliers PostGIS et conserve chaque alternative séparée', async () => {
+    if (!db || !rawSql) return;
+    const dest = await seedDestination();
+    const { orgId } = await seedOrg();
+    const { categoryId } = await seedCategory();
+
+    const exact = await seedOfferGroup(orgId, categoryId, {
+      lon: 6.12,
+      lat: 45.89,
+      withPlan: true,
+    });
+    const tenKm = await seedOfferGroup(orgId, categoryId, {
+      lon: 6.2,
+      lat: 45.89,
+      withPlan: true,
+    });
+    const twentyFiveKm = await seedOfferGroup(orgId, categoryId, {
+      lon: 6.35,
+      lat: 45.89,
+      withPlan: true,
+    });
+    const fiftyKm = await seedOfferGroup(orgId, categoryId, {
+      lon: 6.65,
+      lat: 45.89,
+      withPlan: true,
+    });
+    const outside = await seedOfferGroup(orgId, categoryId, {
+      lon: 7.05,
+      lat: 45.89,
+      withPlan: true,
+    });
+
+    const result = await testSearch(db, searchInput(dest.publicId, DAY_RANGE_10_12));
+    const byLocation = new Map(result.items.map((item) => [item.publicLocationId, item]));
+
+    expect(byLocation.get(exact.publicLocationId)?.geographicMatch).toBe('EXACT');
+    expect(byLocation.get(tenKm.publicLocationId)?.geographicMatch).toBe('RADIUS_10KM');
+    expect(byLocation.get(twentyFiveKm.publicLocationId)?.geographicMatch).toBe('RADIUS_25KM');
+    expect(byLocation.get(fiftyKm.publicLocationId)?.geographicMatch).toBe('RADIUS_50KM');
+    expect(byLocation.has(outside.publicLocationId)).toBe(false);
   });
 
   it.each([1, 2, 5])(

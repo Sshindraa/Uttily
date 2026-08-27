@@ -1,6 +1,11 @@
 # G7E-B — Carte publique et recherche par viewport
 
-- **Statut** : implémenté dans le worktree
+> **Révision G8B-2D (2026-08-27)** : en l'absence de viewport choisi, la
+> recherche publique applique désormais les paliers PostGIS 10/25/50 km et
+> expose les alternatives dans des sections distinctes. Les règles ci-dessous
+> décrivent le comportement viewport livré par G7E-B.
+
+- **Statut** : implémenté ; élargissement G8B-2D livré le 2026-08-27
 - **Date** : 2026-08-09
 - **Dépendances** : G7D-A, G7E-A, G7F-A2
 - **Décision** : [ADR-021](../decisions/ADR-021-public-search-map-and-viewport.md)
@@ -49,14 +54,14 @@ Les paramètres HTTP sont explicites : `viewportSouth`, `viewportWest`,
 décimaux finis ; une zone partielle, dupliquée ou inversée est rejetée. La
 route conserve `private, no-store` pour les succès et les erreurs.
 
-La destination active reste l'ancre obligatoire. Sans viewport, la bbox et le
-centre canoniques de la destination sont inchangés. Avec viewport, PostGIS
-utilise sa bbox pour `ST_Intersects` et le moteur calcule la distance depuis son
-centre déterministe, y compris pour l'antiméridien. Le tri et le tuple keyset
-restent `DISTANCE_ASC` et
+La destination active reste l'ancre obligatoire. Sans viewport, la bbox reste la
+zone exacte et PostGIS ajoute les paliers 10/25/50 km autour du centre canonique.
+Avec viewport, PostGIS utilise sa bbox pour `ST_Intersects` et le moteur calcule
+la distance depuis son centre déterministe, y compris pour l'antiméridien. Le
+tri et le tuple keyset restent `DISTANCE_ASC` et
 `(rawDistanceMeters, publicProductId, publicLocationId)` sans `OFFSET`.
 
-Les curseurs passent en contrat/format version 2. Leur HMAC couvre la zone
+Les curseurs passent en contrat/format version 3. Leur HMAC couvre la zone
 normalisée ou le sentinel de destination canonique. Un curseur d'un autre
 viewport retourne `INVALID_CURSOR`.
 
@@ -66,14 +71,17 @@ Chaque offre contient `geographicMatch` :
 
 - `EXACT` si le point de l'établissement est dans la bbox canonique de la
   destination, bornes incluses ;
+- `RADIUS_10KM`, `RADIUS_25KM` ou `RADIUS_50KM` si elle est hors de cette bbox
+  mais dans le palier correspondant autour du centre canonique ;
 - `VIEWPORT_ALTERNATIVE` si elle est hors de cette bbox mais dans le viewport
   choisi.
 
-La page sépare les deux sections et explique en FR/EN que les alternatives sont
-hors de la destination sélectionnée mais dans la zone de carte choisie. En
-l'absence de viewport, toutes les offres sont exactes.
+La page sépare la zone exacte, chaque palier de rayon et le viewport choisi ;
+elle explique en FR/EN que les alternatives sont hors de la destination
+sélectionnée. En l'absence de viewport, une offre est classée exacte uniquement
+si son point est dans la bbox canonique.
 
-Il n'y a pas d'élargissement automatique, d'alternative temporelle, de
+Il n'y a pas d'alternative temporelle, de
 géocodage de texte libre, d'image/CDN, d'analytics G7H ou de changement de
 booking dans ce lot. La carte est informative ; le hold PostgreSQL revalide
 toujours l'allocation réelle.
@@ -81,7 +89,7 @@ toujours l'allocation réelle.
 ## Fichiers principaux
 
 - `packages/core/src/public-search/` : validation viewport, centre
-  antiméridien, filtre SQL, classification et curseur v2 ;
+  antiméridien, filtre SQL, classification et curseur v3 ;
 - `apps/web/src/app/[locale]/search/` : résultats séparés, chargement
   MapLibre client-only et fallback accessible ;
 - `apps/web/src/app/api/public/search/` et `apps/web/src/lib/public-search.ts` :
@@ -99,6 +107,10 @@ toujours l'allocation réelle.
 - contrôle des artefacts : MapLibre est présent dans les chunks statiques
   client et absent de `.next/server` ;
 - `git diff --check` : réussi.
+
+La validation G8B-2D a ajouté 32 tests géographiques et 36 tests d'intégration
+PostgreSQL : 68/68 réussis avec PostgreSQL local. `pnpm check:fast`, lint,
+format et build monorepo sont également verts.
 
 La validation locale a été exécutée avec Node.js 22.23.1 ; pnpm rappelle que le
 projet déclare Node.js 24 ou supérieur, sans échec des contrôles ci-dessus.

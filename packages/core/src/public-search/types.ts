@@ -31,7 +31,8 @@ export interface PublicSearchViewport {
   east: number;
 }
 
-export type PublicSearchGeographicMatch = 'EXACT' | 'VIEWPORT_ALTERNATIVE';
+export type PublicSearchGeographicMatch =
+  'EXACT' | 'RADIUS_10KM' | 'RADIUS_25KM' | 'RADIUS_50KM' | 'VIEWPORT_ALTERNATIVE';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Input

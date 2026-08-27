@@ -17,7 +17,7 @@ import { PublicSearchError } from './errors';
 import { isValidPublicSearchViewport, normalizePublicSearchViewport } from './geo';
 
 /** Version courante du contrat de recherche publique. */
-export const PUBLIC_SEARCH_CONTRACT_VERSION = 2;
+export const PUBLIC_SEARCH_CONTRACT_VERSION = 3;
 
 /** Version du format de curseur. */
 const CURSOR_PAYLOAD_VERSION = 2;

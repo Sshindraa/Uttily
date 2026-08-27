@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  classifyPublicSearchGeographicMatch,
   isPointInBbox,
   haversineDistanceMeters,
   isValidPublicSearchViewport,
   publicSearchViewportCenter,
   roundDistanceForDisplay,
 } from './geo';
+
+const lyonBbox = { south: 45.7, west: 4.7, north: 45.9, east: 4.95 };
 
 describe('viewport public', () => {
   it('valide une bbox normale et une bbox traversant l’antiméridien', () => {
@@ -75,6 +78,49 @@ describe('isPointInBbox', () => {
       ).toBe(expected);
     },
   );
+});
+
+describe('classifyPublicSearchGeographicMatch', () => {
+  it('conserve EXACT pour une offre dans la bbox, même au-delà de 50 km', () => {
+    expect(
+      classifyPublicSearchGeographicMatch({
+        latitude: 45.8,
+        longitude: 4.8,
+        destinationBbox: lyonBbox,
+        rawDistanceMeters: 100_000,
+        areaKind: 'DESTINATION_RADIUS',
+      }),
+    ).toBe('EXACT');
+  });
+
+  it.each([
+    [9_999, 'RADIUS_10KM'],
+    [10_001, 'RADIUS_25KM'],
+    [25_001, 'RADIUS_50KM'],
+    [50_000, 'RADIUS_50KM'],
+  ] as const)('classe le palier %s mètres', (rawDistanceMeters, expected) => {
+    expect(
+      classifyPublicSearchGeographicMatch({
+        latitude: 46,
+        longitude: 5,
+        destinationBbox: lyonBbox,
+        rawDistanceMeters,
+        areaKind: 'DESTINATION_RADIUS',
+      }),
+    ).toBe(expected);
+  });
+
+  it('préserve la classification viewport pour une zone choisie explicitement', () => {
+    expect(
+      classifyPublicSearchGeographicMatch({
+        latitude: 46,
+        longitude: 5,
+        destinationBbox: lyonBbox,
+        rawDistanceMeters: 5_000,
+        areaKind: 'VIEWPORT',
+      }),
+    ).toBe('VIEWPORT_ALTERNATIVE');
+  });
 });
 
 describe('haversineDistanceMeters', () => {

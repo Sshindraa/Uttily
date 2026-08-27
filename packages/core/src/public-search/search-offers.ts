@@ -3,7 +3,7 @@
  *
  * Use case : searchPublicOffers(db, input).
  *
- * Moteur de recherche publique exacte (read-only, informatif).
+ * Moteur de recherche publique géographique (read-only, informatif).
  * PostgreSQL reste l'autorité des filtres d'inventaire et de disponibilité.
  * Le hold transactionnel (createBookingDraftWithHold) reste l'autorité de
  * réservation. Un résultat disponible ne remplace jamais le hold.
@@ -117,6 +117,7 @@ import type {
   PublicOfferSearchItem,
   PublicPriceSummary,
   PublicProductPublicationGate,
+  PublicSearchGeographicMatch,
   PublicSearchIntent,
   SearchPublicOffersInput,
   SearchPublicOffersResult,
@@ -128,7 +129,7 @@ import {
   PUBLIC_SEARCH_CONTRACT_VERSION,
 } from './cursor';
 import {
-  isPointInBbox,
+  classifyPublicSearchGeographicMatch,
   isValidPublicSearchViewport,
   normalizePublicSearchViewport,
   publicSearchViewportCenter,
@@ -251,7 +252,14 @@ export async function searchPublicOffers(
       break;
     }
 
-    const batchValid = await processCandidateBatch(db, candidates, input, destInfo, options);
+    const batchValid = await processCandidateBatch(
+      db,
+      candidates,
+      input,
+      destInfo,
+      searchArea,
+      options,
+    );
 
     for (const offer of batchValid) {
       if (selected.length < pageSize) {
@@ -353,6 +361,7 @@ async function processCandidateBatch(
   candidates: CandidateRow[],
   input: SearchPublicOffersInput,
   destination: DestinationInfo,
+  searchArea: SearchArea,
   options: { publicationGate: PublicProductPublicationGate },
 ): Promise<GroupedOffer[]> {
   if (candidates.length === 0) {
@@ -479,7 +488,7 @@ async function processCandidateBatch(
   }
 
   // 7. Grouper par (publicProductId, publicLocationId) → sélectionner le moins cher.
-  const groupedOffers = groupAndSelectBest(pricedOffers, destination);
+  const groupedOffers = groupAndSelectBest(pricedOffers, destination, searchArea);
 
   // 8. Trier par (rawDistanceMeters ASC, publicProductId ASC, publicLocationId ASC).
   groupedOffers.sort((a, b) => {
@@ -610,6 +619,8 @@ interface DestinationInfo {
 
 /** Zone effectivement utilisée par SQL et par le calcul de distance. */
 interface SearchArea {
+  /** La destination utilise les paliers 10/25/50 km ; le viewport reste explicite. */
+  kind: 'DESTINATION_RADIUS' | 'VIEWPORT';
   centerLongitude: number;
   centerLatitude: number;
   bboxSouth: number;
@@ -624,6 +635,7 @@ function resolveSearchArea(
 ): SearchArea {
   if (!viewport) {
     return {
+      kind: 'DESTINATION_RADIUS',
       centerLongitude: destination.centerLongitude,
       centerLatitude: destination.centerLatitude,
       bboxSouth: destination.bboxSouth,
@@ -636,6 +648,7 @@ function resolveSearchArea(
   const normalized = normalizePublicSearchViewport(viewport);
   const center = publicSearchViewportCenter(normalized);
   return {
+    kind: 'VIEWPORT',
     centerLongitude: center.longitude,
     centerLatitude: center.latitude,
     bboxSouth: normalized.south,
@@ -823,14 +836,27 @@ async function loadCandidateGroups(
       )`
       : sql``;
 
-  // Filtre spatial via ST_Intersects (frontière incluse) pour utiliser l'index GIST locations_geo_point_index.
-  const spatialCondition =
+  // Filtre spatial via ST_Intersects (frontière incluse) pour utiliser l'index
+  // GIST. Sans viewport, la bbox exacte reste prioritaire et les offres hors
+  // bbox sont autorisées jusqu'au dernier palier de 50 km.
+  const exactBboxCondition =
     searchArea.bboxWest <= searchArea.bboxEast
-      ? sql`AND ST_Intersects(l.geo_point, ST_MakeEnvelope(${searchArea.bboxWest}, ${searchArea.bboxSouth}, ${searchArea.bboxEast}, ${searchArea.bboxNorth}, 4326))`
-      : sql`AND (
+      ? sql`ST_Intersects(l.geo_point, ST_MakeEnvelope(${searchArea.bboxWest}, ${searchArea.bboxSouth}, ${searchArea.bboxEast}, ${searchArea.bboxNorth}, 4326))`
+      : sql`(
             ST_Intersects(l.geo_point, ST_MakeEnvelope(${searchArea.bboxWest}, ${searchArea.bboxSouth}, 180, ${searchArea.bboxNorth}, 4326))
             OR ST_Intersects(l.geo_point, ST_MakeEnvelope(-180, ${searchArea.bboxSouth}, ${searchArea.bboxEast}, ${searchArea.bboxNorth}, 4326))
           )`;
+  const spatialCondition =
+    searchArea.kind === 'DESTINATION_RADIUS'
+      ? sql`AND (
+          ${exactBboxCondition}
+          OR ST_DWithin(
+            l.geo_point::geography,
+            ST_SetSRID(ST_MakePoint(${searchArea.centerLongitude}, ${searchArea.centerLatitude}), 4326)::geography,
+            50000
+          )
+        )`
+      : sql`AND ${exactBboxCondition}`;
 
   const rows = await db.execute<{
     organization_id: string;
@@ -1673,7 +1699,7 @@ interface GroupedOffer {
   latitude: number;
   longitude: number;
   rawDistanceMeters: number;
-  geographicMatch: 'EXACT' | 'VIEWPORT_ALTERNATIVE';
+  geographicMatch: PublicSearchGeographicMatch;
   price: PublicPriceSummary;
 }
 
@@ -1695,6 +1721,7 @@ interface GroupedOffer {
 function groupAndSelectBest(
   pricedOffers: Array<{ candidate: CandidateRow; price: PublicPriceSummary; best: Candidate }>,
   destination: DestinationInfo,
+  searchArea: SearchArea,
 ): GroupedOffer[] {
   const groups = new Map<
     string,
@@ -1734,16 +1761,18 @@ function groupAndSelectBest(
       latitude: best.candidate.latitude,
       longitude: best.candidate.longitude,
       rawDistanceMeters: best.candidate.rawDistanceMeters,
-      geographicMatch: isPointInBbox(
-        best.candidate.latitude,
-        best.candidate.longitude,
-        destination.bboxSouth,
-        destination.bboxWest,
-        destination.bboxNorth,
-        destination.bboxEast,
-      )
-        ? 'EXACT'
-        : 'VIEWPORT_ALTERNATIVE',
+      geographicMatch: classifyPublicSearchGeographicMatch({
+        latitude: best.candidate.latitude,
+        longitude: best.candidate.longitude,
+        destinationBbox: {
+          south: destination.bboxSouth,
+          west: destination.bboxWest,
+          north: destination.bboxNorth,
+          east: destination.bboxEast,
+        },
+        rawDistanceMeters: best.candidate.rawDistanceMeters,
+        areaKind: searchArea.kind,
+      }),
       price: best.price,
     });
   }

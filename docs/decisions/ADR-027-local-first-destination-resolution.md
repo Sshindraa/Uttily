@@ -101,8 +101,8 @@ points d'intérêt ou villes hors registre. Les détails et limites sont dans
   retenu pour le runtime canonique, Photon/IGN différés hors runtime.
 - **G8B-2C** : ingestion/rafraîchissement canonique, cache durable et contrôle à
   90 jours.
-- **G8B-2D** : élargissements PostGIS 10/25/50 km et présentation explicite des
-  alternatives.
+- **G8B-2D** : livré le 2026-08-27 — élargissements PostGIS 10/25/50 km,
+  présentation explicite des alternatives, curseur v3 et tests PostgreSQL/Web.
 
 ## 6. Conséquences
 

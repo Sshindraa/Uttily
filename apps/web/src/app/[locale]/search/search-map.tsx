@@ -321,7 +321,7 @@ function syncMarkers(
   markersRef.current = items.map((item) => {
     const element = document.createElement('span');
     element.className =
-      item.geographicMatch === 'VIEWPORT_ALTERNATIVE' ? styles.markerAlternative! : styles.marker!;
+      item.geographicMatch === 'EXACT' ? styles.marker! : styles.markerAlternative!;
     element.setAttribute('aria-hidden', 'true');
     return new maplibre.Marker({ element, anchor: 'bottom' })
       .setLngLat([item.longitude, item.latitude])

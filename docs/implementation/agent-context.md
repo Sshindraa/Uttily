@@ -191,7 +191,8 @@ Une tâche est terminée lorsque :
   `PostgresPhotoPublicationGate` G7F-A2 réel. Secret obligatoire
   `PUBLIC_SEARCH_CURSOR_SECRET` (minimum 32 octets). G7E-B ajoute la carte
   MapLibre/MapTiler progressive, la relance explicite par viewport, les curseurs
-  liés à la zone et les sections EXACT/VIEWPORT_ALTERNATIVE. Voir
+  liés à la zone et les sections EXACT/RADIUS_10KM/RADIUS_25KM/RADIUS_50KM/
+  VIEWPORT_ALTERNATIVE. Voir
   `docs/implementation/g7e-b-public-search-map.md` et ADR-021.
 - G7G (dashboard loueur) : implémenté le 2026-08-09. Le read model Core
   `listMaintenanceDashboardSignals` est organization-scoped, read-only et borné

@@ -24,11 +24,13 @@ export {
 } from './cursor';
 export {
   isPointInBbox,
+  classifyPublicSearchGeographicMatch,
   isValidPublicSearchViewport,
   normalizePublicSearchViewport,
   publicSearchViewportCenter,
   haversineDistanceMeters,
   roundDistanceForDisplay,
+  PUBLIC_SEARCH_RADIUS_TIERS,
 } from './geo';
 
 export { PublicSearchError } from './errors';

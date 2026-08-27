@@ -7,8 +7,8 @@
 
 > **Note de révision (2026-08-27)** : ADR-027 autorise pour G8B-2D des
 > élargissements successifs 10/25/50 km, toujours séparés explicitement des
-> résultats exacts. Le présent ADR continue de décrire le comportement livré
-> avant cet élargissement.
+> résultats exacts. Cette révision documente ce contrat sans modifier le
+> comportement viewport explicite de G7E-B.
 
 ## 1. Contexte
 
@@ -84,16 +84,18 @@ reste valide : aucune largeur métier implicite n'est inventée. Toute autre
 forme ou valeur est rejetée par `INVALID_INPUT`; elle ne retombe jamais sur la
 bbox de la destination.
 
-Pour un viewport, PostGIS applique sa propre bbox à `ST_Intersects`. Le centre
-de distance est déterministe : latitude `(south + north) / 2`; longitude milieu
-de l'arc ouest-est, avec l'arc traversant l'antiméridien calculé modulo 360.
-La distance reste `DISTANCE_ASC` et le tuple keyset verrouillé
-`(rawDistanceMeters, publicProductId, publicLocationId)`. Aucun rayon ni
-élargissement automatique n'est introduit.
+Sans viewport, PostGIS conserve la bbox exacte et ajoute les candidats situés à
+moins de 50 km du centre canonique ; le moteur les classe en paliers 10/25/50 km.
+Pour un viewport, PostGIS applique uniquement sa bbox à `ST_Intersects`. Le
+centre de distance est déterministe : latitude `(south + north) / 2`; longitude
+milieu de l'arc ouest-est, avec l'arc traversant l'antiméridien calculé modulo
+360. La distance reste `DISTANCE_ASC` et le tuple keyset verrouillé
+`(rawDistanceMeters, publicProductId, publicLocationId)`. Aucun élargissement
+automatique n'est introduit pour un viewport.
 
 ### 2.4 Curseurs et changement de zone
 
-Le contrat public et le format de curseur passent en version 2. La signature
+Le contrat public et le format de curseur passent en version 3. La signature
 HMAC couvre la destination, la locale, l'intention, la catégorie, la version et
 la zone canonique de recherche : un sentinel explicite pour la bbox destination
 en l'absence de viewport, ou les quatre nombres normalisés du viewport fourni.
@@ -105,21 +107,21 @@ la nouvelle réponse peut ensuite être utilisé par « voir la suite ».
 
 ### 2.5 Exact et alternatives géographiques
 
-Chaque offre possède `geographicMatch`, union fermée `EXACT |
-VIEWPORT_ALTERNATIVE`. `EXACT` signifie que le point de l'établissement est
-dans la bbox canonique de la destination, bornes incluses. Une offre trouvée
-dans un viewport mais hors de cette bbox est `VIEWPORT_ALTERNATIVE`. En
-l'absence de viewport, toutes les offres sont `EXACT`.
+Chaque offre possède `geographicMatch`, union fermée `EXACT | RADIUS_10KM |
+RADIUS_25KM | RADIUS_50KM | VIEWPORT_ALTERNATIVE`. `EXACT` signifie que le
+point de l'établissement est dans la bbox canonique de la destination, bornes
+incluses. Sans viewport, les trois valeurs `RADIUS_*` correspondent aux paliers
+PostGIS hors bbox définis par G8B-2D. Une offre trouvée dans un viewport mais
+hors de cette bbox est `VIEWPORT_ALTERNATIVE`.
 
-L'interface affiche ces deux valeurs dans des sections titulées séparément. Le
-texte FR/EN précise qu'une alternative est hors de la destination sélectionnée
-mais dans la zone de carte choisie. Les alternatives ne sont jamais fusionnées
-silencieusement avec les résultats exacts. Le tri et la pagination restent ceux
-du moteur Core, même si la présentation sépare les sections.
+L'interface affiche ces valeurs dans des sections titulées séparément. Le texte
+FR/EN précise qu'une alternative est hors de la destination sélectionnée et
+indique son palier ou la zone de carte choisie. Les alternatives ne sont jamais
+fusionnées silencieusement avec les résultats exacts. Le tri et la pagination
+restent ceux du moteur Core, même si la présentation sépare les sections.
 
-Les élargissements progressifs, alternatives temporelles, seuils/calibrations
-automatiques, géocodage de texte libre et règles produit ne sont pas décidés
-par cet ADR.
+Les seuils/calibrations automatiques, alternatives temporelles, géocodage de
+texte libre et règles produit ne sont pas décidés par cet ADR.
 
 ### 2.6 Accessibilité et interaction
 
