@@ -58,35 +58,6 @@ function SlotIcon({ slotType }: { slotType: PhotoSlotType }): ReactElement | nul
           <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
         </svg>
       );
-    case 'BATTERY':
-      return (
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <rect x="2" y="7" width="16" height="10" rx="2" ry="2" />
-          <line x1="22" y1="11" x2="22" y2="13" />
-          <path d="M10 9l-2 3h4l-2 3" strokeWidth="1.5" />
-        </svg>
-      );
-    case 'MOTOR':
-      return (
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <circle cx="12" cy="12" r="8" />
-          <path d="M12 8v8m-4-4h8" />
-        </svg>
-      );
     default:
       return null;
   }
@@ -130,13 +101,7 @@ export default function PhotoCoachDemoPage(): ReactElement {
     setMockPhotos((prev) => [photo, ...prev]);
   };
 
-  const availableSlots: PhotoSlotType[] = [
-    'HERO_PROFILE',
-    'THREE_QUARTER_FRONT',
-    'SECONDARY_VIEW',
-    'BATTERY',
-    'MOTOR',
-  ];
+  const availableSlots: PhotoSlotType[] = ['HERO_PROFILE', 'THREE_QUARTER_FRONT', 'SECONDARY_VIEW'];
 
   return (
     <main className={styles.container}>
