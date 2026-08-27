@@ -89,6 +89,8 @@ export async function createProductAction(
     const product = await createProduct(db, { ...parsed.input, organizationId: authorizedOrgId });
     revalidatePath(`/dashboard/${authorizedOrgId}/catalog`);
     revalidatePath(`/dashboard/${authorizedOrgId}/catalog/${product.id}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${product.id}`);
     return product;
   });
 }
@@ -112,6 +114,8 @@ export async function updateProductAction(
     const product = await updateProduct(db, authorizedOrgId, parsed.productId, parsed.input);
     revalidatePath(`/dashboard/${authorizedOrgId}/catalog`);
     revalidatePath(`/dashboard/${authorizedOrgId}/catalog/${parsed.productId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${parsed.productId}`);
     return product;
   });
 }
@@ -135,6 +139,8 @@ export async function publishProductAction(
     const product = await publishProduct(db, authorizedOrgId, parsed.productId);
     revalidatePath(`/dashboard/${authorizedOrgId}/catalog`);
     revalidatePath(`/dashboard/${authorizedOrgId}/catalog/${parsed.productId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${parsed.productId}`);
     return product;
   });
 }
@@ -158,6 +164,8 @@ export async function archiveProductAction(
     const product = await archiveProduct(db, authorizedOrgId, parsed.productId);
     revalidatePath(`/dashboard/${authorizedOrgId}/catalog`);
     revalidatePath(`/dashboard/${authorizedOrgId}/catalog/${parsed.productId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${parsed.productId}`);
     return product;
   });
 }
@@ -181,6 +189,8 @@ export async function restoreArchivedProductAction(
     const product = await restoreArchivedProduct(db, authorizedOrgId, parsed.productId);
     revalidatePath(`/dashboard/${authorizedOrgId}/catalog`);
     revalidatePath(`/dashboard/${authorizedOrgId}/catalog/${parsed.productId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${parsed.productId}`);
     return product;
   });
 }

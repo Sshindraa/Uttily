@@ -79,6 +79,8 @@ export async function uploadProductPhotoAction(
         });
     revalidatePath(`/dashboard/${authorizedOrgId}/catalog/${productId}`);
     revalidatePath(`/dashboard/${authorizedOrgId}/catalog/${productId}/edit`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${productId}`);
     return toPhotoSummary(result);
   });
 }
@@ -99,6 +101,8 @@ export async function deleteProductPhotoAction(
     if (isValidUuid(productId)) {
       revalidatePath(`/dashboard/${authorizedOrgId}/catalog/${productId}`);
       revalidatePath(`/dashboard/${authorizedOrgId}/catalog/${productId}/edit`);
+      revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+      revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${productId}`);
     }
     return null;
   });

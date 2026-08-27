@@ -154,6 +154,7 @@ export async function createInventoryItemAction(
     });
     revalidatePath(`/dashboard/${authorizedOrgId}/inventory`);
     revalidatePath(`/dashboard/${authorizedOrgId}/inventory/${item.id}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
     return item;
   });
 }
@@ -177,6 +178,7 @@ export async function updateInventoryItemAction(
     const item = await updateInventoryItem(db, authorizedOrgId, parsed.itemId, parsed.input);
     revalidatePath(`/dashboard/${authorizedOrgId}/inventory`);
     revalidatePath(`/dashboard/${authorizedOrgId}/inventory/${parsed.itemId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
     return item;
   });
 }
@@ -214,6 +216,7 @@ export async function transferInventoryItemAction(
     });
     revalidatePath(`/dashboard/${authorizedOrgId}/inventory`);
     revalidatePath(`/dashboard/${authorizedOrgId}/inventory/${parsed.itemId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
     return result;
   });
 }
@@ -237,6 +240,7 @@ export async function retireInventoryItemAction(
     const item = await retireInventoryItem(db, authorizedOrgId, parsed.itemId);
     revalidatePath(`/dashboard/${authorizedOrgId}/inventory`);
     revalidatePath(`/dashboard/${authorizedOrgId}/inventory/${parsed.itemId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
     return item;
   });
 }

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 const PAGE_PATH = join(__dirname, 'page.tsx');
 
-describe('UnifiedBikePage (G8B Vertical Slice)', () => {
+describe('UnifiedBikePage (Fiche Vélo Unifiée v2 - Centre de commande)', () => {
   const pageSource = readFileSync(PAGE_PATH, 'utf8');
 
   it('appelle getUnifiedBike et exige les autorisations catalogue du loueur', () => {
@@ -13,16 +13,16 @@ describe('UnifiedBikePage (G8B Vertical Slice)', () => {
     expect(pageSource).toContain('if (bike === null) notFound()');
   });
 
-  it('expose les 4 piliers fondamentaux dans sa structure visuelle', () => {
-    expect(pageSource).toContain('1. Identité & Descriptif');
-    expect(pageSource).toContain('2. Standard Photo (3 Vues)');
-    expect(pageSource).toContain('3. Tarification & Paliers');
-    expect(pageSource).toContain('4. Flotte & Numéros de Série');
+  it('intègre les 4 cartes modulaires d’action sur place', () => {
+    expect(pageSource).toContain('BikeIdentityCard');
+    expect(pageSource).toContain('BikePhotosCard');
+    expect(pageSource).toContain('BikePricingCard');
+    expect(pageSource).toContain('BikeInventoryCard');
   });
 
-  it('fournit les liens contextuels directs pour chaque dimension métier', () => {
-    expect(pageSource).toContain('/edit');
-    expect(pageSource).toContain('/pricing');
-    expect(pageSource).toContain('/inventory/new');
+  it('fournit le fil d’Ariane et les badges de statut fail-closed', () => {
+    expect(pageSource).toContain('← Retour à Mes Vélos');
+    expect(pageSource).toContain('ONLINE_AVAILABLE');
+    expect(pageSource).toContain('En ligne · Disponible');
   });
 });

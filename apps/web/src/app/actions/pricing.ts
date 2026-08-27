@@ -112,6 +112,8 @@ export async function saveDailyPricingPlanDraftAction(
     revalidatePath(
       `/dashboard/${authorizedOrgId}/catalog/${parsed.productId}/variants/${parsed.input.variantId}/pricing`,
     );
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${parsed.productId}`);
     return plan;
   });
 }
@@ -145,6 +147,8 @@ export async function activateDailyPricingPlanAction(
           `/dashboard/${authorizedOrgId}/catalog/${productId}/variants/${variantId}/pricing`,
         );
       }
+      revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+      revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${productId}`);
     }
     return plan;
   });
