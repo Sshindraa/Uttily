@@ -1,13 +1,17 @@
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import {
   categories,
   inventoryItems,
+  pricingPlans,
   productPhotos,
   productVariants,
   products,
 } from '@uttily/database';
 import { getVariantPricingSummary, type PricingPlanSummary } from '../pricing-plans/management';
+
+export type UnifiedBikeStatusSummary =
+  'BOOKABLE' | 'PUBLISHED_UNAVAILABLE' | 'READY_TO_PUBLISH' | 'INCOMPLETE' | 'ARCHIVED';
 
 export interface UnifiedBikePhotoItem {
   id: string;
@@ -73,7 +77,7 @@ export interface UnifiedBike {
   };
   readiness: {
     isPublishable: boolean;
-    statusSummary: 'READY_TO_PUBLISH' | 'PUBLISHED' | 'INCOMPLETE' | 'ARCHIVED';
+    statusSummary: UnifiedBikeStatusSummary;
     checklist: {
       hasIdentity: boolean;
       hasPhotos: boolean;
@@ -81,6 +85,38 @@ export interface UnifiedBike {
       hasInventory: boolean;
     };
   };
+}
+
+export interface UnifiedBikeSummary {
+  id: string;
+  name: string;
+  slug: string;
+  categoryName: string;
+  variantName: string;
+  variantId: string;
+  publicationStatus: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  photoCount: number;
+  hasRequiredPhotos: boolean;
+  heroPhotoPublicId: string | null;
+  priceAmountMinor: number | null;
+  activeInventoryCount: number;
+  totalInventoryCount: number;
+  isPublishable: boolean;
+  statusSummary: UnifiedBikeStatusSummary;
+}
+
+/**
+ * Calcule le statut sémantique fail-closed d'un vélo.
+ */
+function resolveBikeStatusSummary(
+  publicationStatus: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
+  isPublishable: boolean,
+): UnifiedBikeStatusSummary {
+  if (publicationStatus === 'ARCHIVED') return 'ARCHIVED';
+  if (publicationStatus === 'PUBLISHED') {
+    return isPublishable ? 'BOOKABLE' : 'PUBLISHED_UNAVAILABLE';
+  }
+  return isPublishable ? 'READY_TO_PUBLISH' : 'INCOMPLETE';
 }
 
 /**
@@ -219,19 +255,15 @@ export async function getUnifiedBike(
   const retiredCount = inventoryItemsList.filter((i) => i.status === 'RETIRED').length;
   const hasInventory = activeCount >= 1;
 
-  // 6. Calcule la readiness
+  // 6. Calcule la readiness fail-closed
   const hasIdentity = (prodRow.description ?? '').trim().length > 0 && targetVariant.isActive;
 
   const isPublishable = hasIdentity && hasPhotos && hasPricing && hasInventory;
 
-  let statusSummary: UnifiedBike['readiness']['statusSummary'] = 'INCOMPLETE';
-  if (prodRow.publicationStatus === 'ARCHIVED') {
-    statusSummary = 'ARCHIVED';
-  } else if (prodRow.publicationStatus === 'PUBLISHED') {
-    statusSummary = 'PUBLISHED';
-  } else if (isPublishable) {
-    statusSummary = 'READY_TO_PUBLISH';
-  }
+  const statusSummary = resolveBikeStatusSummary(
+    prodRow.publicationStatus as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
+    isPublishable,
+  );
 
   return {
     product: {
@@ -283,4 +315,151 @@ export async function getUnifiedBike(
       },
     },
   };
+}
+
+/**
+ * Liste l'ensemble des vélos unifiés d'une organisation pour la vue « Mes Vélos ».
+ * Requêtes groupées sans N+1.
+ */
+export async function listUnifiedBikes(
+  db: DatabaseClient,
+  organizationId: string,
+): Promise<UnifiedBikeSummary[]> {
+  // 1. Tous les produits non supprimés avec catégorie
+  const prodRows = await db
+    .select({
+      id: products.id,
+      name: products.name,
+      slug: products.slug,
+      description: products.description,
+      publicationStatus: products.publicationStatus,
+      categoryName: categories.name,
+      createdAt: products.createdAt,
+    })
+    .from(products)
+    .innerJoin(categories, eq(products.categoryId, categories.id))
+    .where(and(eq(products.organizationId, organizationId), isNull(products.deletedAt)))
+    .orderBy(asc(products.createdAt));
+
+  if (prodRows.length === 0) return [];
+
+  const productIds = prodRows.map((p) => p.id);
+
+  // 2. Variantes associées
+  const varRows = await db
+    .select({
+      id: productVariants.id,
+      productId: productVariants.productId,
+      name: productVariants.name,
+      isActive: productVariants.isActive,
+    })
+    .from(productVariants)
+    .where(and(inArray(productVariants.productId, productIds), isNull(productVariants.deletedAt)))
+    .orderBy(asc(productVariants.createdAt));
+
+  const variantIds = varRows.map((v) => v.id);
+
+  // 3. Photos
+  const photoRows = await db
+    .select({
+      productId: productPhotos.productId,
+      publicId: productPhotos.publicId,
+      checksumSha256: productPhotos.checksumSha256,
+      sortOrder: productPhotos.sortOrder,
+    })
+    .from(productPhotos)
+    .where(
+      and(
+        inArray(productPhotos.productId, productIds),
+        eq(productPhotos.fileState, 'AVAILABLE'),
+        isNull(productPhotos.deletedAt),
+      ),
+    )
+    .orderBy(asc(productPhotos.sortOrder));
+
+  // 4. Plans actifs
+  const activePlanRows =
+    variantIds.length > 0
+      ? await db
+          .select({
+            productVariantId: pricingPlans.productVariantId,
+            priceAmountMinor: pricingPlans.priceAmountMinor,
+          })
+          .from(pricingPlans)
+          .where(
+            and(
+              inArray(pricingPlans.productVariantId, variantIds),
+              eq(pricingPlans.lifecycleState, 'ACTIVE'),
+            ),
+          )
+      : [];
+
+  // 5. Exemplaires physiques
+  const invRows =
+    variantIds.length > 0
+      ? await db
+          .select({
+            productVariantId: inventoryItems.productVariantId,
+            status: inventoryItems.status,
+          })
+          .from(inventoryItems)
+          .where(
+            and(
+              inArray(inventoryItems.productVariantId, variantIds),
+              isNull(inventoryItems.deletedAt),
+            ),
+          )
+      : [];
+
+  // Assemblage optimisé
+  return prodRows.map((prod) => {
+    const prodVariants = varRows.filter((v) => v.productId === prod.id);
+    const primaryVariant = prodVariants.find((v) => v.isActive) ??
+      prodVariants[0] ?? {
+        id: '',
+        name: 'Standard',
+        isActive: false,
+      };
+
+    const prodPhotos = photoRows.filter((p) => p.productId === prod.id);
+    const uniqueChecksums = new Set(prodPhotos.map((p) => p.checksumSha256).filter(Boolean));
+    const hasRequiredPhotos = uniqueChecksums.size >= 3;
+    const heroPhotoPublicId = prodPhotos[0]?.publicId ?? null;
+
+    const activePlan = activePlanRows.find((p) => p.productVariantId === primaryVariant.id);
+    const priceAmountMinor = activePlan ? Number(activePlan.priceAmountMinor) : null;
+
+    const variantInvs = invRows.filter((i) => i.productVariantId === primaryVariant.id);
+    const activeInventoryCount = variantInvs.filter((i) => i.status === 'ACTIVE').length;
+    const totalInventoryCount = variantInvs.length;
+
+    const hasIdentity = (prod.description ?? '').trim().length > 0 && primaryVariant.isActive;
+    const hasPricing = priceAmountMinor !== null;
+    const hasInventory = activeInventoryCount >= 1;
+
+    const isPublishable = hasIdentity && hasRequiredPhotos && hasPricing && hasInventory;
+
+    const statusSummary = resolveBikeStatusSummary(
+      prod.publicationStatus as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
+      isPublishable,
+    );
+
+    return {
+      id: prod.id,
+      name: prod.name,
+      slug: prod.slug,
+      categoryName: prod.categoryName,
+      variantName: primaryVariant.name,
+      variantId: primaryVariant.id,
+      publicationStatus: prod.publicationStatus as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
+      photoCount: uniqueChecksums.size,
+      hasRequiredPhotos,
+      heroPhotoPublicId,
+      priceAmountMinor,
+      activeInventoryCount,
+      totalInventoryCount,
+      isPublishable,
+      statusSummary,
+    };
+  });
 }

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { getUnifiedBike } from './unified-bike';
+import { getUnifiedBike, listUnifiedBikes } from './unified-bike';
 import type { DatabaseClient } from '@uttily/database';
 
 describe('UnifiedBike Read Model (Core Unit Tests)', () => {
-  it('agrège les 4 piliers et calcule la readiness correctement', async () => {
+  it('agrège les 4 piliers et calcule la readiness correctement (DRAFT -> READY_TO_PUBLISH)', async () => {
     let selectIndex = 0;
 
     const mockDb = {
@@ -53,10 +53,10 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
                     publicId: 'pub-1',
                     storageKey: 'storage-1',
                     sortOrder: 0,
-                    slotKey: 'hero-profile',
+                    slotType: 'HERO_PROFILE',
                     fileState: 'AVAILABLE',
                     byteSize: 1024,
-                    mimeType: 'image/jpeg',
+                    contentType: 'image/jpeg',
                     checksumSha256: 'sha-1',
                     createdAt: new Date(),
                   },
@@ -65,10 +65,10 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
                     publicId: 'pub-2',
                     storageKey: 'storage-2',
                     sortOrder: 1,
-                    slotKey: 'three-quarter',
+                    slotType: 'THREE_QUARTER_FRONT',
                     fileState: 'AVAILABLE',
                     byteSize: 1024,
-                    mimeType: 'image/jpeg',
+                    contentType: 'image/jpeg',
                     checksumSha256: 'sha-2',
                     createdAt: new Date(),
                   },
@@ -77,10 +77,10 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
                     publicId: 'pub-3',
                     storageKey: 'storage-3',
                     sortOrder: 2,
-                    slotKey: 'secondary-view',
+                    slotType: 'SECONDARY_VIEW',
                     fileState: 'AVAILABLE',
                     byteSize: 1024,
-                    mimeType: 'image/jpeg',
+                    contentType: 'image/jpeg',
                     checksumSha256: 'sha-3',
                     createdAt: new Date(),
                   },
@@ -118,8 +118,8 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
               orderBy: vi.fn().mockResolvedValue([
                 {
                   id: 'inv-1',
-                  locationId: 'loc-1',
-                  sku: 'CAN-001',
+                  currentLocationId: 'loc-1',
+                  internalSku: 'CAN-001',
                   serialNumber: 'SN-001',
                   status: 'ACTIVE',
                   notes: null,
@@ -127,8 +127,8 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
                 },
                 {
                   id: 'inv-2',
-                  locationId: 'loc-1',
-                  sku: 'CAN-002',
+                  currentLocationId: 'loc-1',
+                  internalSku: 'CAN-002',
                   serialNumber: 'SN-002',
                   status: 'ACTIVE',
                   notes: null,
@@ -163,8 +163,182 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
     expect(bike.inventory.activeCount).toBe(2);
     expect(bike.inventory.totalCount).toBe(2);
 
-    // 5. Readiness
+    // 5. Readiness fail-closed
     expect(bike.readiness.isPublishable).toBe(true);
     expect(bike.readiness.statusSummary).toBe('READY_TO_PUBLISH');
+  });
+
+  it('distingue BOOKABLE de PUBLISHED_UNAVAILABLE selon la disponibilité réelle', async () => {
+    let selectIndex = 0;
+
+    const mockDb = {
+      select: vi.fn().mockImplementation(() => ({
+        from: vi.fn().mockImplementation(() => ({
+          innerJoin: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([
+                {
+                  id: 'prod-pub',
+                  organizationId: 'org-1',
+                  categoryId: 'cat-1',
+                  categoryName: 'Vélo Urbain',
+                  categorySlug: 'velo-urbain',
+                  name: 'Vélo Publié Sans Stock',
+                  slug: 'velo-publie-sans-stock',
+                  description: 'Un vélo publié mais dont tous les exemplaires sont en réparation.',
+                  publicationStatus: 'PUBLISHED',
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                },
+              ]),
+            }),
+          }),
+          where: vi.fn().mockImplementation(() => {
+            selectIndex++;
+            if (selectIndex === 1) {
+              return {
+                orderBy: vi.fn().mockResolvedValue([
+                  {
+                    id: 'var-1',
+                    name: 'Standard',
+                    skuSuffix: null,
+                    isActive: true,
+                    attributes: null,
+                  },
+                ]),
+              };
+            }
+            if (selectIndex === 2) {
+              // 3 photos ok
+              return {
+                orderBy: vi.fn().mockResolvedValue([
+                  {
+                    id: 'p1',
+                    publicId: 'pub1',
+                    fileState: 'AVAILABLE',
+                    checksumSha256: 's1',
+                    sortOrder: 0,
+                  },
+                  {
+                    id: 'p2',
+                    publicId: 'pub2',
+                    fileState: 'AVAILABLE',
+                    checksumSha256: 's2',
+                    sortOrder: 1,
+                  },
+                  {
+                    id: 'p3',
+                    publicId: 'pub3',
+                    fileState: 'AVAILABLE',
+                    checksumSha256: 's3',
+                    sortOrder: 2,
+                  },
+                ]),
+              };
+            }
+            if (selectIndex === 3) {
+              // tarif ok
+              return {
+                orderBy: vi.fn().mockResolvedValue([
+                  {
+                    id: 'plan-1',
+                    organizationId: 'org-1',
+                    productVariantId: 'var-1',
+                    lifecycleState: 'ACTIVE',
+                    priceAmountMinor: 3000,
+                  },
+                ]),
+              };
+            }
+            if (selectIndex === 4 || selectIndex === 5) return [];
+            // Inventaire : 0 actif, 2 en maintenance
+            return {
+              orderBy: vi.fn().mockResolvedValue([
+                {
+                  id: 'inv-1',
+                  status: 'MAINTENANCE',
+                  currentLocationId: 'loc-1',
+                  internalSku: 'SKU1',
+                },
+                {
+                  id: 'inv-2',
+                  status: 'MAINTENANCE',
+                  currentLocationId: 'loc-1',
+                  internalSku: 'SKU2',
+                },
+              ]),
+            };
+          }),
+        })),
+      })),
+    } as unknown as DatabaseClient;
+
+    const bike = await getUnifiedBike(mockDb, 'org-1', 'prod-pub');
+    expect(bike).not.toBeNull();
+    // Le produit est marqué PUBLISHED mais n'a aucun stock actif => PUBLISHED_UNAVAILABLE
+    expect(bike?.readiness.isPublishable).toBe(false);
+    expect(bike?.readiness.statusSummary).toBe('PUBLISHED_UNAVAILABLE');
+  });
+
+  it('listUnifiedBikes liste l’ensemble des vélos d’une organisation', async () => {
+    let selectIndex = 0;
+
+    const mockDb = {
+      select: vi.fn().mockImplementation(() => ({
+        from: vi.fn().mockImplementation(() => ({
+          innerJoin: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              orderBy: vi.fn().mockResolvedValue([
+                {
+                  id: 'p-1',
+                  name: 'Vélo Ville',
+                  slug: 'velo-ville',
+                  description: 'Description vélo',
+                  publicationStatus: 'PUBLISHED',
+                  categoryName: 'Urbain',
+                  createdAt: new Date(),
+                },
+              ]),
+            }),
+          }),
+          where: vi.fn().mockImplementation(() => {
+            selectIndex++;
+            // 2. variantes
+            if (selectIndex === 1) {
+              return {
+                orderBy: vi
+                  .fn()
+                  .mockResolvedValue([
+                    { id: 'v-1', productId: 'p-1', name: 'Taille Unique', isActive: true },
+                  ]),
+              };
+            }
+            // 3. photos
+            if (selectIndex === 2) {
+              return {
+                orderBy: vi.fn().mockResolvedValue([
+                  { productId: 'p-1', publicId: 'pub-1', checksumSha256: 's1', sortOrder: 0 },
+                  { productId: 'p-1', publicId: 'pub-2', checksumSha256: 's2', sortOrder: 1 },
+                  { productId: 'p-1', publicId: 'pub-3', checksumSha256: 's3', sortOrder: 2 },
+                ]),
+              };
+            }
+            // 4. plans actifs
+            if (selectIndex === 3) {
+              return [{ productVariantId: 'v-1', priceAmountMinor: 2000 }];
+            }
+            // 5. inventaire
+            return [{ productVariantId: 'v-1', status: 'ACTIVE' }];
+          }),
+        })),
+      })),
+    } as unknown as DatabaseClient;
+
+    const bikes = await listUnifiedBikes(mockDb, 'org-1');
+    expect(bikes).toHaveLength(1);
+    expect(bikes[0]?.name).toBe('Vélo Ville');
+    expect(bikes[0]?.statusSummary).toBe('BOOKABLE');
+    expect(bikes[0]?.priceAmountMinor).toBe(2000);
+    expect(bikes[0]?.activeInventoryCount).toBe(1);
   });
 });

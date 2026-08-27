@@ -30,7 +30,7 @@ export default async function UnifiedBikePage({
         </Link>
         {' › '}
         <Link
-          href={`/dashboard/${organizationId}/catalog`}
+          href={`/dashboard/${organizationId}/bikes`}
           style={{ color: '#0284c7', textDecoration: 'none' }}
         >
           Mes Vélos
@@ -56,12 +56,30 @@ export default async function UnifiedBikePage({
           </div>
 
           <div>
-            {bike.product.publicationStatus === 'PUBLISHED' ? (
-              <span className={styles.statusBadgePublished}>🚀 En ligne & Réservable</span>
-            ) : bike.readiness.isPublishable ? (
-              <span className={styles.statusBadgeReady}>✓ Prêt à être publié</span>
-            ) : (
-              <span className={styles.statusBadgeIncomplete}>● Incomplet pour publication</span>
+            {bike.readiness.statusSummary === 'BOOKABLE' && (
+              <span className={styles.statusBadgePublished}>🟢 En ligne & Réservable</span>
+            )}
+            {bike.readiness.statusSummary === 'PUBLISHED_UNAVAILABLE' && (
+              <span
+                className={styles.statusBadgeIncomplete}
+                style={{ borderColor: '#fca5a5', color: '#dc2626', background: '#fef2f2' }}
+              >
+                🔴 En ligne (Indisponible)
+              </span>
+            )}
+            {bike.readiness.statusSummary === 'READY_TO_PUBLISH' && (
+              <span className={styles.statusBadgeReady}>🔵 Prêt à être publié</span>
+            )}
+            {bike.readiness.statusSummary === 'INCOMPLETE' && (
+              <span className={styles.statusBadgeIncomplete}>⚪ Configuration incomplète</span>
+            )}
+            {bike.readiness.statusSummary === 'ARCHIVED' && (
+              <span
+                className={styles.statusBadgeIncomplete}
+                style={{ color: '#64748b', background: '#f1f5f9' }}
+              >
+                ⚫ Archivé
+              </span>
             )}
           </div>
         </div>

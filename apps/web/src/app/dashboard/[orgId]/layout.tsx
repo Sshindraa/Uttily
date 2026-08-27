@@ -48,8 +48,8 @@ export default async function OrganizationLayout({
             <Link href={`/dashboard/${orgId}`} className={styles.navLink}>
               📊 Tableau de bord
             </Link>
-            <Link href={`/dashboard/${orgId}/catalog`} className={styles.navLink}>
-              🚲 Catalogue
+            <Link href={`/dashboard/${orgId}/bikes`} className={styles.navLink}>
+              🚲 Mes vélos
             </Link>
             <Link href={`/dashboard/${orgId}/inventory`} className={styles.navLink}>
               📦 Inventaire
