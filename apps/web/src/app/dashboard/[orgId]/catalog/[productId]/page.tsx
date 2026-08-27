@@ -29,6 +29,40 @@ export default async function ProductDetailPage({
 
   return (
     <main>
+      <div
+        style={{
+          padding: '12px 16px',
+          background: '#f0f9ff',
+          border: '1.5px solid #bae6fd',
+          borderRadius: '12px',
+          marginBottom: '20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <div>
+          <strong style={{ color: '#0369a1' }}>✨ Nouvelle expérience : Fiche Vélo Unifiée</strong>
+          <p style={{ margin: 0, fontSize: '0.88rem', color: '#0284c7' }}>
+            Pilotez l’identité, les photos, le tarif et les exemplaires sur un écran unique.
+          </p>
+        </div>
+        <Link
+          href={`/dashboard/${organizationId}/bikes/${productId}`}
+          style={{
+            padding: '8px 14px',
+            background: '#0284c7',
+            color: '#fff',
+            borderRadius: '8px',
+            fontWeight: 700,
+            textDecoration: 'none',
+            fontSize: '0.9rem',
+          }}
+        >
+          Ouvrir la Fiche Vélo →
+        </Link>
+      </div>
+
       <h1>{product.name}</h1>
       <p>
         Statut : <strong>{product.publicationStatus}</strong>

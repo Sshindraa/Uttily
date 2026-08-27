@@ -14,3 +14,4 @@ export * from './variants';
 export * from './inventory';
 export * from './movements';
 export * from './read-models';
+export * from './unified-bike';
