@@ -7,3 +7,4 @@ export {
   type ReadinessMilestone,
   type OrganizationOnboardingReadiness,
 } from './onboarding-readiness';
+export * from './unified-onboarding-progress';

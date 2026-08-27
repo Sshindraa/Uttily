@@ -1,6 +1,9 @@
 import { type ReactElement } from 'react';
 import Link from 'next/link';
-import type { OrganizationOnboardingReadiness, ReadinessMilestone } from '@uttily/core';
+import {
+  type OrganizationOnboardingReadiness,
+  resolveUnifiedOnboardingProgress,
+} from '@uttily/core';
 import styles from './onboarding-readiness-card.module.css';
 
 interface OnboardingReadinessCardProps {
@@ -12,19 +15,21 @@ export function OnboardingReadinessCard({
   orgId,
   readiness,
 }: OnboardingReadinessCardProps): ReactElement | null {
+  const progress = resolveUnifiedOnboardingProgress(orgId, readiness);
+
   // Mode exploitation à 100 % (toutes les étapes sont complétées)
-  if (readiness.isReadyForReservations) {
+  if (progress.isReadyForReservations) {
     return (
       <section className={styles.healthCard} aria-labelledby="health-bar-title">
         <div>
           <h2
             id="health-bar-title"
-            style={{ margin: '0 0 4px 0', fontSize: '1.15rem', color: '#166534' }}
+            style={{ margin: '0 0 4px 0', fontSize: '1.2rem', fontWeight: 800, color: '#166534' }}
           >
-            🚀 Votre boutique est en ligne et opérationnelle
+            🚀 Votre boutique est active & en ligne
           </h2>
-          <p style={{ margin: 0, fontSize: '0.88rem', color: '#15803d' }}>
-            Prête à recevoir des réservations en temps réel.
+          <p style={{ margin: 0, fontSize: '0.9rem', color: '#15803d' }}>
+            Prête à recevoir des réservations réelles en temps réel.
           </p>
         </div>
 
@@ -36,168 +41,122 @@ export function OnboardingReadinessCard({
             <span style={{ color: '#10b981' }}>●</span> Versements bancaires activés
           </span>
           <span className={styles.healthBadge}>
-            <span style={{ color: '#10b981' }}>●</span> Tarifs & Flotte prêts
+            <span style={{ color: '#10b981' }}>●</span> Flotte & Tarifs en ligne
           </span>
+          <Link href={`/dashboard/${orgId}/bikes`} className={styles.actionBtnPrimary}>
+            Voir mes vélos en ligne →
+          </Link>
         </div>
       </section>
     );
   }
-
-  const getMilestoneInfo = (
-    milestone: ReadinessMilestone,
-  ): { title: string; ctaLabel: string; href: string } => {
-    const { key, details } = milestone;
-
-    switch (key) {
-      case 'ORGANIZATION':
-        return {
-          title: '1. Entreprise & Raison sociale',
-          ctaLabel: 'Compléter',
-          href: `/dashboard/${orgId}/settings`,
-        };
-      case 'LOCATION':
-        return {
-          title: '2. Boutique & Point de retrait',
-          ctaLabel: 'Configurer',
-          href: `/dashboard/${orgId}/locations/new`,
-        };
-      case 'PRIMARY_PRODUCT':
-        return {
-          title: '3. Premier vélo au catalogue',
-          ctaLabel: 'Ajouter un vélo',
-          href: `/dashboard/${orgId}/catalog/new`,
-        };
-      case 'PHOTOS':
-        return {
-          title: '4. 3 photos (Photo Coach)',
-          ctaLabel: details.productId ? 'Ajouter les photos' : 'Voir le catalogue',
-          href: details.productId
-            ? `/dashboard/${orgId}/catalog/${details.productId}`
-            : `/dashboard/${orgId}/catalog`,
-        };
-      case 'PRICING':
-        return {
-          title: '5. Tarification journalière',
-          ctaLabel:
-            details.productId && details.variantId ? 'Définir le tarif' : 'Voir le catalogue',
-          href:
-            details.productId && details.variantId
-              ? `/dashboard/${orgId}/catalog/${details.productId}/variants/${details.variantId}/pricing`
-              : `/dashboard/${orgId}/catalog`,
-        };
-      case 'INVENTORY':
-        return {
-          title: '6. Flotte physique disponible',
-          ctaLabel: 'Ajouter mes vélos',
-          href: `/dashboard/${orgId}/inventory/new`,
-        };
-      case 'PAYMENTS':
-        return {
-          title: '7. Recevoir mes virements',
-          ctaLabel: 'Activer mes virements',
-          href: `/dashboard/${orgId}/finances`,
-        };
-    }
-  };
-
-  // Identifie le premier jalon incomplet pour le mettre en valeur
-  const firstIncompleteIndex = readiness.milestones.findIndex((m) => !m.completed);
 
   return (
     <section className={styles.card} aria-labelledby="readiness-card-title">
       <div className={styles.headerRow}>
         <div className={styles.titleBlock}>
           <h2 id="readiness-card-title" className={styles.title}>
-            <span>⚡</span> Votre boutique est prête à {readiness.percentage} %
+            <span>⚡</span> Créer ma boutique Uttily
           </h2>
           <p className={styles.subtitle}>
-            {readiness.completedCount} sur {readiness.totalCount} étapes terminées pour publier
-            votre offre.
+            {progress.completedCount} sur {progress.totalCount} étapes complétées pour ouvrir votre
+            boutique.
           </p>
         </div>
 
         <div className={styles.percentBadge}>
-          {readiness.percentage} % • {readiness.completedCount}/{readiness.totalCount}
+          {progress.percentage} % • Étape {progress.currentStepNum}/{progress.totalCount}
         </div>
       </div>
 
+      {/* Barre de progression des 4 grandes étapes */}
       <div className={styles.progressBarContainer}>
         <div
-          className={styles.progressBarFill}
-          style={{ width: `${Math.max(readiness.percentage, 5)}%` }}
+          className={`${styles.progressBarFill} ${
+            progress.percentage === 100 ? styles.progressBarComplete : ''
+          }`}
+          style={{ width: `${Math.max(progress.percentage, 8)}%` }}
         />
       </div>
 
-      {/* Message clé si la configuration (1 à 6) est terminée mais que les virements manquent */}
-      {readiness.isConfigurationComplete && !readiness.isReadyForReservations && (
+      {/* Moment Clé : Quand l'activité, la boutique et le premier vélo sont prêts et qu'il ne reste que les virements */}
+      {progress.isConfigurationComplete && !progress.isReadyForReservations && (
         <div className={styles.celebrationBanner}>
-          <div className={styles.celebrationTitle}>🎉 Votre configuration est terminée !</div>
+          <div className={styles.celebrationTitle}>🎉 Votre premier vélo est prêt !</div>
           <div className={styles.celebrationText}>
-            Votre offre est prête à être publiée. Activez vos versements pour recevoir l’argent de
-            vos premières réservations.
+            {progress.firstBike.name ? <strong>{progress.firstBike.name} : </strong> : null}
+            {progress.firstBike.photosCount}/3 photos ✓ • Tarif configuré ✓ •{' '}
+            {progress.firstBike.inventoryCount} vélo(s) en flotte ✓.
+          </div>
+          <div style={{ marginTop: '8px', fontSize: '0.9rem' }}>
+            Une dernière étape pour commencer à louer : activez vos virements bancaires.
           </div>
         </div>
       )}
 
-      {/* Liste des 7 jalons */}
-      <ul className={styles.milestonesList} aria-label="Jalons de préparation de la boutique">
-        {readiness.milestones.map((milestone, idx) => {
-          const info = getMilestoneInfo(milestone);
-          const isCurrentActiveStep = idx === firstIncompleteIndex;
-          const isLastStep = milestone.key === 'PAYMENTS' && readiness.completedCount === 6;
+      {/* Grille des 4 étapes unifiées */}
+      <ul className={styles.milestonesList} aria-label="Étapes d'ouverture de votre boutique">
+        {progress.steps.map((step) => {
+          const isActive = progress.currentStep?.key === step.key;
 
           return (
             <li
-              key={milestone.key}
+              key={step.key}
               className={`${styles.milestoneItem} ${
-                milestone.completed
+                step.completed
                   ? styles.milestoneItemDone
-                  : isCurrentActiveStep
+                  : isActive
                     ? styles.milestoneItemActive
                     : ''
               }`}
             >
               <div className={styles.milestoneLeft}>
-                {milestone.completed ? (
-                  <span className={styles.iconDone} aria-label="Complété">
-                    ✓
-                  </span>
-                ) : isCurrentActiveStep ? (
-                  <span className={styles.iconActive} aria-label="Étape en cours">
-                    ●
-                  </span>
+                {step.completed ? (
+                  <span className={styles.iconDone}>✓</span>
+                ) : isActive ? (
+                  <span className={styles.iconActive}>●</span>
                 ) : (
-                  <span className={styles.iconPending} aria-label="À compléter">
-                    ○
-                  </span>
+                  <span className={styles.iconPending}>○</span>
                 )}
 
                 <div className={styles.milestoneTitleWrap}>
-                  <span
+                  <div
                     className={`${styles.milestoneLabel} ${
-                      milestone.completed ? styles.milestoneLabelDone : ''
+                      step.completed ? styles.milestoneLabelDone : ''
                     }`}
                   >
-                    {info.title}
-                  </span>
-                  {isCurrentActiveStep && !milestone.completed && (
-                    <span className={styles.badgeActiveStep}>
-                      {isLastStep ? '★ Dernière étape requise' : '👉 Étape recommandée'}
-                    </span>
+                    {step.label}
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: '#64748b' }}>{step.description}</div>
+                  {step.key === 'FIRST_BIKE' && progress.firstBike.name && !step.completed && (
+                    <div
+                      style={{
+                        fontSize: '0.78rem',
+                        color: '#0284c7',
+                        fontWeight: 700,
+                        marginTop: '2px',
+                      }}
+                    >
+                      🚲 {progress.firstBike.name} ({progress.firstBike.photosCount}/3 photos)
+                    </div>
                   )}
                 </div>
               </div>
 
-              {!milestone.completed && (
-                <Link
-                  href={info.href}
-                  className={
-                    isCurrentActiveStep ? styles.actionBtnPrimary : styles.actionBtnSecondary
-                  }
-                >
-                  {info.ctaLabel} →
-                </Link>
-              )}
+              <div>
+                {step.completed ? (
+                  <Link href={step.href} className={styles.actionBtnSecondary}>
+                    Modifier
+                  </Link>
+                ) : (
+                  <Link
+                    href={step.href}
+                    className={isActive ? styles.actionBtnPrimary : styles.actionBtnSecondary}
+                  >
+                    {step.ctaLabel} →
+                  </Link>
+                )}
+              </div>
             </li>
           );
         })}
