@@ -9,6 +9,9 @@ export default defineConfig({
       '@/': fileURLToPath(new URL('./src/', import.meta.url)),
     },
   },
+  esbuild: {
+    jsx: 'automatic',
+  },
   test: {
     // Les tests d'intégration PostgreSQL créent une base de test et
     // appliquent les migrations dans beforeAll ; ce hook peut dépasser

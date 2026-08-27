@@ -8,6 +8,9 @@ import type { ActionResult } from '@uttily/contracts';
 import type { ProductPhotoSummary } from '@uttily/core';
 import styles from './product-photos-manager.module.css';
 
+import { PhotoCoachModal, PhotoProgress } from '@/components/photo-coach';
+import type { PhotoSlotType } from '@uttily/contracts';
+
 type UploadState = ActionResult<ProductPhotoSummary> | { ok: true; data: null };
 type DeleteState = ActionResult<null> | { ok: true; data: null };
 const initialUploadState: UploadState = { ok: true, data: null };
@@ -22,7 +25,15 @@ export function ProductPhotosManager({
   productId: string;
   photos: ProductPhotoSummary[];
 }): React.ReactElement {
+  const router = useRouter();
+  const [isCoachOpen, setIsCoachOpen] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<PhotoSlotType>('FULL_BIKE');
   const availableCount = photos.filter((photo) => photo.fileState === 'AVAILABLE').length;
+
+  const handleOpenCoach = (slot: PhotoSlotType = 'FULL_BIKE') => {
+    setSelectedSlot(slot);
+    setIsCoachOpen(true);
+  };
 
   return (
     <section className={styles.section} aria-labelledby="product-photos-heading">
@@ -31,6 +42,31 @@ export function ProductPhotosManager({
         {availableCount} photo(s) valide(s). Trois photos distinctes sont nécessaires avant la
         publication. JPEG, PNG ou WebP, 10 Mo maximum, 200 à 8000 pixels.
       </p>
+
+      <div className={styles.coachBar}>
+        <PhotoProgress completedSlotsCount={Math.min(availableCount, 3)} totalRequiredSlots={3} />
+        <div>
+          <button
+            type="button"
+            className={styles.coachButton}
+            onClick={() => handleOpenCoach('FULL_BIKE')}
+          >
+            📸 Ouvrir le Photo Coach Uttily (Prise de vue guidée)
+          </button>
+        </div>
+      </div>
+
+      <PhotoCoachModal
+        orgId={orgId}
+        productId={productId}
+        slotType={selectedSlot}
+        isOpen={isCoachOpen}
+        onClose={() => setIsCoachOpen(false)}
+        onPhotoUploaded={() => {
+          router.refresh();
+        }}
+      />
+
       <PhotoUploadForm orgId={orgId} productId={productId} />
       {photos.length === 0 ? (
         <p>Aucune photo ajoutée.</p>

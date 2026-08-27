@@ -1,0 +1,43 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.illustration {
+  width: 140px;
+  height: 80px;
+  color: #0284c7;
+}
+
+.statusText {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.stepIndicators {
+  display: flex;
+  gap: 8px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  transition: background 0.3s ease;
+}
+
+.dotActive {
+  background: #0284c7;
+}
+
+.dotDone {
+  background: #10b981;
+}

@@ -1,0 +1,181 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #090d16;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bikeGraphic {
+  width: 100%;
+  height: 100%;
+  animation: recoilMotion 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  color: #38bdf8;
+}
+
+@keyframes recoilMotion {
+  0% {
+    transform: scale(1.3) translate(-30px, 10px);
+    opacity: 0.85;
+  }
+  25% {
+    transform: scale(1.3) translate(-30px, 10px);
+    opacity: 0.9;
+  }
+  75% {
+    transform: scale(0.88) translate(0px, 0px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.88) translate(0px, 0px);
+    opacity: 1;
+  }
+}
+
+.guideFrame {
+  position: absolute;
+  inset: 12px;
+  border: 2px dashed rgba(56, 189, 248, 0.4);
+  border-radius: 12px;
+  pointer-events: none;
+  animation: frameFadeIn 1.5s ease forwards;
+}
+
+@keyframes frameFadeIn {
+  0%, 50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.badgeAlert {
+  position: absolute;
+  top: 16px;
+  background: rgba(239, 68, 68, 0.9);
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  animation: alertFadeOut 1.5s ease forwards;
+}
+
+@keyframes alertFadeOut {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  60% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  100% {
+    opacity: 0;
+    display: none;
+  }
+}
+
+.badgeSuccess {
+  position: absolute;
+  top: 16px;
+  background: rgba(16, 185, 129, 0.9);
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  animation: successFadeIn 1.5s ease forwards;
+}
+
+@keyframes successFadeIn {
+  0%, 65% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.infoSection {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.hint {
+  font-size: 0.95rem;
+  color: #475569;
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.primaryBtn {
+  background: #0284c7;
+  color: #ffffff;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.primaryBtn:hover {
+  background: #0369a1;
+}
+
+.skipBtn {
+  background: transparent;
+  color: #64748b;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  border: 1px solid #cbd5e1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.skipBtn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}

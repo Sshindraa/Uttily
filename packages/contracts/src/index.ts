@@ -12,3 +12,4 @@ export * from './booking-confirmed-event';
 export * from './booking-amended-event';
 export * from './booking-amendment-requested-event';
 export * from './refund-requested-event';
+export * from './photo-slots';

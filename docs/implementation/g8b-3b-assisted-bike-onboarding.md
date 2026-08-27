@@ -4,7 +4,7 @@
 - **Date** : 2026-08-27
 - **Cible** : deux loueurs professionnels, vingt vélos réels à Lyon
 - **Décision produit** : onboarding accompagné par Uttily pendant le pilote
-- **Relie à** : `docs/product/g8b-3-france-lyon-bike-pilot.md`
+- **Relie à** : `docs/product/g8b-3-bike-pilot-visual-trust-and-coach.md`
 
 ## 1. Principe opérationnel
 

@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" width="100%" height="100%">
+  <!-- Master Vectoriel Vélo Uttily (bike-side-master.svg) -->
+  <!-- Source unique de vérité pour le Photo Coach & Ghost Overlays -->
+  <g id="bike-master" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    
+    <!-- Groupe 1: Roues (front & rear wheels) -->
+    <g id="wheels" stroke-width="6">
+      <!-- Roue arrière -->
+      <circle id="rear-wheel" cx="260" cy="400" r="115" />
+      <circle id="rear-hub" cx="260" cy="400" r="14" fill="currentColor" />
+      <!-- Roue avant -->
+      <circle id="front-wheel" cx="740" cy="400" r="115" />
+      <circle id="front-hub" cx="740" cy="400" r="14" fill="currentColor" />
+      <!-- Rayons indicatifs subtils -->
+      <path d="M260 285 v230 M145 400 h230 M740 285 v230 M625 400 h230" stroke-width="2" opacity="0.3" />
+    </g>
+
+    <!-- Groupe 2: Cadre géométrique (frame) -->
+    <g id="frame" stroke-width="8">
+      <!-- Bases arrière (chainstay) -->
+      <line id="chainstay" x1="260" y1="400" x2="470" y2="400" />
+      <!-- Haubans (seatstay) -->
+      <line id="seatstay" x1="260" y1="400" x2="410" y2="240" />
+      <!-- Tube de selle (seat tube) -->
+      <line id="seat-tube" x1="470" y1="400" x2="410" y2="240" />
+      <!-- Tube diagonal (down tube) -->
+      <line id="down-tube" x1="470" y1="400" x2="670" y2="230" />
+      <!-- Tube supérieur (top tube) -->
+      <line id="top-tube" x1="410" y1="240" x2="670" y2="230" />
+      <!-- Fourche avant (fork) -->
+      <line id="fork" x1="670" y1="230" x2="740" y2="400" />
+    </g>
+
+    <!-- Groupe 3: Poste de pilotage & Selle (handlebar & saddle) -->
+    <g id="cockpit" stroke-width="7">
+      <!-- Potence & Guidon urbain -->
+      <path id="handlebar" d="M670 230 L685 185 Q690 170 710 175 Q725 180 730 195" />
+      <!-- Tige de selle & Selle -->
+      <path id="saddle" d="M410 240 L395 190 M365 190 Q395 185 435 190 Q405 198 365 190 Z" fill="currentColor" />
+    </g>
+
+    <!-- Groupe 4: Transmission anatomique (drivetrain - face au spectateur) -->
+    <g id="drivetrain">
+      <!-- Plateau & Boîtier de pédalier -->
+      <circle id="chainring" cx="470" cy="400" r="34" stroke-width="5" />
+      <circle id="bottom-bracket" cx="470" cy="400" r="10" fill="currentColor" />
+      <!-- Manivelle & Pédale droite -->
+      <line id="crank" x1="470" y1="400" x2="470" y2="455" stroke-width="6" />
+      <rect id="pedal" x="455" y="455" width="30" height="8" rx="3" fill="currentColor" />
+      <!-- Cassette arrière -->
+      <circle id="cassette" cx="260" cy="400" r="22" stroke-width="4" />
+      <!-- Chaîne tendue -->
+      <path id="chain" d="M470 366 L260 378 M260 422 L470 434" stroke-width="4" stroke-dasharray="8 4" />
+      <!-- Dérailleur arrière -->
+      <path id="derailleur" d="M260 415 L250 435 L262 445" stroke-width="4" />
+    </g>
+
+    <!-- Groupe 5: Freins & Détails sécurité (brakes) -->
+    <g id="brakes" stroke-width="4">
+      <path id="front-brake" d="M720 330 Q725 340 730 350" />
+      <path id="rear-brake" d="M295 305 Q290 315 285 325" />
+    </g>
+
+    <!-- Groupe 6: Repère de cadrage et marges (framing guide) -->
+    <rect id="framing-guide" x="80" y="70" width="840" height="460" rx="20" stroke-width="3" stroke-dasharray="12 8" opacity="0.4" />
+  </g>
+</svg>

@@ -4,7 +4,7 @@
 > la première zone commerciale. Le pilote vise les particuliers en location
 > ponctuelle, avec deux loueurs professionnels et vingt vélos de ville ou
 > électriques. Aucun partenaire n'est encore engagé. Voir
-> `docs/product/g8b-3-france-lyon-bike-pilot.md` pour le cadrage actuel ; les
+> `docs/product/g8b-3-bike-pilot-visual-trust-and-coach.md` pour le cadrage actuel ; les
 > mentions historiques ci-dessous décrivent la baseline du 2026-08-15.
 
 **Date d'établissement :** 2026-08-15
