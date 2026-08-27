@@ -38,10 +38,16 @@ describe('Notifications — Idempotency Keys', () => {
       `booking:${bookingId}:cancelled:merchant:v1`,
     );
     expect(buildPickupReminderCustomerKey(bookingId)).toBe(
-      `booking:${bookingId}:pickup_reminder:customer:v1`,
+      `booking:${bookingId}:pickup_reminder:customer:r0:v1`,
+    );
+    expect(buildPickupReminderCustomerKey(bookingId, 2)).toBe(
+      `booking:${bookingId}:pickup_reminder:customer:r2:v1`,
     );
     expect(buildReturnReminderCustomerKey(bookingId)).toBe(
-      `booking:${bookingId}:return_reminder:customer:v1`,
+      `booking:${bookingId}:return_reminder:customer:r0:v1`,
+    );
+    expect(buildReturnReminderCustomerKey(bookingId, 1)).toBe(
+      `booking:${bookingId}:return_reminder:customer:r1:v1`,
     );
     expect(buildRefundConfirmedCustomerKey(refundId)).toBe(
       `refund:${refundId}:succeeded:customer:v1`,

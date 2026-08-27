@@ -27,10 +27,10 @@ export function buildRefundActionRequiredMerchantKey(refundId: string): string {
   return `refund:${refundId}:action_required:merchant:v1`;
 }
 
-export function buildPickupReminderCustomerKey(bookingId: string): string {
-  return `booking:${bookingId}:pickup_reminder:customer:v1`;
+export function buildPickupReminderCustomerKey(bookingId: string, revision = 0): string {
+  return `booking:${bookingId}:pickup_reminder:customer:r${revision}:v1`;
 }
 
-export function buildReturnReminderCustomerKey(bookingId: string): string {
-  return `booking:${bookingId}:return_reminder:customer:v1`;
+export function buildReturnReminderCustomerKey(bookingId: string, revision = 0): string {
+  return `booking:${bookingId}:return_reminder:customer:r${revision}:v1`;
 }

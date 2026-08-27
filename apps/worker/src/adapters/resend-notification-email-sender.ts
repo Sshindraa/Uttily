@@ -96,16 +96,27 @@ export class ResendNotificationEmailSender implements NotificationEmailSender {
       }
 
       const msg = err instanceof Error ? err.message : '';
-      if (
-        msg.includes('timeout') ||
-        msg.includes('ECONNRESET') ||
-        msg.includes('ETIMEDOUT') ||
-        msg.includes('ENOTFOUND')
-      ) {
+
+      // Connexion impossible avant l'envoi de la requête -> TRANSIENT
+      if (msg.includes('ENOTFOUND') || msg.includes('ECONNREFUSED')) {
         throw new NotificationSendError(
           'TRANSIENT',
-          'NETWORK_TIMEOUT',
-          'Erreur de connexion réseau au fournisseur.',
+          'NETWORK_UNREACHABLE',
+          'Impossible de joindre le fournisseur d’emails.',
+        );
+      }
+
+      // Timeout ou coupure après le début de la requête -> UNCERTAIN
+      if (
+        msg.includes('timeout') ||
+        msg.includes('ETIMEDOUT') ||
+        msg.includes('ECONNRESET') ||
+        msg.includes('AbortError')
+      ) {
+        throw new NotificationSendError(
+          'UNCERTAIN',
+          'NETWORK_TIMEOUT_UNCERTAIN',
+          'Délai d’attente dépassé ou connexion interrompue pendant l’appel fournisseur.',
         );
       }
 

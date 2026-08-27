@@ -166,7 +166,33 @@ describe('ResendNotificationEmailSender', () => {
     });
   });
 
-  it('mappe les erreurs de réseau / timeout en TRANSIENT (NETWORK_TIMEOUT)', async () => {
+  it('mappe ENOTFOUND et ECONNREFUSED en TRANSIENT (NETWORK_UNREACHABLE)', async () => {
+    const fakeResend = {
+      emails: {
+        send: () => Promise.reject(new Error('getaddrinfo ENOTFOUND api.resend.com')),
+      },
+    } as unknown as Resend;
+
+    const sender = new ResendNotificationEmailSender(
+      { apiKey: 're_test', fromEmail: 'hello@uttily.com' },
+      fakeResend,
+    );
+
+    await expect(
+      sender.send({
+        recipient: 'client@example.com',
+        subject: 'S',
+        html: '<p>H</p>',
+        text: 'T',
+        idempotencyKey: 'k',
+      }),
+    ).rejects.toMatchObject({
+      category: 'TRANSIENT',
+      code: 'NETWORK_UNREACHABLE',
+    });
+  });
+
+  it('mappe les timeouts et coupures en UNCERTAIN (NETWORK_TIMEOUT_UNCERTAIN)', async () => {
     const fakeResend = {
       emails: {
         send: () => Promise.reject(new Error('connect ETIMEDOUT 1.2.3.4:443')),
@@ -187,8 +213,8 @@ describe('ResendNotificationEmailSender', () => {
         idempotencyKey: 'k',
       }),
     ).rejects.toMatchObject({
-      category: 'TRANSIENT',
-      code: 'NETWORK_TIMEOUT',
+      category: 'UNCERTAIN',
+      code: 'NETWORK_TIMEOUT_UNCERTAIN',
     });
   });
 });

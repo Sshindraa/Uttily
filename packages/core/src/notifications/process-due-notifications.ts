@@ -1,4 +1,4 @@
-import { and, eq, lte, or, sql } from 'drizzle-orm';
+import { and, eq, gte, lte, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import type { DatabaseClient } from '@uttily/database';
 import { bookings, notifications } from '@uttily/database';
@@ -18,6 +18,9 @@ export interface ProcessDueNotificationsDependencies {
 const DEFAULT_LEASE_DURATION_SECONDS = 60;
 const MAX_TRANSIENT_ATTEMPTS = 5;
 const RESEND_IDEMPOTENCY_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 heures
+
+const ALLOWED_PICKUP_REMINDER_BOOKING_STATUSES = ['CONFIRMED', 'READY_FOR_PICKUP'] as const;
+const ALLOWED_RETURN_REMINDER_BOOKING_STATUSES = ['ACTIVE'] as const;
 
 export async function processDueNotifications(
   deps: ProcessDueNotificationsDependencies,
@@ -81,6 +84,7 @@ export async function processDueNotifications(
   let failedCount = 0;
   let retriedCount = 0;
   let cancelledCount = 0;
+  let leaseLostCount = 0;
 
   if (claimedNotifications.length === 0) {
     return {
@@ -89,13 +93,14 @@ export async function processDueNotifications(
       failedCount: 0,
       retriedCount: 0,
       cancelledCount: 0,
+      leaseLostCount: 0,
     };
   }
 
   // 2. Traiter chaque notification individuellement
   for (const item of claimedNotifications) {
     try {
-      // 2a. Vérifier l'état actuel de la notification (si annulée entre temps)
+      // 2a. Vérifier l'état actuel de la notification (si annulée entre temps par un autre flux)
       const freshRows = await deps.db
         .select({ status: notifications.status })
         .from(notifications)
@@ -106,7 +111,42 @@ export async function processDueNotifications(
         continue;
       }
 
-      // 2b. Send-time eligibility check pour les rappels de réservation
+      // 2b. Cutoff 24h pré-appel : si une tentative précédente a eu lieu et a dépassé la fenêtre d'idempotence Resend (24h),
+      // ne JAMAIS faire de nouvel appel réseau aveugle. Basculer directement en requiresManualReview.
+      if (item.providerFirstAttemptStartedAt) {
+        const elapsedSinceFirst = now.getTime() - item.providerFirstAttemptStartedAt.getTime();
+        if (elapsedSinceFirst > RESEND_IDEMPOTENCY_WINDOW_MS) {
+          const updated = await deps.db
+            .update(notifications)
+            .set({
+              status: 'FAILED',
+              requiresManualReview: true,
+              leaseToken: null,
+              leaseUntil: null,
+              failureCode: 'PROVIDER_RESULT_UNCERTAIN_WINDOW_EXPIRED',
+              failedAt: sql`now()`,
+              updatedAt: sql`now()`,
+            })
+            .where(
+              and(
+                eq(notifications.id, item.id),
+                eq(notifications.status, 'SENDING'),
+                eq(notifications.leaseToken, leaseToken),
+                gte(notifications.leaseUntil, now),
+              ),
+            )
+            .returning({ id: notifications.id });
+
+          if (updated.length === 0) {
+            leaseLostCount++;
+          } else {
+            failedCount++;
+          }
+          continue;
+        }
+      }
+
+      // 2c. Send-time eligibility check strict en allowlist pour les rappels de réservation
       if (
         item.bookingId &&
         (item.template === 'PICKUP_REMINDER_CUSTOMER' ||
@@ -119,27 +159,19 @@ export async function processDueNotifications(
 
         const bookingStatus = bookingRows[0]?.status;
 
-        // Si la réservation est annulée ou n'existe plus, le rappel ne doit JAMAIS être envoyé
-        if (!bookingStatus || bookingStatus === 'CANCELLED') {
-          await deps.db
-            .update(notifications)
-            .set({
-              status: 'CANCELLED',
-              leaseToken: null,
-              leaseUntil: null,
-              updatedAt: sql`now()`,
-            })
-            .where(eq(notifications.id, item.id));
-          cancelledCount++;
-          continue;
+        let isEligible = false;
+        if (item.template === 'PICKUP_REMINDER_CUSTOMER') {
+          isEligible =
+            bookingStatus !== undefined &&
+            (ALLOWED_PICKUP_REMINDER_BOOKING_STATUSES as readonly string[]).includes(bookingStatus);
+        } else if (item.template === 'RETURN_REMINDER_CUSTOMER') {
+          isEligible =
+            bookingStatus !== undefined &&
+            (ALLOWED_RETURN_REMINDER_BOOKING_STATUSES as readonly string[]).includes(bookingStatus);
         }
 
-        // Pour le rappel de retour, si la réservation est déjà retournée / terminée
-        if (
-          item.template === 'RETURN_REMINDER_CUSTOMER' &&
-          (bookingStatus === 'RETURNED' || bookingStatus === 'CLOSED')
-        ) {
-          await deps.db
+        if (!isEligible) {
+          const updated = await deps.db
             .update(notifications)
             .set({
               status: 'CANCELLED',
@@ -147,16 +179,29 @@ export async function processDueNotifications(
               leaseUntil: null,
               updatedAt: sql`now()`,
             })
-            .where(eq(notifications.id, item.id));
-          cancelledCount++;
+            .where(
+              and(
+                eq(notifications.id, item.id),
+                eq(notifications.status, 'SENDING'),
+                eq(notifications.leaseToken, leaseToken),
+                gte(notifications.leaseUntil, now),
+              ),
+            )
+            .returning({ id: notifications.id });
+
+          if (updated.length === 0) {
+            leaseLostCount++;
+          } else {
+            cancelledCount++;
+          }
           continue;
         }
       }
 
-      // 2c. Rendu dynamique du template avec les données fraîches de PostgreSQL
+      // 2d. Rendu dynamique du template avec les données fraîches de PostgreSQL
       const rendered = await renderNotificationRecord(deps.db, item);
 
-      // 2d. Appel au fournisseur d'email avec la clé d'idempotence
+      // 2e. Appel au fournisseur d'email avec la clé d'idempotence
       const sendResult = await deps.emailSender.send({
         recipient: item.recipient,
         subject: rendered.subject,
@@ -165,8 +210,8 @@ export async function processDueNotifications(
         idempotencyKey: item.idempotencyKey,
       });
 
-      // 2e. Mettre à jour en base comme SENT et libérer le lease
-      await deps.db
+      // 2f. Fencing strict : Mettre à jour en base comme SENT uniquement si le lease nous appartient toujours
+      const updated = await deps.db
         .update(notifications)
         .set({
           status: 'SENT',
@@ -176,9 +221,21 @@ export async function processDueNotifications(
           sentAt: sql`now()`,
           updatedAt: sql`now()`,
         })
-        .where(eq(notifications.id, item.id));
+        .where(
+          and(
+            eq(notifications.id, item.id),
+            eq(notifications.status, 'SENDING'),
+            eq(notifications.leaseToken, leaseToken),
+            gte(notifications.leaseUntil, now),
+          ),
+        )
+        .returning({ id: notifications.id });
 
-      sentCount++;
+      if (updated.length === 0) {
+        leaseLostCount++;
+      } else {
+        sentCount++;
+      }
     } catch (err) {
       const currentAttempt = item.attemptCount + 1;
       const firstAttemptStartedAt = item.providerFirstAttemptStartedAt ?? now;
@@ -194,10 +251,10 @@ export async function processDueNotifications(
         failureCode = err.message.slice(0, 255);
       }
 
-      // Classification & politique de retry
+      // Classification & politique de retry avec fencing strict
       if (category === 'DETERMINISTIC') {
         // Échec définitif : ne pas retenter
-        await deps.db
+        const updated = await deps.db
           .update(notifications)
           .set({
             status: 'FAILED',
@@ -207,14 +264,27 @@ export async function processDueNotifications(
             failedAt: sql`now()`,
             updatedAt: sql`now()`,
           })
-          .where(eq(notifications.id, item.id));
-        failedCount++;
+          .where(
+            and(
+              eq(notifications.id, item.id),
+              eq(notifications.status, 'SENDING'),
+              eq(notifications.leaseToken, leaseToken),
+              gte(notifications.leaseUntil, now),
+            ),
+          )
+          .returning({ id: notifications.id });
+
+        if (updated.length === 0) {
+          leaseLostCount++;
+        } else {
+          failedCount++;
+        }
       } else if (
         category === 'UNCERTAIN' &&
         elapsedSinceFirstAttempt > RESEND_IDEMPOTENCY_WINDOW_MS
       ) {
         // Fenêtre d'idempotence Resend (24h) dépassée en état incertain -> Manual Review obligatoire
-        await deps.db
+        const updated = await deps.db
           .update(notifications)
           .set({
             status: 'FAILED',
@@ -225,11 +295,24 @@ export async function processDueNotifications(
             failedAt: sql`now()`,
             updatedAt: sql`now()`,
           })
-          .where(eq(notifications.id, item.id));
-        failedCount++;
+          .where(
+            and(
+              eq(notifications.id, item.id),
+              eq(notifications.status, 'SENDING'),
+              eq(notifications.leaseToken, leaseToken),
+              gte(notifications.leaseUntil, now),
+            ),
+          )
+          .returning({ id: notifications.id });
+
+        if (updated.length === 0) {
+          leaseLostCount++;
+        } else {
+          failedCount++;
+        }
       } else if (currentAttempt >= MAX_TRANSIENT_ATTEMPTS) {
         // Trop de retentatives -> Passage en FAILED + manual review
-        await deps.db
+        const updated = await deps.db
           .update(notifications)
           .set({
             status: 'FAILED',
@@ -240,14 +323,27 @@ export async function processDueNotifications(
             failedAt: sql`now()`,
             updatedAt: sql`now()`,
           })
-          .where(eq(notifications.id, item.id));
-        failedCount++;
+          .where(
+            and(
+              eq(notifications.id, item.id),
+              eq(notifications.status, 'SENDING'),
+              eq(notifications.leaseToken, leaseToken),
+              gte(notifications.leaseUntil, now),
+            ),
+          )
+          .returning({ id: notifications.id });
+
+        if (updated.length === 0) {
+          leaseLostCount++;
+        } else {
+          failedCount++;
+        }
       } else {
         // Erreur transitoire ou incertaine dans la fenêtre -> Backoff exponentiel
         const backoffSeconds = Math.min(3600, Math.pow(2, currentAttempt) * 10);
         const nextAttemptAt = new Date(now.getTime() + backoffSeconds * 1000);
 
-        await deps.db
+        const updated = await deps.db
           .update(notifications)
           .set({
             status: 'PENDING',
@@ -257,8 +353,21 @@ export async function processDueNotifications(
             failureCode,
             updatedAt: sql`now()`,
           })
-          .where(eq(notifications.id, item.id));
-        retriedCount++;
+          .where(
+            and(
+              eq(notifications.id, item.id),
+              eq(notifications.status, 'SENDING'),
+              eq(notifications.leaseToken, leaseToken),
+              gte(notifications.leaseUntil, now),
+            ),
+          )
+          .returning({ id: notifications.id });
+
+        if (updated.length === 0) {
+          leaseLostCount++;
+        } else {
+          retriedCount++;
+        }
       }
     }
   }
@@ -269,5 +378,6 @@ export async function processDueNotifications(
     failedCount,
     retriedCount,
     cancelledCount,
+    leaseLostCount,
   };
 }

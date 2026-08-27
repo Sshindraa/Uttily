@@ -50,4 +50,5 @@ export interface ProcessNotificationBatchResult {
   readonly failedCount: number;
   readonly retriedCount: number;
   readonly cancelledCount: number;
+  readonly leaseLostCount: number;
 }
