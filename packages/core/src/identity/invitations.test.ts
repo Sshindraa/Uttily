@@ -10,6 +10,11 @@ import {
 } from './invitations';
 
 describe('invitations tokens & security (Chantier 15.2 / 15.2.1)', () => {
+  const defaultTestSecret = 'test-invitation-signing-secret-with-high-entropy-123456789';
+  const defaultTestEnv: NodeJS.ProcessEnv = {
+    INVITATION_SECRET: defaultTestSecret,
+  };
+
   describe('getInvitationSecret (Chantier 15.2.1)', () => {
     it('lève InvitationSecretConfigurationError si INVITATION_SECRET est absent en production', () => {
       const prodEnv: NodeJS.ProcessEnv = {
@@ -17,7 +22,7 @@ describe('invitations tokens & security (Chantier 15.2 / 15.2.1)', () => {
       };
       expect(() => getInvitationSecret(prodEnv)).toThrow(InvitationSecretConfigurationError);
       expect(() => getInvitationSecret(prodEnv)).toThrow(
-        'INVITATION_SECRET est requis et doit être configuré en production.',
+        'INVITATION_SECRET est requis et doit être configuré.',
       );
     });
 
@@ -28,17 +33,41 @@ describe('invitations tokens & security (Chantier 15.2 / 15.2.1)', () => {
       expect(() => getInvitationSecret(liveEnv)).toThrow(InvitationSecretConfigurationError);
     });
 
-    it('lève InvitationSecretConfigurationError si le secret comporte moins de 32 caractères', () => {
+    it('lève InvitationSecretConfigurationError si INVITATION_SECRET est absent en test / dev (aucun fallback statique)', () => {
+      const devEnv: NodeJS.ProcessEnv = {
+        NODE_ENV: 'development',
+      };
+      expect(() => getInvitationSecret(devEnv)).toThrow(InvitationSecretConfigurationError);
+
+      const testEnv: NodeJS.ProcessEnv = {
+        NODE_ENV: 'test',
+      };
+      expect(() => getInvitationSecret(testEnv)).toThrow(InvitationSecretConfigurationError);
+
+      const emptyEnv: NodeJS.ProcessEnv = {};
+      expect(() => getInvitationSecret(emptyEnv)).toThrow(InvitationSecretConfigurationError);
+    });
+
+    it('lève InvitationSecretConfigurationError si INVITATION_SECRET est une chaîne vide ou d’espaces', () => {
+      expect(() => getInvitationSecret({ INVITATION_SECRET: '' })).toThrow(
+        InvitationSecretConfigurationError,
+      );
+      expect(() => getInvitationSecret({ INVITATION_SECRET: '   ' })).toThrow(
+        InvitationSecretConfigurationError,
+      );
+    });
+
+    it('lève InvitationSecretConfigurationError si le secret comporte moins de 32 octets effectifs', () => {
       const weakEnv: NodeJS.ProcessEnv = {
         INVITATION_SECRET: 'too-short-secret-12345',
       };
       expect(() => getInvitationSecret(weakEnv)).toThrow(InvitationSecretConfigurationError);
       expect(() => getInvitationSecret(weakEnv)).toThrow(
-        'INVITATION_SECRET doit comporter au moins 32 caractères pour garantir une entropie suffisante.',
+        'INVITATION_SECRET doit comporter au moins 32 octets effectifs pour garantir une entropie suffisante.',
       );
     });
 
-    it('retourne le secret valide lorsqu’il comporte au moins 32 caractères', () => {
+    it('retourne le secret valide lorsqu’il comporte au moins 32 octets effectifs', () => {
       const validSecret = 'a-very-strong-and-long-secret-key-with-high-entropy-123456789';
       const validEnv: NodeJS.ProcessEnv = {
         NODE_ENV: 'production',
@@ -47,22 +76,13 @@ describe('invitations tokens & security (Chantier 15.2 / 15.2.1)', () => {
       expect(getInvitationSecret(validEnv)).toBe(validSecret);
     });
 
-    it('n’utilise jamais CLERK_SECRET_KEY ou CRON_SECRET comme fallback en production', () => {
+    it('n’utilise jamais CLERK_SECRET_KEY ou CRON_SECRET comme fallback', () => {
       const fakeProdEnv: NodeJS.ProcessEnv = {
         NODE_ENV: 'production',
         CLERK_SECRET_KEY: 'sk_live_some_clerk_secret_key_123456789012345',
         CRON_SECRET: 'some_cron_secret_key_1234567890123456789012345',
       };
       expect(() => getInvitationSecret(fakeProdEnv)).toThrow(InvitationSecretConfigurationError);
-    });
-
-    it('utilise le fallback dev de 32 caractères minimum en environnement de test/développement', () => {
-      const devEnv: NodeJS.ProcessEnv = {
-        NODE_ENV: 'test',
-      };
-      const secret = getInvitationSecret(devEnv);
-      expect(secret.length).toBeGreaterThanOrEqual(32);
-      expect(secret).toContain('uttily-invitation-signing-secret');
     });
   });
 
@@ -83,16 +103,20 @@ describe('invitations tokens & security (Chantier 15.2 / 15.2.1)', () => {
         email: 'member@example.com',
         expiresAt: new Date('2026-09-01T12:00:00Z'),
       };
-      const token1 = createSignedInvitationToken(data);
-      const token2 = createSignedInvitationToken(data);
+      const token1 = createSignedInvitationToken(data, defaultTestEnv);
+      const token2 = createSignedInvitationToken(data, defaultTestEnv);
 
       expect(token1).toBe(token2);
       expect(token1.startsWith('inv-123.')).toBe(true);
 
-      const verification = verifySignedInvitationToken(token1, {
-        organizationId: 'org-456',
-        email: 'member@example.com',
-      });
+      const verification = verifySignedInvitationToken(
+        token1,
+        {
+          organizationId: 'org-456',
+          email: 'member@example.com',
+        },
+        defaultTestEnv,
+      );
       expect(verification.valid).toBe(true);
       expect(verification.invitationId).toBe('inv-123');
     });
@@ -154,30 +178,42 @@ describe('invitations tokens & security (Chantier 15.2 / 15.2.1)', () => {
         email: 'member@example.com',
         expiresAt: new Date('2026-09-01T12:00:00Z'),
       };
-      const token = createSignedInvitationToken(data);
+      const token = createSignedInvitationToken(data, defaultTestEnv);
 
       // Altération de l'email
       expect(
-        verifySignedInvitationToken(token, {
-          organizationId: 'org-456',
-          email: 'other@example.com',
-        }).valid,
+        verifySignedInvitationToken(
+          token,
+          {
+            organizationId: 'org-456',
+            email: 'other@example.com',
+          },
+          defaultTestEnv,
+        ).valid,
       ).toBe(false);
 
       // Altération de l'organisation
       expect(
-        verifySignedInvitationToken(token, {
-          organizationId: 'org-OTHER',
-          email: 'member@example.com',
-        }).valid,
+        verifySignedInvitationToken(
+          token,
+          {
+            organizationId: 'org-OTHER',
+            email: 'member@example.com',
+          },
+          defaultTestEnv,
+        ).valid,
       ).toBe(false);
 
       // Altération du token lui-même
       expect(
-        verifySignedInvitationToken(`${token}tampered`, {
-          organizationId: 'org-456',
-          email: 'member@example.com',
-        }).valid,
+        verifySignedInvitationToken(
+          `${token}tampered`,
+          {
+            organizationId: 'org-456',
+            email: 'member@example.com',
+          },
+          defaultTestEnv,
+        ).valid,
       ).toBe(false);
     });
   });
@@ -205,6 +241,116 @@ describe('invitations tokens & security (Chantier 15.2 / 15.2.1)', () => {
           revokeInvitation(fakeDb, 'org-1', 'inv-1', { userId: 'u-1', role: 'STAFF' }),
         ).rejects.toThrow('Rôle insuffisant');
       });
+    });
+  });
+
+  describe('Cycle complet : Création invitation → Rendu notification → Extraction → Vérification (Chantier 15.2.1)', () => {
+    it('prouve la création, absence de bearer en metadata, reconstruction par renderNotificationRecord et acceptation par verifySignedInvitationToken', async () => {
+      const { renderNotificationRecord } = await import('../notifications/load-notification-data');
+      const testSecret = 'explicit-super-secret-key-for-invitations-32bytes-min!';
+      process.env.INVITATION_SECRET = testSecret;
+      process.env.PUBLIC_APP_URL = 'https://app.uttily.fr';
+
+      const invitationId = 'inv-uuid-abc-123';
+      const organizationId = 'org-uuid-xyz-456';
+      const email = 'nouveau.membre@example.com';
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+      // 1. Création du token signé
+      const token = createSignedInvitationToken(
+        {
+          invitationId,
+          organizationId,
+          email,
+          expiresAt,
+        },
+        process.env,
+      );
+
+      // 2. Notification record outbox (comme créé par createInvitation)
+      const notif = {
+        id: 'notif-1',
+        organizationId,
+        template: 'ORGANIZATION_INVITATION' as const,
+        channel: 'EMAIL' as const,
+        recipient: email,
+        status: 'PENDING' as const,
+        idempotencyKey: `invitation:${invitationId}`,
+        scheduledFor: new Date(),
+        metadata: {
+          organizationName: 'Atelier Vélo Lyon',
+          roleName: 'Administrateur',
+          invitationId,
+        },
+        bookingId: null,
+        refundId: null,
+        attemptCount: 0,
+        providerFirstAttemptStartedAt: null,
+        nextAttemptAt: null,
+        failedAt: null,
+        sentAt: null,
+        leaseToken: null,
+        leaseUntil: null,
+        failureCode: null,
+        providerMessageId: null,
+        requiresManualReview: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Vérifier l'absence totale de bearer ou token brut dans metadata
+      expect(JSON.stringify(notif.metadata)).not.toContain(token);
+      expect(JSON.stringify(notif.metadata)).not.toContain('token');
+      expect((notif.metadata as Record<string, unknown>).token).toBeUndefined();
+      expect((notif.metadata as Record<string, unknown>).bearer).toBeUndefined();
+
+      // 3. Reconstruction et rendu par le worker / loader de notification
+      const fakeDb = {
+        select: () => ({
+          from: () => ({
+            innerJoin: () => ({
+              where: () => ({
+                limit: () => [
+                  {
+                    id: invitationId,
+                    organizationId,
+                    email,
+                    role: 'ADMIN',
+                    expiresAt,
+                    status: 'PENDING',
+                    orgLegalName: 'Atelier Vélo Lyon SAS',
+                    orgDisplayName: 'Atelier Vélo Lyon',
+                  },
+                ],
+              }),
+            }),
+          }),
+        }),
+      } as unknown as DatabaseClient;
+
+      const rendered = await renderNotificationRecord(fakeDb, notif);
+
+      // 4. Extraction du token depuis le rendu email (URL d'action)
+      const tokenMatch = /token=([^"&\s]+)/.exec(rendered.html);
+      expect(tokenMatch).not.toBeNull();
+      const extractedEncodedToken = tokenMatch![1]!;
+      const extractedToken = decodeURIComponent(extractedEncodedToken);
+
+      // Le token reconstruit dans le template doit être rigoureusement identique au token d'origine
+      expect(extractedToken).toBe(token);
+
+      // 5. Vérification cryptographique de l'acceptation avec le même INVITATION_SECRET
+      const verification = verifySignedInvitationToken(
+        extractedToken,
+        {
+          organizationId,
+          email,
+        },
+        process.env,
+      );
+
+      expect(verification.valid).toBe(true);
+      expect(verification.invitationId).toBe(invitationId);
     });
   });
 });

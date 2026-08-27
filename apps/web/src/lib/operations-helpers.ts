@@ -1,10 +1,25 @@
-import {
-  BOOKING_STATUSES,
-  type BookingStatus,
-  type InventoryCondition,
-  type ConditionReportPhase,
-  type FulfillmentEventType,
-} from '@uttily/core';
+export type BookingStatus =
+  | 'CONFIRMED'
+  | 'READY_FOR_PICKUP'
+  | 'ACTIVE'
+  | 'RETURNED'
+  | 'CLOSED'
+  | 'CANCELLED'
+  | 'REFUNDED';
+
+export const BOOKING_STATUSES: readonly BookingStatus[] = [
+  'CONFIRMED',
+  'READY_FOR_PICKUP',
+  'ACTIVE',
+  'RETURNED',
+  'CLOSED',
+  'CANCELLED',
+  'REFUNDED',
+] as const;
+
+export type InventoryCondition = 'NEW' | 'GOOD' | 'FAIR' | 'POOR' | 'BROKEN';
+export type ConditionReportPhase = 'PICKUP' | 'RETURN';
+export type FulfillmentEventType = 'PREPARED' | 'PICKED_UP' | 'RETURNED' | 'CLOSED';
 
 /**
  * Helpers purs pour l'interface des opérations terrain (G4B).

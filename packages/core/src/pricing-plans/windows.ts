@@ -34,6 +34,44 @@ function isWindowCoveredByOpeningHours(
   return false;
 }
 
+export interface EffectiveScheduleCoverage {
+  isOpen: boolean;
+  slots: Array<{ openTime: string; closeTime: string }>;
+}
+
+export type ScheduleCoverageInput = OpeningHour[] | EffectiveScheduleCoverage;
+
+function isWindowCoveredByEffectiveSlots(
+  wStart: number,
+  wEnd: number,
+  slots: Array<{ openTime: string; closeTime: string }>,
+): boolean {
+  if (slots.length === 0) return true; // fail-open si aucun créneau spécifié mais isOpen
+  for (const slot of slots) {
+    const openMin = getTimeInMinutes(slot.openTime);
+    const closeMin = getTimeInMinutes(slot.closeTime);
+    if (wStart >= openMin && wEnd <= closeMin) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isWindowCovered(
+  weekday: number,
+  wStart: number,
+  wEnd: number,
+  coverage: ScheduleCoverageInput = [],
+): boolean {
+  if (Array.isArray(coverage)) {
+    return isWindowCoveredByOpeningHours(weekday, wStart, wEnd, coverage);
+  }
+  if (!coverage.isOpen) {
+    return false;
+  }
+  return isWindowCoveredByEffectiveSlots(wStart, wEnd, coverage.slots);
+}
+
 /**
  * Trouve la fenêtre commerciale couvrante la plus petite pour un weekday et
  * une plage horaire donnés.
@@ -44,8 +82,8 @@ function isWindowCoveredByOpeningHours(
  * - endTime <= window.endTime      (la demande finit avant ou à la fin de la fenêtre)
  *
  * G7P-B2-B Round 2 — Defect 3 : la fenêtre doit également être entièrement couverte
- * par les horaires d'ouverture pour le même weekday. Si openingHours est vide,
- * fail-open (pas de filtrage).
+ * par les horaires d'ouverture ou le planning effectif (exceptions incluses) pour le même weekday.
+ * Si openingHours est vide, fail-open (pas de filtrage).
  *
  * Parmi les fenêtres correspondantes, on préfère celle avec la plus petite durée
  * (endTime - startTime). En cas d'égalité, on prend la plus tôt (startTime le plus petit).
@@ -59,7 +97,7 @@ export function findMatchingWindow(
   weekday: number,
   startTimeMinutes: number,
   endTimeMinutes: number,
-  openingHours: OpeningHour[] = [],
+  scheduleCoverage: ScheduleCoverageInput = [],
 ): ResolvedWindow | null {
   let best: ResolvedWindow | null = null;
   let bestDuration = Infinity;
@@ -72,8 +110,8 @@ export function findMatchingWindow(
     const wStart = getTimeInMinutes(w.startTime);
     const wEnd = getTimeInMinutes(w.endTime);
     if (startTimeMinutes < wStart || endTimeMinutes > wEnd) continue;
-    // G7P-B2-B Round 2 — Defect 3 : filtrage par horaires d'ouverture.
-    if (!isWindowCoveredByOpeningHours(weekday, wStart, wEnd, openingHours)) continue;
+    // Filtrage par horaires d'ouverture / planning effectif
+    if (!isWindowCovered(weekday, wStart, wEnd, scheduleCoverage)) continue;
     const duration = wEnd - wStart;
     if (
       duration < bestDuration ||
@@ -106,10 +144,9 @@ export function hasAnyWindowForPlan(planId: string, windows: ResolvedWindow[]): 
  * Une fenêtre correspond si :
  * - (weekdayMask & (1 << weekday)) != 0
  *
- * G7P-B2-B Round 2 — Defect 3 : la fenêtre doit également être entièrement couverte
- * par les horaires d'ouverture pour le même weekday. Si openingHours est vide,
- * fail-open (pas de filtrage, comportement historique préservé).
- * Si aucune fenêtre n'est couverte par les horaires d'ouverture → retourne null.
+ * G7P-B2-B Round 2 / Chantier 15.2.1 : la fenêtre doit également être entièrement couverte
+ * par les horaires d'ouverture effectifs (exceptions OPEN_INTERVAL/CLOSED incluses).
+ * Si aucune fenêtre n'est couverte par les horaires effectifs → retourne null.
  *
  * Parmi les fenêtres correspondantes couvertes, on préfère celle avec la plus
  * grande durée (endTime - startTime). Tie-breaks déterministes (sans dépendre de
@@ -125,7 +162,7 @@ export function findDayRangeWindow(
   planId: string,
   windows: ResolvedWindow[],
   weekday: number,
-  openingHours: OpeningHour[] = [],
+  scheduleCoverage: ScheduleCoverageInput = [],
 ): ResolvedWindow | null {
   let best: ResolvedWindow | null = null;
   let bestDuration = -1;
@@ -138,8 +175,8 @@ export function findDayRangeWindow(
     if ((w.weekdayMask & (1 << weekday)) === 0) continue;
     const wStart = getTimeInMinutes(w.startTime);
     const wEnd = getTimeInMinutes(w.endTime);
-    // G7P-B2-B Round 2 — Defect 3 : filtrage par horaires d'ouverture.
-    if (!isWindowCoveredByOpeningHours(weekday, wStart, wEnd, openingHours)) continue;
+    // Filtrage par horaires effectifs (incluant OPEN_INTERVAL)
+    if (!isWindowCovered(weekday, wStart, wEnd, scheduleCoverage)) continue;
     const duration = wEnd - wStart;
     if (
       duration > bestDuration ||

@@ -23,27 +23,24 @@ export class InvitationSecretConfigurationError extends Error {
 /**
  * Récupère le secret de signature des tokens d'invitation (Chantier 15.2.1).
  *
- * - Strictement requis en production/LIVE (pas de réutilisation de Clerk/Cron, pas de secret statique faible).
- * - Vérifie une entropie minimale de 32 caractères.
- * - Fallback de test/dev explicite uniquement hors production.
+ * - INVITATION_SECRET est le seul secret accepté dans tous les environnements (dev, test, prod).
+ * - Absence, vide ou valeur invalide => fail-closed strict (InvitationSecretConfigurationError).
+ * - Vérifie explicitement au moins 32 octets effectifs (Buffer.byteLength >= 32).
+ * - Aucun secret statique ni fallback de runtime.
  */
 export function getInvitationSecret(env: NodeJS.ProcessEnv = process.env): string {
   const raw = env.INVITATION_SECRET;
-  const isProductionLike = env.NODE_ENV === 'production' || env.STRIPE_ENVIRONMENT === 'LIVE';
 
-  if (!raw || raw.trim().length === 0) {
-    if (isProductionLike) {
-      throw new InvitationSecretConfigurationError(
-        'INVITATION_SECRET est requis et doit être configuré en production.',
-      );
-    }
-    return 'uttily-invitation-signing-secret-dev-32chars-minimum!!';
+  if (!raw || typeof raw !== 'string' || raw.trim().length === 0) {
+    throw new InvitationSecretConfigurationError(
+      'INVITATION_SECRET est requis et doit être configuré.',
+    );
   }
 
   const trimmed = raw.trim();
-  if (trimmed.length < 32) {
+  if (Buffer.byteLength(trimmed, 'utf8') < 32) {
     throw new InvitationSecretConfigurationError(
-      'INVITATION_SECRET doit comporter au moins 32 caractères pour garantir une entropie suffisante.',
+      'INVITATION_SECRET doit comporter au moins 32 octets effectifs pour garantir une entropie suffisante.',
     );
   }
 

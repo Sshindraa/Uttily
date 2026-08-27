@@ -52,6 +52,8 @@ describe('Search & Checkout decision parity for DAY_RANGE and schedule exception
   const translations: ResolvedTranslation[] = [
     { pricingPlanId: 'plan-std-daily', locale: 'fr', publicLabel: 'Tarif Standard' },
     { pricingPlanId: 'plan-special-daily', locale: 'fr', publicLabel: 'Tarif Spécial' },
+    { pricingPlanId: 'plan-extended-daily', locale: 'fr', publicLabel: 'Tarif Étendu' },
+    { pricingPlanId: 'plan-multi-win-daily', locale: 'fr', publicLabel: 'Tarif Multi-Fenêtres' },
   ];
 
   function makeContext(
@@ -353,5 +355,139 @@ describe('Search & Checkout decision parity for DAY_RANGE and schedule exception
     expect(searchResult).not.toBeNull();
     expect(searchResult!.best.plan.id).toBe('plan-special-daily');
     expect(searchResult!.price.totalAmountMinor).toBe(5000);
+  });
+
+  it('9. Régression : horaires hebdo 09:00–18:00 + OPEN_INTERVAL 08:00–20:00 + fenêtre DAILY 08:00–20:00 => succès Search & Checkout', () => {
+    const planExtended: ResolvedPlan = {
+      ...planStandard,
+      id: 'plan-extended-daily',
+      internalLabel: 'Daily 08h-20h',
+    };
+    const windowExtended: ResolvedWindow = {
+      pricingPlanId: 'plan-extended-daily',
+      weekdayMask: 127,
+      startTime: '08:00:00',
+      endTime: '20:00:00',
+    };
+
+    const exceptions: LocationScheduleExceptionRecord[] = [
+      {
+        id: 'ex-interval-extended',
+        organizationId: ORG_ID,
+        locationId: LOCATION_ID,
+        localDate: '2026-08-24', // Lundi exception 08h-20h
+        kind: 'OPEN_INTERVAL',
+        openTime: '08:00:00',
+        closeTime: '20:00:00',
+        reason: 'Journée prolongée',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    const ctx = makeContext(
+      { startDate: '2026-08-24', endDateExclusive: '2026-08-25' }, // 1 jour
+      [planExtended],
+      [windowExtended],
+      exceptions,
+    );
+
+    // Checkout doit réussir et sélectionner la fenêtre 08:00-20:00
+    const quoteResult = computeQuote(ctx);
+    expect(quoteResult.totalAmountMinor).toBe(4000);
+    expect(quoteResult.lines[0]!.pricingPlanId).toBe('plan-extended-daily');
+    expect(quoteResult.lines[0]!.windowSnapshot).toEqual({
+      kind: 'DAY_RANGE_BOUNDARIES',
+      firstDay: {
+        localDate: '2026-08-24',
+        weekdayMask: 127,
+        startTime: '08:00:00',
+        endTime: '20:00:00',
+      },
+      lastDay: {
+        localDate: '2026-08-24',
+        weekdayMask: 127,
+        startTime: '08:00:00',
+        endTime: '20:00:00',
+      },
+    });
+
+    // Search doit également trouver et pricer l'offre
+    const searchResult = computePriceForCandidate(ctx, VARIANT_ID);
+    expect(searchResult).not.toBeNull();
+    expect(searchResult!.price.totalAmountMinor).toBe(4000);
+    expect(searchResult!.best.plan.id).toBe('plan-extended-daily');
+  });
+
+  it('10. Régression : même plan DAILY avec une grande fenêtre incompatible et une plus petite fenêtre compatible avec l’OPEN_INTERVAL => la fenêtre compatible est retenue', () => {
+    const planMultiWindows: ResolvedPlan = {
+      ...planStandard,
+      id: 'plan-multi-win-daily',
+      internalLabel: 'Daily multi-fenêtres',
+    };
+
+    // Le même plan a DEUX fenêtres pour le lundi :
+    // 1. Grande fenêtre 08:00–20:00 (incompatible avec l'OPEN_INTERVAL 12:00–15:00)
+    const windowLarge: ResolvedWindow = {
+      pricingPlanId: 'plan-multi-win-daily',
+      weekdayMask: 127,
+      startTime: '08:00:00',
+      endTime: '20:00:00',
+    };
+    // 2. Petite fenêtre 12:00–15:00 (compatible avec l'OPEN_INTERVAL 12:00–15:00)
+    const windowSmall: ResolvedWindow = {
+      pricingPlanId: 'plan-multi-win-daily',
+      weekdayMask: 127,
+      startTime: '12:00:00',
+      endTime: '15:00:00',
+    };
+
+    const exceptions: LocationScheduleExceptionRecord[] = [
+      {
+        id: 'ex-interval-afternoon-only',
+        organizationId: ORG_ID,
+        locationId: LOCATION_ID,
+        localDate: '2026-08-24', // Lundi 12h-15h seulement
+        kind: 'OPEN_INTERVAL',
+        openTime: '12:00:00',
+        closeTime: '15:00:00',
+        reason: 'Ouverture partielle après-midi',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+
+    const ctx = makeContext(
+      { startDate: '2026-08-24', endDateExclusive: '2026-08-25' }, // 1 jour
+      [planMultiWindows],
+      [windowLarge, windowSmall],
+      exceptions,
+    );
+
+    // findDayRangeWindow doit retenir la fenêtre compatible windowSmall (12:00-15:00), sans éliminer le plan
+    const quoteResult = computeQuote(ctx);
+    expect(quoteResult.totalAmountMinor).toBe(4000);
+    expect(quoteResult.lines[0]!.pricingPlanId).toBe('plan-multi-win-daily');
+    expect(quoteResult.lines[0]!.windowSnapshot).toEqual({
+      kind: 'DAY_RANGE_BOUNDARIES',
+      firstDay: {
+        localDate: '2026-08-24',
+        weekdayMask: 127,
+        startTime: '12:00:00',
+        endTime: '15:00:00',
+      },
+      lastDay: {
+        localDate: '2026-08-24',
+        weekdayMask: 127,
+        startTime: '12:00:00',
+        endTime: '15:00:00',
+      },
+    });
+
+    // Search fait exactement la même sélection
+    const searchResult = computePriceForCandidate(ctx, VARIANT_ID);
+    expect(searchResult).not.toBeNull();
+    expect(searchResult!.price.totalAmountMinor).toBe(4000);
+    expect(searchResult!.best.plan.id).toBe('plan-multi-win-daily');
   });
 });

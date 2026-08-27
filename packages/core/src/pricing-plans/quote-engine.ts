@@ -29,6 +29,13 @@ import { calculateAmount } from './amount-calculator';
 import { validateGrid } from './grid-validator';
 import { selectBestCandidate } from './selector';
 import { getTranslation, resolveLocale } from './locale-resolver';
+import {
+  civilDayNumber,
+  civilDayNumberToDate,
+  getWeekdayFromDate,
+  parseDateString,
+} from './time-utils';
+import { findDayRangeWindow } from './windows';
 
 /**
  * Calcule un devis à partir d'un contexte de pricing entièrement résolu.
@@ -93,6 +100,54 @@ export function computeQuote(context: PricingContext): QuoteFlexiblePricingResul
     let candidates = generateCandidates(line.variantId, line.quantity, context);
 
     if (candidates.length === 0) {
+      if (context.intent.kind === 'DAY_RANGE') {
+        const variantPlans = context.plans.filter(
+          (p) =>
+            p.productVariantId === line.variantId &&
+            p.currency === context.currency &&
+            p.planType === 'DAILY',
+        );
+        for (const plan of variantPlans) {
+          const firstDayWeekday = getWeekdayFromDate(
+            new Date(context.intent.startDate + 'T12:00:00.000Z'),
+            context.timeZone,
+          );
+          const endParts = parseDateString(context.intent.endDateExclusive);
+          const endDayNum = civilDayNumber(endParts.year, endParts.month, endParts.day);
+          const lastDayNum = endDayNum - 1;
+          const lastDayDate = civilDayNumberToDate(lastDayNum);
+          const lastDayWeekday = getWeekdayFromDate(
+            new Date(lastDayDate + 'T12:00:00.000Z'),
+            context.timeZone,
+          );
+
+          const rawFirst = findDayRangeWindow(plan.id, context.windows, firstDayWeekday, []);
+          const rawLast = findDayRangeWindow(plan.id, context.windows, lastDayWeekday, []);
+          if (rawFirst && rawLast) {
+            validateDayRangeBoundariesAgainstSchedule(
+              {
+                kind: 'DAY_RANGE_BOUNDARIES',
+                firstDay: {
+                  localDate: context.intent.startDate,
+                  weekdayMask: rawFirst.weekdayMask,
+                  startTime: rawFirst.startTime,
+                  endTime: rawFirst.endTime,
+                },
+                lastDay: {
+                  localDate: lastDayDate,
+                  weekdayMask: rawLast.weekdayMask,
+                  startTime: rawLast.startTime,
+                  endTime: rawLast.endTime,
+                },
+              },
+              context.openingHours,
+              context.scheduleExceptions,
+              context.locationId,
+            );
+          }
+        }
+      }
+
       throw new FlexiblePricingError(
         'NO_ELIGIBLE_PLAN',
         `Aucun plan éligible pour la variante ${line.variantId}`,
@@ -111,8 +166,6 @@ export function computeQuote(context: PricingContext): QuoteFlexiblePricingResul
     });
 
     if (compatibleCandidates.length === 0) {
-      // Aucun candidat compatible -> valider le premier candidat pour lever l'erreur exacte
-      // (LOCATION_CLOSED ou OUTSIDE_OPENING_HOURS).
       const firstDaily = candidates.find((c) => c.dayRangeBoundaries !== null);
       if (firstDaily?.dayRangeBoundaries) {
         validateDayRangeBoundariesAgainstSchedule(

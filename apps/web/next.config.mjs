@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  serverExternalPackages: ['postgres'],
   transpilePackages: ['@uttily/core', '@uttily/database', '@uttily/config'],
   experimental: {
     serverActions: {

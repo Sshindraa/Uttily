@@ -8,16 +8,15 @@
  * d'environnement et ne provoque aucun effet de bord.
  */
 
-import { bookingStatus, fulfillmentEventType } from '@uttily/database';
-
-/**
- * Statuts de booking dérivés de l'enum `booking_status` PostgreSQL via
- * `bookingStatus.enumValues`. Toute dérive du schéma DB est automatiquement
- * propagée : si un statut est ajouté dans l'enum Drizzle, `BookingStatus`
- * change et `ALLOWED_TRANSITIONS` (dans project-booking-status.ts) doit être
- * mise à jour sous peine d'échec de typecheck.
- */
-export const BOOKING_STATUSES = bookingStatus.enumValues;
+export const BOOKING_STATUSES = [
+  'CONFIRMED',
+  'READY_FOR_PICKUP',
+  'ACTIVE',
+  'RETURNED',
+  'CLOSED',
+  'CANCELLED',
+  'REFUNDED',
+] as const;
 
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
@@ -25,7 +24,12 @@ export type BookingStatus = (typeof BOOKING_STATUSES)[number];
  * Types d'événements de fulfillment dérivés de l'enum `fulfillment_event_type`
  * PostgreSQL via `fulfillmentEventType.enumValues`.
  */
-export const FULFILLMENT_EVENT_TYPES = fulfillmentEventType.enumValues;
+export const FULFILLMENT_EVENT_TYPES = [
+  'PREPARED',
+  'PICKED_UP',
+  'RETURNED',
+  'CLOSED',
+] as const;
 
 export type FulfillmentEventType = (typeof FULFILLMENT_EVENT_TYPES)[number];
 

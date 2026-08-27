@@ -184,7 +184,7 @@ export function getTimeInMinutes(timeStr: string): number {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Parse une date YYYY-MM-DD et valide le format. */
-function parseDateString(dateStr: string): { year: number; month: number; day: number } {
+export function parseDateString(dateStr: string): { year: number; month: number; day: number } {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
   if (!match) {
     throw new FlexiblePricingError(
@@ -197,4 +197,19 @@ function parseDateString(dateStr: string): { year: number; month: number; day: n
     month: parseInt(match[2]!, 10),
     day: parseInt(match[3]!, 10),
   };
+}
+
+/** Convertit un numéro de jour civil (Julian Day Number) en date YYYY-MM-DD. */
+export function civilDayNumberToDate(dayNum: number): string {
+  const a = dayNum + 32044;
+  const b = Math.floor((4 * a + 3) / 146097);
+  const c = a - Math.floor((146097 * b) / 4);
+  const d = Math.floor((4 * c + 3) / 1461);
+  const e = c - Math.floor((1461 * d) / 4);
+  const m = Math.floor((5 * e + 2) / 153);
+  const day = e - Math.floor((153 * m + 2) / 5) + 1;
+  const month = m + 3 - 12 * Math.floor(m / 10);
+  const year = 100 * b + d - 4800 + Math.floor(m / 10);
+  const pad = (n: number): string => String(n).padStart(2, '0');
+  return `${year}-${pad(month)}-${pad(day)}`;
 }

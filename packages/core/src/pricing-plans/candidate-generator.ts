@@ -23,6 +23,7 @@ import {
   toLocalParts,
 } from './time-utils';
 import { findMatchingWindow, findDayRangeWindow } from './windows';
+import { resolveEffectiveScheduleFromRules } from '../identity/schedule';
 
 /**
  * Génère tous les candidats éligibles pour une ligne donnée.
@@ -67,6 +68,8 @@ export function generateCandidates(
         context.timeZone,
         context.windows,
         context.openingHours,
+        context.scheduleExceptions,
+        context.locationId,
       );
       if (candidate) candidates.push(candidate);
     }
@@ -84,6 +87,8 @@ export function generateCandidates(
         context.timeZone,
         context.windows,
         context.openingHours,
+        context.scheduleExceptions,
+        context.locationId,
       );
       if (candidate) candidates.push(candidate);
     }
@@ -106,6 +111,8 @@ function generateTimeRangeCandidate(
   timeZone: string,
   windows: ResolvedWindow[],
   openingHours: OpeningHour[],
+  scheduleExceptions?: import('../identity/types').LocationScheduleExceptionRecord[],
+  locationId?: string,
 ): Candidate | null {
   switch (plan.planType) {
     case 'HOURLY':
@@ -123,6 +130,8 @@ function generateTimeRangeCandidate(
         timeZone,
         windows,
         openingHours,
+        scheduleExceptions,
+        locationId,
       );
   }
 }
@@ -213,6 +222,8 @@ function generateDailyTimeRangeCandidate(
   timeZone: string,
   windows: ResolvedWindow[],
   openingHours: OpeningHour[],
+  scheduleExceptions: import('../identity/types').LocationScheduleExceptionRecord[] = [],
+  locationId: string = '',
 ): Candidate | null {
   const startParts = toLocalParts(startAt, timeZone);
   const endParts = toLocalParts(endAt, timeZone);
@@ -227,14 +238,25 @@ function generateDailyTimeRangeCandidate(
   const startTimeMin = startParts.hour * 60 + startParts.minute;
   const endTimeMin = endParts.hour * 60 + endParts.minute;
 
-  // G7P-B2-B Round 2 — Defect 3 : findMatchingWindow filtre désormais par opening hours.
+  const startLocalDate = `${startParts.year}-${String(startParts.month).padStart(2, '0')}-${String(startParts.day).padStart(2, '0')}`;
+  const effectiveSchedule =
+    openingHours.length > 0 || scheduleExceptions.length > 0
+      ? resolveEffectiveScheduleFromRules(
+          startLocalDate,
+          openingHours,
+          scheduleExceptions,
+          locationId,
+        )
+      : undefined;
+
+  // G7P-B2-B Round 2 / Chantier 15.2.1 : findMatchingWindow filtre désormais par planning effectif.
   const window = findMatchingWindow(
     plan.id,
     windows,
     weekday,
     startTimeMin,
     endTimeMin,
-    openingHours,
+    effectiveSchedule,
   );
   if (!window) return null;
 
@@ -282,6 +304,8 @@ function makeDailyDayRangeCandidate(
   timeZone: string,
   windows: ResolvedWindow[],
   openingHours: OpeningHour[],
+  scheduleExceptions: import('../identity/types').LocationScheduleExceptionRecord[] = [],
+  locationId: string = '',
 ): Candidate | null {
   // G7P-B2-B : trouver les fenêtres pour le premier et le dernier jour.
   // Le dernier jour est le jour avant endDateExclusive.
@@ -294,11 +318,19 @@ function makeDailyDayRangeCandidate(
   const lastDayDate = civilDayNumberToDate(lastDayNum);
   const lastDayWeekday = getWeekdayFromDate(new Date(lastDayDate + 'T12:00:00.000Z'), timeZone);
 
-  // G7P-B2-B Round 2 — Defect 3 : findDayRangeWindow filtre désormais par opening hours.
-  const firstWindow = findDayRangeWindow(plan.id, windows, firstDayWeekday, openingHours);
+  // Chantier 15.2.1 : Résoudre le planning effectif (exceptions OPEN_INTERVAL/CLOSED incluses)
+  const hasScheduleRules = openingHours.length > 0 || scheduleExceptions.length > 0;
+  const effectiveFirst = hasScheduleRules
+    ? resolveEffectiveScheduleFromRules(startDate, openingHours, scheduleExceptions, locationId)
+    : undefined;
+  const effectiveLast = hasScheduleRules
+    ? resolveEffectiveScheduleFromRules(lastDayDate, openingHours, scheduleExceptions, locationId)
+    : undefined;
+
+  const firstWindow = findDayRangeWindow(plan.id, windows, firstDayWeekday, effectiveFirst);
   if (!firstWindow) return null; // No matching window → plan ineligible
 
-  const lastWindow = findDayRangeWindow(plan.id, windows, lastDayWeekday, openingHours);
+  const lastWindow = findDayRangeWindow(plan.id, windows, lastDayWeekday, effectiveLast);
   if (!lastWindow) return null; // No matching window → plan ineligible
 
   const dayRangeBoundaries: DayRangeBoundaries = {

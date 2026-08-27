@@ -198,6 +198,7 @@ describe('Notifications — Templates Rendering', () => {
   describe('renderNotificationRecord — ORGANIZATION_INVITATION (Chantier 15.2)', () => {
     it('reconstruit le token signé sans secret brut dans les métadonnées', async () => {
       process.env.PUBLIC_APP_URL = 'http://localhost:3000';
+      process.env.INVITATION_SECRET = 'notification-test-secret-at-least-32-chars-long!';
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       const fakeDb = {
         select: () => ({

@@ -116,7 +116,13 @@ import {
   localDateTimeToUtc,
   parseLocalDateTimeString,
 } from '../pricing-plans/local-to-utc';
-import { civilDayNumber } from '../pricing-plans/time-utils';
+import {
+  civilDayNumber,
+  civilDayNumberToDate,
+  getWeekdayFromDate,
+  parseDateString,
+} from '../pricing-plans/time-utils';
+import { findDayRangeWindow } from '../pricing-plans/windows';
 import type {
   CandidateRow,
   KeysetTuple,
@@ -1253,19 +1259,6 @@ function resolveCandidateBlockedPeriod(
   return { customerStartAt, customerEndAt, blockedStartAt, blockedEndAt };
 }
 
-/** Parse une date YYYY-MM-DD. */
-function parseDateString(dateStr: string): { year: number; month: number; day: number } {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
-  if (!match) {
-    throw new PublicSearchError('INVALID_INPUT', 'Format de date invalide.');
-  }
-  return {
-    year: parseInt(match[1]!, 10),
-    month: parseInt(match[2]!, 10),
-    day: parseInt(match[3]!, 10),
-  };
-}
-
 /** Parse une heure HH:MM:SS. */
 function parseTimeString(timeStr: string): { hour: number; minute: number } {
   const match = /^(\d{2}):(\d{2}):(\d{2})$/.exec(timeStr);
@@ -1659,7 +1652,56 @@ export function computePriceForCandidate(
   );
 
   let candidates = generateCandidates(variantId, 1, context);
-  if (candidates.length === 0) return null;
+  if (candidates.length === 0) {
+    if (context.intent.kind === 'DAY_RANGE') {
+      const variantPlans = context.plans.filter(
+        (p) =>
+          p.productVariantId === variantId &&
+          p.currency === context.currency &&
+          p.planType === 'DAILY',
+      );
+      for (const plan of variantPlans) {
+        const firstDayWeekday = getWeekdayFromDate(
+          new Date(context.intent.startDate + 'T12:00:00.000Z'),
+          context.timeZone,
+        );
+        const endParts = parseDateString(context.intent.endDateExclusive);
+        const endDayNum = civilDayNumber(endParts.year, endParts.month, endParts.day);
+        const lastDayNum = endDayNum - 1;
+        const lastDayDate = civilDayNumberToDate(lastDayNum);
+        const lastDayWeekday = getWeekdayFromDate(
+          new Date(lastDayDate + 'T12:00:00.000Z'),
+          context.timeZone,
+        );
+
+        const rawFirst = findDayRangeWindow(plan.id, context.windows, firstDayWeekday, []);
+        const rawLast = findDayRangeWindow(plan.id, context.windows, lastDayWeekday, []);
+        if (rawFirst && rawLast) {
+          validateDayRangeBoundariesAgainstSchedule(
+            {
+              kind: 'DAY_RANGE_BOUNDARIES',
+              firstDay: {
+                localDate: context.intent.startDate,
+                weekdayMask: rawFirst.weekdayMask,
+                startTime: rawFirst.startTime,
+                endTime: rawFirst.endTime,
+              },
+              lastDay: {
+                localDate: lastDayDate,
+                weekdayMask: rawLast.weekdayMask,
+                startTime: rawLast.startTime,
+                endTime: rawLast.endTime,
+              },
+            },
+            context.openingHours,
+            context.scheduleExceptions,
+            context.locationId,
+          );
+        }
+      }
+    }
+    return null;
+  }
 
   // Filtrer les candidats incompatibles avec le planning effectif (Chantier 15.2.1 Requirement 10).
   const compatibleCandidates = candidates.filter((c) => {
