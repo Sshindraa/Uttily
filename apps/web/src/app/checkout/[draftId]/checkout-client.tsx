@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { ReactElement, FormEvent } from 'react';
+import Link from 'next/link';
 import { loadStripe, type Stripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { initiatePaymentAction } from '@/app/actions/payments';
@@ -246,14 +247,28 @@ export function CheckoutClient({
       <section aria-labelledby="success-heading" style={sectionStyle}>
         <h2 id="success-heading">Paiement soumis</h2>
         <p>
-          La confirmation de votre réservation est en cours. Vous serez redirigé vers votre
-          réservation une fois le paiement confirmé.
+          La confirmation de votre réservation est en cours de traitement. Vous pouvez retrouver
+          toutes vos réservations dans votre espace personnel.
         </p>
         {paymentId && (
           <p style={mutedStyle}>
             Référence paiement : <code>{paymentId}</code>
           </p>
         )}
+        <div style={{ marginTop: '1.5rem' }}>
+          <Link
+            href="/fr/account/bookings"
+            style={{
+              ...submitButtonStyle,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textDecoration: 'none',
+            }}
+          >
+            Accéder à mes locations →
+          </Link>
+        </div>
       </section>
     );
   }

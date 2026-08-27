@@ -179,3 +179,6 @@ export * from './cancellations';
 
 // Chantier 13 — Notifications Transactionnelles.
 export * from './notifications';
+
+// Chantier 14 — Espace Locataire & Post-réservation.
+export * from './customer-bookings';
