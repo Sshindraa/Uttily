@@ -33,8 +33,11 @@ export async function changeMemberRoleAction(
   if (!user) throw new Error('Non authentifié.');
   const db = getDb();
   const membership = await getMembership(db, organizationId, user.id);
-  requireMembership(membership, ROLE_MANAGERS);
-  await changeMemberRole(db, organizationId, targetUserId, newRole);
+  const active = requireMembership(membership, ROLE_MANAGERS);
+  await changeMemberRole(db, organizationId, targetUserId, newRole, {
+    userId: user.id,
+    role: active.role,
+  });
   revalidatePath(`/dashboard/${organizationId}/team`);
 }
 
@@ -43,8 +46,11 @@ export async function removeMemberAction(organizationId: string, targetUserId: s
   if (!user) throw new Error('Non authentifié.');
   const db = getDb();
   const membership = await getMembership(db, organizationId, user.id);
-  requireMembership(membership, MEMBER_INVITERS);
-  await removeMember(db, organizationId, targetUserId);
+  const active = requireMembership(membership, MEMBER_INVITERS);
+  await removeMember(db, organizationId, targetUserId, {
+    userId: user.id,
+    role: active.role,
+  });
   revalidatePath(`/dashboard/${organizationId}/team`);
 }
 

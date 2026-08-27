@@ -1,7 +1,13 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { and, eq, lt } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
-import { organizationInvitations, organizationMemberships, users } from '@uttily/database';
+import {
+  notifications,
+  organizationInvitations,
+  organizationMemberships,
+  organizations,
+  users,
+} from '@uttily/database';
 import type { AuthenticatedUser, InvitationInput, MembershipRole } from './types';
 import { AuthorizationError, can, canInviteRole } from './permissions';
 
@@ -116,6 +122,40 @@ export async function createInvitation(
       })
       .returning();
     if (!row) throw new Error('Échec de création de l\u2019invitation.');
+
+    // Chantier 15.1 : Planifier immédiatement l'envoi de l'email d'invitation
+    const [org] = await db
+      .select({
+        legalName: organizations.legalName,
+        publicDisplayName: organizations.publicDisplayName,
+      })
+      .from(organizations)
+      .where(eq(organizations.id, input.organizationId))
+      .limit(1);
+
+    const roleLabels: Record<MembershipRole, string> = {
+      OWNER: 'Propriétaire',
+      ADMIN: 'Administrateur',
+      MANAGER: 'Responsable',
+      STAFF: "Membre d'équipe",
+    };
+
+    await db
+      .insert(notifications)
+      .values({
+        organizationId: input.organizationId,
+        template: 'ORGANIZATION_INVITATION',
+        recipient: email,
+        status: 'PENDING',
+        idempotencyKey: `invitation:${row.id}`,
+        metadata: {
+          organizationName: org?.publicDisplayName ?? org?.legalName ?? 'Uttily',
+          roleName: roleLabels[input.role] ?? input.role,
+          token,
+          invitationId: row.id,
+        },
+      })
+      .onConflictDoNothing();
 
     return {
       id: row.id,

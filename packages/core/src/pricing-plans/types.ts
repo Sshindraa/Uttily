@@ -248,6 +248,7 @@ export interface PricingContext {
   tiers: ResolvedTier[];
   translations: ResolvedTranslation[];
   openingHours: OpeningHour[];
+  scheduleExceptions?: import('../identity/types').LocationScheduleExceptionRecord[];
   variants: Map<string, { productId: string; organizationId: string }>;
   lines: Array<{ variantId: string; quantity: number }>;
   locale: string;

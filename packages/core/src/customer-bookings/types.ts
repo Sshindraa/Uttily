@@ -75,6 +75,8 @@ export interface CustomerBookingPaymentDetail {
 
 export interface CustomerBookingDetail extends CustomerBookingSummary {
   readonly locationInstructions: string | null;
+  readonly pickupInstructions: string | null;
+  readonly returnInstructions: string | null;
   readonly locationPhone: string | null;
   readonly locationCity: string | null;
   readonly locationPostalCode: string | null;

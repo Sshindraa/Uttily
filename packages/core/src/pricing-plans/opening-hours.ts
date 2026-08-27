@@ -1,43 +1,47 @@
 /**
- * @uttily/core — Module Pricing Plans (G7P-B1).
+ * @uttily/core — Module Pricing Plans (G7P-B1 / Chantier 15.1).
  *
- * Validation des horaires d'ouverture.
+ * Validation des horaires d'ouverture et des exceptions de calendrier.
  */
 
+import type { LocationScheduleExceptionRecord } from '../identity/types';
 import type { OpeningHour, ResolvedFlexiblePricingIntent } from './types';
 import { FlexiblePricingError } from './errors';
 import { civilDayNumber, getTimeInMinutes, minutesBetween, toLocalParts } from './time-utils';
 
 /**
- * Vérifie que la période demandée tombe dans les horaires d'ouverture.
+ * Vérifie que la période demandée tombe dans les horaires d'ouverture effectifs
+ * (horaires hebdomadaires + exceptions de calendrier CLOSED / OPEN_INTERVAL).
  *
- * Pour TIME_RANGE : vérifie que l'heure de début et l'heure de fin (en local)
- * tombent dans un créneau d'ouverture pour le jour de la semaine correspondant
- * au début. Si la plage traverse minuit (plusieurs jours civils), chaque jour
- * couvert doit avoir un créneau d'ouverture.
- *
- * Pour DAY_RANGE : vérifie que pour chaque jour civil de la plage, il existe
- * une entrée d'horaires d'ouverture pour ce jour de la semaine.
- *
- * @throws FlexiblePricingError(OUTSIDE_OPENING_HOURS) si la période n'est pas
- *   entièrement dans les horaires d'ouverture.
+ * @throws FlexiblePricingError('LOCATION_CLOSED') si l'établissement est fermé.
+ * @throws FlexiblePricingError('OUTSIDE_OPENING_HOURS') si la période est hors créneaux.
  */
 export function isWithinOpeningHours(
   intent: ResolvedFlexiblePricingIntent,
   timeZone: string,
   openingHours: OpeningHour[],
+  scheduleExceptions: LocationScheduleExceptionRecord[] = [],
 ): void {
-  if (openingHours.length === 0) {
-    // Pas d'horaires d'ouverture configurés → on ne bloque pas (fail-open pour
-    // les locations sans horaires, cohérent avec le MVP où les horaires sont
-    // optionnels). Le moteur de pricing ne rejette pas si aucun horaire n'existe.
+  if (openingHours.length === 0 && scheduleExceptions.length === 0) {
+    // Pas d'horaires configurés ni d'exceptions → fail-open
     return;
   }
 
   if (intent.kind === 'TIME_RANGE') {
-    assertTimeRangeOpeningHours(intent.startAt, intent.endAt, timeZone, openingHours);
+    assertTimeRangeOpeningHours(
+      intent.startAt,
+      intent.endAt,
+      timeZone,
+      openingHours,
+      scheduleExceptions,
+    );
   } else {
-    assertDayRangeOpeningHours(intent.startDate, intent.endDateExclusive, openingHours);
+    assertDayRangeOpeningHours(
+      intent.startDate,
+      intent.endDateExclusive,
+      openingHours,
+      scheduleExceptions,
+    );
   }
 }
 
@@ -50,6 +54,7 @@ function assertTimeRangeOpeningHours(
   endAt: Date,
   timeZone: string,
   openingHours: OpeningHour[],
+  scheduleExceptions: LocationScheduleExceptionRecord[],
 ): void {
   const durationMin = minutesBetween(startAt, endAt);
   const startParts = toLocalParts(startAt, timeZone);
@@ -58,52 +63,81 @@ function assertTimeRangeOpeningHours(
   const startDayNum = civilDayNumber(startParts.year, startParts.month, startParts.day);
   const endDayNum = civilDayNumber(endParts.year, endParts.month, endParts.day);
 
+  const startDateStr = formatDateParts(startParts.year, startParts.month, startParts.day);
+  const endDateStr = formatDateParts(endParts.year, endParts.month, endParts.day);
+
   const startTimeMin = startParts.hour * 60 + startParts.minute;
   const endTimeMin = endParts.hour * 60 + endParts.minute;
 
-  // Cas 1 : même jour civil — vérifier que [startTime, endTime] est couvert
-  // par un créneau d'ouverture ce jour-là.
+  const startSchedule = resolveScheduleForLocalDate(
+    startDateStr,
+    openingHours,
+    scheduleExceptions,
+  );
+  if (!startSchedule.isOpen) {
+    throw new FlexiblePricingError(
+      'LOCATION_CLOSED',
+      `L’établissement est fermé le ${startDateStr} (début de réservation).`,
+    );
+  }
+
+  // Même jour civil
   if (startDayNum === endDayNum) {
-    const weekday = startParts.weekday;
-    if (!isTimeRangeCoveredByOpeningHours(weekday, startTimeMin, endTimeMin, openingHours)) {
-      throw new FlexiblePricingError(
-        'OUTSIDE_OPENING_HOURS',
-        `La plage horaire (${startParts.hour}:${String(startParts.minute).padStart(2, '0')}-${endParts.hour}:${String(endParts.minute).padStart(2, '0')}) n'est pas dans les horaires d'ouverture du jour ${weekday}`,
-      );
+    if (startSchedule.slots.length > 0) {
+      if (!isTimeRangeCoveredBySlots(startTimeMin, endTimeMin, startSchedule.slots)) {
+        throw new FlexiblePricingError(
+          'OUTSIDE_OPENING_HOURS',
+          `La plage horaire (${startParts.hour}:${String(startParts.minute).padStart(2, '0')}-${endParts.hour}:${String(endParts.minute).padStart(2, '0')}) n'est pas dans les horaires d'ouverture du ${startDateStr}`,
+        );
+      }
     }
     return;
   }
 
-  // Cas 2 : la plage traverse minuit (plusieurs jours civils).
-  // Vérifier le jour de début : startTime → fin de journée couverte par un créneau.
-  if (!isTimeRangeCoveredByOpeningHours(startParts.weekday, startTimeMin, 24 * 60, openingHours)) {
-    throw new FlexiblePricingError(
-      'OUTSIDE_OPENING_HOURS',
-      `L'heure de début (${startParts.hour}:${String(startParts.minute).padStart(2, '0')}) n'est pas dans les horaires d'ouverture du jour de départ`,
-    );
-  }
-
-  // Vérifier le jour de fin : début de journée → endTime couverte par un créneau.
-  if (!isTimeRangeCoveredByOpeningHours(endParts.weekday, 0, endTimeMin, openingHours)) {
-    throw new FlexiblePricingError(
-      'OUTSIDE_OPENING_HOURS',
-      `L'heure de fin (${endParts.hour}:${String(endParts.minute).padStart(2, '0')}) n'est pas dans les horaires d'ouverture du jour d'arrivée`,
-    );
-  }
-
-  // Vérifier les jours intermédiaires : chaque jour doit avoir au moins un créneau.
-  for (let dayNum = startDayNum + 1; dayNum < endDayNum; dayNum++) {
-    const weekday = weekdayFromDayNum(dayNum);
-    if (!openingHours.some((oh) => oh.weekday === weekday)) {
+  // Multi-jours : vérifier heure de départ
+  if (startSchedule.slots.length > 0) {
+    if (!isTimeCoveredBySlots(startTimeMin, startSchedule.slots)) {
       throw new FlexiblePricingError(
         'OUTSIDE_OPENING_HOURS',
-        `Aucun horaire d'ouverture pour le jour de la semaine ${weekday} dans la plage multi-jours`,
+        `L'heure de début (${startParts.hour}:${String(startParts.minute).padStart(2, '0')}) n'est pas dans les horaires d'ouverture du jour de départ (${startDateStr})`,
       );
     }
   }
 
-  // Utiliser durationMin pour éviter l'avertissement de variable non utilisée
-  // (la durée est déjà validée par minutesBetween qui lève si <= 0).
+  // Vérifier heure de fin
+  const endSchedule = resolveScheduleForLocalDate(endDateStr, openingHours, scheduleExceptions);
+  if (!endSchedule.isOpen) {
+    throw new FlexiblePricingError(
+      'LOCATION_CLOSED',
+      `L’établissement est fermé le ${endDateStr} (fin de réservation).`,
+    );
+  }
+
+  if (endSchedule.slots.length > 0) {
+    if (!isTimeCoveredBySlots(endTimeMin, endSchedule.slots)) {
+      throw new FlexiblePricingError(
+        'OUTSIDE_OPENING_HOURS',
+        `L'heure de fin (${endParts.hour}:${String(endParts.minute).padStart(2, '0')}) n'est pas dans les horaires d'ouverture du jour d'arrivée (${endDateStr})`,
+      );
+    }
+  }
+
+  // Vérifier les jours intermédiaires
+  for (let dayNum = startDayNum + 1; dayNum < endDayNum; dayNum++) {
+    const intermediateDateStr = dateStringFromDayNum(dayNum);
+    const daySchedule = resolveScheduleForLocalDate(
+      intermediateDateStr,
+      openingHours,
+      scheduleExceptions,
+    );
+    if (!daySchedule.isOpen) {
+      throw new FlexiblePricingError(
+        'LOCATION_CLOSED',
+        `L’établissement est fermé le ${intermediateDateStr} durant la période de réservation.`,
+      );
+    }
+  }
+
   void durationMin;
 }
 
@@ -111,60 +145,115 @@ function assertTimeRangeOpeningHours(
 // DAY_RANGE
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Valide que le premier et le dernier jour inclus d'un DAY_RANGE ont des
- * horaires d'ouverture couvrant au moins un créneau. Les jours intermédiaires
- * peuvent être fermés (le client conserve l'équipement entre-temps).
- *
- * G7P-B2-B Round 2 — Defect 3 : safety-net — vérifie qu'au moins une entrée
- * d'horaires d'ouverture existe pour le weekday du premier et du dernier jour.
- * Le filtrage par couverture temporelle de la fenêtre sélectionnée est déjà
- * effectué par findDayRangeWindow ; cette fonction est un double-check.
- *
- * Le weekday d'une date YYYY-MM-DD est déterministe (indépendant du fuseau) :
- * on utilise civilDayNumber + weekdayFromDayNum directement, sans conversion
- * en instant UTC.
- *
- * @throws FlexiblePricingError(OUTSIDE_OPENING_HOURS) si le premier ou dernier
- *   jour n'a pas d'horaires d'ouverture.
- */
 function assertDayRangeOpeningHours(
   startDate: string,
   endDateExclusive: string,
   openingHours: OpeningHour[],
+  scheduleExceptions: LocationScheduleExceptionRecord[],
 ): void {
-  // Calculer les day numbers directement depuis les dates civiles (YYYY-MM-DD).
-  // Le weekday d'une date civile est déterministe, indépendant du fuseau.
   const startParts = parseDateString(startDate);
   const endParts = parseDateString(endDateExclusive);
   const startDayNum = civilDayNumber(startParts.year, startParts.month, startParts.day);
   const endDayNum = civilDayNumber(endParts.year, endParts.month, endParts.day);
-
-  // Le dernier jour inclus = endDayNum - 1 (endDateExclusive est exclusif).
   const lastIncludedDayNum = endDayNum - 1;
 
-  // Vérifier le premier jour.
-  const firstWeekday = weekdayFromDayNum(startDayNum);
-  if (!openingHours.some((oh) => oh.weekday === firstWeekday)) {
+  // Vérifier le premier jour
+  const startSchedule = resolveScheduleForLocalDate(startDate, openingHours, scheduleExceptions);
+  if (!startSchedule.isOpen) {
     throw new FlexiblePricingError(
-      'OUTSIDE_OPENING_HOURS',
-      `Aucun horaire d'ouverture pour le premier jour (weekday ${firstWeekday}) dans la plage DAY_RANGE`,
+      'LOCATION_CLOSED',
+      `L’établissement est fermé le premier jour de la location (${startDate}).`,
     );
   }
 
-  // Vérifier le dernier jour inclus (uniquement s'il est différent du premier).
+  // Vérifier le dernier jour inclus
   if (lastIncludedDayNum > startDayNum) {
-    const lastWeekday = weekdayFromDayNum(lastIncludedDayNum);
-    if (!openingHours.some((oh) => oh.weekday === lastWeekday)) {
+    const lastDateStr = dateStringFromDayNum(lastIncludedDayNum);
+    const lastSchedule = resolveScheduleForLocalDate(
+      lastDateStr,
+      openingHours,
+      scheduleExceptions,
+    );
+    if (!lastSchedule.isOpen) {
       throw new FlexiblePricingError(
-        'OUTSIDE_OPENING_HOURS',
-        `Aucun horaire d'ouverture pour le dernier jour (weekday ${lastWeekday}) dans la plage DAY_RANGE`,
+        'LOCATION_CLOSED',
+        `L’établissement est fermé le dernier jour de la location (${lastDateStr}).`,
       );
     }
   }
 }
 
-/** Parse une date YYYY-MM-DD et valide le format. */
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers de résolution
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface EffectiveDateSchedule {
+  isOpen: boolean;
+  slots: Array<{ openTime: string; closeTime: string }>;
+}
+
+function resolveScheduleForLocalDate(
+  localDate: string,
+  openingHours: OpeningHour[],
+  scheduleExceptions: LocationScheduleExceptionRecord[],
+): EffectiveDateSchedule {
+  const exception = scheduleExceptions.find((ex) => ex.localDate === localDate);
+  if (exception) {
+    if (exception.kind === 'CLOSED') {
+      return { isOpen: false, slots: [] };
+    }
+    if (exception.kind === 'OPEN_INTERVAL' && exception.openTime && exception.closeTime) {
+      return {
+        isOpen: true,
+        slots: [{ openTime: exception.openTime, closeTime: exception.closeTime }],
+      };
+    }
+  }
+
+  const parts = parseDateString(localDate);
+  const dayNum = civilDayNumber(parts.year, parts.month, parts.day);
+  const weekday = weekdayFromDayNum(dayNum);
+
+  const regular = openingHours.filter((oh) => oh.weekday === weekday);
+  if (regular.length === 0 && openingHours.length > 0) {
+    return { isOpen: false, slots: [] };
+  }
+
+  return {
+    isOpen: true,
+    slots: regular.map((r) => ({ openTime: r.openTime, closeTime: r.closeTime })),
+  };
+}
+
+function isTimeCoveredBySlots(
+  timeMin: number,
+  slots: Array<{ openTime: string; closeTime: string }>,
+): boolean {
+  for (const slot of slots) {
+    const openMin = getTimeInMinutes(slot.openTime);
+    const closeMin = getTimeInMinutes(slot.closeTime);
+    if (timeMin >= openMin && timeMin <= closeMin) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isTimeRangeCoveredBySlots(
+  startTimeMin: number,
+  endTimeMin: number,
+  slots: Array<{ openTime: string; closeTime: string }>,
+): boolean {
+  for (const slot of slots) {
+    const openMin = getTimeInMinutes(slot.openTime);
+    const closeMin = getTimeInMinutes(slot.closeTime);
+    if (startTimeMin >= openMin && endTimeMin <= closeMin) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function parseDateString(dateStr: string): { year: number; month: number; day: number } {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
   if (!match) {
@@ -180,31 +269,24 @@ function parseDateString(dateStr: string): { year: number; month: number; day: n
   };
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Vérifie qu'un créneau d'ouverture couvre [startTimeMin, endTimeMin] pour un weekday. */
-function isTimeRangeCoveredByOpeningHours(
-  weekday: number,
-  startTimeMin: number,
-  endTimeMin: number,
-  openingHours: OpeningHour[],
-): boolean {
-  for (const oh of openingHours) {
-    if (oh.weekday !== weekday) continue;
-    const openMin = getTimeInMinutes(oh.openTime);
-    const closeMin = getTimeInMinutes(oh.closeTime);
-    if (startTimeMin >= openMin && endTimeMin <= closeMin) {
-      return true;
-    }
-  }
-  return false;
+function formatDateParts(year: number, month: number, day: number): string {
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-/** Retourne le jour de la semaine (0=Monday..6=Sunday) pour un Julian day number. */
+function dateStringFromDayNum(dayNum: number): string {
+  // Conversion inverse civilDayNumber vers YYYY-MM-DD
+  const a = dayNum + 32044;
+  const b = Math.floor((4 * a + 3) / 146097);
+  const c = a - Math.floor((146097 * b) / 4);
+  const d = Math.floor((4 * c + 3) / 1461);
+  const e = c - Math.floor((1461 * d) / 4);
+  const m = Math.floor((5 * e + 2) / 153);
+  const day = e - Math.floor((153 * m + 2) / 5) + 1;
+  const month = m + 3 - 12 * Math.floor(m / 10);
+  const year = 100 * b + d - 4800 + Math.floor(m / 10);
+  return formatDateParts(year, month, day);
+}
+
 function weekdayFromDayNum(dayNum: number): number {
-  // Julian Day Number mod 7 : 0=Monday..6=Sunday (JDN 0 = lundi 4713 BC).
-  // Vérifié : civilDayNumber(2000,1,3) = 2451547, 2451547 % 7 = 0, et 2000-01-03 = lundi.
   return ((dayNum % 7) + 7) % 7;
 }

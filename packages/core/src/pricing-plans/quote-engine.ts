@@ -56,8 +56,13 @@ export function computeQuote(context: PricingContext): QuoteFlexiblePricingResul
   const availableLocales = collectAvailableLocales(context.translations);
   const resolvedLocale = resolveLocale(context.locale, availableLocales);
 
-  // 3. Vérifier les horaires d'ouverture.
-  isWithinOpeningHours(context.intent, context.timeZone, context.openingHours);
+  // 3. Vérifier les horaires d'ouverture et exceptions de calendrier.
+  isWithinOpeningHours(
+    context.intent,
+    context.timeZone,
+    context.openingHours,
+    context.scheduleExceptions,
+  );
 
   // 4. Traiter chaque ligne.
   const quoteLines: QuoteLine[] = [];

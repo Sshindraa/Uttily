@@ -267,6 +267,7 @@ function normalizeFlexiblePricingError(error: FlexiblePricingError): BookingDraf
     case 'PRODUCT_NOT_ELIGIBLE':
     case 'NO_ELIGIBLE_PLAN':
     case 'OUTSIDE_OPENING_HOURS':
+    case 'LOCATION_CLOSED':
     case 'PRICING_CONFIGURATION_INVALID':
     case 'UNSUPPORTED_LOCALE':
     case 'CURRENCY_MISMATCH':

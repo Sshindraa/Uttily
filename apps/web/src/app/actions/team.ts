@@ -5,7 +5,7 @@ import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import {
   getMembership,
-  requireMembership,
+  requireCapability,
   changeMemberRole,
   removeMember,
   type MembershipRole,
@@ -21,7 +21,7 @@ export async function changeMemberRoleAction(
 
   const db = getDb();
   const membership = await getMembership(db, organizationId, user.id);
-  const active = requireMembership(membership, ['OWNER']);
+  const active = requireCapability(membership, 'team.changeRole');
 
   await changeMemberRole(db, organizationId, targetUserId, newRole, {
     userId: user.id,
@@ -37,7 +37,7 @@ export async function removeMemberAction(organizationId: string, targetUserId: s
 
   const db = getDb();
   const membership = await getMembership(db, organizationId, user.id);
-  const active = requireMembership(membership, ['OWNER', 'ADMIN']);
+  const active = requireCapability(membership, 'team.remove');
 
   await removeMember(db, organizationId, targetUserId, {
     userId: user.id,

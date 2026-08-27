@@ -154,7 +154,12 @@ describe.skipIf(shouldSkipIntegrationTests())('Identity integration — multi-te
     const { organization } = await createOrganizationForUser(db, user, {
       legalName: 'Solo Org',
     });
-    await expect(changeMemberRole(db, organization.id, user.id, 'ADMIN')).rejects.toThrow();
+    await expect(
+      changeMemberRole(db, organization.id, user.id, 'ADMIN', {
+        userId: user.id,
+        role: 'OWNER',
+      }),
+    ).rejects.toThrow();
   });
 
   it('garde-fou : impossible de retirer le dernier OWNER', async () => {
@@ -163,7 +168,12 @@ describe.skipIf(shouldSkipIntegrationTests())('Identity integration — multi-te
     const { organization } = await createOrganizationForUser(db, user, {
       legalName: 'Solo Org 2',
     });
-    await expect(removeMember(db, organization.id, user.id)).rejects.toThrow();
+    await expect(
+      removeMember(db, organization.id, user.id, {
+        userId: user.id,
+        role: 'OWNER',
+      }),
+    ).rejects.toThrow();
   });
 
   it('countActiveOwners compte les OWNER actifs', async () => {
@@ -474,8 +484,14 @@ describe.skipIf(shouldSkipIntegrationTests())('Identity integration — multi-te
 
     // Tente de rétrograder les deux OWNER simultanément.
     const results = await Promise.allSettled([
-      changeMemberRole(db, organization.id, owner1.id, 'ADMIN'),
-      changeMemberRole(db, organization.id, owner2.id, 'ADMIN'),
+      changeMemberRole(db, organization.id, owner1.id, 'ADMIN', {
+        userId: owner1.id,
+        role: 'OWNER',
+      }),
+      changeMemberRole(db, organization.id, owner2.id, 'ADMIN', {
+        userId: owner2.id,
+        role: 'OWNER',
+      }),
     ]);
     // Exactement une opération doit réussir, l'autre doit échouer.
     const fulfilled = results.filter((r) => r.status === 'fulfilled');
@@ -506,8 +522,14 @@ describe.skipIf(shouldSkipIntegrationTests())('Identity integration — multi-te
     expect(await countActiveOwners(db, organization.id)).toBe(2);
 
     const results = await Promise.allSettled([
-      removeMember(db, organization.id, owner1.id),
-      removeMember(db, organization.id, owner2.id),
+      removeMember(db, organization.id, owner1.id, {
+        userId: owner1.id,
+        role: 'OWNER',
+      }),
+      removeMember(db, organization.id, owner2.id, {
+        userId: owner2.id,
+        role: 'OWNER',
+      }),
     ]);
     const fulfilled = results.filter((r) => r.status === 'fulfilled');
     const rejected = results.filter((r) => r.status === 'rejected');

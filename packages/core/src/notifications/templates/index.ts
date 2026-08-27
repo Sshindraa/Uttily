@@ -7,3 +7,4 @@ export * from './refund-confirmed-customer';
 export * from './pickup-reminder-customer';
 export * from './return-reminder-customer';
 export * from './refund-action-required-merchant';
+export * from './organization-invitation';

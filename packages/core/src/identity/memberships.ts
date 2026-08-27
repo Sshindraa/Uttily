@@ -91,9 +91,9 @@ export async function changeMemberRole(
   organizationId: string,
   targetUserId: string,
   newRole: MembershipRole,
-  actor?: { userId: string; role: MembershipRole },
+  actor: { userId: string; role: MembershipRole },
 ): Promise<void> {
-  if (actor && !can(actor.role, 'team.changeRole')) {
+  if (!can(actor.role, 'team.changeRole')) {
     throw new AuthorizationError('Seul un propriétaire (OWNER) peut modifier les rôles.');
   }
 
@@ -132,7 +132,7 @@ export async function changeMemberRole(
 }
 
 /**
- * Retire un membre (status -> REMOVED, removed_at positionné) (Chantier 15B).
+ * Retire un membre (status -> REMOVED, removed_at positionné) (Chantier 15B / 15.1).
  *
  * Règles hiérarchiques Core :
  * - OWNER peut retirer n'importe qui (sauf le dernier OWNER).
@@ -147,9 +147,9 @@ export async function removeMember(
   db: DatabaseClient,
   organizationId: string,
   targetUserId: string,
-  actor?: { userId: string; role: MembershipRole },
+  actor: { userId: string; role: MembershipRole },
 ): Promise<void> {
-  if (actor && !can(actor.role, 'team.remove')) {
+  if (!can(actor.role, 'team.remove')) {
     throw new AuthorizationError('Rôle insuffisant pour retirer un membre.');
   }
 
@@ -171,7 +171,7 @@ export async function removeMember(
       throw new AuthorizationError('Membre introuvable dans cette organisation.');
     }
 
-    if (actor && actor.role === 'ADMIN') {
+    if (actor.role === 'ADMIN') {
       if (target.role === 'OWNER' || target.role === 'ADMIN') {
         throw new AuthorizationError(
           'Un administrateur ne peut pas retirer un propriétaire ou un autre administrateur.',

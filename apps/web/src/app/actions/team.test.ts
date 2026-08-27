@@ -57,7 +57,7 @@ describe('Team Server Actions', () => {
     });
 
     await expect(changeMemberRoleAction(orgId, targetUserId, 'MANAGER')).rejects.toThrow(
-      'Rôle insuffisant',
+      'Permission refusée',
     );
   });
 
@@ -77,6 +77,6 @@ describe('Team Server Actions', () => {
       status: 'ACTIVE',
     });
 
-    await expect(removeMemberAction(orgId, targetUserId)).rejects.toThrow('Rôle insuffisant');
+    await expect(removeMemberAction(orgId, targetUserId)).rejects.toThrow('Permission refusée');
   });
 });

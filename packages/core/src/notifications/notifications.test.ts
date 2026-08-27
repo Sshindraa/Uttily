@@ -14,6 +14,7 @@ import {
   renderBookingCancelledMerchant,
   renderBookingConfirmedCustomer,
   renderBookingConfirmedMerchant,
+  renderOrganizationInvitation,
   renderPickupReminderCustomer,
   renderRefundActionRequiredMerchant,
   renderRefundConfirmedCustomer,
@@ -142,7 +143,7 @@ describe('Notifications — Templates Rendering', () => {
     expect(cancelledMerchant.html).toContain('automatiquement débloqué');
   });
 
-  it('rend les rappels de départ et de retour', () => {
+  it('rend les rappels de départ et de retour avec consignes et téléphone', () => {
     const pickup = renderPickupReminderCustomer({
       bookingId: 'b_1',
       organizationName: 'Lyon Vélos Pro',
@@ -150,9 +151,13 @@ describe('Notifications — Templates Rendering', () => {
       customerStartAt: baseDate,
       locationName: 'Lyon Centre',
       timeZone: 'Europe/Paris',
+      locationPhone: '+33 4 78 00 00 00',
+      pickupInstructions: 'Sonnez à l’interphone Atelier et demandez Pierre.',
     });
     expect(pickup.subject).toContain('Rappel : Votre location');
     expect(pickup.html).toContain('Horaire de retrait :');
+    expect(pickup.html).toContain('Sonnez à l’interphone Atelier et demandez Pierre.');
+    expect(pickup.html).toContain('+33 4 78 00 00 00');
 
     const ret = renderReturnReminderCustomer({
       bookingId: 'b_1',
@@ -161,9 +166,26 @@ describe('Notifications — Templates Rendering', () => {
       customerEndAt: endDate,
       locationName: 'Lyon Centre',
       timeZone: 'Europe/Paris',
+      locationPhone: '+33 4 78 00 00 00',
+      returnInstructions: 'Déposez le vélo dans le sas sécurisé avec le code 4589.',
     });
     expect(ret.subject).toContain('Rappel : Retour de votre équipement');
     expect(ret.html).toContain('Horaire limite de restitution :');
+    expect(ret.html).toContain('Déposez le vélo dans le sas sécurisé avec le code 4589.');
+    expect(ret.html).toContain('+33 4 78 00 00 00');
+  });
+
+  it('rend ORGANIZATION_INVITATION avec rôle traduit, validité 7 jours et bouton', () => {
+    const invitation = renderOrganizationInvitation({
+      organizationName: 'Lyon Vélos Pro',
+      roleName: 'Administrateur',
+      acceptUrl: 'https://uttily.com/invitation/tok_123',
+    });
+    expect(invitation.subject).toContain('Invitation à rejoindre Lyon Vélos Pro');
+    expect(invitation.html).toContain('Administrateur');
+    expect(invitation.html).toContain('Rejoindre l’équipe');
+    expect(invitation.html).toContain('7 jours');
+    expect(invitation.text).toContain('https://uttily.com/invitation/tok_123');
   });
 
   it('rend REFUND_ACTION_REQUIRED_MERCHANT', () => {

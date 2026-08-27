@@ -84,6 +84,7 @@ import {
   destinations,
   destinationTranslations,
   locationOpeningHours,
+  locationScheduleExceptions,
   multiDayDiscountTiers,
   pricingPlanTranslations,
   pricingPlanWindows,
@@ -1546,6 +1547,33 @@ async function loadPricingContextsBatch(
     openingHoursByLocation.set(r.locationId, arr);
   }
 
+  // Charger les exceptions de calendrier en batch (Chantier 15.1).
+  const exceptionRows = await db
+    .select()
+    .from(locationScheduleExceptions)
+    .where(inArray(locationScheduleExceptions.locationId, locationIds));
+
+  const scheduleExceptionsByLocation = new Map<
+    string,
+    import('../identity/types').LocationScheduleExceptionRecord[]
+  >();
+  for (const r of exceptionRows) {
+    const arr = scheduleExceptionsByLocation.get(r.locationId) ?? [];
+    arr.push({
+      id: r.id,
+      organizationId: r.organizationId,
+      locationId: r.locationId,
+      localDate: r.localDate,
+      kind: r.kind,
+      openTime: r.openTime,
+      closeTime: r.closeTime,
+      reason: r.reason,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    });
+    scheduleExceptionsByLocation.set(r.locationId, arr);
+  }
+
   // Construire le contexte pricing pour chaque location.
   for (const locationId of locationIds) {
     const orgId = locationOrgMap.get(locationId)!;
@@ -1575,6 +1603,7 @@ async function loadPricingContextsBatch(
     }
 
     const openingHours = openingHoursByLocation.get(locationId) ?? [];
+    const scheduleExceptions = scheduleExceptionsByLocation.get(locationId) ?? [];
 
     contexts.set(locationId, {
       organizationId: orgId,
@@ -1587,6 +1616,7 @@ async function loadPricingContextsBatch(
       tiers,
       translations,
       openingHours,
+      scheduleExceptions,
       variants,
       lines: locationCandidates.map((c) => ({ variantId: c.variantId, quantity: 1 })),
       locale,

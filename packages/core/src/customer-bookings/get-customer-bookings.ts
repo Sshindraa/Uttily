@@ -512,6 +512,8 @@ export async function getCustomerBooking(
     locationCity: booking.locationCity,
     locationPostalCode: booking.locationPostalCode,
     locationInstructions: booking.locationPickupInstructions ?? null,
+    pickupInstructions: booking.locationPickupInstructions ?? null,
+    returnInstructions: booking.locationReturnInstructions ?? null,
     locationPhone: booking.locationPublicPhone ?? null,
     locationCoordinates: null,
     totalAmountMinor: booking.totalAmountMinor,

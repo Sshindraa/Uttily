@@ -5,6 +5,7 @@ import {
   customType,
   date,
   doublePrecision,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -288,6 +289,8 @@ export const locations = pgTable(
     check('locations_operating_currency_iso', sql`${t.operatingCurrency} ~ '^[A-Z]{3}$'`),
     // Slug unique par organisation (pas globalement). Cohérent avec migration 0005.
     unique('locations_organization_slug_unique').on(t.organizationId, t.slug),
+    // Clé unique composite pour référencement étranger multi-tenant (Chantier 15.1)
+    unique('locations_org_id_unique').on(t.organizationId, t.id),
     check('locations_prep_buffer_nonneg', sql`${t.prepBufferMinutes} >= 0`),
     check('locations_cleanup_buffer_nonneg', sql`${t.cleanupBufferMinutes} >= 0`),
     check(
@@ -339,6 +342,11 @@ export const locationScheduleExceptions = pgTable(
   },
   (t) => [
     unique('location_schedule_exceptions_location_date_unique').on(t.locationId, t.localDate),
+    foreignKey({
+      columns: [t.organizationId, t.locationId],
+      foreignColumns: [locations.organizationId, locations.id],
+      name: 'location_schedule_exceptions_org_location_fk',
+    }).onDelete('cascade'),
     check(
       'location_schedule_exceptions_date_format',
       sql`${t.localDate} ~ '^\\d{4}-\\d{2}-\\d{2}$'`,
@@ -3165,6 +3173,7 @@ export const notificationTemplate = pgEnum('notification_template', [
   'PICKUP_REMINDER_CUSTOMER',
   'RETURN_REMINDER_CUSTOMER',
   'REFUND_ACTION_REQUIRED_MERCHANT',
+  'ORGANIZATION_INVITATION',
 ]);
 
 export const notificationStatus = pgEnum('notification_status', [

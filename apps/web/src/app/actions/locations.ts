@@ -14,8 +14,7 @@ import {
   upsertLocationScheduleException,
   deleteLocationScheduleException,
   getMembership,
-  requireMembership,
-  LOCATION_MANAGERS,
+  requireCapability,
   type CreateLocationInput,
   type UpdateLocationInput,
   type UpsertScheduleExceptionInput,
@@ -26,7 +25,7 @@ async function requireLocationManager(organizationId: string) {
   if (!user) throw new Error('Non authentifié.');
   const db = getDb();
   const membership = await getMembership(db, organizationId, user.id);
-  requireMembership(membership, LOCATION_MANAGERS);
+  requireCapability(membership, 'locations.manage');
   return { user, db };
 }
 
@@ -42,7 +41,7 @@ export async function listLocationsAction(organizationId: string) {
   if (!user) throw new Error('Non authentifié.');
   const db = getDb();
   const membership = await getMembership(db, organizationId, user.id);
-  requireMembership(membership, ['OWNER', 'ADMIN', 'MANAGER', 'STAFF']);
+  requireCapability(membership, 'locations.manage');
   return listLocations(db, organizationId);
 }
 
@@ -51,7 +50,7 @@ export async function getLocationAction(organizationId: string, locationId: stri
   if (!user) throw new Error('Non authentifié.');
   const db = getDb();
   const membership = await getMembership(db, organizationId, user.id);
-  requireMembership(membership, ['OWNER', 'ADMIN', 'MANAGER', 'STAFF']);
+  requireCapability(membership, 'locations.manage');
   const location = await getLocation(db, organizationId, locationId);
   if (!location) throw new Error('Établissement introuvable.');
   const openingHours = await listOpeningHours(db, locationId);

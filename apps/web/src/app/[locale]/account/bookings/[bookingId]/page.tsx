@@ -216,10 +216,10 @@ export default async function CustomerBookingDetailPage({
             </div>
           </section>
 
-          {/* Carte Consignes de retrait */}
+          {/* Carte Consignes de retrait & retour */}
           <section aria-labelledby="instructions-heading" style={cardStyle}>
             <h2 id="instructions-heading" style={cardTitleStyle}>
-              ℹ️ Pour votre retrait
+              ℹ️ Consignes & Déroulement
             </h2>
             <ul style={instructionsListStyle}>
               <li style={instructionItemStyle}>
@@ -230,9 +230,15 @@ export default async function CustomerBookingDetailPage({
                 <strong>Accueil magasin :</strong> Présentez-vous directement à l’accueil de
                 l’établissement en indiquant votre nom.
               </li>
-              {booking.locationInstructions && (
+              {(booking.pickupInstructions ?? booking.locationInstructions) && (
                 <li style={instructionItemStyle}>
-                  <strong>Consigne spécifique :</strong> {booking.locationInstructions}
+                  <strong>Consignes de retrait :</strong>{' '}
+                  {booking.pickupInstructions ?? booking.locationInstructions}
+                </li>
+              )}
+              {booking.returnInstructions && (
+                <li style={instructionItemStyle}>
+                  <strong>Consignes de retour :</strong> {booking.returnInstructions}
                 </li>
               )}
             </ul>

@@ -6,10 +6,11 @@
  * Au maximum 7 requêtes SQL quel que soit le nombre de lignes.
  */
 
-import { eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import {
   locations,
   locationOpeningHours,
+  locationScheduleExceptions,
   pricingPlanWindows,
   multiDayDiscountTiers,
   pricingPlanTranslations,
@@ -93,6 +94,30 @@ export async function loadPricingContext(
     weekday: r.weekday,
     openTime: typeof r.openTime === 'string' ? r.openTime : String(r.openTime),
     closeTime: typeof r.closeTime === 'string' ? r.closeTime : String(r.closeTime),
+  }));
+
+  // 3b. Charger les exceptions de calendrier (fermetures et horaires spéciaux).
+  const exceptionRows = await db
+    .select()
+    .from(locationScheduleExceptions)
+    .where(
+      and(
+        eq(locationScheduleExceptions.organizationId, input.organizationId),
+        eq(locationScheduleExceptions.locationId, input.locationId),
+      ),
+    );
+
+  const scheduleExceptions = exceptionRows.map((r) => ({
+    id: r.id,
+    organizationId: r.organizationId,
+    locationId: r.locationId,
+    localDate: r.localDate,
+    kind: r.kind,
+    openTime: r.openTime,
+    closeTime: r.closeTime,
+    reason: r.reason,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
   }));
 
   // 4. Appeler resolve_effective_pricing_plans(locationId).
@@ -236,6 +261,7 @@ export async function loadPricingContext(
     tiers,
     translations,
     openingHours,
+    scheduleExceptions,
     variants,
     lines: input.lines,
     locale: input.locale,

@@ -57,7 +57,7 @@ describe('Settings Server Actions', () => {
 
     await expect(
       updateCompanySettingsAction(orgId, { publicDisplayName: 'Vélo Express' }),
-    ).rejects.toThrow('Rôle insuffisant');
+    ).rejects.toThrow('Permission refusée');
   });
 
   it('updateCancellationPolicyAction : rejette si non authentifié', async () => {
@@ -79,7 +79,7 @@ describe('Settings Server Actions', () => {
     });
 
     await expect(updateCancellationPolicyAction(orgId, 'MODERATE')).rejects.toThrow(
-      'Rôle insuffisant',
+      'Permission refusée',
     );
   });
 });

@@ -5,7 +5,7 @@ import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import {
   getMembership,
-  requireMembership,
+  requireCapability,
   updateOrganizationPublicSettings,
   updateOrganizationCancellationPolicy,
   type CancellationPolicyCode,
@@ -20,7 +20,7 @@ export async function updateCompanySettingsAction(
 
   const db = getDb();
   const membership = await getMembership(db, organizationId, user.id);
-  requireMembership(membership, ['OWNER', 'ADMIN']);
+  requireCapability(membership, 'organization.manage');
 
   const org = await updateOrganizationPublicSettings(db, organizationId, input);
   revalidatePath(`/dashboard/${organizationId}/settings/company`);
@@ -36,7 +36,7 @@ export async function updateCancellationPolicyAction(
 
   const db = getDb();
   const membership = await getMembership(db, organizationId, user.id);
-  requireMembership(membership, ['OWNER', 'ADMIN']);
+  requireCapability(membership, 'policy.manage');
 
   const org = await updateOrganizationCancellationPolicy(db, organizationId, policyCode);
   revalidatePath(`/dashboard/${organizationId}/settings/policies`);

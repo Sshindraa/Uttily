@@ -15,7 +15,8 @@ describe('CustomerBookingDetailPage (Chantier 14C, 14D, 14E, 14H)', () => {
 
   it('intègre les cartes contextuelles orientées client (Dates/Lieu, Consignes, Équipements, Documents, Paiement)', () => {
     expect(pageSource).toContain('Dates et lieu de location');
-    expect(pageSource).toContain('Pour votre retrait');
+    expect(pageSource).toContain('Consignes & Déroulement');
+    expect(pageSource).toContain('Consignes de retrait');
     expect(pageSource).toContain('Équipement réservé');
     expect(pageSource).toContain('Vos documents');
     expect(pageSource).toContain('Votre paiement');

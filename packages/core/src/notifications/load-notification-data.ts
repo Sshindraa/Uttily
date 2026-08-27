@@ -18,6 +18,7 @@ import {
   renderBookingCancelledMerchant,
   renderBookingConfirmedCustomer,
   renderBookingConfirmedMerchant,
+  renderOrganizationInvitation,
   renderPickupReminderCustomer,
   renderRefundActionRequiredMerchant,
   renderRefundConfirmedCustomer,
@@ -102,10 +103,10 @@ export async function renderNotificationRecord(
       return renderBookingConfirmedMerchant({
         bookingId: row.bookingId,
         organizationName: row.organizationName,
-        customerEmail: row.customerEmail,
         productName: row.productName ?? 'Équipement Uttily',
         customerStartAt: row.customerStartAt,
         customerEndAt: row.customerEndAt,
+        customerEmail: row.customerEmail,
         locationName: row.locationName,
         timeZone: row.timeZone,
         netRevenueMinor,
@@ -119,9 +120,10 @@ export async function renderNotificationRecord(
         .select({
           bookingId: bookings.id,
           organizationName: organizations.legalName,
-          productName: products.name,
           refundAmountMinor: bookingCancellations.refundAmountMinor,
           retainedAmountMinor: bookingCancellations.retainedAmountMinor,
+          customerStartAt: bookings.customerStartAt,
+          productName: products.name,
         })
         .from(bookings)
         .innerJoin(organizations, eq(bookings.organizationId, organizations.id))
@@ -152,10 +154,10 @@ export async function renderNotificationRecord(
           bookingId: bookings.id,
           organizationName: organizations.legalName,
           customerEmail: users.email,
-          productName: products.name,
-          actorReason: bookingCancellations.actorReason,
           retainedAmountMinor: bookingCancellations.retainedAmountMinor,
           finalMerchantRevenueMinor: bookingCancellations.finalMerchantRevenueMinor,
+          actorReason: bookingCancellations.actorReason,
+          productName: products.name,
         })
         .from(bookings)
         .innerJoin(organizations, eq(bookings.organizationId, organizations.id))
@@ -173,9 +175,9 @@ export async function renderNotificationRecord(
       return renderBookingCancelledMerchant({
         bookingId: row.bookingId,
         organizationName: row.organizationName,
-        customerEmail: row.customerEmail,
         productName: row.productName ?? 'Équipement Uttily',
-        actorReason: row.actorReason ?? 'Annulation',
+        customerEmail: row.customerEmail,
+        actorReason: row.actorReason ?? 'ANNULATION_CLIENT',
         retainedAmountMinor: row.retainedAmountMinor ?? 0,
         finalMerchantRevenueMinor: row.finalMerchantRevenueMinor ?? 0,
       });
@@ -221,6 +223,9 @@ export async function renderNotificationRecord(
           customerStartAt: bookings.customerStartAt,
           organizationName: organizations.legalName,
           locationName: locations.name,
+          locationAddress: locations.addressLine1,
+          locationPhone: locations.publicPhone,
+          pickupInstructions: locations.pickupInstructions,
           timeZone: locations.timeZone,
           productName: products.name,
         })
@@ -242,6 +247,9 @@ export async function renderNotificationRecord(
         productName: row.productName ?? 'Équipement Uttily',
         customerStartAt: row.customerStartAt,
         locationName: row.locationName,
+        locationAddress: row.locationAddress ?? undefined,
+        locationPhone: row.locationPhone,
+        pickupInstructions: row.pickupInstructions,
         timeZone: row.timeZone,
       });
     }
@@ -255,6 +263,9 @@ export async function renderNotificationRecord(
           customerEndAt: bookings.customerEndAt,
           organizationName: organizations.legalName,
           locationName: locations.name,
+          locationAddress: locations.addressLine1,
+          locationPhone: locations.publicPhone,
+          returnInstructions: locations.returnInstructions,
           timeZone: locations.timeZone,
           productName: products.name,
         })
@@ -276,6 +287,9 @@ export async function renderNotificationRecord(
         productName: row.productName ?? 'Équipement Uttily',
         customerEndAt: row.customerEndAt,
         locationName: row.locationName,
+        locationAddress: row.locationAddress ?? undefined,
+        locationPhone: row.locationPhone,
+        returnInstructions: row.returnInstructions,
         timeZone: row.timeZone,
       });
     }
@@ -302,14 +316,35 @@ export async function renderNotificationRecord(
 
       return renderRefundActionRequiredMerchant({
         refundId: row.refundId,
-        organizationName: row.organizationName,
         bookingId: row.bookingId ?? 'N/A',
+        organizationName: row.organizationName,
         amountMinor: row.amountMinor,
-        failureCode: notification.failureCode ?? undefined,
+      });
+    }
+
+    case 'ORGANIZATION_INVITATION': {
+      const meta = (notification.metadata ?? {}) as {
+        organizationName?: string;
+        roleName?: string;
+        token?: string;
+        acceptUrl?: string;
+      };
+
+      const organizationName = meta.organizationName ?? 'Votre organisation';
+      const roleName = meta.roleName ?? 'Membre';
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const acceptUrl =
+        meta.acceptUrl || (meta.token ? `${baseUrl}/invitations/accept?token=${meta.token}` : baseUrl);
+
+      return renderOrganizationInvitation({
+        organizationName,
+        roleName,
+        acceptUrl,
+        expiresInDays: 7,
       });
     }
 
     default:
-      throw new Error(`Template inconnu : ${(notification as { template: string }).template}`);
+      throw new Error(`Template inconnu : ${notification.template}`);
   }
 }

@@ -5,8 +5,7 @@ import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import {
   getMembership,
-  requireMembership,
-  MEMBER_INVITERS,
+  requireCapability,
   createInvitation,
   listPendingInvitations,
   revokeInvitation,
@@ -25,7 +24,7 @@ export async function createInvitationAction(
   if (!user) throw new Error('Non authentifié.');
   const db = getDb();
   const membership = await getMembership(db, organizationId, user.id);
-  const active = requireMembership(membership, MEMBER_INVITERS);
+  const active = requireCapability(membership, 'team.invite');
   const invitation = await createInvitation(
     db,
     { id: user.id, role: active.role },
@@ -52,7 +51,7 @@ export async function listPendingInvitationsAction(organizationId: string) {
   if (!user) throw new Error('Non authentifié.');
   const db = getDb();
   const membership = await getMembership(db, organizationId, user.id);
-  requireMembership(membership, ['OWNER', 'ADMIN', 'MANAGER', 'STAFF']);
+  requireCapability(membership, 'team.invite');
   return listPendingInvitations(db, organizationId);
 }
 
@@ -61,7 +60,7 @@ export async function revokeInvitationAction(organizationId: string, invitationI
   if (!user) throw new Error('Non authentifié.');
   const db = getDb();
   const membership = await getMembership(db, organizationId, user.id);
-  const active = requireMembership(membership, ['OWNER', 'ADMIN']);
+  const active = requireCapability(membership, 'team.invite');
   await revokeInvitation(db, organizationId, invitationId, { userId: user.id, role: active.role });
   revalidatePath(`/dashboard/${organizationId}/team`);
 }
