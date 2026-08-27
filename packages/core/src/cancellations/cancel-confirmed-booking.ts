@@ -106,6 +106,17 @@ export async function cancelConfirmedBooking(
         );
       }
 
+      const isHuman =
+        input.actorReason === 'CUSTOMER_CANCELLATION' ||
+        input.actorReason === 'MERCHANT_CANCELLATION';
+
+      if (isHuman && (!input.previewFingerprint || input.previewFingerprint.trim().length === 0)) {
+        throw new CatalogError(
+          'PREVIEW_REQUIRED',
+          'La prévisualisation financière est obligatoire pour confirmer une annulation.',
+        );
+      }
+
       // Invariant UX : Vérification anti-preview stale
       if (
         input.previewFingerprint &&
@@ -206,13 +217,14 @@ export async function cancelConfirmedBooking(
       // Événement 1 : BOOKING_CANCELLED (métier / timeline / notifications)
       await tx.insert(outboxEvents).values({
         organizationId: input.organizationId,
-        aggregateType: 'booking',
+        aggregateType: 'BOOKING',
         aggregateId: input.bookingId,
         eventType: 'BOOKING_CANCELLED',
         eventVersion: 'v1',
         availableAt: now,
         idempotencyKey: `${input.idempotencyKey}:outbox_booking_cancelled`,
         payload: {
+          organizationId: input.organizationId,
           bookingId: input.bookingId,
           cancellationId,
           refundId,

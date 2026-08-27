@@ -78,7 +78,6 @@ async function fail(
           SELECT id, status FROM "refunds"
           WHERE id = ${refundId}::uuid
             AND organization_id = ${claimed.organizationId}::uuid
-            AND reason = 'BOOKING_MODIFICATION'::refund_reason
           FOR UPDATE
         `)
       : [];
@@ -115,7 +114,6 @@ async function fail(
             failed_at = transaction_timestamp(), failure_code = ${failureCode}, updated_at = transaction_timestamp()
         WHERE id = ${refund.id}::uuid
           AND organization_id = ${claimed.organizationId}::uuid
-          AND reason = 'BOOKING_MODIFICATION'::refund_reason
           AND status NOT IN ('SUCCEEDED', 'FAILED_REQUIRES_MANUAL_ACTION', 'SETTLED_OFF_PLATFORM')
       `);
     }

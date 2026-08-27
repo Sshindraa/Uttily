@@ -235,4 +235,130 @@ describe('Chantier 12 — Domaine Annulations & Remboursements V2', () => {
     );
     expect(p2.previewFingerprint).not.toBe(p1.previewFingerprint);
   });
+
+  it('exige un previewFingerprint pour les annulations humaines (fail-closed PREVIEW_REQUIRED)', async () => {
+    const fakeClient = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            for: () =>
+              Promise.resolve([
+                {
+                  id: '00000000-0000-0000-0000-000000000099',
+                  organizationId: '00000000-0000-0000-0000-000000000001',
+                  key: 'idem_preview_req',
+                  requestFingerprint: 'dummy',
+                  status: 'IN_PROGRESS',
+                  createdAt: new Date(),
+                  expiresAt: new Date(Date.now() + 60000),
+                },
+              ]),
+          }),
+        }),
+      }),
+      insert: () => ({
+        values: () => ({
+          onConflictDoNothing: () => ({
+            returning: () =>
+              Promise.resolve([
+                {
+                  id: '00000000-0000-0000-0000-000000000099',
+                  organizationId: '00000000-0000-0000-0000-000000000001',
+                  key: 'idem_preview_req',
+                  requestFingerprint: 'dummy',
+                  status: 'IN_PROGRESS',
+                  createdAt: new Date(),
+                  expiresAt: new Date(Date.now() + 60000),
+                },
+              ]),
+          }),
+        }),
+      }),
+      transaction: async <T>(cb: (tx: unknown) => Promise<T>): Promise<T> => {
+        const txMock = {
+          execute: () => Promise.resolve([]),
+          select: () => ({
+            from: () => ({
+              innerJoin: () => ({
+                leftJoin: () => ({
+                  where: () =>
+                    Promise.resolve([
+                      {
+                        bookingId: '00000000-0000-0000-0000-000000000002',
+                        organizationId: '00000000-0000-0000-0000-000000000001',
+                        status: 'CONFIRMED',
+                        customerStartAt: new Date('2026-09-10T10:00:00Z'),
+                        customerEndAt: new Date('2026-09-15T18:00:00Z'),
+                        confirmedAt: new Date('2026-09-01T10:00:00Z'),
+                        totalAmountMinor: 10000,
+                        commissionAmountMinor: 1000,
+                        cancellationPolicySnapshot: {
+                          policy_code: 'FLEXIBLE',
+                          policy_version: '1',
+                        },
+                        paymentId: '00000000-0000-0000-0000-000000000003',
+                        paymentAmountMinor: 10000,
+                        paymentCommissionMinor: 1000,
+                        locationTimeZone: 'Europe/Paris',
+                      },
+                    ]),
+                }),
+              }),
+              where: () => {
+                const forObj = {
+                  limit: () =>
+                    Promise.resolve([
+                      {
+                        id: '00000000-0000-0000-0000-000000000099',
+                        organizationId: '00000000-0000-0000-0000-000000000001',
+                        key: 'idem_preview_req',
+                        requestFingerprint: 'dummy',
+                        status: 'PENDING',
+                        createdAt: new Date(),
+                        expiresAt: new Date(Date.now() + 60000),
+                      },
+                    ]),
+                  then: (resolve: (val: unknown) => void) =>
+                    resolve([
+                      {
+                        id: '00000000-0000-0000-0000-000000000002',
+                        organizationId: '00000000-0000-0000-0000-000000000001',
+                        status: 'CONFIRMED',
+                        customerStartAt: new Date('2026-09-10T10:00:00Z'),
+                        customerEndAt: new Date('2026-09-15T18:00:00Z'),
+                        confirmedAt: new Date('2026-09-01T10:00:00Z'),
+                        totalAmountMinor: 10000,
+                        commissionAmountMinor: 1000,
+                        cancellationPolicySnapshot: {
+                          policy_code: 'FLEXIBLE',
+                          policy_version: '1',
+                        },
+                        paymentId: '00000000-0000-0000-0000-000000000003',
+                        paymentAmountMinor: 10000,
+                        paymentCommissionMinor: 1000,
+                        locationTimeZone: 'Europe/Paris',
+                      },
+                    ]),
+                };
+                return {
+                  for: () => forObj,
+                };
+              },
+            }),
+          }),
+        };
+        return await cb(txMock);
+      },
+    } as unknown as import('@uttily/database').DatabaseClient;
+
+    await expect(
+      cancelConfirmedBooking(fakeClient, {
+        organizationId: '00000000-0000-0000-0000-000000000001',
+        bookingId: '00000000-0000-0000-0000-000000000002',
+        actorUserId: '00000000-0000-0000-0000-000000000003',
+        actorReason: 'CUSTOMER_CANCELLATION',
+        idempotencyKey: 'idem_preview_req',
+      }),
+    ).rejects.toMatchObject({ code: 'PREVIEW_REQUIRED' });
+  });
 });
