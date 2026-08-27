@@ -21,6 +21,7 @@ import type {
   VerifyWebhookParams,
   CreateConnectedAccountParams,
   CreateOnboardingLinkParams,
+  CreateAccountSessionParams,
 } from '../payments/types';
 import type { FinancialTermsConfig, TermsAcceptanceProof } from '../financial-terms/types';
 
@@ -1143,6 +1144,7 @@ describe.skipIf(shouldSkipIntegrationTests())('initiatePayment — intégration 
         baseProvider.createConnectedAccount(p),
       retrieveConnectedAccount: (id: string) => baseProvider.retrieveConnectedAccount(id),
       createOnboardingLink: (p: CreateOnboardingLinkParams) => baseProvider.createOnboardingLink(p),
+      createAccountSession: (p: CreateAccountSessionParams) => baseProvider.createAccountSession(p),
       projectCapabilities: (id: string) => baseProvider.projectCapabilities(id),
     };
 
@@ -1244,6 +1246,7 @@ describe.skipIf(shouldSkipIntegrationTests())('initiatePayment — intégration 
         baseProvider.createConnectedAccount(p),
       retrieveConnectedAccount: (id: string) => baseProvider.retrieveConnectedAccount(id),
       createOnboardingLink: (p: CreateOnboardingLinkParams) => baseProvider.createOnboardingLink(p),
+      createAccountSession: (p: CreateAccountSessionParams) => baseProvider.createAccountSession(p),
       projectCapabilities: (id: string) => baseProvider.projectCapabilities(id),
     };
 
@@ -1288,6 +1291,7 @@ describe.skipIf(shouldSkipIntegrationTests())('initiatePayment — intégration 
         baseProvider.createConnectedAccount(p),
       retrieveConnectedAccount: (id: string) => baseProvider.retrieveConnectedAccount(id),
       createOnboardingLink: (p: CreateOnboardingLinkParams) => baseProvider.createOnboardingLink(p),
+      createAccountSession: (p: CreateAccountSessionParams) => baseProvider.createAccountSession(p),
       projectCapabilities: (id: string) => baseProvider.projectCapabilities(id),
     };
 
@@ -1379,6 +1383,7 @@ describe.skipIf(shouldSkipIntegrationTests())('initiatePayment — intégration 
         baseProvider.createConnectedAccount(p),
       retrieveConnectedAccount: (id: string) => baseProvider.retrieveConnectedAccount(id),
       createOnboardingLink: (p: CreateOnboardingLinkParams) => baseProvider.createOnboardingLink(p),
+      createAccountSession: (p: CreateAccountSessionParams) => baseProvider.createAccountSession(p),
       projectCapabilities: (id: string) => baseProvider.projectCapabilities(id),
     };
 
@@ -1421,6 +1426,7 @@ describe.skipIf(shouldSkipIntegrationTests())('initiatePayment — intégration 
         baseProvider.createConnectedAccount(p),
       retrieveConnectedAccount: (id: string) => baseProvider.retrieveConnectedAccount(id),
       createOnboardingLink: (p: CreateOnboardingLinkParams) => baseProvider.createOnboardingLink(p),
+      createAccountSession: (p: CreateAccountSessionParams) => baseProvider.createAccountSession(p),
       projectCapabilities: (id: string) => baseProvider.projectCapabilities(id),
     };
 

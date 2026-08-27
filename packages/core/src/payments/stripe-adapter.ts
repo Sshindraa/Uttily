@@ -22,6 +22,8 @@ import type {
   ConnectedAccountResult,
   CreateConnectedAccountParams,
   CreateOnboardingLinkParams,
+  CreateAccountSessionParams,
+  AccountSessionResult,
   CreatePaymentIntentParams,
   CreateRefundParams,
   OnboardingLinkResult,
@@ -973,6 +975,57 @@ export class StripeAdapter implements PaymentProviderAdapter {
       return {
         url: link.url,
         expiresAt: link.expires_at,
+      };
+    } catch (error) {
+      throw mapStripeError(error);
+    }
+  }
+
+  async createAccountSession(params: CreateAccountSessionParams): Promise<AccountSessionResult> {
+    if (typeof params.accountId !== 'string' || params.accountId.trim().length === 0) {
+      throw new PaymentProviderError(
+        'VALIDATION',
+        'Identifiant de compte manquant ou vide',
+        'invalid_account_id',
+      );
+    }
+    try {
+      const session = await this.stripe.accountSessions.create({
+        account: params.accountId,
+        components: {
+          account_onboarding: {
+            enabled: true,
+            features: {
+              external_account_collection: true,
+            },
+          },
+          account_management: {
+            enabled: true,
+            features: {
+              external_account_collection: true,
+            },
+          },
+          payouts: {
+            enabled: true,
+            features: {
+              instant_payouts: false,
+              standard_payouts: true,
+              edit_payout_schedule: true,
+              external_account_collection: true,
+            },
+          },
+          balances: {
+            enabled: true,
+          },
+          payments: {
+            enabled: true,
+          },
+        },
+      });
+
+      return {
+        clientSecret: session.client_secret,
+        expiresAt: session.expires_at,
       };
     } catch (error) {
       throw mapStripeError(error);

@@ -20,6 +20,8 @@ import type {
   ConnectedAccountResult,
   CreateConnectedAccountParams,
   CreateOnboardingLinkParams,
+  CreateAccountSessionParams,
+  AccountSessionResult,
   CreatePaymentIntentParams,
   CreateRefundParams,
   OnboardingLinkResult,
@@ -990,6 +992,33 @@ export class FakeStripeAdapter implements PaymentProviderAdapter {
     this.onboardingLinksByIdempotencyKey.set(params.idempotencyKey, result);
 
     return result;
+  }
+
+  async createAccountSession(params: CreateAccountSessionParams): Promise<AccountSessionResult> {
+    await this.maybeDelay();
+
+    if (typeof params.accountId !== 'string' || params.accountId.trim().length === 0) {
+      throw new PaymentProviderError(
+        'VALIDATION',
+        'Identifiant de compte manquant ou vide',
+        'invalid_account_id',
+      );
+    }
+
+    const account = this.accounts.get(params.accountId);
+    if (account === undefined) {
+      throw new PaymentProviderError(
+        'NOT_FOUND',
+        'Compte connecté introuvable',
+        'resource_missing',
+      );
+    }
+
+    const token = stableHash(`${params.accountId}_session_${Date.now()}`);
+    return {
+      clientSecret: `fake_account_session_secret_${params.accountId}_${token}`,
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+    };
   }
 
   async projectCapabilities(accountId: string): Promise<AccountCapabilities> {

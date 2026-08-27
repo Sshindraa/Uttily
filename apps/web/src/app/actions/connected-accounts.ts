@@ -9,13 +9,17 @@ import { resolveStripeEnvironment } from '@/lib/payment-config';
 import {
   createConnectedAccount,
   createOnboardingLink,
+  createAccountSession,
   getConnectedAccountReadiness,
   getMembership,
   requireMembership,
   ROLE_MANAGERS,
   type CreateConnectedAccountInput,
   type CreateOnboardingLinkInput,
+  type CreateAccountSessionInput,
 } from '@uttily/core';
+import { organizationPaymentAccounts } from '@uttily/database';
+import { and, eq } from 'drizzle-orm';
 
 /**
  * Retourne l'état de readiness du compte connecté Stripe pour l'organisation.
@@ -67,7 +71,66 @@ export async function createConnectedAccountAction(
     idempotencyKey: input.idempotencyKey,
   } satisfies CreateConnectedAccountInput);
   revalidatePath(`/dashboard/${organizationId}/settings/payments`);
+  revalidatePath(`/dashboard/${organizationId}/finances`);
+  revalidatePath(`/dashboard/${organizationId}`);
   return result;
+}
+
+/**
+ * Crée une Account Session Stripe Connect Embedded pour l'onboarding financier sans redirection.
+ */
+export async function createAccountSessionAction(organizationId: string) {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('Non authentifié.');
+  const db = getDb();
+  const membership = await getMembership(db, organizationId, user.id);
+  requireMembership(membership, ROLE_MANAGERS);
+  const environment = resolveStripeEnvironment();
+
+  const provider = getStripeAdapter();
+  const session = await createAccountSession({ db, provider }, {
+    organizationId,
+    environment,
+  } satisfies CreateAccountSessionInput);
+
+  return {
+    clientSecret: session.clientSecret,
+    publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? 'pk_test_placeholder',
+    environment,
+  };
+}
+
+/**
+ * Valide et active les versements dans l'environnement local/test sans dépendance externe.
+ */
+export async function completeEmbeddedOnboardingSimulationAction(organizationId: string) {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('Non authentifié.');
+  const db = getDb();
+  const membership = await getMembership(db, organizationId, user.id);
+  requireMembership(membership, ROLE_MANAGERS);
+  const environment = resolveStripeEnvironment();
+
+  await db
+    .update(organizationPaymentAccounts)
+    .set({
+      onboardingStatus: 'ENABLED',
+      chargesEnabled: true,
+      payoutsEnabled: true,
+      transfersCapabilityStatus: 'ACTIVE',
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(organizationPaymentAccounts.organizationId, organizationId),
+        eq(organizationPaymentAccounts.environment, environment),
+      ),
+    );
+
+  revalidatePath(`/dashboard/${organizationId}/finances`);
+  revalidatePath(`/dashboard/${organizationId}`);
+  revalidatePath(`/dashboard/${organizationId}/settings/payments`);
+  return { ok: true };
 }
 
 /**
@@ -126,5 +189,7 @@ export async function createOnboardingLinkAction(
     idempotencyKey: input.idempotencyKey,
   } satisfies CreateOnboardingLinkInput);
   revalidatePath(`/dashboard/${organizationId}/settings/payments`);
+  revalidatePath(`/dashboard/${organizationId}/finances`);
+  revalidatePath(`/dashboard/${organizationId}`);
   return result;
 }

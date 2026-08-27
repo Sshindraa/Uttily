@@ -12,5 +12,6 @@ export {
 } from './errors';
 export { createConnectedAccount } from './create-connected-account';
 export { createOnboardingLink } from './create-onboarding-link';
+export { createAccountSession } from './create-account-session';
 export { getConnectedAccountReadiness } from './get-connected-account-readiness';
 export * from './payout-status';

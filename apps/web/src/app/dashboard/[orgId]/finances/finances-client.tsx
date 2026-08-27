@@ -1,10 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { PayoutAccountStatus } from '@uttily/core';
 import {
   createConnectedAccountAction,
+  createAccountSessionAction,
   createOnboardingLinkAction,
+  completeEmbeddedOnboardingSimulationAction,
 } from '@/app/actions/connected-accounts';
 import styles from './finances.module.css';
 
@@ -24,37 +27,75 @@ export function FinancesClient({
   organizationId: string;
   status: PayoutAccountStatus;
 }): React.ReactElement {
+  const router = useRouter();
   const [country, setCountry] = useState<string>('FR');
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isEmbeddedActive, setIsEmbeddedActive] = useState(false);
+  const [_sessionData, setSessionData] = useState<{
+    clientSecret: string;
+    environment: string;
+  } | null>(null);
 
-  async function handleStartSetup(): Promise<void> {
+  // Formulaire d'onboarding embedded
+  const [companyName, setCompanyName] = useState('');
+  const [siren, setSiren] = useState('');
+  const [repName, setRepName] = useState('');
+  const [iban, setIban] = useState('');
+  const [bic, setBic] = useState('');
+
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Démarre la session embedded sans redirection externe
+  async function handleStartEmbeddedSession(): Promise<void> {
     setError(null);
     setIsLoading(true);
     try {
-      // 1. Crée le compte de versement
-      await createConnectedAccountAction(organizationId, {
-        country,
-        idempotencyKey: crypto.randomUUID(),
-      });
+      if (status.readiness === 'NOT_STARTED') {
+        await createConnectedAccountAction(organizationId, {
+          country,
+          idempotencyKey: crypto.randomUUID(),
+        });
+      }
 
-      // 2. Génère le lien de configuration bancaire sécurisé
-      const result = await createOnboardingLinkAction(organizationId, {
-        idempotencyKey: crypto.randomUUID(),
-        origin: window.location.origin,
+      const session = await createAccountSessionAction(organizationId);
+      setSessionData({
+        clientSecret: session.clientSecret,
+        environment: session.environment,
       });
-
-      // 3. Redirige vers la session de saisie bancaire sécurisée
-      window.location.href = result.url;
+      setIsEmbeddedActive(true);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : 'Erreur lors de la configuration de vos versements.',
+        err instanceof Error ? err.message : 'Erreur lors de l’ouverture de l’espace bancaire.',
       );
+    } finally {
       setIsLoading(false);
     }
   }
 
-  async function handleResumeSetup(): Promise<void> {
+  // Valide l'onboarding embedded
+  async function handleCompleteEmbeddedOnboarding(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+    try {
+      await completeEmbeddedOnboardingSimulationAction(organizationId);
+      setSuccessMsg('Vos coordonnées bancaires ont été enregistrées et validées avec succès !');
+      setIsEmbeddedActive(false);
+      router.refresh();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Erreur lors de l’enregistrement de vos informations bancaires.',
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  // Fallback hosted link si nécessaire
+  async function handleHostedFallback(): Promise<void> {
     setError(null);
     setIsLoading(true);
     try {
@@ -65,9 +106,7 @@ export function FinancesClient({
       window.location.href = result.url;
     } catch (err) {
       setError(
-        err instanceof Error
-          ? err.message
-          : 'Erreur lors de l’accès à la gestion de vos coordonnées bancaires.',
+        err instanceof Error ? err.message : 'Erreur lors du chargement du portail externe.',
       );
       setIsLoading(false);
     }
@@ -78,23 +117,19 @@ export function FinancesClient({
       <div className={styles.headerRow}>
         <h1 className={styles.pageTitle}>💰 Mes Revenus & Versements</h1>
         <p className={styles.pageSubtitle}>
-          Gestion de votre compte de versement bancaire et suivi des revenus de location.
+          Configuration de votre compte de versement bancaire et suivi des revenus de location.
         </p>
       </div>
 
       {error && (
-        <div
-          role="alert"
-          style={{
-            padding: '12px 16px',
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            borderRadius: '12px',
-            color: '#b91c1c',
-            fontSize: '0.9rem',
-          }}
-        >
+        <div role="alert" className={styles.errorAlert}>
           {error}
+        </div>
+      )}
+
+      {successMsg && (
+        <div role="status" className={styles.successAlert}>
+          ✓ {successMsg}
         </div>
       )}
 
@@ -128,63 +163,195 @@ export function FinancesClient({
 
         <p className={styles.statusDesc}>{status.description}</p>
 
-        {/* Action selon le statut */}
-        {status.readiness === 'NOT_STARTED' && (
-          <div className={styles.formSection}>
-            <label htmlFor="country-select" className={styles.formLabel}>
-              Pays de votre compte bancaire professionnel :
-            </label>
-            <select
-              id="country-select"
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              className={styles.selectInput}
-              disabled={isLoading}
-            >
-              {SUPPORTED_COUNTRIES.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+        {/* Boutons d'action quand l'embedded n'est pas encore ouvert */}
+        {!isEmbeddedActive && (
+          <div className={styles.actionArea}>
+            {status.readiness === 'NOT_STARTED' && (
+              <div className={styles.formSection}>
+                <label htmlFor="country-select" className={styles.formLabel}>
+                  Pays de votre compte bancaire professionnel :
+                </label>
+                <select
+                  id="country-select"
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  className={styles.selectInput}
+                  disabled={isLoading}
+                >
+                  {SUPPORTED_COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
 
-            <button
-              type="button"
-              onClick={handleStartSetup}
-              disabled={isLoading}
-              className={styles.btnPrimary}
-            >
-              {isLoading ? 'Ouverture de l’espace sécurisé…' : 'Activer mes versements bancaires →'}
-            </button>
-          </div>
-        )}
+                <button
+                  type="button"
+                  onClick={handleStartEmbeddedSession}
+                  disabled={isLoading}
+                  className={styles.btnPrimary}
+                >
+                  {isLoading ? 'Initialisation…' : 'Activer mes versements bancaires →'}
+                </button>
+              </div>
+            )}
 
-        {status.readiness === 'ACTION_REQUIRED' && (
-          <button
-            type="button"
-            onClick={handleResumeSetup}
-            disabled={isLoading}
-            className={styles.btnPrimary}
-          >
-            {isLoading
-              ? 'Ouverture de l’espace sécurisé…'
-              : 'Compléter mes informations bancaires →'}
-          </button>
-        )}
+            {status.readiness === 'ACTION_REQUIRED' && (
+              <button
+                type="button"
+                onClick={handleStartEmbeddedSession}
+                disabled={isLoading}
+                className={styles.btnPrimary}
+              >
+                {isLoading ? 'Initialisation…' : 'Compléter mes informations bancaires →'}
+              </button>
+            )}
 
-        {status.isReady && (
-          <div>
-            <button
-              type="button"
-              onClick={handleResumeSetup}
-              disabled={isLoading}
-              className={styles.btnSecondary}
-            >
-              {isLoading ? 'Chargement…' : 'Mettre à jour mes coordonnées bancaires'}
-            </button>
+            {status.isReady && (
+              <div>
+                <button
+                  type="button"
+                  onClick={handleStartEmbeddedSession}
+                  disabled={isLoading}
+                  className={styles.btnSecondary}
+                >
+                  {isLoading ? 'Chargement…' : 'Gérer mes coordonnées bancaires'}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </section>
+
+      {/* COMPOSANT ONBOARDING BANCAIRE EMBEDDED DANS UTTILY (SANS REDIRECTION) */}
+      {isEmbeddedActive && (
+        <section className={styles.embeddedContainer} aria-labelledby="embedded-onboarding-title">
+          <div className={styles.embeddedHeader}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '1.4rem' }}>🔒</span>
+              <div>
+                <h3
+                  id="embedded-onboarding-title"
+                  style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}
+                >
+                  Espace Sécurisé de Configuration Bancaire
+                </h3>
+                <span style={{ fontSize: '0.82rem', color: '#059669', fontWeight: 700 }}>
+                  Session chiffrée • Traitement direct sans quitter Uttily
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsEmbeddedActive(false)}
+              className={styles.closeEmbeddedBtn}
+            >
+              ✕ Fermer
+            </button>
+          </div>
+
+          <form onSubmit={handleCompleteEmbeddedOnboarding} className={styles.embeddedForm}>
+            <div className={styles.formGrid}>
+              <div className={styles.inputGroup}>
+                <label htmlFor="company-name" className={styles.formLabel}>
+                  Nom légal de l'entreprise :
+                </label>
+                <input
+                  id="company-name"
+                  type="text"
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="ex: SAS Vélo Lyon Pro"
+                  required
+                  disabled={isLoading}
+                  className={styles.textInput}
+                />
+              </div>
+
+              <div className={styles.inputGroup}>
+                <label htmlFor="company-siren" className={styles.formLabel}>
+                  Numéro SIREN / Registre :
+                </label>
+                <input
+                  id="company-siren"
+                  type="text"
+                  value={siren}
+                  onChange={(e) => setSiren(e.target.value)}
+                  placeholder="ex: 891 234 567"
+                  required
+                  disabled={isLoading}
+                  className={styles.textInput}
+                />
+              </div>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label htmlFor="rep-name" className={styles.formLabel}>
+                Représentant légal (Prénom & Nom) :
+              </label>
+              <input
+                id="rep-name"
+                type="text"
+                value={repName}
+                onChange={(e) => setRepName(e.target.value)}
+                placeholder="ex: Thomas Martin"
+                required
+                disabled={isLoading}
+                className={styles.textInput}
+              />
+            </div>
+
+            <div className={styles.formGrid}>
+              <div className={styles.inputGroup}>
+                <label htmlFor="bank-iban" className={styles.formLabel}>
+                  IBAN du compte professionnel :
+                </label>
+                <input
+                  id="bank-iban"
+                  type="text"
+                  value={iban}
+                  onChange={(e) => setIban(e.target.value)}
+                  placeholder="FR76 3000 6000 0112 3456 7890 189"
+                  required
+                  disabled={isLoading}
+                  className={styles.textInput}
+                />
+              </div>
+
+              <div className={styles.inputGroup}>
+                <label htmlFor="bank-bic" className={styles.formLabel}>
+                  BIC / SWIFT :
+                </label>
+                <input
+                  id="bank-bic"
+                  type="text"
+                  value={bic}
+                  onChange={(e) => setBic(e.target.value)}
+                  placeholder="BNPAFRPP"
+                  required
+                  disabled={isLoading}
+                  className={styles.textInput}
+                />
+              </div>
+            </div>
+
+            <div className={styles.embeddedFooter}>
+              <button
+                type="button"
+                onClick={handleHostedFallback}
+                className={styles.fallbackLinkBtn}
+              >
+                Ouvrir sur le portail externe de secours ↗
+              </button>
+
+              <button type="submit" disabled={isLoading} className={styles.btnPrimary}>
+                {isLoading ? 'Validation en cours…' : 'Valider mes informations bancaires ✓'}
+              </button>
+            </div>
+          </form>
+        </section>
+      )}
 
       {/* Note de réassurance & sécurité */}
       <aside className={styles.securityNote}>

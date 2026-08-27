@@ -168,6 +168,11 @@ class TestStripeProvider implements PaymentProviderAdapter {
   async createOnboardingLink(_params: CreateOnboardingLinkParams): Promise<OnboardingLinkResult> {
     throw new Error('not implemented');
   }
+  async createAccountSession(_params: {
+    accountId: string;
+  }): Promise<{ clientSecret: string; expiresAt: number }> {
+    throw new Error('not implemented');
+  }
   async projectCapabilities(_accountId: string): Promise<AccountCapabilities> {
     throw new Error('not implemented');
   }

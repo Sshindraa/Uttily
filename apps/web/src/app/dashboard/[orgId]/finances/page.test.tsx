@@ -5,7 +5,7 @@ import { join } from 'node:path';
 const PAGE_PATH = join(__dirname, 'page.tsx');
 const CLIENT_PATH = join(__dirname, 'finances-client.tsx');
 
-describe('FinancesPage (Revenus & Versements)', () => {
+describe('FinancesPage (Revenus & Versements Embedded - Chantier 5)', () => {
   const pageSource = readFileSync(PAGE_PATH, 'utf8');
   const clientSource = readFileSync(CLIENT_PATH, 'utf8');
 
@@ -20,5 +20,12 @@ describe('FinancesPage (Revenus & Versements)', () => {
     expect(clientSource).toContain('Mes Revenus & Versements');
     expect(clientSource).toContain('Séquestre des fonds & Sécurité bancaire');
     expect(clientSource).not.toContain('Stripe Connect Express');
+  });
+
+  it('intègre l’onboarding financier embedded sans redirection externe obligatoire', () => {
+    expect(clientSource).toContain('createAccountSessionAction');
+    expect(clientSource).toContain('Espace Sécurisé de Configuration Bancaire');
+    expect(clientSource).toContain('completeEmbeddedOnboardingSimulationAction');
+    expect(clientSource).toContain('handleHostedFallback');
   });
 });

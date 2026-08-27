@@ -267,6 +267,21 @@ export interface CreateOnboardingLinkParams {
 }
 
 /**
+ * Paramètres pour créer une Account Session Stripe Connect Embedded.
+ */
+export interface CreateAccountSessionParams {
+  accountId: string;
+}
+
+/**
+ * Résultat de la création d'une Account Session Stripe Connect Embedded.
+ */
+export interface AccountSessionResult {
+  clientSecret: string;
+  expiresAt: number; // Unix timestamp
+}
+
+/**
  * Capacités Stripe du compte (projection).
  */
 export interface AccountCapabilities {
@@ -328,6 +343,9 @@ export interface PaymentProviderAdapter {
 
   /** Crée un lien d'onboarding Stripe-hosted. */
   createOnboardingLink(params: CreateOnboardingLinkParams): Promise<OnboardingLinkResult>;
+
+  /** Crée une Account Session Stripe Connect Embedded. */
+  createAccountSession(params: CreateAccountSessionParams): Promise<AccountSessionResult>;
 
   /** Projette les capacités du compte. */
   projectCapabilities(accountId: string): Promise<AccountCapabilities>;

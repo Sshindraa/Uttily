@@ -84,6 +84,12 @@ export interface CreateOnboardingLinkResult {
   expiresAt: number;
 }
 
+/** Entrée du use case createAccountSession. */
+export interface CreateAccountSessionInput {
+  organizationId: string;
+  environment: StripeEnvironment;
+}
+
 /** Read model : état de readiness du compte connecté. */
 export interface ConnectedAccountReadiness {
   organizationPaymentAccountId: string | null;
