@@ -9,7 +9,7 @@ import {
   products,
 } from '@uttily/database';
 import { getVariantPricingSummary, type PricingPlanSummary } from '../pricing-plans/management';
-import { collectPublicationFailures } from './products';
+import { collectPublicationFailures, collectPublicationFailuresBatch } from './products';
 
 export type UnifiedBikeStatusSummary =
   'ONLINE_AVAILABLE' | 'ONLINE_UNAVAILABLE' | 'READY_TO_PUBLISH' | 'INCOMPLETE' | 'ARCHIVED';
@@ -424,6 +424,9 @@ export async function listUnifiedBikes(
           )
       : [];
 
+  // 6. Évaluation batch exacte de la publication readiness (source unique de vérité)
+  const publicationFailuresMap = await collectPublicationFailuresBatch(db, productIds);
+
   // Assemblage optimisé
   return prodRows.map((prod) => {
     const prodVariants = varRows.filter((v) => v.productId === prod.id);
@@ -446,12 +449,9 @@ export async function listUnifiedBikes(
     const activeInventoryCount = variantInvs.filter((i) => i.status === 'ACTIVE').length;
     const totalInventoryCount = variantInvs.length;
 
-    // Publication Readiness
-    const hasIdentity =
-      prod.name.trim().length >= 2 &&
-      (prod.description ?? '').trim().length > 0 &&
-      primaryVariant.isActive;
-    const isPublicationReady = hasIdentity && hasRequiredPhotos;
+    // Publication Readiness (100 % cohérente avec collectPublicationFailures)
+    const failures = publicationFailuresMap.get(prod.id) ?? [];
+    const isPublicationReady = failures.length === 0;
 
     // Commercial Readiness
     const hasPricing = priceAmountMinor !== null;

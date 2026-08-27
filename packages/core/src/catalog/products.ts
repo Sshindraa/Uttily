@@ -1,4 +1,4 @@
-import { and, eq, isNull, count, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, count, sql } from 'drizzle-orm';
 import type { DatabaseClient, DbExecutor } from '@uttily/database';
 import { categories, products, productVariants, productPhotos } from '@uttily/database';
 import type {
@@ -239,65 +239,128 @@ export async function updateProduct(
  * @returns tableau de messages d'erreur (vide si le produit est prêt à publier).
  *          ["Produit introuvable."] si le produit n'existe pas.
  */
-// Exportée pour usage intra-module (read-models.ts). Marquée interne.
-export async function collectPublicationFailures(
+/**
+ * Évalue les prérequis de publication pour un ensemble de produits en requêtes groupées sans N+1.
+ * Source unique de vérité pour les invariants de publication d'Uttily :
+ * - Nom ≥ 2 caractères
+ * - Description non vide
+ * - Catégorie active
+ * - Au moins 1 variante active
+ * - Au moins 3 photos valides (checksums distincts)
+ */
+export async function collectPublicationFailuresBatch(
   tx: DbExecutor,
-  productId: string,
-): Promise<string[]> {
-  // Lit le produit (déjà verrouillé par l'appelant dans publishProduct).
-  const [product] = await tx
-    .select()
+  productIds: string[],
+): Promise<Map<string, string[]>> {
+  const result = new Map<string, string[]>();
+  if (productIds.length === 0) return result;
+
+  for (const id of productIds) {
+    result.set(id, []);
+  }
+
+  // 1. Lit les produits et leur catégorie
+  const productRows = await tx
+    .select({
+      id: products.id,
+      name: products.name,
+      description: products.description,
+      categoryId: products.categoryId,
+      categoryIsActive: categories.isActive,
+    })
     .from(products)
-    .where(and(eq(products.id, productId), isNull(products.deletedAt)))
-    .limit(1);
-  if (!product) return ['Produit introuvable.'];
+    .leftJoin(categories, eq(products.categoryId, categories.id))
+    .where(and(inArray(products.id, productIds), isNull(products.deletedAt)));
 
-  const failures: string[] = [];
+  const foundIds = new Set<string>();
 
-  if (product.name.trim().length < 2) failures.push('Le nom doit faire au moins 2 caractères.');
-  if (product.description.trim().length === 0) failures.push('La description est requise.');
+  for (const row of productRows) {
+    foundIds.add(row.id);
+    const failures: string[] = [];
+    if (row.name.trim().length < 2) failures.push('Le nom doit faire au moins 2 caractères.');
+    if (row.description.trim().length === 0) failures.push('La description est requise.');
+    if (!row.categoryIsActive) failures.push('La catégorie est inexistante ou désactivée.');
+    result.set(row.id, failures);
+  }
 
-  // Lit la catégorie (le verrou FOR UPDATE est posé par publishProduct, pas ici).
-  const [cat] = await tx
-    .select()
-    .from(categories)
-    .where(eq(categories.id, product.categoryId))
-    .limit(1);
-  if (!cat || !cat.isActive) failures.push('La catégorie est inexistante ou désactivée.');
+  for (const id of productIds) {
+    if (!foundIds.has(id)) {
+      result.set(id, ['Produit introuvable.']);
+    }
+  }
 
-  const [variantCount] = await tx
-    .select({ value: count() })
+  // 2. Compte les variantes actives groupées par productId
+  const variantCounts = await tx
+    .select({
+      productId: productVariants.productId,
+      value: count(),
+    })
     .from(productVariants)
     .where(
       and(
-        eq(productVariants.productId, productId),
+        inArray(productVariants.productId, productIds),
         eq(productVariants.isActive, true),
         isNull(productVariants.deletedAt),
       ),
-    );
-  if (Number(variantCount?.value ?? 0) === 0) {
-    failures.push('Au moins une variante active est requise.');
+    )
+    .groupBy(productVariants.productId);
+
+  const activeVariantsByProduct = new Map<string, number>(
+    variantCounts.map((r) => [r.productId, Number(r.value)]),
+  );
+
+  for (const id of productIds) {
+    if (foundIds.has(id)) {
+      const vCount = activeVariantsByProduct.get(id) ?? 0;
+      if (vCount === 0) {
+        result.get(id)?.push('Au moins une variante active est requise.');
+      }
+    }
   }
 
-  // Vérifie le seuil des 3 photos valides (G7F-A2, ADR-020 §C.2).
-  // Une photo valide : file_state = 'AVAILABLE', deleted_at IS NULL,
-  // checksum_sha256 non null. Compte les checksums DISTINCTS (photos distinctes).
-  const [photoCount] = await tx
-    .select({ value: sql<number>`count(distinct ${productPhotos.checksumSha256})::integer` })
+  // 3. Compte les photos valides distinctes groupées par productId
+  const photoCounts = await tx
+    .select({
+      productId: productPhotos.productId,
+      value: sql<number>`count(distinct ${productPhotos.checksumSha256})::integer`,
+    })
     .from(productPhotos)
     .where(
       and(
-        eq(productPhotos.productId, productId),
+        inArray(productPhotos.productId, productIds),
         eq(productPhotos.fileState, 'AVAILABLE'),
         isNull(productPhotos.deletedAt),
         sql`${productPhotos.checksumSha256} IS NOT NULL`,
       ),
-    );
-  if (Number(photoCount?.value ?? 0) < 3) {
-    failures.push('Au moins 3 photos valides sont requises pour la publication.');
+    )
+    .groupBy(productPhotos.productId);
+
+  const distinctPhotosByProduct = new Map<string, number>(
+    photoCounts.map((r) => [r.productId, Number(r.value)]),
+  );
+
+  for (const id of productIds) {
+    if (foundIds.has(id)) {
+      const pCount = distinctPhotosByProduct.get(id) ?? 0;
+      if (pCount < 3) {
+        result.get(id)?.push('Au moins 3 photos valides sont requises pour la publication.');
+      }
+    }
   }
 
-  return failures;
+  return result;
+}
+
+/**
+ * Collecte les raisons bloquant la publication d'un produit.
+ * Délègue directement à collectPublicationFailuresBatch.
+ */
+export async function collectPublicationFailures(
+  tx: DbExecutor,
+  productId: string,
+): Promise<string[]> {
+  const batch = await collectPublicationFailuresBatch(tx, [productId]);
+  return batch.get(productId) ?? ['Produit introuvable.'];
 }
 
 /**

@@ -52,6 +52,17 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
               ]),
             }),
           }),
+          leftJoin: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([
+              {
+                id: 'prod-1',
+                name: 'Canyon Roadlite',
+                description: 'Superbe vélo de ville léger et rapide.',
+                categoryId: 'cat-1',
+                categoryIsActive: true,
+              },
+            ]),
+          }),
           where: vi.fn().mockImplementation(() => {
             selectIndex++;
             // 2. variantes
@@ -153,35 +164,16 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
                 ]),
               };
             }
-            // 6. collectPublicationFailures queries (product, category, variants count, distinct photos count)
+            // 6. collectPublicationFailuresBatch variant counts (groupBy)
             if (selectIndex === 7) {
-              // product
               return {
-                limit: vi.fn().mockResolvedValue([
-                  {
-                    id: 'prod-1',
-                    name: 'Canyon Roadlite',
-                    description: 'Superbe vélo',
-                    categoryId: 'cat-1',
-                  },
-                ]),
+                groupBy: vi.fn().mockResolvedValue([{ productId: 'prod-1', value: 1 }]),
               };
             }
-            if (selectIndex === 8) {
-              // category
-              return {
-                limit: vi.fn().mockResolvedValue([{ id: 'cat-1', isActive: true }]),
-              };
-            }
-            if (selectIndex === 9) {
-              // variant count
-              return [{ value: 1 }];
-            }
-            if (selectIndex === 10) {
-              // photos count distinct
-              return [{ value: 3 }];
-            }
-            return [];
+            // 7. collectPublicationFailuresBatch photo counts (groupBy)
+            return {
+              groupBy: vi.fn().mockResolvedValue([{ productId: 'prod-1', value: 3 }]),
+            };
           }),
         })),
       })),
@@ -234,6 +226,17 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
               ]),
             }),
           }),
+          leftJoin: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue([
+              {
+                id: 'p-1',
+                name: 'Vélo Ville',
+                description: 'Description vélo',
+                categoryId: 'cat-1',
+                categoryIsActive: true,
+              },
+            ]),
+          }),
           where: vi.fn().mockImplementation(() => {
             selectIndex++;
             // 2. variantes
@@ -261,7 +264,19 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
               return [{ productVariantId: 'v-1', priceAmountMinor: 2000 }];
             }
             // 5. inventaire
-            return [{ productVariantId: 'v-1', status: 'ACTIVE' }];
+            if (selectIndex === 4) {
+              return [{ productVariantId: 'v-1', status: 'ACTIVE' }];
+            }
+            // 6. collectPublicationFailuresBatch variant counts (groupBy)
+            if (selectIndex === 5) {
+              return {
+                groupBy: vi.fn().mockResolvedValue([{ productId: 'p-1', value: 1 }]),
+              };
+            }
+            // 7. collectPublicationFailuresBatch photo counts (groupBy)
+            return {
+              groupBy: vi.fn().mockResolvedValue([{ productId: 'p-1', value: 3 }]),
+            };
           }),
         })),
       })),

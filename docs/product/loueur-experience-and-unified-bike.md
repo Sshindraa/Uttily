@@ -160,6 +160,32 @@ L'expérience utilisateur peut être aussi fluide et synthétique que possible, 
 5. **Standard de confiance Photo Coach** : Les 3 photos obligatoires sont validées et dédupliquées par empreinte SHA-256 côté serveur.
 6. **Séquestre et Readiness Stripe** : Aucun encaissement réel n'est initié si le compte Stripe Connect n'est pas pleinement configuré (`charges_enabled = true`).
 
+### 5.1. Séparation Stricte des 3 Niveaux de Readiness
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. BIKE PUBLICATION READINESS (Fiche Catalogue)                             │
+│    Source unique : collectPublicationFailures(Batch)                        │
+│    - Nom ≥ 2 car., description non vide                                     │
+│    - Catégorie active & variante active                                     │
+│    - Standard Photo : ≥ 3 photos valides (checksums SHA-256 distincts)      │
+│    (Aucun stock ni prix requis : un produit sans stock peut être publié)    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 2. BIKE OFFER READINESS (Disponibilité de l'Offre)                          │
+│    - Produit publié (PUBLISHED)                                             │
+│    - Tarif journalier actif sur la variante                                 │
+│    - Au moins 1 exemplaire physique actif (ACTIVE)                          │
+│    => Statut Loueur : 🟢 En ligne · Disponible / 🔴 En ligne · Indisponible │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ 3. DATE-SPECIFIC BOOKABILITY (Réservation Réelle Temporelle)                │
+│    - Offre disponible                                                       │
+│    - Établissement exploitable & Stripe Connect configuré                   │
+│    - Disponibilité sur la plage horaire/dates demandée (anti-surbooking,     │
+│      holds actifs, maintenances programmées)                                │
+│    => Moteur de disponibilité publique / checkout                           │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## 6. Roadmap de Transition Produit
@@ -181,8 +207,13 @@ L'expérience utilisateur peut être aussi fluide et synthétique que possible, 
 └────────────┬────────────┘
              ▼
 ┌─────────────────────────┐
-│   Fiche Vélo Unifiée    │ ◄── PROCHAIN CHANTIER MAJEUR
-│   Agrégation 4 piliers  │
+│   Fiche Vélo Unifiée v1 │ (Livré le 2026-08-27)
+│   Read-Model & Mes Vélos│
+└────────────┬────────────┘
+             ▼
+┌─────────────────────────┐
+│   Fiche Vélo Unifiée v2 │ ◄── PROCHAIN CHANTIER
+│   Actions sur place     │ (Inline pricing, flotte − 3 +, photo coach intégré)
 └────────────┬────────────┘
              ▼
 ┌─────────────────────────┐
