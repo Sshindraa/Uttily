@@ -1,0 +1,82 @@
+{
+  "name": "Uttily G8B-2B — Lyon destination resolution corpus",
+  "anchor": {
+    "latitude": 45.764,
+    "longitude": 4.8357,
+    "label": "Lyon"
+  },
+  "cases": [
+    {
+      "id": "city-exact",
+      "query": "Lyon",
+      "tags": ["city", "exact"],
+      "expectation": { "kind": "target", "latitude": 45.764, "longitude": 4.8357, "radiusKm": 10 }
+    },
+    {
+      "id": "city-partial",
+      "query": "lyo",
+      "tags": ["city", "partial"],
+      "expectation": { "kind": "target", "latitude": 45.764, "longitude": 4.8357, "radiusKm": 10 }
+    },
+    {
+      "id": "quarter-part-dieu",
+      "query": "Part-Dieu Lyon",
+      "tags": ["quarter", "accent-insensitive"],
+      "expectation": { "kind": "target", "latitude": 45.760, "longitude": 4.859, "radiusKm": 5 }
+    },
+    {
+      "id": "quarter-bellecour",
+      "query": "Bellecour Lyon",
+      "tags": ["quarter"],
+      "expectation": { "kind": "target", "latitude": 45.757, "longitude": 4.832, "radiusKm": 5 }
+    },
+    {
+      "id": "quarter-vieux-lyon",
+      "query": "Vieux Lyon",
+      "tags": ["quarter", "accent-insensitive"],
+      "expectation": { "kind": "target", "latitude": 45.762, "longitude": 4.827, "radiusKm": 5 }
+    },
+    {
+      "id": "station-perrache",
+      "query": "Gare de Lyon-Perrache",
+      "tags": ["station"],
+      "expectation": { "kind": "target", "latitude": 45.748, "longitude": 4.825, "radiusKm": 5 }
+    },
+    {
+      "id": "station-part-dieu",
+      "query": "Gare Lyon Part-Dieu",
+      "tags": ["station", "partial"],
+      "expectation": { "kind": "target", "latitude": 45.760, "longitude": 4.859, "radiusKm": 5 }
+    },
+    {
+      "id": "airport-accented",
+      "query": "Aéroport Lyon Saint-Exupéry",
+      "tags": ["airport", "accent-insensitive"],
+      "expectation": { "kind": "target", "latitude": 45.725, "longitude": 5.088, "radiusKm": 8 }
+    },
+    {
+      "id": "airport-typo",
+      "query": "Aeroport Lyon St Exupery",
+      "tags": ["airport", "common-typo"],
+      "expectation": { "kind": "target", "latitude": 45.725, "longitude": 5.088, "radiusKm": 8 }
+    },
+    {
+      "id": "homonym-kansas",
+      "query": "Lyon Kansas",
+      "tags": ["homonym", "country-disambiguation"],
+      "expectation": { "kind": "outside-lyon", "minimumDistanceKm": 50 }
+    },
+    {
+      "id": "outside-paris",
+      "query": "Paris",
+      "tags": ["outside-zone"],
+      "expectation": { "kind": "outside-lyon", "minimumDistanceKm": 50 }
+    },
+    {
+      "id": "outside-grenoble",
+      "query": "Grenoble",
+      "tags": ["outside-zone"],
+      "expectation": { "kind": "outside-lyon", "minimumDistanceKm": 50 }
+    }
+  ]
+}

@@ -73,12 +73,32 @@ gares, aéroport, fautes courantes, homonymes et résultats hors zone. Les mesur
 sont `top-1`, `top-3`, absence de faux positif, latence à chaud, empreinte disque
 et mémoire, et comportement hors ligne.
 
+### Décision G8B-2B — moteur retenu
+
+Le moteur utilisé par le produit reste le registre canonique PostgreSQL/PostGIS
+des destinations activées. Il est le seul moteur autorisé à produire la valeur
+canonique sélectionnable par le client et fonctionne hors ligne. Photon et IGN
+ont été comparés comme fournisseurs d'enrichissement potentiels, mais aucun
+n'est branché au runtime à ce stade : leurs résultats restent des candidats
+externes qui nécessitent une validation de droits, d'hébergement, de cache et
+de qualité avant toute ingestion.
+
+Sur le corpus Lyon versionné dans
+`docs/implementation/g8b-2b-lyon-corpus.json`, le benchmark du 2026-08-27 a
+mesuré 12/12 top-1 pour Photon (p50 40,5 ms), 11/12 pour IGN (p50 258,4 ms) et
+2/12 pour PostgreSQL local (p50 0,6 ms). Ce dernier résultat n'est pas un échec
+de recherche : la fixture ne contient volontairement qu'une destination
+canonique active, Lyon, et les dix autres requêtes testent des quartiers,
+points d'intérêt ou villes hors registre. Les détails et limites sont dans
+`docs/implementation/g8b-2b-geocoding-benchmark.md`.
+
 ## 5. Livraison incrémentale
 
 - **G8B-2A** : saisie locale sur les destinations actives, tolérance aux accents,
   navigation clavier, Lyon dans la fixture locale — livré avec cet ADR.
 - **G8B-2B** : corpus et benchmark local des adaptateurs, puis décision du moteur
-  et des conditions de stockage.
+  et des conditions de stockage — livré le 2026-08-27 ; PostgreSQL/PostGIS
+  retenu pour le runtime canonique, Photon/IGN différés hors runtime.
 - **G8B-2C** : ingestion/rafraîchissement canonique, cache durable et contrôle à
   90 jours.
 - **G8B-2D** : élargissements PostGIS 10/25/50 km et présentation explicite des

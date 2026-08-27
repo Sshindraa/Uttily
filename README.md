@@ -53,6 +53,7 @@ pnpm build            # builder tous les packages et apps
 pnpm dev              # démarrer apps/web en développement
 pnpm dev:full         # démarrer PostgreSQL, migrer, puis Web + worker fake
 pnpm db:seed          # appliquer la fixture publique locale idempotente
+pnpm benchmark:destination # mesurer le registre local ; ajouter --network pour Photon/IGN
 pnpm test:dev-local   # tester les garde-fous du workflow local
 ```
 
