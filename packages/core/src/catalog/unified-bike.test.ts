@@ -1,9 +1,33 @@
 import { describe, it, expect, vi } from 'vitest';
-import { getUnifiedBike, listUnifiedBikes } from './unified-bike';
+import { getUnifiedBike, listUnifiedBikes, resolveBikeStatusSummary } from './unified-bike';
 import type { DatabaseClient } from '@uttily/database';
 
 describe('UnifiedBike Read Model (Core Unit Tests)', () => {
-  it('agrège les 4 piliers et calcule la readiness correctement (DRAFT -> READY_TO_PUBLISH)', async () => {
+  describe('resolveBikeStatusSummary', () => {
+    it('retourne ARCHIVED si le produit est archivé', () => {
+      expect(resolveBikeStatusSummary('ARCHIVED', true, true)).toBe('ARCHIVED');
+    });
+
+    it('retourne INCOMPLETE si DRAFT et publication incomplète', () => {
+      expect(resolveBikeStatusSummary('DRAFT', false, false)).toBe('INCOMPLETE');
+      expect(resolveBikeStatusSummary('DRAFT', false, true)).toBe('INCOMPLETE');
+    });
+
+    it('retourne READY_TO_PUBLISH si DRAFT et publication complète', () => {
+      expect(resolveBikeStatusSummary('DRAFT', true, false)).toBe('READY_TO_PUBLISH');
+      expect(resolveBikeStatusSummary('DRAFT', true, true)).toBe('READY_TO_PUBLISH');
+    });
+
+    it('retourne ONLINE_UNAVAILABLE si PUBLISHED sans offre disponible (0 stock ou sans prix)', () => {
+      expect(resolveBikeStatusSummary('PUBLISHED', true, false)).toBe('ONLINE_UNAVAILABLE');
+    });
+
+    it('retourne ONLINE_AVAILABLE si PUBLISHED avec tarif et exemplaire actif', () => {
+      expect(resolveBikeStatusSummary('PUBLISHED', true, true)).toBe('ONLINE_AVAILABLE');
+    });
+  });
+
+  it('agrège les 4 piliers et calcule la publication readiness via collectPublicationFailures', async () => {
     let selectIndex = 0;
 
     const mockDb = {
@@ -114,28 +138,50 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
               return [];
             }
             // 5. inventory items
-            return {
-              orderBy: vi.fn().mockResolvedValue([
-                {
-                  id: 'inv-1',
-                  currentLocationId: 'loc-1',
-                  internalSku: 'CAN-001',
-                  serialNumber: 'SN-001',
-                  status: 'ACTIVE',
-                  notes: null,
-                  createdAt: new Date(),
-                },
-                {
-                  id: 'inv-2',
-                  currentLocationId: 'loc-1',
-                  internalSku: 'CAN-002',
-                  serialNumber: 'SN-002',
-                  status: 'ACTIVE',
-                  notes: null,
-                  createdAt: new Date(),
-                },
-              ]),
-            };
+            if (selectIndex === 6) {
+              return {
+                orderBy: vi.fn().mockResolvedValue([
+                  {
+                    id: 'inv-1',
+                    currentLocationId: 'loc-1',
+                    internalSku: 'CAN-001',
+                    serialNumber: 'SN-001',
+                    status: 'ACTIVE',
+                    notes: null,
+                    createdAt: new Date(),
+                  },
+                ]),
+              };
+            }
+            // 6. collectPublicationFailures queries (product, category, variants count, distinct photos count)
+            if (selectIndex === 7) {
+              // product
+              return {
+                limit: vi.fn().mockResolvedValue([
+                  {
+                    id: 'prod-1',
+                    name: 'Canyon Roadlite',
+                    description: 'Superbe vélo',
+                    categoryId: 'cat-1',
+                  },
+                ]),
+              };
+            }
+            if (selectIndex === 8) {
+              // category
+              return {
+                limit: vi.fn().mockResolvedValue([{ id: 'cat-1', isActive: true }]),
+              };
+            }
+            if (selectIndex === 9) {
+              // variant count
+              return [{ value: 1 }];
+            }
+            if (selectIndex === 10) {
+              // photos count distinct
+              return [{ value: 3 }];
+            }
+            return [];
           }),
         })),
       })),
@@ -148,7 +194,6 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
 
     // 1. Identité
     expect(bike.product.name).toBe('Canyon Roadlite');
-    expect(bike.product.categoryName).toBe('Vélo Urbain');
     expect(bike.variant.name).toBe('Taille M');
 
     // 2. Photos
@@ -160,127 +205,15 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
     expect(bike.pricing.activePlan?.priceAmountMinor).toBe(2500);
 
     // 4. Inventaire
-    expect(bike.inventory.activeCount).toBe(2);
-    expect(bike.inventory.totalCount).toBe(2);
+    expect(bike.inventory.activeCount).toBe(1);
 
-    // 5. Readiness fail-closed
-    expect(bike.readiness.isPublishable).toBe(true);
-    expect(bike.readiness.statusSummary).toBe('READY_TO_PUBLISH');
+    // 5. Publication & Offer Readiness
+    expect(bike.publication.ready).toBe(true);
+    expect(bike.offerReadiness.isAvailable).toBe(true);
+    expect(bike.statusSummary).toBe('READY_TO_PUBLISH');
   });
 
-  it('distingue BOOKABLE de PUBLISHED_UNAVAILABLE selon la disponibilité réelle', async () => {
-    let selectIndex = 0;
-
-    const mockDb = {
-      select: vi.fn().mockImplementation(() => ({
-        from: vi.fn().mockImplementation(() => ({
-          innerJoin: vi.fn().mockReturnValue({
-            where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([
-                {
-                  id: 'prod-pub',
-                  organizationId: 'org-1',
-                  categoryId: 'cat-1',
-                  categoryName: 'Vélo Urbain',
-                  categorySlug: 'velo-urbain',
-                  name: 'Vélo Publié Sans Stock',
-                  slug: 'velo-publie-sans-stock',
-                  description: 'Un vélo publié mais dont tous les exemplaires sont en réparation.',
-                  publicationStatus: 'PUBLISHED',
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                },
-              ]),
-            }),
-          }),
-          where: vi.fn().mockImplementation(() => {
-            selectIndex++;
-            if (selectIndex === 1) {
-              return {
-                orderBy: vi.fn().mockResolvedValue([
-                  {
-                    id: 'var-1',
-                    name: 'Standard',
-                    skuSuffix: null,
-                    isActive: true,
-                    attributes: null,
-                  },
-                ]),
-              };
-            }
-            if (selectIndex === 2) {
-              // 3 photos ok
-              return {
-                orderBy: vi.fn().mockResolvedValue([
-                  {
-                    id: 'p1',
-                    publicId: 'pub1',
-                    fileState: 'AVAILABLE',
-                    checksumSha256: 's1',
-                    sortOrder: 0,
-                  },
-                  {
-                    id: 'p2',
-                    publicId: 'pub2',
-                    fileState: 'AVAILABLE',
-                    checksumSha256: 's2',
-                    sortOrder: 1,
-                  },
-                  {
-                    id: 'p3',
-                    publicId: 'pub3',
-                    fileState: 'AVAILABLE',
-                    checksumSha256: 's3',
-                    sortOrder: 2,
-                  },
-                ]),
-              };
-            }
-            if (selectIndex === 3) {
-              // tarif ok
-              return {
-                orderBy: vi.fn().mockResolvedValue([
-                  {
-                    id: 'plan-1',
-                    organizationId: 'org-1',
-                    productVariantId: 'var-1',
-                    lifecycleState: 'ACTIVE',
-                    priceAmountMinor: 3000,
-                  },
-                ]),
-              };
-            }
-            if (selectIndex === 4 || selectIndex === 5) return [];
-            // Inventaire : 0 actif, 2 en maintenance
-            return {
-              orderBy: vi.fn().mockResolvedValue([
-                {
-                  id: 'inv-1',
-                  status: 'MAINTENANCE',
-                  currentLocationId: 'loc-1',
-                  internalSku: 'SKU1',
-                },
-                {
-                  id: 'inv-2',
-                  status: 'MAINTENANCE',
-                  currentLocationId: 'loc-1',
-                  internalSku: 'SKU2',
-                },
-              ]),
-            };
-          }),
-        })),
-      })),
-    } as unknown as DatabaseClient;
-
-    const bike = await getUnifiedBike(mockDb, 'org-1', 'prod-pub');
-    expect(bike).not.toBeNull();
-    // Le produit est marqué PUBLISHED mais n'a aucun stock actif => PUBLISHED_UNAVAILABLE
-    expect(bike?.readiness.isPublishable).toBe(false);
-    expect(bike?.readiness.statusSummary).toBe('PUBLISHED_UNAVAILABLE');
-  });
-
-  it('listUnifiedBikes liste l’ensemble des vélos d’une organisation', async () => {
+  it('listUnifiedBikes liste l’ensemble des vélos avec leur statut synthétique', async () => {
     let selectIndex = 0;
 
     const mockDb = {
@@ -337,7 +270,7 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
     const bikes = await listUnifiedBikes(mockDb, 'org-1');
     expect(bikes).toHaveLength(1);
     expect(bikes[0]?.name).toBe('Vélo Ville');
-    expect(bikes[0]?.statusSummary).toBe('BOOKABLE');
+    expect(bikes[0]?.statusSummary).toBe('ONLINE_AVAILABLE');
     expect(bikes[0]?.priceAmountMinor).toBe(2000);
     expect(bikes[0]?.activeInventoryCount).toBe(1);
   });

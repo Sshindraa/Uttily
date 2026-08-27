@@ -18,10 +18,10 @@ describe('BikesListPage (Mes Vélos)', () => {
     expect(pageSource).toContain('/bikes/${bike.id}');
   });
 
-  it('gère les statuts fail-closed (BOOKABLE, READY_TO_PUBLISH, etc.)', () => {
-    expect(pageSource).toContain('BOOKABLE');
-    expect(pageSource).toContain('En ligne & réservable');
-    expect(pageSource).toContain('PUBLISHED_UNAVAILABLE');
-    expect(pageSource).toContain('En ligne (Indisponible)');
+  it('gère les statuts fail-closed (ONLINE_AVAILABLE, READY_TO_PUBLISH, etc.)', () => {
+    expect(pageSource).toContain('ONLINE_AVAILABLE');
+    expect(pageSource).toContain('En ligne · Disponible');
+    expect(pageSource).toContain('ONLINE_UNAVAILABLE');
+    expect(pageSource).toContain('En ligne · Indisponible');
   });
 });

@@ -10,14 +10,14 @@ import styles from './bikes-list.module.css';
 
 function renderStatusBadge(status: UnifiedBikeStatusSummary): React.ReactElement {
   switch (status) {
-    case 'BOOKABLE':
-      return <span className={styles.statusBadgeBookable}>🟢 En ligne & réservable</span>;
-    case 'PUBLISHED_UNAVAILABLE':
-      return <span className={styles.statusBadgeUnavailable}>🔴 En ligne (Indisponible)</span>;
+    case 'ONLINE_AVAILABLE':
+      return <span className={styles.statusBadgeBookable}>🟢 En ligne · Disponible</span>;
+    case 'ONLINE_UNAVAILABLE':
+      return <span className={styles.statusBadgeUnavailable}>🔴 En ligne · Indisponible</span>;
     case 'READY_TO_PUBLISH':
       return <span className={styles.statusBadgeReady}>🔵 Prêt à publier</span>;
     case 'INCOMPLETE':
-      return <span className={styles.statusBadgeIncomplete}>⚪ Brouillon incomplet</span>;
+      return <span className={styles.statusBadgeIncomplete}>⚪ Configuration incomplète</span>;
     case 'ARCHIVED':
       return <span className={styles.statusBadgeArchived}>⚫ Archivé</span>;
   }
@@ -77,8 +77,9 @@ export default async function BikesListPage({
       ) : (
         <div className={styles.bikesGrid}>
           {bikes.map((bike) => {
-            const isReadyOrBookable =
-              bike.statusSummary === 'BOOKABLE' || bike.statusSummary === 'READY_TO_PUBLISH';
+            const isReadyOrOnline =
+              bike.statusSummary === 'ONLINE_AVAILABLE' ||
+              bike.statusSummary === 'READY_TO_PUBLISH';
 
             return (
               <article
@@ -130,7 +131,7 @@ export default async function BikesListPage({
                   href={`/dashboard/${organizationId}/bikes/${bike.id}`}
                   className={styles.cardActionLink}
                 >
-                  {isReadyOrBookable ? 'Gérer le vélo →' : 'Terminer la configuration →'}
+                  {isReadyOrOnline ? 'Gérer le vélo →' : 'Terminer la configuration →'}
                 </Link>
               </article>
             );

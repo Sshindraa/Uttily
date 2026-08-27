@@ -9,9 +9,10 @@ import {
   products,
 } from '@uttily/database';
 import { getVariantPricingSummary, type PricingPlanSummary } from '../pricing-plans/management';
+import { collectPublicationFailures } from './products';
 
 export type UnifiedBikeStatusSummary =
-  'BOOKABLE' | 'PUBLISHED_UNAVAILABLE' | 'READY_TO_PUBLISH' | 'INCOMPLETE' | 'ARCHIVED';
+  'ONLINE_AVAILABLE' | 'ONLINE_UNAVAILABLE' | 'READY_TO_PUBLISH' | 'INCOMPLETE' | 'ARCHIVED';
 
 export interface UnifiedBikePhotoItem {
   id: string;
@@ -75,16 +76,17 @@ export interface UnifiedBike {
     retiredCount: number;
     items: UnifiedBikeInventoryItem[];
   };
-  readiness: {
-    isPublishable: boolean;
-    statusSummary: UnifiedBikeStatusSummary;
-    checklist: {
-      hasIdentity: boolean;
-      hasPhotos: boolean;
-      hasPricing: boolean;
-      hasInventory: boolean;
-    };
+  publication: {
+    status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+    ready: boolean;
+    failures: string[];
   };
+  offerReadiness: {
+    hasPricing: boolean;
+    hasInventory: boolean;
+    isAvailable: boolean;
+  };
+  statusSummary: UnifiedBikeStatusSummary;
 }
 
 export interface UnifiedBikeSummary {
@@ -101,22 +103,29 @@ export interface UnifiedBikeSummary {
   priceAmountMinor: number | null;
   activeInventoryCount: number;
   totalInventoryCount: number;
-  isPublishable: boolean;
+  isPublicationReady: boolean;
+  isOfferAvailable: boolean;
   statusSummary: UnifiedBikeStatusSummary;
 }
 
 /**
- * Calcule le statut sémantique fail-closed d'un vélo.
+ * Déduit le statut synthétique d'un vélo pour le loueur.
+ *
+ * Sépare rigoureusement :
+ * 1. Publication Readiness (collectPublicationFailures)
+ * 2. Commercial Readiness (Offre disponible = Publié + Tarif + Stock)
+ * 3. Bookability (gérée dynamiquement sur dates par le moteur de réservation).
  */
-function resolveBikeStatusSummary(
+export function resolveBikeStatusSummary(
   publicationStatus: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
-  isPublishable: boolean,
+  isPublicationReady: boolean,
+  isOfferAvailable: boolean,
 ): UnifiedBikeStatusSummary {
   if (publicationStatus === 'ARCHIVED') return 'ARCHIVED';
   if (publicationStatus === 'PUBLISHED') {
-    return isPublishable ? 'BOOKABLE' : 'PUBLISHED_UNAVAILABLE';
+    return isOfferAvailable ? 'ONLINE_AVAILABLE' : 'ONLINE_UNAVAILABLE';
   }
-  return isPublishable ? 'READY_TO_PUBLISH' : 'INCOMPLETE';
+  return isPublicationReady ? 'READY_TO_PUBLISH' : 'INCOMPLETE';
 }
 
 /**
@@ -255,14 +264,17 @@ export async function getUnifiedBike(
   const retiredCount = inventoryItemsList.filter((i) => i.status === 'RETIRED').length;
   const hasInventory = activeCount >= 1;
 
-  // 6. Calcule la readiness fail-closed
-  const hasIdentity = (prodRow.description ?? '').trim().length > 0 && targetVariant.isActive;
+  // 6. Publication Readiness via la source unique de vérité collectPublicationFailures
+  const publicationFailures = await collectPublicationFailures(db, productId);
+  const isPublicationReady = publicationFailures.length === 0;
 
-  const isPublishable = hasIdentity && hasPhotos && hasPricing && hasInventory;
+  // 7. Commercial Readiness
+  const isOfferAvailable = hasPricing && hasInventory;
 
   const statusSummary = resolveBikeStatusSummary(
     prodRow.publicationStatus as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
-    isPublishable,
+    isPublicationReady,
+    isOfferAvailable,
   );
 
   return {
@@ -304,16 +316,17 @@ export async function getUnifiedBike(
       retiredCount,
       items: inventoryItemsList,
     },
-    readiness: {
-      isPublishable,
-      statusSummary,
-      checklist: {
-        hasIdentity,
-        hasPhotos,
-        hasPricing,
-        hasInventory,
-      },
+    publication: {
+      status: prodRow.publicationStatus as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
+      ready: isPublicationReady,
+      failures: publicationFailures,
     },
+    offerReadiness: {
+      hasPricing,
+      hasInventory,
+      isAvailable: isOfferAvailable,
+    },
+    statusSummary,
   };
 }
 
@@ -433,15 +446,22 @@ export async function listUnifiedBikes(
     const activeInventoryCount = variantInvs.filter((i) => i.status === 'ACTIVE').length;
     const totalInventoryCount = variantInvs.length;
 
-    const hasIdentity = (prod.description ?? '').trim().length > 0 && primaryVariant.isActive;
+    // Publication Readiness
+    const hasIdentity =
+      prod.name.trim().length >= 2 &&
+      (prod.description ?? '').trim().length > 0 &&
+      primaryVariant.isActive;
+    const isPublicationReady = hasIdentity && hasRequiredPhotos;
+
+    // Commercial Readiness
     const hasPricing = priceAmountMinor !== null;
     const hasInventory = activeInventoryCount >= 1;
-
-    const isPublishable = hasIdentity && hasRequiredPhotos && hasPricing && hasInventory;
+    const isOfferAvailable = hasPricing && hasInventory;
 
     const statusSummary = resolveBikeStatusSummary(
       prod.publicationStatus as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
-      isPublishable,
+      isPublicationReady,
+      isOfferAvailable,
     );
 
     return {
@@ -458,7 +478,8 @@ export async function listUnifiedBikes(
       priceAmountMinor,
       activeInventoryCount,
       totalInventoryCount,
-      isPublishable,
+      isPublicationReady,
+      isOfferAvailable,
       statusSummary,
     };
   });

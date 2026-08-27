@@ -56,24 +56,24 @@ export default async function UnifiedBikePage({
           </div>
 
           <div>
-            {bike.readiness.statusSummary === 'BOOKABLE' && (
-              <span className={styles.statusBadgePublished}>🟢 En ligne & Réservable</span>
+            {bike.statusSummary === 'ONLINE_AVAILABLE' && (
+              <span className={styles.statusBadgePublished}>🟢 En ligne · Disponible</span>
             )}
-            {bike.readiness.statusSummary === 'PUBLISHED_UNAVAILABLE' && (
+            {bike.statusSummary === 'ONLINE_UNAVAILABLE' && (
               <span
                 className={styles.statusBadgeIncomplete}
                 style={{ borderColor: '#fca5a5', color: '#dc2626', background: '#fef2f2' }}
               >
-                🔴 En ligne (Indisponible)
+                🔴 En ligne · Indisponible (aucun vélo actif ou tarif manquant)
               </span>
             )}
-            {bike.readiness.statusSummary === 'READY_TO_PUBLISH' && (
+            {bike.statusSummary === 'READY_TO_PUBLISH' && (
               <span className={styles.statusBadgeReady}>🔵 Prêt à être publié</span>
             )}
-            {bike.readiness.statusSummary === 'INCOMPLETE' && (
+            {bike.statusSummary === 'INCOMPLETE' && (
               <span className={styles.statusBadgeIncomplete}>⚪ Configuration incomplète</span>
             )}
-            {bike.readiness.statusSummary === 'ARCHIVED' && (
+            {bike.statusSummary === 'ARCHIVED' && (
               <span
                 className={styles.statusBadgeIncomplete}
                 style={{ color: '#64748b', background: '#f1f5f9' }}
@@ -115,6 +115,27 @@ export default async function UnifiedBikePage({
             <span>{bike.inventory.activeCount} vélo(s) disponible(s)</span>
           </div>
         </div>
+
+        {/* Bloc d'aide si la publication est bloquée */}
+        {!bike.publication.ready && bike.publication.failures.length > 0 && (
+          <div
+            style={{
+              padding: '12px 16px',
+              background: '#fffbeb',
+              border: '1px solid #fde68a',
+              borderRadius: '10px',
+              fontSize: '0.88rem',
+              color: '#92400e',
+            }}
+          >
+            <strong>Éléments requis pour la publication :</strong>
+            <ul style={{ margin: '4px 0 0 0', paddingLeft: '20px' }}>
+              {bike.publication.failures.map((f) => (
+                <li key={f}>{f}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
 
       {/* Grille des 4 Piliers Unifiés */}
