@@ -35,18 +35,24 @@ export function ProductPhotosManager({
     (p) => p.slotType === 'HERO_PROFILE' || p.slotType === 'FULL_BIKE',
   );
   const hasThreeQuarter = availablePhotos.some(
-    (p) => p.slotType === 'THREE_QUARTER' || p.slotType === 'DRIVETRAIN',
+    (p) =>
+      p.slotType === 'THREE_QUARTER_FRONT' ||
+      p.slotType === 'THREE_QUARTER' ||
+      p.slotType === 'DRIVETRAIN',
   );
-  const hasSignatureDetail = availablePhotos.some(
-    (p) => p.slotType === 'SIGNATURE_DETAIL' || p.slotType === 'BRAKES_TIRES',
+  const hasSecondaryView = availablePhotos.some(
+    (p) =>
+      p.slotType === 'SECONDARY_VIEW' ||
+      p.slotType === 'SIGNATURE_DETAIL' ||
+      p.slotType === 'BRAKES_TIRES',
   );
 
   const nextSuggestedSlot: PhotoSlotType = !hasHeroProfile
     ? 'HERO_PROFILE'
     : !hasThreeQuarter
-      ? 'THREE_QUARTER'
-      : !hasSignatureDetail
-        ? 'SIGNATURE_DETAIL'
+      ? 'THREE_QUARTER_FRONT'
+      : !hasSecondaryView
+        ? 'SECONDARY_VIEW'
         : 'HERO_PROFILE';
 
   const handleOpenCoach = (slot: PhotoSlotType = nextSuggestedSlot) => {
@@ -64,7 +70,11 @@ export function ProductPhotosManager({
 
       <div className={styles.coachBar}>
         <PhotoProgress
-          slots={{ hasHeroProfile, hasThreeQuarter, hasSignatureDetail }}
+          slots={{
+            hasHeroProfile,
+            hasThreeQuarterFront: hasThreeQuarter,
+            hasSecondaryView,
+          }}
           totalRequiredSlots={3}
         />
         <div>

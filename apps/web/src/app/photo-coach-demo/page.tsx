@@ -25,6 +25,7 @@ function SlotIcon({ slotType }: { slotType: PhotoSlotType }): ReactElement | nul
           <path d="M12 17.5V14l-3.5-3" />
         </svg>
       );
+    case 'THREE_QUARTER_FRONT':
     case 'THREE_QUARTER':
     case 'DRIVETRAIN':
       return (
@@ -40,6 +41,7 @@ function SlotIcon({ slotType }: { slotType: PhotoSlotType }): ReactElement | nul
           <path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" />
         </svg>
       );
+    case 'SECONDARY_VIEW':
     case 'SIGNATURE_DETAIL':
     case 'BRAKES_TIRES':
       return (
@@ -99,18 +101,24 @@ export default function PhotoCoachDemoPage(): ReactElement {
     (p) => p.slotType === 'HERO_PROFILE' || p.slotType === 'FULL_BIKE',
   );
   const hasThreeQuarter = mockPhotos.some(
-    (p) => p.slotType === 'THREE_QUARTER' || p.slotType === 'DRIVETRAIN',
+    (p) =>
+      p.slotType === 'THREE_QUARTER_FRONT' ||
+      p.slotType === 'THREE_QUARTER' ||
+      p.slotType === 'DRIVETRAIN',
   );
-  const hasSignatureDetail = mockPhotos.some(
-    (p) => p.slotType === 'SIGNATURE_DETAIL' || p.slotType === 'BRAKES_TIRES',
+  const hasSecondaryView = mockPhotos.some(
+    (p) =>
+      p.slotType === 'SECONDARY_VIEW' ||
+      p.slotType === 'SIGNATURE_DETAIL' ||
+      p.slotType === 'BRAKES_TIRES',
   );
 
   const nextSuggestedSlot: PhotoSlotType = !hasHeroProfile
     ? 'HERO_PROFILE'
     : !hasThreeQuarter
-      ? 'THREE_QUARTER'
-      : !hasSignatureDetail
-        ? 'SIGNATURE_DETAIL'
+      ? 'THREE_QUARTER_FRONT'
+      : !hasSecondaryView
+        ? 'SECONDARY_VIEW'
         : 'HERO_PROFILE';
 
   const handleOpenCoach = (slot: PhotoSlotType = nextSuggestedSlot) => {
@@ -124,8 +132,8 @@ export default function PhotoCoachDemoPage(): ReactElement {
 
   const availableSlots: PhotoSlotType[] = [
     'HERO_PROFILE',
-    'THREE_QUARTER',
-    'SIGNATURE_DETAIL',
+    'THREE_QUARTER_FRONT',
+    'SECONDARY_VIEW',
     'BATTERY',
     'MOTOR',
   ];
@@ -138,14 +146,19 @@ export default function PhotoCoachDemoPage(): ReactElement {
           <h1 className={styles.title}>Photo Coach Vélo Uttily</h1>
           <p className={styles.description}>
             Expérimentez le tunnel de prise de vue guidée en 3 images e-commerce :
-            <strong> Profil Hero</strong> (accroche), <strong>Vue 3/4</strong> (volume & dynamisme)
-            et <strong>Détail Signature</strong> (praticité & atouts).
+            <strong> Profil Hero</strong> (accroche), <strong>Vue 3/4 Avant</strong> (volume &
+            dynamisme) et <strong>Vue Libre Valorisante</strong> (détail utile au choix : cockpit,
+            panier, écran, selle, ou angle 3/4 arrière).
           </p>
         </header>
 
         <section className={styles.card}>
           <PhotoProgress
-            slots={{ hasHeroProfile, hasThreeQuarter, hasSignatureDetail }}
+            slots={{
+              hasHeroProfile,
+              hasThreeQuarter: hasThreeQuarter,
+              hasSignatureDetail: hasSecondaryView,
+            }}
             totalRequiredSlots={3}
           />
 

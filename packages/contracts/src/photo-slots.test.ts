@@ -3,7 +3,11 @@ import { BIKE_PHOTO_SLOTS, type PhotoSlotType } from './photo-slots';
 
 describe('BIKE_PHOTO_SLOTS — Narration désirabilité & confiance', () => {
   it('définit les trois slots obligatoires de la narration en 3 vues', () => {
-    const requiredSlots: PhotoSlotType[] = ['HERO_PROFILE', 'THREE_QUARTER', 'SIGNATURE_DETAIL'];
+    const requiredSlots: PhotoSlotType[] = [
+      'HERO_PROFILE',
+      'THREE_QUARTER_FRONT',
+      'SECONDARY_VIEW',
+    ];
 
     for (const slotType of requiredSlots) {
       const slot = BIKE_PHOTO_SLOTS[slotType];
@@ -30,8 +34,8 @@ describe('BIKE_PHOTO_SLOTS — Narration désirabilité & confiance', () => {
     }
   });
 
-  it('recommande le multi-médias pour le détail signature', () => {
-    expect(BIKE_PHOTO_SLOTS.SIGNATURE_DETAIL.multiMediaRecommended).toBe(true);
-    expect(BIKE_PHOTO_SLOTS.SIGNATURE_DETAIL.maxMediaCount).toBe(5);
+  it('recommande le multi-médias pour la vue libre valorisante (SECONDARY_VIEW)', () => {
+    expect(BIKE_PHOTO_SLOTS.SECONDARY_VIEW.multiMediaRecommended).toBe(true);
+    expect(BIKE_PHOTO_SLOTS.SECONDARY_VIEW.maxMediaCount).toBe(5);
   });
 });

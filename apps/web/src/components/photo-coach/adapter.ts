@@ -19,6 +19,7 @@ const OVERLAYS_REGISTRY: Record<string, ComponentType<OverlayProps>> = {
   'hero-profile': FullBikeOverlay,
   'three-quarter': ThreeQuarterOverlay,
   'signature-detail': SignatureDetailOverlay,
+  'secondary-view': SignatureDetailOverlay,
   'full-bike': FullBikeOverlay,
   'drivetrain-anatomy': DrivetrainOverlay,
   'brakes-tires': BrakesTiresOverlay,
@@ -43,6 +44,12 @@ const ANIMATIONS_REGISTRY: Record<string, PhotoGuideAnimationDescriptor> = {
   },
   'signature-detail-intro': {
     animationKey: 'signature-detail-intro',
+    src: '/animations/BikePhotoGuide.riv',
+    artboard: 'BikePhotoCoach',
+    stateMachine: 'PhotoCoachStateMachine',
+  },
+  'secondary-view-intro': {
+    animationKey: 'secondary-view-intro',
     src: '/animations/BikePhotoGuide.riv',
     artboard: 'BikePhotoCoach',
     stateMachine: 'PhotoCoachStateMachine',

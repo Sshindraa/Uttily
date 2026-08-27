@@ -6,6 +6,8 @@ export interface PhotoProgressProps {
   slots?:
     | {
         hasHeroProfile?: boolean | undefined;
+        hasThreeQuarterFront?: boolean | undefined;
+        hasSecondaryView?: boolean | undefined;
         hasThreeQuarter?: boolean | undefined;
         hasSignatureDetail?: boolean | undefined;
         hasFullBike?: boolean | undefined;
@@ -25,14 +27,14 @@ export function PhotoProgress({
     ? !!(slots.hasHeroProfile || slots.hasFullBike)
     : (completedSlotsCount ?? 0) >= 1;
   const hasThreeQ = slots
-    ? !!(slots.hasThreeQuarter || slots.hasDrivetrain)
+    ? !!(slots.hasThreeQuarterFront || slots.hasThreeQuarter || slots.hasDrivetrain)
     : (completedSlotsCount ?? 0) >= 2;
-  const hasSig = slots
-    ? !!(slots.hasSignatureDetail || slots.hasBrakesTires)
+  const hasSecondary = slots
+    ? !!(slots.hasSecondaryView || slots.hasSignatureDetail || slots.hasBrakesTires)
     : (completedSlotsCount ?? 0) >= 3;
 
   const actualCompletedCount = slots
-    ? (hasHero ? 1 : 0) + (hasThreeQ ? 1 : 0) + (hasSig ? 1 : 0)
+    ? (hasHero ? 1 : 0) + (hasThreeQ ? 1 : 0) + (hasSecondary ? 1 : 0)
     : (completedSlotsCount ?? 0);
 
   return (
@@ -69,8 +71,8 @@ export function PhotoProgress({
           <path d="M470 366 L260 378 M260 422 L470 434" strokeDasharray="8 4" />
         </g>
 
-        {/* Slot 3 : Détail Signature (accessoires, finitions et focus) */}
-        <g opacity={hasSig ? 1 : 0.2} strokeWidth="5">
+        {/* Slot 3 : Vue libre valorisante (accessoires, finitions et focus) */}
+        <g opacity={hasSecondary ? 1 : 0.2} strokeWidth="5">
           <path d="M720 330 Q725 340 730 350" />
           <path d="M295 305 Q290 315 285 325" />
           <circle cx="740" cy="400" r="125" strokeWidth="3" strokeDasharray="6 4" />

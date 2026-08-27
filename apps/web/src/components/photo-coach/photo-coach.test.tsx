@@ -105,7 +105,7 @@ describe('PhotoProgress Component', () => {
 
     const htmlExact3 = renderToStaticMarkup(
       <PhotoProgress
-        slots={{ hasHeroProfile: true, hasThreeQuarter: true, hasSignatureDetail: true }}
+        slots={{ hasHeroProfile: true, hasThreeQuarterFront: true, hasSecondaryView: true }}
       />,
     );
     expect(htmlExact3).toContain('3/3 complétés');

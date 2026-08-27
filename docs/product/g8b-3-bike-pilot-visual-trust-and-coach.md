@@ -253,11 +253,11 @@ l'organisation. Une rupture temporaire de stock ne retire pas le badge de l'orga
 
 ## 3. Le Standard Visuel par Slots Sémantiques (Narration en 3 Vues)
 
-Pour un service de location haut de gamme, le client recherche avant tout **une expérience désirable, claire et rassurante**. Les caractéristiques techniques (transmission, freins, motorisation, autonomie) figurent dans les données structurées de la fiche. 
+Pour un service de location haut de gamme, le client recherche avant tout **une expérience désirable, claire et rassurante**. Les caractéristiques techniques détaillées (freins, chaîne, dérailleur) figurent dans les données structurées de la fiche.
 
-La galerie photo obéit ainsi à une **narration visuelle en 3 temps forts** :
+La galerie photo obéit à un standard simple mais non rigide, articulé autour d'une **narration visuelle en 3 temps forts** :
 
-> **1. Je découvre le vélo (Profil Hero) → 2. Je visualise son volume et son style (Vue 3/4) → 3. Je découvre ce qui le rend pratique ou unique (Détail Signature).**
+> **1. Je découvre le vélo (Profil Hero) → 2. Je visualise son volume et son dynamisme (Vue 3/4 avant) → 3. Je découvre ce qui le rend pratique ou unique (Vue libre valorisante : détail utile ou 3/4 arrière).**
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -266,11 +266,12 @@ La galerie photo obéit ainsi à une **narration visuelle en 3 temps forts** :
 │ 1. HERO_PROFILE (Obligatoire, min 1, max 3)                                 │
 │    Vue Hero de profil complet : accroche principale, proportions, fond net. │
 │                                                                             │
-│ 2. THREE_QUARTER (Obligatoire, min 1, max 3)                                │
-│    Vue 3/4 dynamique avant : volume, perspective, guidon et dynamisme.      │
+│ 2. THREE_QUARTER_FRONT (Obligatoire, min 1, max 3)                          │
+│    Vue 3/4 avant dynamique : volume, perspective, guidon et dynamisme.      │
 │                                                                             │
-│ 3. SIGNATURE_DETAIL (Obligatoire, min 1, max 5, multi-médias recommandé)    │
-│    Détail signature : cockpit, console VAE, panier, finitions, confort.     │
+│ 3. SECONDARY_VIEW (Obligatoire, min 1, max 5, multi-médias recommandé)      │
+│    Vue libre valorisante : atout pratique/confort (cockpit, panier, écran,  │
+│    selle) OU vue 3/4 arrière sous un autre angle si aucun détail marquant.  │
 │                                                                             │
 │ 4. SLOTS VAE / COMPLÉMENTAIRES (Optionnels non bloquants, min 0, max 2)     │
 │    BATTERY · MOTOR · DISPLAY · CHARGER                                      │
@@ -283,12 +284,14 @@ La galerie photo obéit ainsi à une **narration visuelle en 3 temps forts** :
    - Vélo entier de profil, lumière homogène, belle accroche commerciale ;
    - Cadré sans coupure des roues ni du guidon, arrière-plan dégagé et valorisant ;
    - Marge de respiration d'environ 10 % autour des extrémités.
-2. **`THREE_QUARTER`** ($\ge 1$ média, max 3) :
+2. **`THREE_QUARTER_FRONT`** ($\ge 1$ média, max 3) :
    - Prise de vue à 45° avant valorisant le volume, la perspective et le poste de pilotage ;
    - Donne vie au produit et projette l'utilisateur dans l'expérience de conduite.
-3. **`SIGNATURE_DETAIL`** ($\ge 1$ média, max 5, multi-médias recommandé) :
-   - Gros plan valorisant sur l'élément distinctif : cockpit, écran VAE, panier, finitions ou selle grand confort ;
-   - Met en valeur un vrai atout confort ou technologique.
+3. **`SECONDARY_VIEW`** ($\ge 1$ média, max 5, multi-médias recommandé) :
+   - Vue libre valorisante choisie par le loueur parmi ce qui existe réellement :
+     - Détail utile ou attractif : cockpit/guidon, console VAE, panier, phare design, selle confort, antivol de cadre ;
+     - Ou à défaut, une vue 3/4 arrière dynamique sous un autre angle ;
+   - Évite d'imposer artificiellement un « détail signature » sur un modèle épuré.
 
 ### 3.2 Slots complémentaires VAE (non bloquants)
 
@@ -306,6 +309,8 @@ Le contrat de domaine reste **strictement agnostique vis-à-vis du moteur de ren
 ```typescript
 export type PhotoSlotType =
   | 'HERO_PROFILE'
+  | 'THREE_QUARTER_FRONT'
+  | 'SECONDARY_VIEW'
   | 'THREE_QUARTER'
   | 'SIGNATURE_DETAIL'
   | 'FULL_BIKE'

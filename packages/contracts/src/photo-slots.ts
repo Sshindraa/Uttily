@@ -1,16 +1,18 @@
 /**
  * @uttily/contracts — Définitions sémantiques des slots photo et guide vélo (G8B-3).
  *
- * Nouvelle narration désirable e-commerce / location :
- * 1. HERO_PROFILE   : Vue Hero profil complet (accroche & proportion)
- * 2. THREE_QUARTER  : Vue 3/4 dynamique (volume & projection d'usage)
- * 3. SIGNATURE_DETAIL : Détail signature (cockpit, écran, panier, finitions)
+ * Narration e-commerce désirable & pragmatique en 3 temps forts :
+ * 1. HERO_PROFILE        : Vue Hero profil complet (accroche & proportion)
+ * 2. THREE_QUARTER_FRONT : Vue 3/4 avant dynamique (volume & perspective)
+ * 3. SECONDARY_VIEW      : Vue libre valorisante (détail utile si pertinent : cockpit, écran, panier, selle ; sinon 3/4 arrière)
  */
 
 export type PhotoSlotType =
   | 'HERO_PROFILE'
-  | 'THREE_QUARTER'
-  | 'SIGNATURE_DETAIL'
+  | 'THREE_QUARTER_FRONT'
+  | 'SECONDARY_VIEW'
+  | 'THREE_QUARTER' // Alias rétrocompatibilité
+  | 'SIGNATURE_DETAIL' // Alias rétrocompatibilité
   | 'FULL_BIKE'
   | 'DRIVETRAIN'
   | 'BRAKES_TIRES'
@@ -55,9 +57,9 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
       helperHint: 'Cadrez le vélo entier dans le repère de profil',
     },
   },
-  THREE_QUARTER: {
-    type: 'THREE_QUARTER',
-    title: 'Vue 3/4 Dynamique',
+  THREE_QUARTER_FRONT: {
+    type: 'THREE_QUARTER_FRONT',
+    title: 'Vue 3/4 Avant',
     shortDescription: 'Angle 3/4 avant valorisant le volume, la profondeur et le poste de pilotage',
     required: true,
     minMediaCount: 1,
@@ -74,28 +76,60 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
       helperHint: 'Placez-vous à 45° à l’avant du vélo pour donner du volume',
     },
   },
-  SIGNATURE_DETAIL: {
-    type: 'SIGNATURE_DETAIL',
-    title: 'Détail Signature',
-    shortDescription:
-      'Gros plan valorisant sur l’équipement distinctif (cockpit, écran, panier, finitions)',
+  SECONDARY_VIEW: {
+    type: 'SECONDARY_VIEW',
+    title: 'Vue Libre Valorisante',
+    shortDescription: 'Détail utile (cockpit, panier, écran, selle) ou vue 3/4 arrière',
     required: true,
     minMediaCount: 1,
     maxMediaCount: 5,
     multiMediaRecommended: true,
     checklistItems: [
-      'Équipement attractif ou pratique cadré de près avec netteté',
-      'Mise en valeur d’un point fort (écran VAE, panier, poste de conduite, selle)',
-      'Éclairage précis sans reflet gênant',
+      'Atout utile bien cadré (cockpit, panier, écran, selle) OU vue 3/4 arrière',
+      'Image nette, lumineuse et sans reflets gênants',
+      'Met en valeur la praticité, le confort ou l’esthétique du vélo',
     ],
     guide: {
-      animationKey: 'signature-detail-intro',
-      overlayKey: 'signature-detail',
-      helperHint: 'Rapprochez-vous de l’atout ou de l’équipement distinctif',
+      animationKey: 'secondary-view-intro',
+      overlayKey: 'secondary-view',
+      helperHint: 'Cadrez un équipement clé (cockpit, panier, écran) ou une vue 3/4 arrière',
     },
   },
 
-  // Rétrocompatibilité slots techniques
+  // Alias de rétrocompatibilité
+  THREE_QUARTER: {
+    type: 'THREE_QUARTER',
+    title: 'Vue 3/4 Dynamique',
+    shortDescription: 'Angle 3/4 avant valorisant le volume et la perspective',
+    required: true,
+    minMediaCount: 1,
+    maxMediaCount: 3,
+    multiMediaRecommended: false,
+    checklistItems: [
+      'Prise de vue à 45° mettant en valeur le volume et la perspective',
+      'Guidon légèrement orienté',
+    ],
+    guide: {
+      animationKey: 'three-quarter-intro',
+      overlayKey: 'three-quarter',
+      helperHint: 'Placez-vous à 45° à l’avant du vélo',
+    },
+  },
+  SIGNATURE_DETAIL: {
+    type: 'SIGNATURE_DETAIL',
+    title: 'Détail Signature',
+    shortDescription: 'Gros plan valorisant sur l’équipement distinctif',
+    required: true,
+    minMediaCount: 1,
+    maxMediaCount: 5,
+    multiMediaRecommended: true,
+    checklistItems: ['Équipement attractif cadré de près', 'Éclairage précis sans reflet gênant'],
+    guide: {
+      animationKey: 'secondary-view-intro',
+      overlayKey: 'secondary-view',
+      helperHint: 'Cadrez l’atout ou le détail clé',
+    },
+  },
   FULL_BIKE: {
     type: 'FULL_BIKE',
     title: 'Vue complète',
@@ -121,8 +155,8 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
     multiMediaRecommended: false,
     checklistItems: ['Plateau et chaîne bien nets'],
     guide: {
-      animationKey: 'signature-detail-intro',
-      overlayKey: 'signature-detail',
+      animationKey: 'secondary-view-intro',
+      overlayKey: 'secondary-view',
       helperHint: 'Rapprochez-vous de la transmission',
     },
   },
@@ -136,8 +170,8 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
     multiMediaRecommended: true,
     checklistItems: ['Freins et pneus nets'],
     guide: {
-      animationKey: 'signature-detail-intro',
-      overlayKey: 'signature-detail',
+      animationKey: 'secondary-view-intro',
+      overlayKey: 'secondary-view',
       helperHint: 'Montrez les freins et pneus',
     },
   },
@@ -151,8 +185,8 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
     multiMediaRecommended: false,
     checklistItems: ['Batterie en place', 'Serrure ou connecteur visible'],
     guide: {
-      animationKey: 'signature-detail-intro',
-      overlayKey: 'signature-detail',
+      animationKey: 'secondary-view-intro',
+      overlayKey: 'secondary-view',
       helperHint: 'Cadrez le logement et le verrou de la batterie',
     },
   },
@@ -166,9 +200,9 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
     multiMediaRecommended: false,
     checklistItems: ['Marque ou bloc moteur visible'],
     guide: {
-      animationKey: 'signature-detail-intro',
-      overlayKey: 'signature-detail',
-      helperHint: 'Cadrez le bloc moteur au niveau du pédalier ou du moyeu',
+      animationKey: 'secondary-view-intro',
+      overlayKey: 'secondary-view',
+      helperHint: 'Cadrez le bloc moteur',
     },
   },
   DISPLAY: {
@@ -181,8 +215,8 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
     multiMediaRecommended: false,
     checklistItems: ['Écran allumé ou commandes visibles'],
     guide: {
-      animationKey: 'signature-detail-intro',
-      overlayKey: 'signature-detail',
+      animationKey: 'secondary-view-intro',
+      overlayKey: 'secondary-view',
       helperHint: "Cadrez l'afficheur au guidon sans reflet gênant",
     },
   },
@@ -196,8 +230,8 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
     multiMediaRecommended: false,
     checklistItems: ['Chargeur et embout de charge nets'],
     guide: {
-      animationKey: 'signature-detail-intro',
-      overlayKey: 'signature-detail',
+      animationKey: 'secondary-view-intro',
+      overlayKey: 'secondary-view',
       helperHint: "Posez le chargeur à plat et montrez l'embout",
     },
   },

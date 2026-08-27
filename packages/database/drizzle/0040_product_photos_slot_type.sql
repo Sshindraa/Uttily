@@ -4,6 +4,8 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'product_photo_slot_type') THEN
     CREATE TYPE "product_photo_slot_type" AS ENUM (
       'HERO_PROFILE',
+      'THREE_QUARTER_FRONT',
+      'SECONDARY_VIEW',
       'THREE_QUARTER',
       'SIGNATURE_DETAIL',
       'FULL_BIKE',
