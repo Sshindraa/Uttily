@@ -8,6 +8,7 @@ import { bookings } from '@uttily/database';
 import {
   cancelConfirmedBooking,
   previewBookingCancellation,
+  CatalogError,
   type CancellationPreviewResult,
   type CancelConfirmedBookingResult,
 } from '@uttily/core';
@@ -73,6 +74,9 @@ export async function previewMyBookingCancellationAction(
 
     return { ok: true, data: preview };
   } catch (err) {
+    if (err instanceof CatalogError) {
+      return { ok: false, error: err.code, message: err.message };
+    }
     const message =
       err instanceof Error ? err.message : 'Impossible de calculer l’aperçu d’annulation.';
     return { ok: false, error: 'PREVIEW_ERROR', message };
@@ -146,6 +150,9 @@ export async function cancelMyBookingAction(input: {
 
     return { ok: true, data: result };
   } catch (err) {
+    if (err instanceof CatalogError) {
+      return { ok: false, error: err.code, message: err.message };
+    }
     const message = err instanceof Error ? err.message : 'Impossible d’annuler la réservation.';
     return { ok: false, error: 'CANCELLATION_ERROR', message };
   }

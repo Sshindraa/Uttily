@@ -19,6 +19,7 @@ import type {
   CustomerBookingDetail,
   CustomerBookingDocumentDetail,
   CustomerBookingItemDetail,
+  CustomerBookingPaymentDetail,
   CustomerBookingRefundDetail,
   CustomerBookingStatus,
   CustomerBookingSummary,
@@ -341,35 +342,49 @@ export async function getCustomerBooking(
     }
   }
 
-  // 4. Charger le paiement
-  const paymentRows = await db
-    .select({
-      amountMinor: payments.amountMinor,
-      currency: payments.currency,
-      status: payments.status,
-      succeededAt: payments.succeededAt,
-    })
-    .from(payments)
-    .where(eq(payments.id, booking.paymentId))
-    .limit(1);
+  // 4. Charger le paiement (Fail-closed : jamais de synthèse artificielle 'PAID' si absent !)
+  let payment: CustomerBookingPaymentDetail | null = null;
+  if (booking.paymentId) {
+    const paymentRows = await db
+      .select({
+        amountMinor: payments.amountMinor,
+        currency: payments.currency,
+        status: payments.status,
+        succeededAt: payments.succeededAt,
+      })
+      .from(payments)
+      .where(eq(payments.id, booking.paymentId))
+      .limit(1);
 
-  const payment = paymentRows[0]
-    ? {
-        amountPaidMinor: paymentRows[0].amountMinor,
-        currency: paymentRows[0].currency,
-        status: (paymentRows[0].status === 'SUCCEEDED'
-          ? 'PAID'
-          : paymentRows[0].status === 'FAILED'
-            ? 'FAILED'
-            : 'PENDING') as 'PAID' | 'PENDING' | 'FAILED',
-        paidAt: paymentRows[0].succeededAt,
-      }
-    : {
+    if (paymentRows[0]) {
+      const p = paymentRows[0];
+      let payStatus: 'PAID' | 'PENDING' | 'FAILED' | 'UNAVAILABLE' = 'PENDING';
+      if (p.status === 'SUCCEEDED') payStatus = 'PAID';
+      else if (p.status === 'FAILED') payStatus = 'FAILED';
+      else payStatus = 'PENDING';
+
+      payment = {
+        amountPaidMinor: p.amountMinor,
+        currency: p.currency,
+        status: payStatus,
+        paidAt: p.succeededAt,
+      };
+    } else {
+      payment = {
         amountPaidMinor: booking.totalAmountMinor,
         currency: booking.currency,
-        status: 'PAID' as const,
-        paidAt: booking.confirmedAt,
+        status: 'UNAVAILABLE',
+        paidAt: null,
       };
+    }
+  } else {
+    payment = {
+      amountPaidMinor: booking.totalAmountMinor,
+      currency: booking.currency,
+      status: 'UNAVAILABLE',
+      paidAt: null,
+    };
+  }
 
   // 5. Charger l'annulation éventuelle
   const cancellationRows = await db
@@ -487,8 +502,8 @@ export async function getCustomerBooking(
     }),
     locationCity: booking.locationCity,
     locationPostalCode: booking.locationPostalCode,
-    locationInstructions: 'Présentez-vous à l’accueil avec votre pièce d’identité pour le retrait.',
-    locationPhone: '+33 4 78 00 00 00',
+    locationInstructions: null,
+    locationPhone: null,
     locationCoordinates: null,
     totalAmountMinor: booking.totalAmountMinor,
     currency: booking.currency,

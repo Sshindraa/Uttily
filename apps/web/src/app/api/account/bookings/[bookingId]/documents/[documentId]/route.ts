@@ -3,7 +3,7 @@ import { bookings, documents } from '@uttily/database';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { isValidUuid } from '@/lib/validation';
-import { getProductPhotoStorage } from '@/lib/product-photo-storage';
+import { getTransactionalDocumentStorage } from '@/lib/transactional-document-storage';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -51,7 +51,7 @@ export async function GET(
   const doc = docRows[0]!;
 
   try {
-    const storage = getProductPhotoStorage();
+    const storage = getTransactionalDocumentStorage();
     const content = await storage.get(doc.storageKey);
 
     return new Response(Buffer.from(content), {

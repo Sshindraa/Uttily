@@ -85,7 +85,16 @@ export function CustomerCancellationModal({
         currency: 'EUR',
       });
     } else {
-      setErrorMessage(res.message);
+      if (res.error === 'PREVIEW_STALE') {
+        setErrorMessage('Les conditions ont évolué. Vos montants ont été actualisés.');
+        // Recalcule la nouvelle preview immédiatement
+        const refreshRes = await previewMyBookingCancellationAction(bookingId);
+        if (refreshRes.ok) {
+          setPreview(refreshRes.data);
+        }
+      } else {
+        setErrorMessage(res.message);
+      }
     }
   }
 

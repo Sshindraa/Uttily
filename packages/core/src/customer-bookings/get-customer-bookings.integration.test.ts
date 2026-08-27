@@ -168,11 +168,30 @@ describe.skipIf(isSkipped)(
       expect(detail?.heroPhotoUrl).toBe(`/api/public/product-photos/${fixture.photo.public_id}`);
       expect(detail?.locationName).toBe('Lyon Centre');
       expect(detail?.locationAddress).toContain('12 rue Carnot');
+      expect(detail?.locationPhone).toBeNull(); // Pas de faux numéro inventé
+      expect(detail?.locationInstructions).toBeNull(); // Pas de fausse consigne inventée
       expect(detail?.items).toHaveLength(1);
       expect(detail?.items[0]!.productName).toBe('Canyon Roadlite M');
-      expect(detail?.payment.amountPaidMinor).toBe(7500);
-      expect(detail?.payment.status).toBe('PAID');
+      expect(detail?.payment?.amountPaidMinor).toBe(7500);
+      expect(detail?.payment?.status).toBe('PAID');
       expect(detail?.cancellation.allowed).toBe(true);
+    });
+
+    it('vérité paiement fail-closed : si la ligne payment est absente, status est UNAVAILABLE', async () => {
+      if (!db || !rawSql) throw new Error('DB non initialisée');
+      const fixture = await createCustomerBookingFixture();
+
+      // Dissocier le paiement de la réservation
+      await rawSql`
+        UPDATE bookings
+        SET payment_id = '00000000-0000-0000-0000-000000000099'
+        WHERE id = ${fixture.bookingA.id}
+      `;
+
+      const detail = await getCustomerBooking(db, fixture.customerA.id, fixture.bookingA.id);
+      expect(detail).not.toBeNull();
+      expect(detail?.payment?.status).toBe('UNAVAILABLE');
+      expect(detail?.payment?.paidAt).toBeNull();
     });
 
     it('IDOR Protection : le client B ne peut JAMAIS charger la réservation du client A', async () => {

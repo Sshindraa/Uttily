@@ -13,10 +13,14 @@ vi.mock('@/lib/db', () => ({
   getDb: vi.fn(),
 }));
 
-vi.mock('@uttily/core', () => ({
-  previewBookingCancellation: vi.fn(),
-  cancelConfirmedBooking: vi.fn(),
-}));
+vi.mock('@uttily/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@uttily/core')>();
+  return {
+    ...actual,
+    previewBookingCancellation: vi.fn(),
+    cancelConfirmedBooking: vi.fn(),
+  };
+});
 
 describe('Customer Bookings Server Actions', () => {
   const user: AuthenticatedUser = {
@@ -99,6 +103,45 @@ describe('Customer Bookings Server Actions', () => {
     expect(res.ok).toBe(false);
     if (!res.ok) {
       expect(res.error).toBe('NOT_FOUND');
+    }
+  });
+
+  it('cancelMyBookingAction : préserve le code d’erreur métier PREVIEW_STALE', async () => {
+    vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(user);
+
+    const fakeDb = {
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            limit: () =>
+              Promise.resolve([
+                {
+                  id: bookingId,
+                  organizationId: '22222222-2222-2222-2222-222222222222',
+                  customerUserId: user.id,
+                  status: 'CONFIRMED',
+                },
+              ]),
+          }),
+        }),
+      }),
+    };
+    vi.spyOn(dbLib, 'getDb').mockReturnValueOnce(fakeDb as unknown as DatabaseClient);
+
+    const { CatalogError, cancelConfirmedBooking } = await import('@uttily/core');
+    vi.mocked(cancelConfirmedBooking).mockRejectedValueOnce(
+      new CatalogError('PREVIEW_STALE', 'Les conditions financières ont évolué.'),
+    );
+
+    const res = await cancelMyBookingAction({
+      bookingId,
+      idempotencyKey: 'k',
+      previewFingerprint: 'stale_fp',
+    });
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.error).toBe('PREVIEW_STALE');
+      expect(res.message).toContain('Les conditions financières ont évolué.');
     }
   });
 });

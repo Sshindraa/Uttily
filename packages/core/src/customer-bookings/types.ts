@@ -1,5 +1,5 @@
 /**
- * @uttily/core — Types du domaine Customer Booking (Chantier 14).
+ * @uttily/core — Types du domaine Customer Booking (Chantier 14 / 14.1).
  *
  * Représente la projection orientée locataire des réservations.
  * Contrairement aux vues opérationnelles loueur, ce read-model est strictement
@@ -66,6 +66,13 @@ export interface CustomerBookingRefundDetail {
   readonly status: 'REQUESTED' | 'PROCESSING' | 'REFUNDED' | 'ACTION_REQUIRED';
 }
 
+export interface CustomerBookingPaymentDetail {
+  readonly amountPaidMinor: number;
+  readonly currency: string;
+  readonly status: 'PAID' | 'PENDING' | 'FAILED' | 'UNAVAILABLE';
+  readonly paidAt: Date | null;
+}
+
 export interface CustomerBookingDetail extends CustomerBookingSummary {
   readonly locationInstructions: string | null;
   readonly locationPhone: string | null;
@@ -73,12 +80,7 @@ export interface CustomerBookingDetail extends CustomerBookingSummary {
   readonly locationPostalCode: string | null;
   readonly locationCoordinates: { readonly latitude: number; readonly longitude: number } | null;
   readonly items: readonly CustomerBookingItemDetail[];
-  readonly payment: {
-    readonly amountPaidMinor: number;
-    readonly currency: string;
-    readonly status: 'PAID' | 'PENDING' | 'FAILED';
-    readonly paidAt: Date | null;
-  };
+  readonly payment: CustomerBookingPaymentDetail | null;
   readonly cancellation: {
     readonly allowed: boolean;
     readonly policyCode: string;

@@ -296,20 +296,37 @@ export default async function CustomerBookingDetailPage({
             <h2 id="payment-heading" style={cardTitleStyle}>
               💳 Votre paiement
             </h2>
-            <div style={paymentAmountRowStyle}>
-              <span style={paymentLabelStyle}>Montant payé</span>
-              <strong style={paymentAmountStyle}>
-                {formatAmount(booking.payment.amountPaidMinor, booking.payment.currency)}
-              </strong>
-            </div>
-            <div style={paymentStatusRowStyle}>
-              <span style={paymentStatusBadgeStyle}>✓ Payé en ligne</span>
-              {booking.payment.paidAt && (
-                <span style={paymentDateStyle}>
-                  le {new Intl.DateTimeFormat('fr-FR').format(new Date(booking.payment.paidAt))}
-                </span>
-              )}
-            </div>
+            {booking.payment ? (
+              <>
+                <div style={paymentAmountRowStyle}>
+                  <span style={paymentLabelStyle}>Montant total</span>
+                  <strong style={paymentAmountStyle}>
+                    {formatAmount(booking.payment.amountPaidMinor, booking.payment.currency)}
+                  </strong>
+                </div>
+                <div style={paymentStatusRowStyle}>
+                  {booking.payment.status === 'PAID' && (
+                    <span style={paymentStatusPaidBadgeStyle}>✓ Payé en ligne</span>
+                  )}
+                  {booking.payment.status === 'PENDING' && (
+                    <span style={paymentStatusPendingBadgeStyle}>⏳ Paiement en cours</span>
+                  )}
+                  {booking.payment.status === 'FAILED' && (
+                    <span style={paymentStatusFailedBadgeStyle}>⚠️ Paiement à régulariser</span>
+                  )}
+                  {booking.payment.status === 'UNAVAILABLE' && (
+                    <span style={paymentStatusMutedBadgeStyle}>Paiement non confirmé</span>
+                  )}
+                  {booking.payment.paidAt && booking.payment.status === 'PAID' && (
+                    <span style={paymentDateStyle}>
+                      le {new Intl.DateTimeFormat('fr-FR').format(new Date(booking.payment.paidAt))}
+                    </span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p style={noCancelNoticeStyle}>Informations de paiement non disponibles.</p>
+            )}
           </section>
 
           {/* Carte Gestion / Annulation */}
@@ -351,8 +368,9 @@ export default async function CustomerBookingDetailPage({
             <div style={helpBoxStyle}>
               <span style={helpTitleStyle}>Besoin d’aide ?</span>
               <p style={helpTextStyle}>
-                Pour toute question relative à votre équipement, contactez directement
-                l’établissement au {booking.locationPhone || 'numéro indiqué'}.
+                {booking.locationPhone
+                  ? `Pour toute question relative à votre équipement, contactez directement l’établissement au ${booking.locationPhone}.`
+                  : 'Pour toute question relative à votre équipement, contactez directement l’établissement.'}
               </p>
             </div>
           </section>
@@ -658,9 +676,24 @@ const paymentStatusRowStyle: React.CSSProperties = {
   fontSize: '0.85rem',
 };
 
-const paymentStatusBadgeStyle: React.CSSProperties = {
+const paymentStatusPaidBadgeStyle: React.CSSProperties = {
   color: '#059669',
   fontWeight: 600,
+};
+
+const paymentStatusPendingBadgeStyle: React.CSSProperties = {
+  color: '#d97706',
+  fontWeight: 600,
+};
+
+const paymentStatusFailedBadgeStyle: React.CSSProperties = {
+  color: '#dc2626',
+  fontWeight: 600,
+};
+
+const paymentStatusMutedBadgeStyle: React.CSSProperties = {
+  color: '#64748b',
+  fontWeight: 500,
 };
 
 const paymentDateStyle: React.CSSProperties = {
