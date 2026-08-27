@@ -274,6 +274,13 @@
       "when": 1786800000001,
       "tag": "0039_product_photos_public_id",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1786800000002,
+      "tag": "0040_product_photos_slot_type",
+      "breakpoints": true
     }
   ]
 }

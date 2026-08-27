@@ -2175,6 +2175,16 @@ export const productPhotoFileState = pgEnum('product_photo_file_state', [
   'DELETED',
 ]);
 
+export const productPhotoSlotType = pgEnum('product_photo_slot_type', [
+  'FULL_BIKE',
+  'DRIVETRAIN',
+  'BRAKES_TIRES',
+  'BATTERY',
+  'MOTOR',
+  'DISPLAY',
+  'CHARGER',
+]);
+
 export const productPhotos = pgTable(
   'product_photos',
   {
@@ -2191,6 +2201,7 @@ export const productPhotos = pgTable(
     // La FK composite est créée dans la migration SQL 0034 et garantit la cohérence
     // multi-tenant au niveau PostgreSQL, même par SQL direct.
     storageKey: text('storage_key').notNull(),
+    slotType: productPhotoSlotType('slot_type'),
     contentType: text('content_type'),
     byteSize: bigint('byte_size', { mode: 'number' }),
     widthPx: integer('width_px'),

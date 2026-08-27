@@ -86,6 +86,7 @@ export function PhotoCoachModal({
       const formData = new FormData();
       formData.append('productId', productId);
       formData.append('photoId', photoId);
+      formData.append('slotType', slotType);
       formData.append('file', file);
 
       const result = await uploadProductPhotoAction(

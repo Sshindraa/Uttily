@@ -72,4 +72,21 @@ describe('PhotoProgress Component', () => {
     const html3 = renderToStaticMarkup(<PhotoProgress completedSlotsCount={3} />);
     expect(html3).toContain('3/3 complétés');
   });
+
+  it('calcule la complétude exacte à partir des slots présents', () => {
+    const htmlExact1 = renderToStaticMarkup(
+      <PhotoProgress slots={{ hasFullBike: true, hasDrivetrain: false, hasBrakesTires: false }} />,
+    );
+    expect(htmlExact1).toContain('1/3 complétés');
+
+    const htmlExact2 = renderToStaticMarkup(
+      <PhotoProgress slots={{ hasFullBike: true, hasDrivetrain: true, hasBrakesTires: false }} />,
+    );
+    expect(htmlExact2).toContain('2/3 complétés');
+
+    const htmlExact3 = renderToStaticMarkup(
+      <PhotoProgress slots={{ hasFullBike: true, hasDrivetrain: true, hasBrakesTires: true }} />,
+    );
+    expect(htmlExact3).toContain('3/3 complétés');
+  });
 });

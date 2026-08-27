@@ -8,8 +8,8 @@ import type { ActionResult } from '@uttily/contracts';
 import type { ProductPhotoSummary } from '@uttily/core';
 import styles from './product-photos-manager.module.css';
 
+import { BIKE_PHOTO_SLOTS, type PhotoSlotType } from '@uttily/contracts';
 import { PhotoCoachModal, PhotoProgress } from '@/components/photo-coach';
-import type { PhotoSlotType } from '@uttily/contracts';
 
 type UploadState = ActionResult<ProductPhotoSummary> | { ok: true; data: null };
 type DeleteState = ActionResult<null> | { ok: true; data: null };
@@ -28,9 +28,22 @@ export function ProductPhotosManager({
   const router = useRouter();
   const [isCoachOpen, setIsCoachOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<PhotoSlotType>('FULL_BIKE');
-  const availableCount = photos.filter((photo) => photo.fileState === 'AVAILABLE').length;
+  const availablePhotos = photos.filter((photo) => photo.fileState === 'AVAILABLE');
+  const availableCount = availablePhotos.length;
 
-  const handleOpenCoach = (slot: PhotoSlotType = 'FULL_BIKE') => {
+  const hasFullBike = availablePhotos.some((p) => p.slotType === 'FULL_BIKE');
+  const hasDrivetrain = availablePhotos.some((p) => p.slotType === 'DRIVETRAIN');
+  const hasBrakesTires = availablePhotos.some((p) => p.slotType === 'BRAKES_TIRES');
+
+  const nextSuggestedSlot: PhotoSlotType = !hasFullBike
+    ? 'FULL_BIKE'
+    : !hasDrivetrain
+    ? 'DRIVETRAIN'
+    : !hasBrakesTires
+    ? 'BRAKES_TIRES'
+    : 'FULL_BIKE';
+
+  const handleOpenCoach = (slot: PhotoSlotType = nextSuggestedSlot) => {
     setSelectedSlot(slot);
     setIsCoachOpen(true);
   };
@@ -44,14 +57,17 @@ export function ProductPhotosManager({
       </p>
 
       <div className={styles.coachBar}>
-        <PhotoProgress completedSlotsCount={Math.min(availableCount, 3)} totalRequiredSlots={3} />
+        <PhotoProgress
+          slots={{ hasFullBike, hasDrivetrain, hasBrakesTires }}
+          totalRequiredSlots={3}
+        />
         <div>
           <button
             type="button"
             className={styles.coachButton}
-            onClick={() => handleOpenCoach('FULL_BIKE')}
+            onClick={() => handleOpenCoach(nextSuggestedSlot)}
           >
-            📸 Ouvrir le Photo Coach Uttily (Prise de vue guidée)
+            📸 Ouvrir le Photo Coach Uttily ({BIKE_PHOTO_SLOTS[nextSuggestedSlot].title})
           </button>
         </div>
       </div>
@@ -189,7 +205,11 @@ function PhotoCard({
         </div>
       )}
       <p>
-        <strong>Photo {position}</strong> — {photo.fileState}
+        <strong>Photo {position}</strong>
+        {photo.slotType && BIKE_PHOTO_SLOTS[photo.slotType] ? (
+          <span> — <em>{BIKE_PHOTO_SLOTS[photo.slotType].title}</em></span>
+        ) : null}
+        {' '}— {photo.fileState}
         {photo.widthPx && photo.heightPx ? ` — ${photo.widthPx}×${photo.heightPx}px` : ''}
       </p>
       {photo.rejectionReason && <p className={styles.error}>{photo.rejectionReason}</p>}

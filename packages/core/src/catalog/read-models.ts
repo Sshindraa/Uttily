@@ -162,6 +162,7 @@ export async function getProductDetails(
     .select({
       id: productPhotos.id,
       publicId: productPhotos.publicId,
+      slotType: productPhotos.slotType,
       fileState: productPhotos.fileState,
       contentType: productPhotos.contentType,
       byteSize: productPhotos.byteSize,
@@ -232,6 +233,7 @@ export async function getProductDetails(
     photos: photoRows.map((photo) => ({
       id: photo.id,
       publicId: photo.publicId,
+      slotType: photo.slotType ?? null,
       fileState: photo.fileState,
       contentType: photo.contentType,
       byteSize: photo.byteSize,

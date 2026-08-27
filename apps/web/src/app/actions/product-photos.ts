@@ -11,7 +11,17 @@ import {
   uploadProductPhoto,
   type ProductPhotoSummary,
 } from '@uttily/core';
-import type { ActionResult } from '@uttily/contracts';
+import type { ActionResult, PhotoSlotType } from '@uttily/contracts';
+
+const VALID_SLOT_TYPES = new Set<PhotoSlotType>([
+  'FULL_BIKE',
+  'DRIVETRAIN',
+  'BRAKES_TIRES',
+  'BATTERY',
+  'MOTOR',
+  'DISPLAY',
+  'CHARGER',
+]);
 
 export async function uploadProductPhotoAction(
   organizationId: string,
@@ -21,6 +31,10 @@ export async function uploadProductPhotoAction(
   const productId = String(formData.get('productId') ?? '');
   const photoId = String(formData.get('photoId') ?? '');
   const replacePhotoId = String(formData.get('replacePhotoId') ?? '').trim() || null;
+  const rawSlotType = String(formData.get('slotType') ?? '').trim() || null;
+  const slotType = rawSlotType && VALID_SLOT_TYPES.has(rawSlotType as PhotoSlotType)
+    ? (rawSlotType as PhotoSlotType)
+    : null;
   const file = formData.get('file');
   if (
     !isValidUuid(productId) ||
@@ -44,6 +58,7 @@ export async function uploadProductPhotoAction(
     const baseInput = {
       organizationId: authorizedOrgId,
       productId,
+      slotType,
       content,
       ...(file.type ? { declaredContentType: file.type } : {}),
     };
@@ -88,6 +103,7 @@ export async function deleteProductPhotoAction(
 function toPhotoSummary(photo: {
   id: string;
   publicId: string;
+  slotType?: PhotoSlotType | null;
   fileState: ProductPhotoSummary['fileState'];
   contentType: string | null;
   byteSize: number | null;
@@ -99,6 +115,7 @@ function toPhotoSummary(photo: {
   return {
     id: photo.id,
     publicId: photo.publicId,
+    slotType: photo.slotType ?? null,
     fileState: photo.fileState,
     contentType: photo.contentType,
     byteSize: photo.byteSize,

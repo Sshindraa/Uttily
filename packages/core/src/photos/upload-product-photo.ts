@@ -1,6 +1,7 @@
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import type { DatabaseClient, ProductPhotoRecord } from '@uttily/database';
 import { productPhotos, products } from '@uttily/database';
+import type { PhotoSlotType } from '@uttily/contracts';
 import { PhotoError } from './errors';
 import type { ProductPhotoStorage } from './storage';
 import { validateProductPhoto } from './validate-product-photo';
@@ -12,8 +13,9 @@ export interface UploadProductPhotoInput {
   readonly productId: string;
   /** Identifiant fourni par le client pour rendre le rejeu idempotent. */
   readonly photoId: string;
+  readonly slotType?: PhotoSlotType | null | undefined;
   readonly content: Uint8Array;
-  readonly declaredContentType?: string;
+  readonly declaredContentType?: string | undefined;
 }
 
 /**
@@ -84,6 +86,7 @@ export async function uploadProductPhoto(
         organizationId: input.organizationId,
         productId: input.productId,
         storageKey,
+        slotType: input.slotType ?? null,
         contentType: validated.contentType,
         byteSize: validated.byteSize,
         widthPx: validated.widthPx,

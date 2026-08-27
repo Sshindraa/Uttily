@@ -1,4 +1,5 @@
 import { inventoryCondition } from '@uttily/database';
+import type { PhotoSlotType } from '@uttily/contracts';
 
 export const PUBLICATION_STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED'] as const;
 export type PublicationStatus = (typeof PUBLICATION_STATUSES)[number];
@@ -157,6 +158,7 @@ export interface PublicationReadiness {
 export interface ProductPhotoSummary {
   id: string;
   publicId: string;
+  slotType: PhotoSlotType | null;
   fileState: 'PENDING_UPLOAD' | 'AVAILABLE' | 'REJECTED' | 'DELETED';
   contentType: string | null;
   byteSize: number | null;

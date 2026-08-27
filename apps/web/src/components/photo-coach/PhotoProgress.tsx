@@ -2,17 +2,27 @@ import type { ReactElement } from 'react';
 import styles from './PhotoProgress.module.css';
 
 export interface PhotoProgressProps {
-  completedSlotsCount: number;
-  totalRequiredSlots?: number;
+  completedSlotsCount?: number | undefined;
+  slots?: {
+    hasFullBike?: boolean | undefined;
+    hasDrivetrain?: boolean | undefined;
+    hasBrakesTires?: boolean | undefined;
+  } | undefined;
+  totalRequiredSlots?: number | undefined;
 }
 
 export function PhotoProgress({
   completedSlotsCount,
+  slots,
   totalRequiredSlots = 3,
 }: PhotoProgressProps): ReactElement {
-  const hasFullBike = completedSlotsCount >= 1;
-  const hasDrivetrain = completedSlotsCount >= 2;
-  const hasBrakesTires = completedSlotsCount >= 3;
+  const hasFullBike = slots ? !!slots.hasFullBike : (completedSlotsCount ?? 0) >= 1;
+  const hasDrivetrain = slots ? !!slots.hasDrivetrain : (completedSlotsCount ?? 0) >= 2;
+  const hasBrakesTires = slots ? !!slots.hasBrakesTires : (completedSlotsCount ?? 0) >= 3;
+
+  const actualCompletedCount = slots
+    ? (hasFullBike ? 1 : 0) + (hasDrivetrain ? 1 : 0) + (hasBrakesTires ? 1 : 0)
+    : completedSlotsCount ?? 0;
 
   return (
     <div className={styles.container} role="status" aria-label="Progression du standard photo">
@@ -58,7 +68,7 @@ export function PhotoProgress({
       </svg>
 
       <span className={styles.statusText}>
-        Standard photo vélo : {completedSlotsCount}/{totalRequiredSlots} complétés
+        Standard photo vélo : {actualCompletedCount}/{totalRequiredSlots} complétés
       </span>
 
       <div className={styles.stepIndicators}>
@@ -66,9 +76,9 @@ export function PhotoProgress({
           <div
             key={i}
             className={`${styles.dot} ${
-              i < completedSlotsCount
+              i < actualCompletedCount
                 ? styles.dotDone
-                : i === completedSlotsCount
+                : i === actualCompletedCount
                 ? styles.dotActive
                 : ''
             }`}
