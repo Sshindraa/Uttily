@@ -10,10 +10,7 @@ export interface PhotoGuideIntroProps {
   onProceedToCamera: () => void;
 }
 
-export function PhotoGuideIntro({
-  slot,
-  onProceedToCamera,
-}: PhotoGuideIntroProps): ReactElement {
+export function PhotoGuideIntro({ slot, onProceedToCamera }: PhotoGuideIntroProps): ReactElement {
   const OverlayComponent = PhotoGuideAnimationAdapter.resolveOverlay(slot.guide.overlayKey);
 
   // Transition automatique fluide vers le viseur après l'animation (fail-safe à 1800ms)
@@ -42,18 +39,10 @@ export function PhotoGuideIntro({
         <p className={styles.hint}>{slot.guide.helperHint}</p>
 
         <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.primaryBtn}
-            onClick={onProceedToCamera}
-          >
+          <button type="button" className={styles.primaryBtn} onClick={onProceedToCamera}>
             Prendre la photo
           </button>
-          <button
-            type="button"
-            className={styles.skipBtn}
-            onClick={onProceedToCamera}
-          >
+          <button type="button" className={styles.skipBtn} onClick={onProceedToCamera}>
             Passer
           </button>
         </div>

@@ -47,7 +47,10 @@ export function FullBikeOverlay({ className }: OverlayProps): ReactElement {
         {/* Poste de pilotage & Selle */}
         <g strokeWidth="6">
           <path d="M670 230 L685 185 Q690 170 710 175 Q725 180 730 195" />
-          <path d="M410 240 L395 190 M365 190 Q395 185 435 190 Q405 198 365 190 Z" fill="currentColor" />
+          <path
+            d="M410 240 L395 190 M365 190 Q395 185 435 190 Q405 198 365 190 Z"
+            fill="currentColor"
+          />
         </g>
 
         {/* Transmission côté droit face au viseur */}

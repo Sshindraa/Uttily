@@ -36,8 +36,7 @@ export function PhotoChecklist({
   };
 
   const allChecked =
-    slot.checklistItems.length > 0 &&
-    slot.checklistItems.every((item) => !!checkedItems[item]);
+    slot.checklistItems.length > 0 && slot.checklistItems.every((item) => !!checkedItems[item]);
 
   return (
     <div className={styles.container}>
@@ -52,9 +51,7 @@ export function PhotoChecklist({
       </div>
 
       <div className={styles.card}>
-        <h3 className={styles.title}>
-          {slot.title} — Vérifiez avant d'enregistrer :
-        </h3>
+        <h3 className={styles.title}>{slot.title} — Vérifiez avant d'enregistrer :</h3>
 
         <ul className={styles.list}>
           {slot.checklistItems.map((item) => {
@@ -77,12 +74,7 @@ export function PhotoChecklist({
         </ul>
 
         <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.retakeBtn}
-            onClick={onRetake}
-            disabled={isSaving}
-          >
+          <button type="button" className={styles.retakeBtn} onClick={onRetake} disabled={isSaving}>
             Reprendre
           </button>
           <button

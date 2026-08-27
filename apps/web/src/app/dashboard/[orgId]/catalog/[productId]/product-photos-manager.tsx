@@ -38,10 +38,10 @@ export function ProductPhotosManager({
   const nextSuggestedSlot: PhotoSlotType = !hasFullBike
     ? 'FULL_BIKE'
     : !hasDrivetrain
-    ? 'DRIVETRAIN'
-    : !hasBrakesTires
-    ? 'BRAKES_TIRES'
-    : 'FULL_BIKE';
+      ? 'DRIVETRAIN'
+      : !hasBrakesTires
+        ? 'BRAKES_TIRES'
+        : 'FULL_BIKE';
 
   const handleOpenCoach = (slot: PhotoSlotType = nextSuggestedSlot) => {
     setSelectedSlot(slot);
@@ -207,9 +207,12 @@ function PhotoCard({
       <p>
         <strong>Photo {position}</strong>
         {photo.slotType && BIKE_PHOTO_SLOTS[photo.slotType] ? (
-          <span> — <em>{BIKE_PHOTO_SLOTS[photo.slotType].title}</em></span>
-        ) : null}
-        {' '}— {photo.fileState}
+          <span>
+            {' '}
+            — <em>{BIKE_PHOTO_SLOTS[photo.slotType].title}</em>
+          </span>
+        ) : null}{' '}
+        — {photo.fileState}
         {photo.widthPx && photo.heightPx ? ` — ${photo.widthPx}×${photo.heightPx}px` : ''}
       </p>
       {photo.rejectionReason && <p className={styles.error}>{photo.rejectionReason}</p>}

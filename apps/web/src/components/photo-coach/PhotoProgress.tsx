@@ -3,11 +3,13 @@ import styles from './PhotoProgress.module.css';
 
 export interface PhotoProgressProps {
   completedSlotsCount?: number | undefined;
-  slots?: {
-    hasFullBike?: boolean | undefined;
-    hasDrivetrain?: boolean | undefined;
-    hasBrakesTires?: boolean | undefined;
-  } | undefined;
+  slots?:
+    | {
+        hasFullBike?: boolean | undefined;
+        hasDrivetrain?: boolean | undefined;
+        hasBrakesTires?: boolean | undefined;
+      }
+    | undefined;
   totalRequiredSlots?: number | undefined;
 }
 
@@ -22,7 +24,7 @@ export function PhotoProgress({
 
   const actualCompletedCount = slots
     ? (hasFullBike ? 1 : 0) + (hasDrivetrain ? 1 : 0) + (hasBrakesTires ? 1 : 0)
-    : completedSlotsCount ?? 0;
+    : (completedSlotsCount ?? 0);
 
   return (
     <div className={styles.container} role="status" aria-label="Progression du standard photo">
@@ -79,8 +81,8 @@ export function PhotoProgress({
               i < actualCompletedCount
                 ? styles.dotDone
                 : i === actualCompletedCount
-                ? styles.dotActive
-                : ''
+                  ? styles.dotActive
+                  : ''
             }`}
           />
         ))}

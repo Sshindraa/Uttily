@@ -32,9 +32,10 @@ export async function uploadProductPhotoAction(
   const photoId = String(formData.get('photoId') ?? '');
   const replacePhotoId = String(formData.get('replacePhotoId') ?? '').trim() || null;
   const rawSlotType = String(formData.get('slotType') ?? '').trim() || null;
-  const slotType = rawSlotType && VALID_SLOT_TYPES.has(rawSlotType as PhotoSlotType)
-    ? (rawSlotType as PhotoSlotType)
-    : null;
+  const slotType =
+    rawSlotType && VALID_SLOT_TYPES.has(rawSlotType as PhotoSlotType)
+      ? (rawSlotType as PhotoSlotType)
+      : null;
   const file = formData.get('file');
   if (
     !isValidUuid(productId) ||

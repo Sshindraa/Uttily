@@ -4,10 +4,7 @@
  * Invariant strict : l'overlay SVG/CSS client n'est JAMAIS rendu sur le canvas.
  * Seuls les pixels bruts du capteur vidéo sont transformés en Blob.
  */
-export async function captureVideoFrame(
-  video: HTMLVideoElement,
-  quality = 0.95,
-): Promise<Blob> {
+export async function captureVideoFrame(video: HTMLVideoElement, quality = 0.95): Promise<Blob> {
   const canvas = document.createElement('canvas');
   const width = video.videoWidth || 1920;
   const height = video.videoHeight || 1080;

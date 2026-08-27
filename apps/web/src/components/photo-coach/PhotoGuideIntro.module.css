@@ -58,7 +58,8 @@
 }
 
 @keyframes frameFadeIn {
-  0%, 50% {
+  0%,
+  50% {
     opacity: 0;
   }
   100% {
@@ -110,7 +111,8 @@
 }
 
 @keyframes successFadeIn {
-  0%, 65% {
+  0%,
+  65% {
     opacity: 0;
     transform: translateY(8px);
   }

@@ -5,13 +5,7 @@
  */
 
 export type PhotoSlotType =
-  | 'FULL_BIKE'
-  | 'DRIVETRAIN'
-  | 'BRAKES_TIRES'
-  | 'BATTERY'
-  | 'MOTOR'
-  | 'DISPLAY'
-  | 'CHARGER';
+  'FULL_BIKE' | 'DRIVETRAIN' | 'BRAKES_TIRES' | 'BATTERY' | 'MOTOR' | 'DISPLAY' | 'CHARGER';
 
 export interface PhotoSlotDefinition {
   type: PhotoSlotType;

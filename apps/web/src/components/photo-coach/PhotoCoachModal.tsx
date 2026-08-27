@@ -37,9 +37,7 @@ export function PhotoCoachModal({
     return localStorage.getItem(EXPERT_MODE_STORAGE_KEY) === 'true';
   });
 
-  const [step, setStep] = useState<PhotoCoachStep>(() =>
-    isExpertMode ? 'CAMERA' : 'INTRO',
-  );
+  const [step, setStep] = useState<PhotoCoachStep>(() => (isExpertMode ? 'CAMERA' : 'INTRO'));
   const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,11 +75,9 @@ export function PhotoCoachModal({
 
     try {
       const photoId = crypto.randomUUID();
-      const file = new File(
-        [capturedBlob],
-        `bike-${slotType.toLowerCase()}-${Date.now()}.jpg`,
-        { type: 'image/jpeg' },
-      );
+      const file = new File([capturedBlob], `bike-${slotType.toLowerCase()}-${Date.now()}.jpg`, {
+        type: 'image/jpeg',
+      });
 
       const formData = new FormData();
       formData.append('productId', productId);
@@ -154,10 +150,7 @@ export function PhotoCoachModal({
           )}
 
           {step === 'INTRO' && (
-            <PhotoGuideIntro
-              slot={slot}
-              onProceedToCamera={() => setStep('CAMERA')}
-            />
+            <PhotoGuideIntro slot={slot} onProceedToCamera={() => setStep('CAMERA')} />
           )}
 
           {step === 'CAMERA' && (
