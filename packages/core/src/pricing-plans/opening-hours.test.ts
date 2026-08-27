@@ -50,8 +50,8 @@ describe('opening-hours & schedule exceptions validation', () => {
     });
   });
 
-  describe('TIME_RANGE avec exceptions de calendrier', () => {
-    it('rejette avec LOCATION_CLOSED si une exception CLOSED est posée sur la date', () => {
+  describe('TIME_RANGE avec exceptions de calendrier et multi-jours (Chantier 15.2)', () => {
+    it('rejette avec LOCATION_CLOSED si une exception CLOSED est posée sur la date de retrait', () => {
       const exceptions: LocationScheduleExceptionRecord[] = [
         {
           id: 'ex-1',
@@ -78,7 +78,7 @@ describe('opening-hours & schedule exceptions validation', () => {
       ).toThrow(expect.objectContaining({ code: 'LOCATION_CLOSED' }));
     });
 
-    it('applique un OPEN_INTERVAL restreint qui remplace les horaires normaux', () => {
+    it('applique un OPEN_INTERVAL restreint qui remplace les horaires normaux (11h-15h : 10h refusé, 12h accepté)', () => {
       // Normalement 09:00 - 18:00 le vendredi, mais exception 11:00 - 15:00
       const exceptions: LocationScheduleExceptionRecord[] = [
         {
@@ -95,7 +95,7 @@ describe('opening-hours & schedule exceptions validation', () => {
         },
       ];
 
-      // 09:30 - 11:30 Paris -> commence avant 11:00 -> OUTSIDE_OPENING_HOURS
+      // 09:30 - 11:30 Paris -> commence à 09:30 (avant 11:00) -> OUTSIDE_OPENING_HOURS
       const earlyIntent: ResolvedFlexiblePricingIntent = {
         kind: 'TIME_RANGE',
         startAt: new Date('2026-08-28T07:30:00Z'), // 09:30 Paris
@@ -116,7 +116,7 @@ describe('opening-hours & schedule exceptions validation', () => {
       ).not.toThrow();
     });
 
-    it('rejette avec LOCATION_CLOSED si un jour intermédiaire d’une réservation multi-jours est fermé', () => {
+    it('accepte une location multi-jours (Lundi 10h -> Mercredi 17h) même si le magasin est fermé le Mardi (Chantier 15.2)', () => {
       const exceptions: LocationScheduleExceptionRecord[] = [
         {
           id: 'ex-3',
@@ -132,11 +132,38 @@ describe('opening-hours & schedule exceptions validation', () => {
         },
       ];
 
-      // Du Lundi 24/08 au Mercredi 26/08
+      // Du Lundi 24/08 10:00 Paris au Mercredi 26/08 17:00 Paris
       const intent: ResolvedFlexiblePricingIntent = {
         kind: 'TIME_RANGE',
         startAt: new Date('2026-08-24T08:00:00Z'), // Lundi 10:00 Paris
-        endAt: new Date('2026-08-26T14:00:00Z'), // Mercredi 16:00 Paris
+        endAt: new Date('2026-08-26T15:00:00Z'), // Mercredi 17:00 Paris
+      };
+
+      expect(() =>
+        isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, exceptions),
+      ).not.toThrow();
+    });
+
+    it('rejette une location multi-jours si le jour de retour est fermé par exception', () => {
+      const exceptions: LocationScheduleExceptionRecord[] = [
+        {
+          id: 'ex-3b',
+          organizationId: 'org-1',
+          locationId: 'loc-1',
+          localDate: '2026-08-26', // Mercredi fermé
+          kind: 'CLOSED',
+          openTime: null,
+          closeTime: null,
+          reason: 'Fermeture exceptionnelle',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+
+      const intent: ResolvedFlexiblePricingIntent = {
+        kind: 'TIME_RANGE',
+        startAt: new Date('2026-08-24T08:00:00Z'), // Lundi 10:00 Paris
+        endAt: new Date('2026-08-26T15:00:00Z'), // Mercredi 17:00 Paris
       };
 
       expect(() =>

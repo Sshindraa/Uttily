@@ -309,6 +309,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
 
       // ── Étape 1 : créer un brouillon HELD ────────────────────────────────
       const draftInput: CreateBookingDraftInput = {
+        pricingMode: 'LEGACY',
         organizationId: ids.orgId,
         locationId: ids.locationId,
         customerUserId: ids.customerUserId,

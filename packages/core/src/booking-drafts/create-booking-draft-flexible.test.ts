@@ -385,6 +385,7 @@ function makeLegacyInput(
   overrides: Partial<LegacyCreateBookingDraftInput> = {},
 ): LegacyCreateBookingDraftInput {
   return {
+    pricingMode: 'LEGACY',
     organizationId: ids.orgId,
     locationId: ids.locationId,
     customerUserId: ids.userId,
@@ -1943,6 +1944,25 @@ describe.skipIf(shouldSkipIntegrationTests())(
         customerEndAt: new Date('2026-02-12T17:00:00.000Z'),
         lines: [{ variantId: ids.variantId, quantity: 1 }],
         idempotencyKey: 'lower-' + SUFFIX(),
+      };
+      await expect(createBookingDraftWithHold(db, badInput as unknown as never)).rejects.toThrow(
+        BookingDraftError,
+      );
+      const records = await rawSql`SELECT count(*)::int AS n FROM idempotency_records`;
+      expect(records[0]!.n).toBe(0);
+    });
+
+    it('70. pricingMode undefined → VALIDATION error (Chantier 15.2)', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBaseData();
+      const badInput = {
+        organizationId: ids.orgId,
+        locationId: ids.locationId,
+        customerUserId: ids.userId,
+        customerStartAt: new Date('2026-02-10T09:00:00.000Z'),
+        customerEndAt: new Date('2026-02-12T17:00:00.000Z'),
+        lines: [{ variantId: ids.variantId, quantity: 1 }],
+        idempotencyKey: 'undef-' + SUFFIX(),
       };
       await expect(createBookingDraftWithHold(db, badInput as unknown as never)).rejects.toThrow(
         BookingDraftError,

@@ -183,6 +183,7 @@ async function seedPaymentAccount(ids: BaseIds, accountId = 'acct_test_123'): Pr
 async function createHeldDraft(ids: BaseIds, keySuffix: string, quantity = 1): Promise<string> {
   if (!db) throw new Error('db not initialized');
   const input: CreateBookingDraftInput = {
+    pricingMode: 'LEGACY',
     organizationId: ids.orgId,
     locationId: ids.locationId,
     customerUserId: ids.userId,

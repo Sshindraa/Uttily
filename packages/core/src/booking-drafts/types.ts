@@ -18,11 +18,10 @@ export interface CreateBookingDraftInputLine {
 
 /**
  * Entrée legacy pour la création d'un brouillon de réservation.
- * `pricingMode` est optionnel et par défaut à `'LEGACY'` pour la
- * compatibilité ascendante avec tous les appelants existants.
+ * `pricingMode` est obligatoire et explicite ('LEGACY').
  */
 export interface LegacyCreateBookingDraftInput {
-  pricingMode?: 'LEGACY';
+  pricingMode: 'LEGACY';
   organizationId: string;
   locationId: string;
   customerUserId: string;

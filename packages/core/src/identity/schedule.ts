@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { DatabaseClient, DbExecutor } from '@uttily/database';
 import { locationOpeningHours, locationScheduleExceptions } from '@uttily/database';
 
@@ -38,36 +38,30 @@ export function getWeekdayFromLocalDate(localDate: string): number {
 }
 
 /**
- * Autorité unique de résolution des horaires effectifs d'un établissement pour une date locale (Chantier 15.1).
+ * Résout le planning effectif pour une date locale de façon PURE à partir des règles
+ * d'horaires d'ouverture et de la liste des exceptions.
  *
- * Règle :
- * 1. Exception CLOSED -> fermé
- * 2. Exception OPEN_INTERVAL -> cet intervalle remplace les horaires hebdomadaires
- * 3. Aucune exception -> horaires hebdomadaires normaux
+ * Utilisé à la fois par les requêtes DB de résolution de planning, le moteur de pricing
+ * et la recherche publique, garantissant zéro divergence.
  */
-export async function resolveEffectiveLocationSchedule(
-  db: DatabaseClient | DbExecutor,
-  organizationId: string,
-  locationId: string,
+export function resolveEffectiveScheduleFromRules(
   localDate: string,
-): Promise<EffectiveLocationSchedule> {
+  openingHours: Array<{ weekday: number; openTime: string; closeTime: string }>,
+  scheduleExceptions: Array<{
+    localDate: string;
+    kind: 'CLOSED' | 'OPEN_INTERVAL';
+    openTime?: string | null;
+    closeTime?: string | null;
+    reason?: string | null;
+  }> = [],
+  locationId: string = '',
+): EffectiveLocationSchedule {
   if (!DATE_RE.test(localDate)) {
     throw new Error(`Format de date invalide: "${localDate}" (attendu YYYY-MM-DD).`);
   }
 
-  // 1. Chercher s'il existe une exception pour cette date et cette organisation
-  const [exception] = await db
-    .select()
-    .from(locationScheduleExceptions)
-    .where(
-      and(
-        eq(locationScheduleExceptions.organizationId, organizationId),
-        eq(locationScheduleExceptions.locationId, locationId),
-        eq(locationScheduleExceptions.localDate, localDate),
-      ),
-    )
-    .limit(1);
-
+  // 1. Chercher s'il existe une exception pour cette date
+  const exception = scheduleExceptions.find((ex) => ex.localDate === localDate);
   if (exception) {
     if (exception.kind === 'CLOSED') {
       return {
@@ -76,7 +70,7 @@ export async function resolveEffectiveLocationSchedule(
         isOpen: false,
         isException: true,
         exceptionKind: 'CLOSED',
-        reason: exception.reason,
+        reason: exception.reason ?? null,
         slots: [],
       };
     }
@@ -88,7 +82,7 @@ export async function resolveEffectiveLocationSchedule(
         isOpen: true,
         isException: true,
         exceptionKind: 'OPEN_INTERVAL',
-        reason: exception.reason,
+        reason: exception.reason ?? null,
         slots: [
           {
             openTime: normalizeTime(exception.openTime),
@@ -99,21 +93,11 @@ export async function resolveEffectiveLocationSchedule(
     }
   }
 
-  // 2. Pas d'exception : charger les horaires hebdomadaires
+  // 2. Pas d'exception : trouver les horaires hebdomadaires normaux
   const weekday = getWeekdayFromLocalDate(localDate);
-  const regularHours = await db
-    .select({
-      openTime: locationOpeningHours.openTime,
-      closeTime: locationOpeningHours.closeTime,
-    })
-    .from(locationOpeningHours)
-    .where(
-      and(
-        eq(locationOpeningHours.locationId, locationId),
-        eq(locationOpeningHours.weekday, weekday),
-      ),
-    )
-    .orderBy(asc(locationOpeningHours.openTime));
+  const regularHours = openingHours
+    .filter((h) => h.weekday === weekday)
+    .sort((a, b) => (a.openTime < b.openTime ? -1 : a.openTime > b.openTime ? 1 : 0));
 
   if (regularHours.length === 0) {
     return {
@@ -135,6 +119,70 @@ export async function resolveEffectiveLocationSchedule(
       closeTime: normalizeTime(h.closeTime),
     })),
   };
+}
+
+/**
+ * Autorité unique de résolution des horaires effectifs d'un établissement pour une date locale (Chantier 15.1 / 15.2).
+ *
+ * Règle :
+ * 1. Exception CLOSED -> fermé
+ * 2. Exception OPEN_INTERVAL -> cet intervalle remplace les horaires hebdomadaires
+ * 3. Aucune exception -> horaires hebdomadaires normaux
+ */
+export async function resolveEffectiveLocationSchedule(
+  db: DatabaseClient | DbExecutor,
+  organizationId: string,
+  locationId: string,
+  localDate: string,
+): Promise<EffectiveLocationSchedule> {
+  if (!DATE_RE.test(localDate)) {
+    throw new Error(`Format de date invalide: "${localDate}" (attendu YYYY-MM-DD).`);
+  }
+
+  // 1. Chercher s'il existe une exception pour cette date et cette organisation
+  const exceptions = await db
+    .select({
+      localDate: locationScheduleExceptions.localDate,
+      kind: locationScheduleExceptions.kind,
+      openTime: locationScheduleExceptions.openTime,
+      closeTime: locationScheduleExceptions.closeTime,
+      reason: locationScheduleExceptions.reason,
+    })
+    .from(locationScheduleExceptions)
+    .where(
+      and(
+        eq(locationScheduleExceptions.organizationId, organizationId),
+        eq(locationScheduleExceptions.locationId, locationId),
+        eq(locationScheduleExceptions.localDate, localDate),
+      ),
+    );
+
+  // 2. Charger les horaires hebdomadaires
+  const weekday = getWeekdayFromLocalDate(localDate);
+  const regularHours = await db
+    .select({
+      weekday: locationOpeningHours.weekday,
+      openTime: locationOpeningHours.openTime,
+      closeTime: locationOpeningHours.closeTime,
+    })
+    .from(locationOpeningHours)
+    .where(
+      and(
+        eq(locationOpeningHours.locationId, locationId),
+        eq(locationOpeningHours.weekday, weekday),
+      ),
+    );
+
+  return resolveEffectiveScheduleFromRules(
+    localDate,
+    regularHours.map((h) => ({
+      weekday: h.weekday,
+      openTime: typeof h.openTime === 'string' ? h.openTime : String(h.openTime),
+      closeTime: typeof h.closeTime === 'string' ? h.closeTime : String(h.closeTime),
+    })),
+    exceptions,
+    locationId,
+  );
 }
 
 /**

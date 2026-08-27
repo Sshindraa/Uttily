@@ -1,10 +1,11 @@
 /**
- * @uttily/core — Module Pricing Plans (G7P-B1 / Chantier 15.1).
+ * @uttily/core — Module Pricing Plans (G7P-B1 / Chantier 15.1 / Chantier 15.2).
  *
  * Validation des horaires d'ouverture et des exceptions de calendrier.
  */
 
 import type { LocationScheduleExceptionRecord } from '../identity/types';
+import { resolveEffectiveScheduleFromRules } from '../identity/schedule';
 import type { OpeningHour, ResolvedFlexiblePricingIntent } from './types';
 import { FlexiblePricingError } from './errors';
 import { civilDayNumber, getTimeInMinutes, minutesBetween, toLocalParts } from './time-utils';
@@ -54,7 +55,7 @@ function assertTimeRangeOpeningHours(
   endAt: Date,
   timeZone: string,
   openingHours: OpeningHour[],
-  scheduleExceptions: LocationScheduleExceptionRecord[],
+  scheduleExceptions: LocationScheduleExceptionRecord[] = [],
 ): void {
   const durationMin = minutesBetween(startAt, endAt);
   const startParts = toLocalParts(startAt, timeZone);
@@ -69,7 +70,8 @@ function assertTimeRangeOpeningHours(
   const startTimeMin = startParts.hour * 60 + startParts.minute;
   const endTimeMin = endParts.hour * 60 + endParts.minute;
 
-  const startSchedule = resolveScheduleForLocalDate(
+  // 1. Résoudre le planning effectif du jour de début
+  const startSchedule = resolveEffectiveScheduleFromRules(
     startDateStr,
     openingHours,
     scheduleExceptions,
@@ -94,7 +96,7 @@ function assertTimeRangeOpeningHours(
     return;
   }
 
-  // Multi-jours : vérifier heure de départ
+  // Multi-jours : vérifier heure de départ dans les horaires d'ouverture du premier jour
   if (startSchedule.slots.length > 0) {
     if (!isTimeCoveredBySlots(startTimeMin, startSchedule.slots)) {
       throw new FlexiblePricingError(
@@ -104,8 +106,12 @@ function assertTimeRangeOpeningHours(
     }
   }
 
-  // Vérifier heure de fin
-  const endSchedule = resolveScheduleForLocalDate(endDateStr, openingHours, scheduleExceptions);
+  // Vérifier heure de fin dans les horaires d'ouverture du jour d'arrivée
+  const endSchedule = resolveEffectiveScheduleFromRules(
+    endDateStr,
+    openingHours,
+    scheduleExceptions,
+  );
   if (!endSchedule.isOpen) {
     throw new FlexiblePricingError(
       'LOCATION_CLOSED',
@@ -122,22 +128,7 @@ function assertTimeRangeOpeningHours(
     }
   }
 
-  // Vérifier les jours intermédiaires
-  for (let dayNum = startDayNum + 1; dayNum < endDayNum; dayNum++) {
-    const intermediateDateStr = dateStringFromDayNum(dayNum);
-    const daySchedule = resolveScheduleForLocalDate(
-      intermediateDateStr,
-      openingHours,
-      scheduleExceptions,
-    );
-    if (!daySchedule.isOpen) {
-      throw new FlexiblePricingError(
-        'LOCATION_CLOSED',
-        `L’établissement est fermé le ${intermediateDateStr} durant la période de réservation.`,
-      );
-    }
-  }
-
+  // Note (Chantier 15.2) : Les jours intermédiaires ne contraignent pas la location (fermeture magasin intermédiaire autorisée pendant la possession du vélo).
   void durationMin;
 }
 
@@ -149,7 +140,7 @@ function assertDayRangeOpeningHours(
   startDate: string,
   endDateExclusive: string,
   openingHours: OpeningHour[],
-  scheduleExceptions: LocationScheduleExceptionRecord[],
+  scheduleExceptions: LocationScheduleExceptionRecord[] = [],
 ): void {
   const startParts = parseDateString(startDate);
   const endParts = parseDateString(endDateExclusive);
@@ -158,7 +149,11 @@ function assertDayRangeOpeningHours(
   const lastIncludedDayNum = endDayNum - 1;
 
   // Vérifier le premier jour
-  const startSchedule = resolveScheduleForLocalDate(startDate, openingHours, scheduleExceptions);
+  const startSchedule = resolveEffectiveScheduleFromRules(
+    startDate,
+    openingHours,
+    scheduleExceptions,
+  );
   if (!startSchedule.isOpen) {
     throw new FlexiblePricingError(
       'LOCATION_CLOSED',
@@ -169,7 +164,7 @@ function assertDayRangeOpeningHours(
   // Vérifier le dernier jour inclus
   if (lastIncludedDayNum > startDayNum) {
     const lastDateStr = dateStringFromDayNum(lastIncludedDayNum);
-    const lastSchedule = resolveScheduleForLocalDate(
+    const lastSchedule = resolveEffectiveScheduleFromRules(
       lastDateStr,
       openingHours,
       scheduleExceptions,
@@ -184,46 +179,8 @@ function assertDayRangeOpeningHours(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Helpers de résolution
+// Helpers de vérification de créneaux
 // ─────────────────────────────────────────────────────────────────────────────
-
-interface EffectiveDateSchedule {
-  isOpen: boolean;
-  slots: Array<{ openTime: string; closeTime: string }>;
-}
-
-function resolveScheduleForLocalDate(
-  localDate: string,
-  openingHours: OpeningHour[],
-  scheduleExceptions: LocationScheduleExceptionRecord[],
-): EffectiveDateSchedule {
-  const exception = scheduleExceptions.find((ex) => ex.localDate === localDate);
-  if (exception) {
-    if (exception.kind === 'CLOSED') {
-      return { isOpen: false, slots: [] };
-    }
-    if (exception.kind === 'OPEN_INTERVAL' && exception.openTime && exception.closeTime) {
-      return {
-        isOpen: true,
-        slots: [{ openTime: exception.openTime, closeTime: exception.closeTime }],
-      };
-    }
-  }
-
-  const parts = parseDateString(localDate);
-  const dayNum = civilDayNumber(parts.year, parts.month, parts.day);
-  const weekday = weekdayFromDayNum(dayNum);
-
-  const regular = openingHours.filter((oh) => oh.weekday === weekday);
-  if (regular.length === 0 && openingHours.length > 0) {
-    return { isOpen: false, slots: [] };
-  }
-
-  return {
-    isOpen: true,
-    slots: regular.map((r) => ({ openTime: r.openTime, closeTime: r.closeTime })),
-  };
-}
 
 function isTimeCoveredBySlots(
   timeMin: number,
@@ -285,8 +242,4 @@ function dateStringFromDayNum(dayNum: number): string {
   const month = m + 3 - 12 * Math.floor(m / 10);
   const year = 100 * b + d - 4800 + Math.floor(m / 10);
   return formatDateParts(year, month, day);
-}
-
-function weekdayFromDayNum(dayNum: number): number {
-  return ((dayNum % 7) + 7) % 7;
 }

@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { and, eq, lt } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import {
@@ -13,18 +13,63 @@ import { AuthorizationError, can, canInviteRole } from './permissions';
 
 export const DEFAULT_INVITATION_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 jours
 
+function getInvitationSecret(): string {
+  return (
+    process.env.INVITATION_SECRET ||
+    process.env.CLERK_SECRET_KEY ||
+    process.env.CRON_SECRET ||
+    'uttily-invitation-signing-secret-development-only'
+  );
+}
+
 /**
- * Hash un token d'invitation (jamais stocké en clair).
+ * Hash un token d'invitation (jamais stocké en clair dans la table invitations).
  */
 export function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
 /**
- * Génère un token d'invitation aléatoire (32 octets, hex).
+ * Génère un token d'invitation signé cryptographiquement (HMAC-SHA256).
+ * Reconstructible côté serveur par le loader de notification sans nécessiter
+ * d'écrire le secret en clair dans `notifications.metadata` (Chantier 15.2).
  */
-export function generateInvitationToken(): string {
-  return randomBytes(32).toString('hex');
+export function createSignedInvitationToken(data: {
+  invitationId: string;
+  organizationId: string;
+  email: string;
+  expiresAt: Date | number;
+}): string {
+  const expiresAtMs = data.expiresAt instanceof Date ? data.expiresAt.getTime() : data.expiresAt;
+  const payload = `${data.invitationId}:${data.organizationId}:${data.email.trim().toLowerCase()}:${expiresAtMs}`;
+  const hmac = createHmac('sha256', getInvitationSecret()).update(payload).digest('hex');
+  return `${data.invitationId}.${expiresAtMs}.${hmac}`;
+}
+
+/**
+ * Vérifie la signature cryptographique d'un token d'invitation.
+ */
+export function verifySignedInvitationToken(
+  token: string,
+  context: { organizationId: string; email: string },
+): { valid: boolean; invitationId?: string; expiresAt?: Date } {
+  const parts = token.split('.');
+  if (parts.length !== 3) return { valid: false };
+  const [invitationId, expiresAtStr, providedHmac] = parts;
+  if (!invitationId || !expiresAtStr || !providedHmac) return { valid: false };
+
+  const expiresAtMs = parseInt(expiresAtStr, 10);
+  if (isNaN(expiresAtMs)) return { valid: false };
+
+  const expectedToken = createSignedInvitationToken({
+    invitationId,
+    organizationId: context.organizationId,
+    email: context.email,
+    expiresAt: expiresAtMs,
+  });
+
+  if (token !== expectedToken) return { valid: false };
+  return { valid: true, invitationId, expiresAt: new Date(expiresAtMs) };
 }
 
 export interface CreatedInvitation {
@@ -50,11 +95,6 @@ export class DuplicateInvitationError extends Error {
 /**
  * Détecte si une erreur est une violation de l'index unique partiel
  * `invitations_pending_org_email_unique` (migration 0009).
- *
- * On cible explicitement le nom de la contrainte plutôt que le seul
- * SQLSTATE 23505 (unique_violation) afin de ne pas masquer d'autres
- * violations d'unicité (ex : token_hash unique) qui doivent remonter
- * comme erreurs non gérées.
  */
 function isPendingInvitationDuplicate(err: unknown): boolean {
   if (err && typeof err === 'object') {
@@ -67,13 +107,9 @@ function isPendingInvitationDuplicate(err: unknown): boolean {
 }
 
 /**
- * Crée une invitation. Aucun utilisateur n'est créé avant acceptation.
- * Vérifie que l'acteur a le droit d'inviter pour ce rôle.
- *
- * L'unicité des invitations PENDING par (organization_id, email) est
- * garantie par un index unique partiel PostgreSQL (migration 0009).
- * Une vérification préalable est effectuée pour un message d'erreur clair,
- * mais la contrainte SQL reste l'autorité finale face à la concurrence.
+ * Crée une invitation et sa notification de manière transactionnelle atomique (Chantier 15.2).
+ * Aucun utilisateur n'est créé avant acceptation.
+ * Aucun token brut n'est écrit dans `notifications.metadata`.
  */
 export async function createInvitation(
   db: DatabaseClient,
@@ -88,84 +124,95 @@ export async function createInvitation(
     throw new Error('Email invalide.');
   }
 
-  // Vérification préalable (message clair, évite la plupart des doublons).
-  const existing = await db
-    .select()
-    .from(organizationInvitations)
-    .where(
-      and(
-        eq(organizationInvitations.organizationId, input.organizationId),
-        eq(organizationInvitations.email, email),
-        eq(organizationInvitations.status, 'PENDING'),
-      ),
-    )
-    .limit(1);
-  if (existing.length > 0) {
-    throw new DuplicateInvitationError('Une invitation est déjà en attente pour cet email.');
-  }
-
-  const token = generateInvitationToken();
   const ttlSeconds = input.ttlSeconds ?? DEFAULT_INVITATION_TTL_SECONDS;
   const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+  const invitationId = randomUUID();
+
+  const token = createSignedInvitationToken({
+    invitationId,
+    organizationId: input.organizationId,
+    email,
+    expiresAt,
+  });
+  const tokenHash = hashToken(token);
 
   try {
-    const [row] = await db
-      .insert(organizationInvitations)
-      .values({
-        organizationId: input.organizationId,
+    return await db.transaction(async (tx) => {
+      // 1. Vérification préalable
+      const existing = await tx
+        .select()
+        .from(organizationInvitations)
+        .where(
+          and(
+            eq(organizationInvitations.organizationId, input.organizationId),
+            eq(organizationInvitations.email, email),
+            eq(organizationInvitations.status, 'PENDING'),
+          ),
+        )
+        .limit(1);
+      if (existing.length > 0) {
+        throw new DuplicateInvitationError('Une invitation est déjà en attente pour cet email.');
+      }
+
+      // 2. Insérer l'invitation
+      const [row] = await tx
+        .insert(organizationInvitations)
+        .values({
+          id: invitationId,
+          organizationId: input.organizationId,
+          email,
+          role: input.role,
+          tokenHash,
+          status: 'PENDING',
+          invitedBy: input.invitedBy,
+          expiresAt,
+        })
+        .returning();
+      if (!row) throw new Error('Échec de création de l\u2019invitation.');
+
+      // 3. Charger le nom de l'organisation
+      const [org] = await tx
+        .select({
+          legalName: organizations.legalName,
+          publicDisplayName: organizations.publicDisplayName,
+        })
+        .from(organizations)
+        .where(eq(organizations.id, input.organizationId))
+        .limit(1);
+
+      const roleLabels: Record<MembershipRole, string> = {
+        OWNER: 'Propriétaire',
+        ADMIN: 'Administrateur',
+        MANAGER: 'Responsable',
+        STAFF: "Membre d'équipe",
+      };
+
+      // 4. Insérer la notification dans la même transaction SANS bearer token en clair (Chantier 15.2)
+      await tx
+        .insert(notifications)
+        .values({
+          organizationId: input.organizationId,
+          template: 'ORGANIZATION_INVITATION',
+          recipient: email,
+          status: 'PENDING',
+          idempotencyKey: `invitation:${row.id}`,
+          metadata: {
+            organizationName: org?.publicDisplayName ?? org?.legalName ?? 'Uttily',
+            roleName: roleLabels[input.role] ?? input.role,
+            invitationId: row.id,
+          },
+        })
+        .onConflictDoNothing();
+
+      return {
+        id: row.id,
+        token,
         email,
         role: input.role,
-        tokenHash: hashToken(token),
-        status: 'PENDING',
-        invitedBy: input.invitedBy,
         expiresAt,
-      })
-      .returning();
-    if (!row) throw new Error('Échec de création de l\u2019invitation.');
-
-    // Chantier 15.1 : Planifier immédiatement l'envoi de l'email d'invitation
-    const [org] = await db
-      .select({
-        legalName: organizations.legalName,
-        publicDisplayName: organizations.publicDisplayName,
-      })
-      .from(organizations)
-      .where(eq(organizations.id, input.organizationId))
-      .limit(1);
-
-    const roleLabels: Record<MembershipRole, string> = {
-      OWNER: 'Propriétaire',
-      ADMIN: 'Administrateur',
-      MANAGER: 'Responsable',
-      STAFF: "Membre d'équipe",
-    };
-
-    await db
-      .insert(notifications)
-      .values({
-        organizationId: input.organizationId,
-        template: 'ORGANIZATION_INVITATION',
-        recipient: email,
-        status: 'PENDING',
-        idempotencyKey: `invitation:${row.id}`,
-        metadata: {
-          organizationName: org?.publicDisplayName ?? org?.legalName ?? 'Uttily',
-          roleName: roleLabels[input.role] ?? input.role,
-          token,
-          invitationId: row.id,
-        },
-      })
-      .onConflictDoNothing();
-
-    return {
-      id: row.id,
-      token,
-      email,
-      role: input.role,
-      expiresAt,
-    };
+      };
+    });
   } catch (err) {
-    // Autorité finale : contrainte SQL. Gère la concurrence.
     if (isPendingInvitationDuplicate(err)) {
       throw new DuplicateInvitationError('Une invitation est déjà en attente pour cet email.');
     }
@@ -189,7 +236,7 @@ export async function listPendingInvitations(db: DatabaseClient, organizationId:
 }
 
 /**
- * Révoque une invitation (multi-tenant scope strict et vérification des permissions).
+ * Révoque une invitation et annule de façon atomique toute notification PENDING associée (Chantier 15.2).
  */
 export async function revokeInvitation(
   db: DatabaseClient,
@@ -201,26 +248,44 @@ export async function revokeInvitation(
     throw new AuthorizationError('Rôle insuffisant pour révoquer une invitation.');
   }
 
-  const rows = await db
-    .update(organizationInvitations)
-    .set({
-      status: 'REVOKED',
-      revokedAt: new Date(),
-      revokedBy: actor.userId,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(organizationInvitations.id, invitationId),
-        eq(organizationInvitations.organizationId, organizationId),
-        eq(organizationInvitations.status, 'PENDING'),
-      ),
-    )
-    .returning({ id: organizationInvitations.id });
+  await db.transaction(async (tx) => {
+    const rows = await tx
+      .update(organizationInvitations)
+      .set({
+        status: 'REVOKED',
+        revokedAt: new Date(),
+        revokedBy: actor.userId,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(organizationInvitations.id, invitationId),
+          eq(organizationInvitations.organizationId, organizationId),
+          eq(organizationInvitations.status, 'PENDING'),
+        ),
+      )
+      .returning({ id: organizationInvitations.id });
 
-  if (rows.length === 0) {
-    throw new AuthorizationError('Invitation introuvable ou déjà traitée.');
-  }
+    if (rows.length === 0) {
+      throw new AuthorizationError('Invitation introuvable ou déjà traitée.');
+    }
+
+    // Annuler immédiatement les notifications PENDING associées dans la même transaction
+    await tx
+      .update(notifications)
+      .set({
+        status: 'CANCELLED',
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(notifications.template, 'ORGANIZATION_INVITATION'),
+          eq(notifications.organizationId, organizationId),
+          eq(notifications.status, 'PENDING'),
+          eq(notifications.idempotencyKey, `invitation:${invitationId}`),
+        ),
+      );
+  });
 }
 
 /**

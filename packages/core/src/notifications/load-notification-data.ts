@@ -5,6 +5,7 @@ import {
   bookingLines,
   bookings,
   locations,
+  organizationInvitations,
   organizations,
   payments,
   products,
@@ -12,6 +13,8 @@ import {
   refunds,
   users,
 } from '@uttily/database';
+import { createSignedInvitationToken } from '../identity/invitations';
+import { getPublicAppUrl } from '../identity/public-app-url';
 import type { RenderedEmail } from './types';
 import {
   renderBookingCancelledCustomer,
@@ -326,21 +329,70 @@ export async function renderNotificationRecord(
       const meta = (notification.metadata ?? {}) as {
         organizationName?: string;
         roleName?: string;
-        token?: string;
-        acceptUrl?: string;
+        invitationId?: string;
       };
 
-      const organizationName = meta.organizationName ?? 'Votre organisation';
-      const roleName = meta.roleName ?? 'Membre';
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-      const acceptUrl =
-        meta.acceptUrl || (meta.token ? `${baseUrl}/invitations/accept?token=${meta.token}` : baseUrl);
+      const invitationId =
+        meta.invitationId || notification.idempotencyKey?.replace(/^invitation:/, '');
+      if (!invitationId) {
+        throw new Error('invitationId manquant pour ORGANIZATION_INVITATION');
+      }
+
+      const rows = await db
+        .select({
+          id: organizationInvitations.id,
+          organizationId: organizationInvitations.organizationId,
+          email: organizationInvitations.email,
+          role: organizationInvitations.role,
+          expiresAt: organizationInvitations.expiresAt,
+          status: organizationInvitations.status,
+          orgLegalName: organizations.legalName,
+          orgDisplayName: organizations.publicDisplayName,
+        })
+        .from(organizationInvitations)
+        .innerJoin(organizations, eq(organizationInvitations.organizationId, organizations.id))
+        .where(eq(organizationInvitations.id, invitationId))
+        .limit(1);
+
+      if (rows.length === 0) {
+        throw new Error(`Invitation ${invitationId} introuvable`);
+      }
+      const invitationRow = rows[0]!;
+
+      const roleLabels: Record<string, string> = {
+        OWNER: 'Propriétaire',
+        ADMIN: 'Administrateur',
+        MANAGER: 'Responsable',
+        STAFF: "Membre d'équipe",
+      };
+
+      const organizationName =
+        meta.organizationName ??
+        invitationRow.orgDisplayName ??
+        invitationRow.orgLegalName ??
+        'Votre organisation';
+      const roleName = meta.roleName ?? roleLabels[invitationRow.role] ?? invitationRow.role;
+
+      // Reconstruire le token signé
+      const token = createSignedInvitationToken({
+        invitationId: invitationRow.id,
+        organizationId: invitationRow.organizationId,
+        email: invitationRow.email,
+        expiresAt: invitationRow.expiresAt,
+      });
+
+      // Résoudre l'URL canonique validée de l'application
+      const baseUrl = getPublicAppUrl(process.env);
+      const acceptUrl = `${baseUrl}/invitations?token=${encodeURIComponent(token)}`;
 
       return renderOrganizationInvitation({
         organizationName,
         roleName,
         acceptUrl,
-        expiresInDays: 7,
+        expiresInDays: Math.max(
+          1,
+          Math.ceil((invitationRow.expiresAt.getTime() - Date.now()) / (24 * 60 * 60 * 1000)),
+        ),
       });
     }
 

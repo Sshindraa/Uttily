@@ -6,9 +6,14 @@ import { eq, and } from 'drizzle-orm';
 import { organizationInvitations } from '@uttily/database';
 import { acceptInvitationAction } from '@/app/actions/invitations';
 
-export default async function InvitationsPage(): Promise<React.ReactElement> {
+export default async function InvitationsPage(props: {
+  searchParams?: Promise<{ token?: string }>;
+}): Promise<React.ReactElement> {
   const user = await getAuthenticatedUser();
   if (!user) redirect('/sign-in');
+  const searchParams = props.searchParams ? await props.searchParams : {};
+  const prefilledToken = searchParams.token ?? '';
+
   const db = getDb();
   // Liste les invitations en attente pour l'email de l'utilisateur courant.
   const invitations = await db
@@ -49,7 +54,13 @@ export default async function InvitationsPage(): Promise<React.ReactElement> {
         <p>Saisissez le token reçu par email.</p>
         <form action={accept}>
           <label htmlFor="token">Token d\u2019invitation</label>
-          <input id="token" name="token" type="text" required />
+          <input
+            id="token"
+            name="token"
+            type="text"
+            defaultValue={prefilledToken}
+            required
+          />
           <button type="submit">Accepter</button>
         </form>
       </section>

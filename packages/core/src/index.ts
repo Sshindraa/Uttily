@@ -15,6 +15,7 @@ export * from './identity/memberships';
 export * from './identity/locations';
 export * from './identity/invitations';
 export * from './identity/schedule';
+export * from './identity/public-app-url';
 export * from './identity/audit';
 export * from './identity/provisioning';
 

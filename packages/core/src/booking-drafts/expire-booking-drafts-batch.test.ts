@@ -148,6 +148,7 @@ function makeInput(
   overrides: Partial<LegacyCreateBookingDraftInput> = {},
 ): LegacyCreateBookingDraftInput {
   return {
+    pricingMode: 'LEGACY',
     organizationId: ids.orgId,
     locationId: ids.locationId,
     customerUserId: ids.userId,

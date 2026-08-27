@@ -5,6 +5,8 @@ import {
   bookingDrafts,
   inventoryBlocks,
   inventoryItems,
+  locationOpeningHours,
+  locationScheduleExceptions,
   locations,
   organizations,
   products,
@@ -33,6 +35,7 @@ import { calculatePrice } from '../pricing/calculate-price';
 import { PricingError } from '../pricing/errors';
 import type { PricingLineInput, VariantPricingSnapshot } from '../pricing/types';
 import { quoteFlexiblePricing } from '../pricing-plans/quote-flexible-pricing';
+import { isWithinOpeningHours } from '../pricing-plans/opening-hours';
 import { FlexiblePricingError } from '../pricing-plans/errors';
 import {
   LocalToUtcError,
@@ -324,19 +327,19 @@ export async function createBookingDraftWithHold(
   analyticsEnvironment?: ResolvedAnalyticsEnvironment,
 ): Promise<CreateBookingDraftResult> {
   const resolvedEnv = analyticsEnvironment ?? resolveAnalyticsEnvironmentFromProcessEnv();
-  // ── Discrimination du chemin (LEGACY vs FLEXIBLE) ──────────────────────
-  // G7P-B2-B Round 2 — Defect 6 : dispatch fermé, aucun fallback silencieux.
-  // La validation doit avoir lieu AVANT reserveKey — aucune mutation DB, aucun
-  // enregistrement d'idempotence pour un mode invalide.
+  // G7P-B2-B Round 2 — Defect 6 & Chantier 15.2 : dispatch fermé, aucun fallback silencieux.
+  // Le mode de pricing doit être explicitement spécifié ('FLEXIBLE' ou 'LEGACY').
+  // La validation a lieu AVANT reserveKey — aucune mutation DB, aucun
+  // enregistrement d'idempotence pour un mode invalide ou omis.
   if (input.pricingMode === 'FLEXIBLE') {
     return executeFlexiblePath(db, input, resolvedEnv);
   }
-  if (input.pricingMode === 'LEGACY' || input.pricingMode === undefined) {
+  if (input.pricingMode === 'LEGACY') {
     return executeLegacyPath(db, input, resolvedEnv);
   }
   throw new BookingDraftError(
     'VALIDATION',
-    `Mode de pricing invalide: ${String(input.pricingMode)}`,
+    `Mode de pricing invalide ou non spécifié: ${String((input as { pricingMode?: unknown }).pricingMode)}. Le mode de pricing doit être explicitement spécifié (FLEXIBLE ou LEGACY).`,
   );
 }
 
@@ -882,6 +885,47 @@ async function executeBusinessLogic(
   const timeZone = loc[0]!.timeZone;
   const prepBufferMinutes = loc[0]!.prepBufferMinutes;
   const cleanupBufferMinutes = loc[0]!.cleanupBufferMinutes;
+
+  // 2b. Valider les horaires d'ouverture et exceptions de calendrier (Chantier 15.2).
+  const legacyOpeningHours = await tx
+    .select({
+      weekday: locationOpeningHours.weekday,
+      openTime: locationOpeningHours.openTime,
+      closeTime: locationOpeningHours.closeTime,
+    })
+    .from(locationOpeningHours)
+    .where(eq(locationOpeningHours.locationId, input.locationId));
+
+  const legacyExceptions = await tx
+    .select()
+    .from(locationScheduleExceptions)
+    .where(
+      and(
+        eq(locationScheduleExceptions.organizationId, input.organizationId),
+        eq(locationScheduleExceptions.locationId, input.locationId),
+      ),
+    );
+
+  try {
+    isWithinOpeningHours(
+      { kind: 'TIME_RANGE', startAt: input.customerStartAt, endAt: input.customerEndAt },
+      timeZone,
+      legacyOpeningHours.map((h) => ({
+        weekday: h.weekday,
+        openTime: typeof h.openTime === 'string' ? h.openTime : String(h.openTime),
+        closeTime: typeof h.closeTime === 'string' ? h.closeTime : String(h.closeTime),
+      })),
+      legacyExceptions,
+    );
+  } catch (err) {
+    if (err instanceof FlexiblePricingError) {
+      throw new BookingDraftError(
+        'VALIDATION',
+        `Création de réservation impossible: ${err.message}`,
+      );
+    }
+    throw err;
+  }
 
   // 3. Valider l'utilisateur.
   const user = await tx

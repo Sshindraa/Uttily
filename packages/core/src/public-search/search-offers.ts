@@ -103,6 +103,7 @@ import { selectBestCandidate, compareCandidates } from '../pricing-plans/selecto
 import { generateCandidates } from '../pricing-plans/candidate-generator';
 import { calculateAmount } from '../pricing-plans/amount-calculator';
 import { validateGrid } from '../pricing-plans/grid-validator';
+import { isWithinOpeningHours } from '../pricing-plans/opening-hours';
 import { resolveLocale, getTranslation } from '../pricing-plans/locale-resolver';
 import { FlexiblePricingError } from '../pricing-plans/errors';
 import {
@@ -428,10 +429,11 @@ async function processCandidateBatch(
       });
     } catch (err) {
       if (err instanceof FlexiblePricingError) {
-        // NO_ELIGIBLE_PLAN, OUTSIDE_OPENING_HOURS, UNSUPPORTED_LOCALE → skip.
+        // NO_ELIGIBLE_PLAN, OUTSIDE_OPENING_HOURS, LOCATION_CLOSED, UNSUPPORTED_LOCALE → skip.
         if (
           err.code === 'NO_ELIGIBLE_PLAN' ||
           err.code === 'OUTSIDE_OPENING_HOURS' ||
+          err.code === 'LOCATION_CLOSED' ||
           err.code === 'UNSUPPORTED_LOCALE'
         ) {
           continue;
@@ -1644,6 +1646,14 @@ function computePriceForCandidate(
   context: PricingContext,
   variantId: string,
 ): { price: PublicPriceSummary; best: Candidate } | null {
+  // Gate de réservabilité (Chantier 15.2) : valider les horaires d'ouverture et exceptions.
+  isWithinOpeningHours(
+    context.intent,
+    context.timeZone,
+    context.openingHours,
+    context.scheduleExceptions,
+  );
+
   let candidates = generateCandidates(variantId, 1, context);
   if (candidates.length === 0) return null;
 

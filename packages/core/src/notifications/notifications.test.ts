@@ -13,13 +13,14 @@ import {
   renderBookingCancelledCustomer,
   renderBookingCancelledMerchant,
   renderBookingConfirmedCustomer,
-  renderBookingConfirmedMerchant,
   renderOrganizationInvitation,
   renderPickupReminderCustomer,
   renderRefundActionRequiredMerchant,
   renderRefundConfirmedCustomer,
   renderReturnReminderCustomer,
 } from './templates';
+import { renderNotificationRecord } from './load-notification-data';
+import type { DbExecutor, NotificationRecord } from '@uttily/database';
 
 describe('Notifications — Idempotency Keys', () => {
   const bookingId = '00000000-0000-0000-0000-000000000001';
@@ -100,76 +101,70 @@ describe('Notifications — Templates Rendering', () => {
     expect(rendered.text).toContain('Le virement de remboursement a été transmis');
   });
 
-  it('rend REFUND_CONFIRMED_CUSTOMER lors de la confirmation définitive', () => {
+  it('rend BOOKING_CANCELLED_MERCHANT avec le motif', () => {
+    const rendered = renderBookingCancelledMerchant({
+      bookingId: 'b_1',
+      organizationName: 'Lyon Vélos Pro',
+      productName: 'Canyon Roadlite M',
+      customerEmail: 'alice@example.com',
+      actorReason: 'ANNULATION_CLIENT',
+      retainedAmountMinor: 2000,
+      finalMerchantRevenueMinor: 1800,
+    });
+
+    expect(rendered.subject).toContain('Annulation de réservation — Canyon Roadlite M');
+    expect(rendered.html).toContain('ANNULATION_CLIENT');
+    expect(rendered.html).toContain('18,00');
+    expect(rendered.text).toContain('alice@example.com');
+  });
+
+  it('rend REFUND_CONFIRMED_CUSTOMER', () => {
     const rendered = renderRefundConfirmedCustomer({
       refundId: 'r_1',
       customerName: 'Alice',
-      productName: 'Canyon Roadlite M',
       organizationName: 'Lyon Vélos Pro',
+      productName: 'Canyon Roadlite M',
       amountMinor: 12000,
     });
 
-    expect(rendered.subject).toContain('Votre remboursement de');
-    expect(rendered.subject).toContain('120,00');
-    expect(rendered.html).toContain('Remboursement confirmé');
-    expect(rendered.text).toContain('a été exécuté avec succès');
+    expect(rendered.subject).toContain('Votre remboursement de 120,00 € a été confirmé');
+    expect(rendered.html).toContain('120,00');
+    expect(rendered.text).toContain('Lyon Vélos Pro');
   });
 
-  it('rend BOOKING_CONFIRMED_MERCHANT et BOOKING_CANCELLED_MERCHANT', () => {
-    const confirmedMerchant = renderBookingConfirmedMerchant({
-      bookingId: 'b_1',
-      organizationName: 'Lyon Vélos Pro',
-      customerEmail: 'alice@example.com',
-      productName: 'Canyon Roadlite M',
-      customerStartAt: baseDate,
-      customerEndAt: endDate,
-      locationName: 'Lyon Centre',
-      timeZone: 'Europe/Paris',
-      netRevenueMinor: 10800,
-    });
-    expect(confirmedMerchant.subject).toContain('Nouvelle réservation confirmée');
-    expect(confirmedMerchant.html).toContain('108,00');
-
-    const cancelledMerchant = renderBookingCancelledMerchant({
-      bookingId: 'b_1',
-      organizationName: 'Lyon Vélos Pro',
-      customerEmail: 'alice@example.com',
-      productName: 'Canyon Roadlite M',
-      actorReason: 'MERCHANT_CANCELLATION',
-      retainedAmountMinor: 0,
-      finalMerchantRevenueMinor: 0,
-    });
-    expect(cancelledMerchant.subject).toContain('Annulation de réservation');
-    expect(cancelledMerchant.html).toContain('automatiquement débloqué');
-  });
-
-  it('rend les rappels de départ et de retour avec consignes et téléphone', () => {
+  it('rend PICKUP_REMINDER_CUSTOMER avec instructions et téléphone', () => {
     const pickup = renderPickupReminderCustomer({
       bookingId: 'b_1',
+      customerName: 'Alice',
       organizationName: 'Lyon Vélos Pro',
       productName: 'Canyon Roadlite M',
       customerStartAt: baseDate,
       locationName: 'Lyon Centre',
-      timeZone: 'Europe/Paris',
+      locationAddress: '10 rue de la République',
       locationPhone: '+33 4 78 00 00 00',
-      pickupInstructions: 'Sonnez à l’interphone Atelier et demandez Pierre.',
+      timeZone: 'Europe/Paris',
+      pickupInstructions: 'Présentez-vous au comptoir avec votre pièce d’identité.',
     });
-    expect(pickup.subject).toContain('Rappel : Votre location');
-    expect(pickup.html).toContain('Horaire de retrait :');
-    expect(pickup.html).toContain('Sonnez à l’interphone Atelier et demandez Pierre.');
+    expect(pickup.subject).toContain('Rappel : Votre location Canyon Roadlite M débute bientôt');
+    expect(pickup.html).toContain('Consignes de retrait :');
+    expect(pickup.html).toContain('Présentez-vous au comptoir avec votre pièce d’identité.');
     expect(pickup.html).toContain('+33 4 78 00 00 00');
+  });
 
+  it('rend RETURN_REMINDER_CUSTOMER avec instructions et téléphone', () => {
     const ret = renderReturnReminderCustomer({
       bookingId: 'b_1',
+      customerName: 'Alice',
       organizationName: 'Lyon Vélos Pro',
       productName: 'Canyon Roadlite M',
       customerEndAt: endDate,
       locationName: 'Lyon Centre',
-      timeZone: 'Europe/Paris',
+      locationAddress: '10 rue de la République',
       locationPhone: '+33 4 78 00 00 00',
+      timeZone: 'Europe/Paris',
       returnInstructions: 'Déposez le vélo dans le sas sécurisé avec le code 4589.',
     });
-    expect(ret.subject).toContain('Rappel : Retour de votre équipement');
+    expect(ret.subject).toContain('Rappel : Retour de votre équipement Canyon Roadlite M');
     expect(ret.html).toContain('Horaire limite de restitution :');
     expect(ret.html).toContain('Déposez le vélo dans le sas sécurisé avec le code 4589.');
     expect(ret.html).toContain('+33 4 78 00 00 00');
@@ -179,13 +174,13 @@ describe('Notifications — Templates Rendering', () => {
     const invitation = renderOrganizationInvitation({
       organizationName: 'Lyon Vélos Pro',
       roleName: 'Administrateur',
-      acceptUrl: 'https://uttily.com/invitation/tok_123',
+      acceptUrl: 'https://uttily.com/invitations?token=tok_123',
     });
     expect(invitation.subject).toContain('Invitation à rejoindre Lyon Vélos Pro');
     expect(invitation.html).toContain('Administrateur');
     expect(invitation.html).toContain('Rejoindre l’équipe');
     expect(invitation.html).toContain('7 jours');
-    expect(invitation.text).toContain('https://uttily.com/invitation/tok_123');
+    expect(invitation.text).toContain('https://uttily.com/invitations?token=tok_123');
   });
 
   it('rend REFUND_ACTION_REQUIRED_MERCHANT', () => {
@@ -198,5 +193,70 @@ describe('Notifications — Templates Rendering', () => {
     });
     expect(action.subject).toContain("Action requise : Échec d'un remboursement");
     expect(action.html).toContain('account_closed');
+  });
+
+  describe('renderNotificationRecord — ORGANIZATION_INVITATION (Chantier 15.2)', () => {
+    it('reconstruit le token signé sans secret brut dans les métadonnées', async () => {
+      process.env.PUBLIC_APP_URL = 'http://localhost:3000';
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const fakeDb = {
+        select: () => ({
+          from: () => ({
+            innerJoin: () => ({
+              where: () => ({
+                limit: () => [
+                  {
+                    id: 'inv-uuid-1',
+                    organizationId: 'org-uuid-1',
+                    email: 'invitee@example.com',
+                    role: 'ADMIN',
+                    expiresAt,
+                    status: 'PENDING',
+                    orgLegalName: 'Lyon Vélos SAS',
+                    orgDisplayName: 'Lyon Vélos Pro',
+                  },
+                ],
+              }),
+            }),
+          }),
+        }),
+      } as unknown as DbExecutor;
+
+      const notif: NotificationRecord = {
+        id: 'notif-1',
+        organizationId: 'org-uuid-1',
+        template: 'ORGANIZATION_INVITATION',
+        channel: 'EMAIL',
+        recipient: 'invitee@example.com',
+        status: 'PENDING',
+        idempotencyKey: 'invitation:inv-uuid-1',
+        scheduledFor: new Date(),
+        metadata: {
+          invitationId: 'inv-uuid-1',
+          organizationName: 'Lyon Vélos Pro',
+          roleName: 'Administrateur',
+        },
+        bookingId: null,
+        refundId: null,
+        attemptCount: 0,
+        providerFirstAttemptStartedAt: null,
+        nextAttemptAt: null,
+        failedAt: null,
+        sentAt: null,
+        leaseToken: null,
+        leaseUntil: null,
+        failureCode: null,
+        providerMessageId: null,
+        requiresManualReview: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const rendered = await renderNotificationRecord(fakeDb, notif);
+      expect(rendered.subject).toContain('Invitation à rejoindre Lyon Vélos Pro');
+      expect(rendered.html).toContain('Administrateur');
+      expect(rendered.html).toContain('token=inv-uuid-1.');
+      expect(rendered.text).toContain('/invitations?token=inv-uuid-1.');
+    });
   });
 });

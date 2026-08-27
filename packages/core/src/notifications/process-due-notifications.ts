@@ -1,7 +1,12 @@
 import { and, eq, gte, lte, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import type { DatabaseClient } from '@uttily/database';
-import { bookings, notifications } from '@uttily/database';
+import {
+  bookings,
+  notifications,
+  organizationInvitations,
+  organizations,
+} from '@uttily/database';
 import { renderNotificationRecord } from './load-notification-data';
 import {
   NotificationSendError,
@@ -171,6 +176,63 @@ export async function processDueNotifications(
         }
 
         if (!isEligible) {
+          const updated = await deps.db
+            .update(notifications)
+            .set({
+              status: 'CANCELLED',
+              leaseToken: null,
+              leaseUntil: null,
+              updatedAt: sql`now()`,
+            })
+            .where(
+              and(
+                eq(notifications.id, item.id),
+                eq(notifications.status, 'SENDING'),
+                eq(notifications.leaseToken, leaseToken),
+                gte(notifications.leaseUntil, now),
+              ),
+            )
+            .returning({ id: notifications.id });
+
+          if (updated.length === 0) {
+            leaseLostCount++;
+          } else {
+            cancelledCount++;
+          }
+          continue;
+        }
+      }
+
+      // 2c-bis. Send-time eligibility check strict pour les invitations d'équipe (Chantier 15.2)
+      if (item.template === 'ORGANIZATION_INVITATION') {
+        const meta = (item.metadata ?? {}) as { invitationId?: string };
+        const invitationId = meta.invitationId || item.idempotencyKey?.replace(/^invitation:/, '');
+
+        let isInvitationEligible = false;
+        if (invitationId) {
+          const invRows = await deps.db
+            .select({
+              status: organizationInvitations.status,
+              expiresAt: organizationInvitations.expiresAt,
+              orgStatus: organizations.status,
+            })
+            .from(organizationInvitations)
+            .innerJoin(organizations, eq(organizationInvitations.organizationId, organizations.id))
+            .where(eq(organizationInvitations.id, invitationId))
+            .limit(1);
+
+          const inv = invRows[0];
+          if (
+            inv &&
+            inv.status === 'PENDING' &&
+            inv.expiresAt > now &&
+            inv.orgStatus === 'ACTIVE'
+          ) {
+            isInvitationEligible = true;
+          }
+        }
+
+        if (!isInvitationEligible) {
           const updated = await deps.db
             .update(notifications)
             .set({

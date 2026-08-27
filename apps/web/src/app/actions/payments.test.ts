@@ -269,6 +269,7 @@ async function seedBaseData(owner: AuthenticatedUser): Promise<BaseIds> {
 async function createHeldDraft(ids: BaseIds, customerUserId: string): Promise<string> {
   if (!testDb) throw new Error('db not initialized');
   const input: CreateBookingDraftInput = {
+    pricingMode: 'LEGACY',
     organizationId: ids.orgId,
     locationId: ids.locationId,
     customerUserId,
