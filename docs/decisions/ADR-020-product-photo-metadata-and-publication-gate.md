@@ -9,6 +9,13 @@
   `docs/product/lot7-arbitrage.md` ;
   `docs/implementation/g7f-a2-implementation-plan.md`
 
+> **Note de révision (2026-08-27)** : le standard produit vélo et la direction
+> de confiance publique sont précisés dans
+> `docs/product/g8b-3-bike-visual-trust-standard.md`. Le gate actuellement livré
+> reste exclusivement technique : il ne reconnaît ni l'angle, ni le cadrage, ni
+> la netteté. Toute validation serveur de slots visuels exige une évolution
+> dédiée ; cette note ne prétend pas qu'elle est déjà implémentée.
+
 ## 1. Contexte
 
 ### 1.1 Exigence produit

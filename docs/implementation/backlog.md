@@ -224,7 +224,15 @@ complet sont validés dans
 | G8B-1 — Upload réel des photos produit | upload R2 sécurisé, validation serveur, trois photos avant publication, suppression/remplacement idempotents, URLs publiques contrôlées, UI accessible et tests | G7F-A2, ADR-026 | **Terminé le 2026-08-27 ; smoke test staging R2 validé** |
 | G8B-2 — Géocodage réel | registre local-first, autocomplétion, benchmark fournisseur, cache et droits documentés, recherche réelle | ADR-017, ADR-021, ADR-027 | **En cours — G8B-2A, G8B-2B et G8B-2D livrés le 2026-08-27 ; moteur runtime PostgreSQL/PostGIS retenu, ingestion externe différée** |
 | G8B-2D — Élargissement géographique PostGIS | paliers exact → 10 km → 25 km → 50 km, alternatives séparées, contrat de curseur versionné et tests PostgreSQL/UI | G8B-2A, G8B-2B, ADR-021, ADR-027 | **Terminé le 2026-08-27 ; validation locale Core/Web, PostgreSQL, lint, format, types et build** |
-| G8B-3 — Contenu pilote et validations | contenu loueurs, juridique/RGPD, checklist Go/No-Go | décision commerciale et juridique | À planifier |
+| G8B-3 — Pilote vélo France / Lyon | particuliers en location ponctuelle, vélos de ville et électriques, cible 2 loueurs/20 vélos, kit d'onboarding, contenu réel, juridique/RGPD et Go/No-Go | cadrage G8B-3, décision commerciale et juridique | **En cours — G8B-3A cadrage terminé le 2026-08-27 ; G8B-3B suivant ; G8B-3C bloqué faute de partenaire** |
+| G8B-3B — Onboarding accompagné vélo | collecte structurée, déroulé opérateur, checklist et audit du dashboard | G8B-3A | **En cours — kit et audit livrés le 2026-08-27 ; G8B-3B1 livré le 2026-08-27** |
+| G8B-3B1 — Établissement publiable | formulaire complet adresse, coordonnées, horaires, retrait et publication fail-closed | G8B-3B | **Terminé le 2026-08-27 — Core, dashboard et tests ciblés** |
+| G8B-3B2 — Plans tarifaires loueur | création DRAFT, fenêtres, traductions, paliers et activation via dashboard | G8B-3B1, schéma G7P-A | À implémenter |
+| G8B-3B3 — Readiness accompagnée | checklist serveur par organisation et liens vers les éléments manquants | G8B-3B1, G8B-3B2 | À implémenter |
+| G8B-3B4 — Standard visuel et confiance vélo | trois vues guidées et validées côté serveur, identité professionnelle factuelle, conception du badge vérifié | G8B-3B2, ADR-020, ADR-026 | **Direction produit documentée le 2026-08-27 ; implémentation à planifier** |
+| G8B-3C — Contenu réel pilote | deux loueurs professionnels et vingt vélos réels publiables à Lyon | G8B-3B, partenaires signés | Bloqué — aucun partenaire engagé |
+| G8B-3D — Go/No-Go LIVE | finance, juridique, RGPD, Stripe LIVE, observabilité et smoke final | G8B-3C, validations externes | Bloqué par décisions finance/juridique/RGPD |
+| G8B-3E — Parcours locaux vélo | conseils structurés, sécurité, modération et actualisation | premiers partenaires, décision responsabilité/modération | Différé après les premiers partenaires |
 
 ### Maintenance CI
 

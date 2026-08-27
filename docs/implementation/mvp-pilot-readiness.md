@@ -1,5 +1,12 @@
 # MVP Pilot Readiness — Baseline officielle après Lot 7
 
+> **Mise à jour G8B-3A — 2026-08-27** : la France est le marché cible et Lyon
+> la première zone commerciale. Le pilote vise les particuliers en location
+> ponctuelle, avec deux loueurs professionnels et vingt vélos de ville ou
+> électriques. Aucun partenaire n'est encore engagé. Voir
+> `docs/product/g8b-3-france-lyon-bike-pilot.md` pour le cadrage actuel ; les
+> mentions historiques ci-dessous décrivent la baseline du 2026-08-15.
+
 **Date d'établissement :** 2026-08-15
 **Baseline :** `origin/main = 19653fac63a47845b904075f9dc3fabdb40ff872`
 **Branche :** `codex/mvp-pilot-readiness-baseline`
