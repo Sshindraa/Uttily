@@ -29,7 +29,52 @@
   height: 100%;
   pointer-events: none;
   color: #38bdf8;
+  filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.45));
   transition: opacity 0.3s ease;
+}
+
+.reticleTopLeft,
+.reticleTopRight,
+.reticleBottomLeft,
+.reticleBottomRight {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: rgba(56, 189, 248, 0.7);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.reticleTopLeft {
+  top: 16px;
+  left: 16px;
+  border-top: 2px solid;
+  border-left: 2px solid;
+  border-top-left-radius: 4px;
+}
+
+.reticleTopRight {
+  top: 16px;
+  right: 16px;
+  border-top: 2px solid;
+  border-right: 2px solid;
+  border-top-right-radius: 4px;
+}
+
+.reticleBottomLeft {
+  bottom: 16px;
+  left: 16px;
+  border-bottom: 2px solid;
+  border-left: 2px solid;
+  border-bottom-left-radius: 4px;
+}
+
+.reticleBottomRight {
+  bottom: 16px;
+  right: 16px;
+  border-bottom: 2px solid;
+  border-right: 2px solid;
+  border-bottom-right-radius: 4px;
 }
 
 .topBar {

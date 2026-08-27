@@ -91,6 +91,12 @@ export function CameraViewfinder({
       {/* Ghost Overlay SVG anatomique transparent */}
       <OverlayComponent className={styles.overlay} />
 
+      {/* Réticules holographiques de cadrage aux 4 coins */}
+      <div className={styles.reticleTopLeft} aria-hidden="true" />
+      <div className={styles.reticleTopRight} aria-hidden="true" />
+      <div className={styles.reticleBottomLeft} aria-hidden="true" />
+      <div className={styles.reticleBottomRight} aria-hidden="true" />
+
       {/* Barre supérieure : titre slot & bouton exemple */}
       <div className={styles.topBar}>
         <span className={styles.badge}>

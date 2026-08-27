@@ -26,6 +26,7 @@ export function PhotoGuideIntro({ slot, onProceedToCamera }: PhotoGuideIntroProp
     <div className={styles.container}>
       <div className={styles.stage} aria-label="Démonstration de cadrage vélo">
         <div className={styles.badgeAlert}>Trop près ✕</div>
+        <div className={styles.badgeDrivetrain}>⚙ Chaîne face à vous</div>
         <div className={styles.badgeSuccess}>Cadrage attendu ✓</div>
         <div className={styles.guideFrame} />
 
