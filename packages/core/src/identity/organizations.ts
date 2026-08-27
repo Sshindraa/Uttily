@@ -4,6 +4,7 @@ import { organizations, organizationMemberships } from '@uttily/database';
 import { isValidSlug, slugify } from './slug';
 import type { AuthenticatedUser, OrganizationRecord } from './types';
 import { AuthorizationError } from './permissions';
+import type { CancellationPolicyCode } from '../cancellations/types';
 
 export interface CreateOrganizationInput {
   legalName: string;
@@ -86,10 +87,12 @@ export async function listOrganizationsForUser(
     .select({
       id: organizations.id,
       legalName: organizations.legalName,
+      publicDisplayName: organizations.publicDisplayName,
       slug: organizations.slug,
       status: organizations.status,
       isProfessional: organizations.isProfessional,
       defaultCurrency: organizations.defaultCurrency,
+      defaultCancellationPolicyCode: organizations.defaultCancellationPolicyCode,
     })
     .from(organizations)
     .innerJoin(
@@ -101,7 +104,7 @@ export async function listOrganizationsForUser(
         isNull(organizations.deletedAt),
       ),
     );
-  return rows as OrganizationRecord[];
+  return rows.map(mapOrganization);
 }
 
 export async function getOrganizationBySlug(
@@ -128,14 +131,27 @@ export async function getOrganizationById(
   return row ? mapOrganization(row) : null;
 }
 
-function mapOrganization(row: typeof organizations.$inferSelect): OrganizationRecord {
+type OrganizationQueryRow = {
+  id: string;
+  legalName: string;
+  publicDisplayName?: string | null;
+  slug: string;
+  status: (typeof organizations.$inferSelect)['status'];
+  isProfessional: boolean;
+  defaultCurrency: string;
+  defaultCancellationPolicyCode?: string | null;
+};
+
+function mapOrganization(row: OrganizationQueryRow): OrganizationRecord {
   return {
     id: row.id,
     legalName: row.legalName,
+    publicDisplayName: row.publicDisplayName ?? null,
     slug: row.slug,
     status: row.status,
     isProfessional: row.isProfessional,
     defaultCurrency: row.defaultCurrency,
+    defaultCancellationPolicyCode: row.defaultCancellationPolicyCode ?? 'FLEXIBLE',
   };
 }
 
@@ -162,6 +178,52 @@ export async function updateOrganization(
   const [row] = await db
     .update(organizations)
     .set(patch)
+    .where(eq(organizations.id, organizationId))
+    .returning();
+  if (!row) throw new AuthorizationError('Organisation introuvable.');
+  return mapOrganization(row);
+}
+
+/**
+ * Met à jour les paramètres publics de l'entreprise (Chantier 15C).
+ * Notamment le nom commercial affiché publiquement aux clients.
+ */
+export async function updateOrganizationPublicSettings(
+  db: DatabaseClient,
+  organizationId: string,
+  input: { publicDisplayName?: string | null },
+): Promise<OrganizationRecord> {
+  const patch: Record<string, unknown> = { updatedAt: new Date() };
+  if (input.publicDisplayName !== undefined) {
+    const name = input.publicDisplayName?.trim() ?? null;
+    patch.publicDisplayName = name && name.length > 0 ? name : null;
+  }
+  const [row] = await db
+    .update(organizations)
+    .set(patch)
+    .where(eq(organizations.id, organizationId))
+    .returning();
+  if (!row) throw new AuthorizationError('Organisation introuvable.');
+  return mapOrganization(row);
+}
+
+/**
+ * Met à jour la politique d'annulation par défaut de l'organisation (Chantier 15D).
+ * Règle d'immuabilité : ne s'applique qu'aux nouvelles réservations ; les réservations
+ * passées conservent leur snapshot immuable.
+ */
+export async function updateOrganizationCancellationPolicy(
+  db: DatabaseClient,
+  organizationId: string,
+  policyCode: CancellationPolicyCode,
+): Promise<OrganizationRecord> {
+  if (!['FLEXIBLE', 'MODERATE', 'FIRM'].includes(policyCode)) {
+    throw new Error(`Politique d'annulation invalide: ${policyCode}`);
+  }
+
+  const [row] = await db
+    .update(organizations)
+    .set({ defaultCancellationPolicyCode: policyCode, updatedAt: new Date() })
     .where(eq(organizations.id, organizationId))
     .returning();
   if (!row) throw new AuthorizationError('Organisation introuvable.');

@@ -9,11 +9,16 @@ import {
   getLocation,
   listOpeningHours,
   updateLocation,
+  listLocationScheduleExceptions,
+  checkScheduleExceptionConflicts,
+  upsertLocationScheduleException,
+  deleteLocationScheduleException,
   getMembership,
   requireMembership,
   LOCATION_MANAGERS,
   type CreateLocationInput,
   type UpdateLocationInput,
+  type UpsertScheduleExceptionInput,
 } from '@uttily/core';
 
 async function requireLocationManager(organizationId: string) {
@@ -50,7 +55,8 @@ export async function getLocationAction(organizationId: string, locationId: stri
   const location = await getLocation(db, organizationId, locationId);
   if (!location) throw new Error('Établissement introuvable.');
   const openingHours = await listOpeningHours(db, locationId);
-  return { location, openingHours };
+  const exceptions = await listLocationScheduleExceptions(db, organizationId, locationId);
+  return { location, openingHours, exceptions };
 }
 
 export async function updateLocationAction(
@@ -62,5 +68,35 @@ export async function updateLocationAction(
   const db = getDb();
   const location = await updateLocation(db, organizationId, locationId, input);
   revalidatePath(`/dashboard/${organizationId}/locations`);
+  revalidatePath(`/dashboard/${organizationId}/locations/${locationId}`);
   return { location };
+}
+
+export async function checkScheduleExceptionConflictsAction(
+  organizationId: string,
+  locationId: string,
+  localDate: string,
+) {
+  await requireLocationManager(organizationId);
+  const db = getDb();
+  return checkScheduleExceptionConflicts(db, organizationId, locationId, localDate);
+}
+
+export async function upsertLocationScheduleExceptionAction(input: UpsertScheduleExceptionInput) {
+  await requireLocationManager(input.organizationId);
+  const db = getDb();
+  const exception = await upsertLocationScheduleException(db, input);
+  revalidatePath(`/dashboard/${input.organizationId}/locations/${input.locationId}`);
+  return { exception };
+}
+
+export async function deleteLocationScheduleExceptionAction(
+  organizationId: string,
+  locationId: string,
+  exceptionId: string,
+) {
+  await requireLocationManager(organizationId);
+  const db = getDb();
+  await deleteLocationScheduleException(db, organizationId, locationId, exceptionId);
+  revalidatePath(`/dashboard/${organizationId}/locations/${locationId}`);
 }

@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   AuthorizationError,
   requireMembership,
+  requireCapability,
+  can,
   hasMinimumRole,
   canInviteRole,
   requirePlatformAdmin,
@@ -57,6 +59,70 @@ describe('permissions', () => {
       expect(() => requireMembership(membership('STAFF'), ['OWNER', 'ADMIN'])).toThrow(
         AuthorizationError,
       );
+    });
+  });
+
+  describe('can (Capability Matrix)', () => {
+    it('OWNER possède toutes les capacités', () => {
+      expect(can('OWNER', 'bookings.manage')).toBe(true);
+      expect(can('OWNER', 'fleet.manage')).toBe(true);
+      expect(can('OWNER', 'locations.manage')).toBe(true);
+      expect(can('OWNER', 'finances.view')).toBe(true);
+      expect(can('OWNER', 'payouts.manage')).toBe(true);
+      expect(can('OWNER', 'team.invite')).toBe(true);
+      expect(can('OWNER', 'team.remove')).toBe(true);
+      expect(can('OWNER', 'team.changeRole')).toBe(true);
+      expect(can('OWNER', 'organization.manage')).toBe(true);
+      expect(can('OWNER', 'policy.manage')).toBe(true);
+    });
+
+    it('ADMIN possède les capacités administratives mais ne peut pas changer les rôles', () => {
+      expect(can('ADMIN', 'bookings.manage')).toBe(true);
+      expect(can('ADMIN', 'fleet.manage')).toBe(true);
+      expect(can('ADMIN', 'locations.manage')).toBe(true);
+      expect(can('ADMIN', 'finances.view')).toBe(true);
+      expect(can('ADMIN', 'payouts.manage')).toBe(true);
+      expect(can('ADMIN', 'team.invite')).toBe(true);
+      expect(can('ADMIN', 'team.remove')).toBe(true);
+      expect(can('ADMIN', 'team.changeRole')).toBe(false); // Réservé à OWNER
+      expect(can('ADMIN', 'organization.manage')).toBe(true);
+      expect(can('ADMIN', 'policy.manage')).toBe(true);
+    });
+
+    it('MANAGER gère opérations, flotte et magasins, mais pas les finances/équipe/paramètres', () => {
+      expect(can('MANAGER', 'bookings.manage')).toBe(true);
+      expect(can('MANAGER', 'fulfillment.manage')).toBe(true);
+      expect(can('MANAGER', 'fleet.manage')).toBe(true);
+      expect(can('MANAGER', 'locations.manage')).toBe(true);
+      expect(can('MANAGER', 'finances.view')).toBe(false);
+      expect(can('MANAGER', 'payouts.manage')).toBe(false);
+      expect(can('MANAGER', 'team.invite')).toBe(false);
+      expect(can('MANAGER', 'team.remove')).toBe(false);
+      expect(can('MANAGER', 'team.changeRole')).toBe(false);
+      expect(can('MANAGER', 'organization.manage')).toBe(false);
+      expect(can('MANAGER', 'policy.manage')).toBe(false);
+    });
+
+    it('STAFF gère uniquement réservations, départs/retours et flotte', () => {
+      expect(can('STAFF', 'bookings.manage')).toBe(true);
+      expect(can('STAFF', 'fulfillment.manage')).toBe(true);
+      expect(can('STAFF', 'fleet.manage')).toBe(true);
+      expect(can('STAFF', 'locations.manage')).toBe(false);
+      expect(can('STAFF', 'finances.view')).toBe(false);
+      expect(can('STAFF', 'team.invite')).toBe(false);
+      expect(can('STAFF', 'organization.manage')).toBe(false);
+    });
+  });
+
+  describe('requireCapability', () => {
+    it('accepte si le membre a la capacité', () => {
+      const m = membership('ADMIN');
+      expect(requireCapability(m, 'locations.manage')).toBe(m);
+    });
+
+    it('rejette avec AuthorizationError si la capacité est manquante', () => {
+      const m = membership('STAFF');
+      expect(() => requireCapability(m, 'locations.manage')).toThrow(AuthorizationError);
     });
   });
 

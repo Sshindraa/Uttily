@@ -1,9 +1,20 @@
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
-import { locations, locationOpeningHours, organizations } from '@uttily/database';
+import {
+  bookings,
+  locations,
+  locationOpeningHours,
+  locationScheduleExceptions,
+  organizations,
+} from '@uttily/database';
 import { isValidSlug, slugify } from './slug';
 import { isValidTimeZone } from './time-zone';
-import type { LocationCoordinates, LocationRecord, OpeningHourInput } from './types';
+import type {
+  LocationCoordinates,
+  LocationRecord,
+  LocationScheduleExceptionRecord,
+  OpeningHourInput,
+} from './types';
 import { AuthorizationError } from './permissions';
 
 export interface CreateLocationInput {
@@ -19,6 +30,9 @@ export interface CreateLocationInput {
   coordinates?: LocationCoordinates | null;
   pickupEnabled?: boolean;
   isPubliclyListed?: boolean;
+  publicPhone?: string | null;
+  pickupInstructions?: string | null;
+  returnInstructions?: string | null;
   openingHours?: OpeningHourInput[];
 }
 
@@ -33,13 +47,34 @@ export interface UpdateLocationInput {
   coordinates?: LocationCoordinates | null;
   pickupEnabled?: boolean;
   isPubliclyListed?: boolean;
+  publicPhone?: string | null;
+  pickupInstructions?: string | null;
+  returnInstructions?: string | null;
   openingHours?: OpeningHourInput[];
 }
 
-const COUNTRY_CODE_PATTERN = /^[A-Z]{2}$/;
+export interface UpsertScheduleExceptionInput {
+  organizationId: string;
+  locationId: string;
+  localDate: string; // YYYY-MM-DD
+  kind: 'CLOSED' | 'OPEN_INTERVAL';
+  openTime?: string | null;
+  closeTime?: string | null;
+  reason?: string | null;
+}
 
-function normalizeOptionalText(value: string | undefined): string | null {
-  if (value === undefined) return null;
+export interface ScheduleConflictBooking {
+  bookingId: string;
+  status: string;
+  customerStartAt: Date;
+  customerEndAt: Date;
+}
+
+const COUNTRY_CODE_PATTERN = /^[A-Z]{2}$/;
+const DATE_FORMAT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function normalizeOptionalText(value: string | undefined | null): string | null {
+  if (value === undefined || value === null) return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 }
@@ -98,16 +133,14 @@ export function validateLocationForPublication(input: {
   }
 }
 
-/**
- * Valide une liste de créneaux d'ouverture.
- * Contrainte : open_time < close_time (déjà en base, vérifiée aussi ici).
- */
+const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/;
+
 export function validateOpeningHours(hours: OpeningHourInput[]): void {
   for (const h of hours) {
     if (h.weekday < 0 || h.weekday > 6) {
       throw new Error(`Jour invalide: ${h.weekday} (0-6).`);
     }
-    if (!isValidClockTime(h.openTime) || !isValidClockTime(h.closeTime)) {
+    if (!TIME_PATTERN.test(h.openTime) || !TIME_PATTERN.test(h.closeTime)) {
       throw new Error(`Horaire invalide pour le jour ${h.weekday}: format HH:MM:SS attendu.`);
     }
     if (h.openTime >= h.closeTime) {
@@ -119,12 +152,7 @@ export function validateOpeningHours(hours: OpeningHourInput[]): void {
 }
 
 function isValidClockTime(value: string): boolean {
-  const match = /^(\d{2}):(\d{2}):(\d{2})$/.exec(value);
-  if (!match) return false;
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
-  const seconds = Number(match[3]);
-  return hours <= 23 && minutes <= 59 && seconds <= 59;
+  return TIME_PATTERN.test(value);
 }
 
 export async function createLocation(
@@ -133,26 +161,30 @@ export async function createLocation(
 ): Promise<LocationRecord> {
   const name = input.name.trim();
   if (name.length < 2) {
-    throw new Error('Le nom de l\u2019établissement doit faire au moins 2 caractères.');
-  }
-  const slug = input.slug ? input.slug : slugify(name);
-  if (!isValidSlug(slug)) {
-    throw new Error('Slug invalide.');
+    throw new Error('Le nom doit contenir au moins 2 caractères.');
   }
   if (!isValidTimeZone(input.timeZone)) {
-    throw new Error('Fuseau IANA invalide.');
+    throw new Error(`Fuseau horaire invalide: "${input.timeZone}".`);
   }
+
+  const slug = input.slug !== undefined ? input.slug.trim() : slugify(name);
+  if (!isValidSlug(slug)) {
+    throw new Error(`Slug invalide: "${slug}".`);
+  }
+
   const addressLine1 = normalizeOptionalText(input.addressLine1);
   const addressLine2 = normalizeOptionalText(input.addressLine2);
   const city = normalizeOptionalText(input.city);
   const postalCode = normalizeOptionalText(input.postalCode);
   const countryCode = normalizeCountryCode(input.countryCode);
+  const publicPhone = normalizeOptionalText(input.publicPhone);
+  const pickupInstructions = normalizeOptionalText(input.pickupInstructions);
+  const returnInstructions = normalizeOptionalText(input.returnInstructions);
   const coordinates = input.coordinates ?? null;
   const pickupEnabled = input.pickupEnabled ?? true;
   const isPubliclyListed = input.isPubliclyListed ?? false;
-  if (input.openingHours && input.openingHours.length > 0) {
-    validateOpeningHours(input.openingHours);
-  }
+
+  validateOpeningHours(input.openingHours ?? []);
   validateLocationForPublication({
     addressLine1,
     city,
@@ -199,6 +231,9 @@ export async function createLocation(
         city,
         postalCode,
         countryCode,
+        publicPhone,
+        pickupInstructions,
+        returnInstructions,
         geoPoint: coordinates
           ? sql`ST_SetSRID(ST_MakePoint(${coordinates.longitude}, ${coordinates.latitude}), 4326)`
           : null,
@@ -250,13 +285,14 @@ export async function getLocation(
     .from(locations)
     .where(
       and(
-        eq(locations.organizationId, organizationId),
         eq(locations.id, locationId),
+        eq(locations.organizationId, organizationId),
         isNull(locations.deletedAt),
       ),
     )
     .limit(1);
-  return row ? mapLocation(row) : null;
+  if (!row) return null;
+  return mapLocation(row);
 }
 
 export async function listOpeningHours(
@@ -264,7 +300,11 @@ export async function listOpeningHours(
   locationId: string,
 ): Promise<OpeningHourInput[]> {
   const rows = await db
-    .select()
+    .select({
+      weekday: locationOpeningHours.weekday,
+      openTime: locationOpeningHours.openTime,
+      closeTime: locationOpeningHours.closeTime,
+    })
     .from(locationOpeningHours)
     .where(eq(locationOpeningHours.locationId, locationId));
   return rows.map((r) => ({
@@ -280,30 +320,62 @@ export async function updateLocation(
   locationId: string,
   input: UpdateLocationInput,
 ): Promise<LocationRecord> {
-  const patch: Record<string, unknown> = { updatedAt: new Date() };
+  const patch: Record<string, unknown> = {
+    updatedAt: new Date(),
+  };
+
   if (input.name !== undefined) {
     const name = input.name.trim();
-    if (name.length < 2) throw new Error('Nom trop court.');
-    patch.name = name;
+    if (name.length < 2) {
+      throw new Error('Le nom doit contenir au moins 2 caractères.');
+    }
+    patch['name'] = name;
   }
+
   if (input.timeZone !== undefined) {
-    if (!isValidTimeZone(input.timeZone)) throw new Error('Fuseau IANA invalide.');
-    patch.timeZone = input.timeZone;
+    if (!isValidTimeZone(input.timeZone)) {
+      throw new Error(`Fuseau horaire invalide: "${input.timeZone}".`);
+    }
+    patch['timeZone'] = input.timeZone;
   }
-  if (input.addressLine1 !== undefined)
-    patch.addressLine1 = normalizeOptionalText(input.addressLine1);
-  if (input.addressLine2 !== undefined)
-    patch.addressLine2 = normalizeOptionalText(input.addressLine2);
-  if (input.city !== undefined) patch.city = normalizeOptionalText(input.city);
-  if (input.postalCode !== undefined) patch.postalCode = normalizeOptionalText(input.postalCode);
-  if (input.countryCode !== undefined) patch.countryCode = normalizeCountryCode(input.countryCode);
-  if (input.pickupEnabled !== undefined) patch.pickupEnabled = input.pickupEnabled;
-  if (input.isPubliclyListed !== undefined) patch.isPubliclyListed = input.isPubliclyListed;
+
+  if (input.addressLine1 !== undefined) {
+    patch['addressLine1'] = normalizeOptionalText(input.addressLine1);
+  }
+  if (input.addressLine2 !== undefined) {
+    patch['addressLine2'] = normalizeOptionalText(input.addressLine2);
+  }
+  if (input.city !== undefined) {
+    patch['city'] = normalizeOptionalText(input.city);
+  }
+  if (input.postalCode !== undefined) {
+    patch['postalCode'] = normalizeOptionalText(input.postalCode);
+  }
+  if (input.countryCode !== undefined) {
+    patch['countryCode'] = normalizeCountryCode(input.countryCode);
+  }
+  if (input.publicPhone !== undefined) {
+    patch['publicPhone'] = normalizeOptionalText(input.publicPhone);
+  }
+  if (input.pickupInstructions !== undefined) {
+    patch['pickupInstructions'] = normalizeOptionalText(input.pickupInstructions);
+  }
+  if (input.returnInstructions !== undefined) {
+    patch['returnInstructions'] = normalizeOptionalText(input.returnInstructions);
+  }
+
   if (input.coordinates !== undefined) {
     validateLocationCoordinates(input.coordinates);
-    patch.geoPoint = input.coordinates
+    patch['geoPoint'] = input.coordinates
       ? sql`ST_SetSRID(ST_MakePoint(${input.coordinates.longitude}, ${input.coordinates.latitude}), 4326)`
       : null;
+  }
+
+  if (input.pickupEnabled !== undefined) {
+    patch['pickupEnabled'] = input.pickupEnabled;
+  }
+  if (input.isPubliclyListed !== undefined) {
+    patch['isPubliclyListed'] = input.isPubliclyListed;
   }
 
   return await db.transaction(async (tx) => {
@@ -393,6 +465,191 @@ export async function updateLocation(
   });
 }
 
+// -----------------------------------------------------------------------------
+// Chantier 15A — Exceptions de calendrier (Fermetures et horaires spéciaux)
+// -----------------------------------------------------------------------------
+
+export async function listLocationScheduleExceptions(
+  db: DatabaseClient,
+  organizationId: string,
+  locationId: string,
+): Promise<LocationScheduleExceptionRecord[]> {
+  const rows = await db
+    .select()
+    .from(locationScheduleExceptions)
+    .where(
+      and(
+        eq(locationScheduleExceptions.organizationId, organizationId),
+        eq(locationScheduleExceptions.locationId, locationId),
+      ),
+    )
+    .orderBy(desc(locationScheduleExceptions.localDate));
+
+  return rows.map((r) => ({
+    id: r.id,
+    organizationId: r.organizationId,
+    locationId: r.locationId,
+    localDate: r.localDate,
+    kind: r.kind,
+    openTime: r.openTime,
+    closeTime: r.closeTime,
+    reason: r.reason,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  }));
+}
+
+export async function checkScheduleExceptionConflicts(
+  db: DatabaseClient,
+  organizationId: string,
+  locationId: string,
+  localDate: string,
+): Promise<ScheduleConflictBooking[]> {
+  if (!DATE_FORMAT_PATTERN.test(localDate)) {
+    throw new Error(`Format de date invalide: ${localDate} (attendu YYYY-MM-DD).`);
+  }
+
+  // Récupérer le fuseau horaire de l'établissement
+  const loc = await getLocation(db, organizationId, locationId);
+  if (!loc) throw new AuthorizationError('Établissement introuvable.');
+
+  // Recherche des réservations confirmées ou actives dont le départ ou le retour tombe sur cette date locale
+  const activeBookings = await db
+    .select({
+      bookingId: bookings.id,
+      status: bookings.status,
+      customerStartAt: bookings.customerStartAt,
+      customerEndAt: bookings.customerEndAt,
+    })
+    .from(bookings)
+    .where(
+      and(
+        eq(bookings.organizationId, organizationId),
+        eq(bookings.locationId, locationId),
+        inArray(bookings.status, ['CONFIRMED', 'READY_FOR_PICKUP', 'ACTIVE']),
+        sql`(
+          to_char(${bookings.customerStartAt} AT TIME ZONE ${loc.timeZone}, 'YYYY-MM-DD') = ${localDate}
+          OR
+          to_char(${bookings.customerEndAt} AT TIME ZONE ${loc.timeZone}, 'YYYY-MM-DD') = ${localDate}
+        )`,
+      ),
+    );
+
+  return activeBookings;
+}
+
+export async function upsertLocationScheduleException(
+  db: DatabaseClient,
+  input: UpsertScheduleExceptionInput,
+): Promise<LocationScheduleExceptionRecord> {
+  if (!DATE_FORMAT_PATTERN.test(input.localDate)) {
+    throw new Error(`Format de date invalide: ${input.localDate} (attendu YYYY-MM-DD).`);
+  }
+
+  if (input.kind === 'OPEN_INTERVAL') {
+    if (
+      !input.openTime ||
+      !input.closeTime ||
+      !isValidClockTime(input.openTime) ||
+      !isValidClockTime(input.closeTime)
+    ) {
+      throw new Error(
+        'Horaires d’ouverture et de fermeture valides requis pour un créneau spécial.',
+      );
+    }
+    if (input.openTime >= input.closeTime) {
+      throw new Error('L’horaire d’ouverture doit être antérieur à l’horaire de fermeture.');
+    }
+  }
+
+  return await db.transaction(async (tx) => {
+    // Vérifier l'établissement
+    const [loc] = await tx
+      .select({ id: locations.id })
+      .from(locations)
+      .where(
+        and(
+          eq(locations.id, input.locationId),
+          eq(locations.organizationId, input.organizationId),
+          isNull(locations.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!loc) throw new AuthorizationError('Établissement introuvable.');
+
+    // Upsert sur la contrainte (location_id, local_date)
+    const [existing] = await tx
+      .select()
+      .from(locationScheduleExceptions)
+      .where(
+        and(
+          eq(locationScheduleExceptions.locationId, input.locationId),
+          eq(locationScheduleExceptions.localDate, input.localDate),
+        ),
+      )
+      .limit(1);
+
+    const openTime = input.kind === 'OPEN_INTERVAL' ? (input.openTime ?? null) : null;
+    const closeTime = input.kind === 'OPEN_INTERVAL' ? (input.closeTime ?? null) : null;
+    const reason = normalizeOptionalText(input.reason);
+
+    if (existing) {
+      const [updated] = await tx
+        .update(locationScheduleExceptions)
+        .set({
+          kind: input.kind,
+          openTime,
+          closeTime,
+          reason,
+          updatedAt: new Date(),
+        })
+        .where(eq(locationScheduleExceptions.id, existing.id))
+        .returning();
+
+      if (!updated) throw new Error('Échec de mise à jour de l’exception de calendrier.');
+      return updated;
+    }
+
+    const [created] = await tx
+      .insert(locationScheduleExceptions)
+      .values({
+        organizationId: input.organizationId,
+        locationId: input.locationId,
+        localDate: input.localDate,
+        kind: input.kind,
+        openTime,
+        closeTime,
+        reason,
+      })
+      .returning();
+
+    if (!created) throw new Error('Échec de création de l’exception de calendrier.');
+    return created;
+  });
+}
+
+export async function deleteLocationScheduleException(
+  db: DatabaseClient,
+  organizationId: string,
+  locationId: string,
+  exceptionId: string,
+): Promise<void> {
+  const result = await db
+    .delete(locationScheduleExceptions)
+    .where(
+      and(
+        eq(locationScheduleExceptions.id, exceptionId),
+        eq(locationScheduleExceptions.organizationId, organizationId),
+        eq(locationScheduleExceptions.locationId, locationId),
+      ),
+    )
+    .returning({ id: locationScheduleExceptions.id });
+
+  if (result.length === 0) {
+    throw new AuthorizationError('Exception de calendrier introuvable.');
+  }
+}
+
 const locationSelection = {
   id: locations.id,
   organizationId: locations.organizationId,
@@ -408,6 +665,9 @@ const locationSelection = {
   longitude: sql<number | null>`ST_X(${locations.geoPoint})`.as('longitude'),
   pickupEnabled: locations.pickupEnabled,
   isPubliclyListed: locations.isPubliclyListed,
+  publicPhone: locations.publicPhone,
+  pickupInstructions: locations.pickupInstructions,
+  returnInstructions: locations.returnInstructions,
 };
 
 type LocationQueryRow = {
@@ -425,6 +685,9 @@ type LocationQueryRow = {
   longitude: number | null;
   pickupEnabled: boolean;
   isPubliclyListed: boolean;
+  publicPhone: string | null;
+  pickupInstructions: string | null;
+  returnInstructions: string | null;
 };
 
 function mapLocation(row: LocationQueryRow): LocationRecord {
@@ -443,5 +706,8 @@ function mapLocation(row: LocationQueryRow): LocationRecord {
     longitude: row.longitude,
     pickupEnabled: row.pickupEnabled,
     isPubliclyListed: row.isPubliclyListed,
+    publicPhone: row.publicPhone,
+    pickupInstructions: row.pickupInstructions,
+    returnInstructions: row.returnInstructions,
   };
 }

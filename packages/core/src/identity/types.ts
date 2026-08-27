@@ -30,10 +30,12 @@ export interface MembershipRecord {
 export interface OrganizationRecord {
   id: string;
   legalName: string;
+  publicDisplayName: string | null;
   slug: string;
   status: OrganizationStatus;
   isProfessional: boolean;
   defaultCurrency: string;
+  defaultCancellationPolicyCode: string;
 }
 
 export interface LocationRecord {
@@ -51,6 +53,22 @@ export interface LocationRecord {
   longitude: number | null;
   pickupEnabled: boolean;
   isPubliclyListed: boolean;
+  publicPhone: string | null;
+  pickupInstructions: string | null;
+  returnInstructions: string | null;
+}
+
+export interface LocationScheduleExceptionRecord {
+  id: string;
+  organizationId: string;
+  locationId: string;
+  localDate: string;
+  kind: 'CLOSED' | 'OPEN_INTERVAL';
+  openTime: string | null;
+  closeTime: string | null;
+  reason: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface LocationCoordinates {
@@ -69,5 +87,5 @@ export interface InvitationInput {
   email: string;
   role: MembershipRole;
   invitedBy: string;
-  ttlSeconds: number;
+  ttlSeconds?: number;
 }

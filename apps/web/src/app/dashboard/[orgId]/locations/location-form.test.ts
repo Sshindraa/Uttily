@@ -11,6 +11,9 @@ describe('location form parsing', () => {
     formData.set('city', 'Lyon');
     formData.set('postalCode', '69001');
     formData.set('countryCode', 'fr');
+    formData.set('publicPhone', '+33 4 78 12 34 56');
+    formData.set('pickupInstructions', 'Présentez votre confirmation');
+    formData.set('returnInstructions', 'Déposez les clés au comptoir');
     formData.set('latitude', '45.764');
     formData.set('longitude', '4.8357');
     formData.set('pickupEnabled', 'on');
@@ -29,6 +32,9 @@ describe('location form parsing', () => {
       city: 'Lyon',
       postalCode: '69001',
       countryCode: 'fr',
+      publicPhone: '+33 4 78 12 34 56',
+      pickupInstructions: 'Présentez votre confirmation',
+      returnInstructions: 'Déposez les clés au comptoir',
       coordinates: { latitude: 45.764, longitude: 4.8357 },
       pickupEnabled: true,
       isPubliclyListed: true,

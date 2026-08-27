@@ -73,6 +73,11 @@ export const cancellationPolicyCode = pgEnum('cancellation_policy_code', [
   'FIRM',
 ]);
 
+export const locationScheduleExceptionKind = pgEnum('location_schedule_exception_kind', [
+  'CLOSED',
+  'OPEN_INTERVAL',
+]);
+
 export const users = pgTable(
   'users',
   {
@@ -270,6 +275,10 @@ export const locations = pgTable(
     // plans tarifaires locaux ; organizations.default_currency reste un défaut
     // d'onboarding.
     operatingCurrency: text('operating_currency').notNull(),
+    // Chantier 15A — Téléphone public et consignes éditables par le loueur
+    publicPhone: text('public_phone'),
+    pickupInstructions: text('pickup_instructions'),
+    returnInstructions: text('return_instructions'),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -307,6 +316,36 @@ export const locationOpeningHours = pgTable(
   (t) => [
     check('opening_hours_weekday_range', sql`${t.weekday} >= 0 AND ${t.weekday} <= 6`),
     check('opening_hours_open_before_close', sql`${t.openTime} < ${t.closeTime}`),
+  ],
+);
+
+export const locationScheduleExceptions = pgTable(
+  'location_schedule_exceptions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    locationId: uuid('location_id')
+      .notNull()
+      .references(() => locations.id),
+    localDate: text('local_date').notNull(),
+    kind: locationScheduleExceptionKind('kind').notNull(),
+    openTime: text('open_time'),
+    closeTime: text('close_time'),
+    reason: text('reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('location_schedule_exceptions_location_date_unique').on(t.locationId, t.localDate),
+    check(
+      'location_schedule_exceptions_date_format',
+      sql`${t.localDate} ~ '^\\d{4}-\\d{2}-\\d{2}$'`,
+    ),
+    index('location_schedule_exceptions_org_idx').on(t.organizationId),
+    index('location_schedule_exceptions_location_idx').on(t.locationId),
+    index('location_schedule_exceptions_date_idx').on(t.locationId, t.localDate),
   ],
 );
 
@@ -2299,6 +2338,8 @@ export type Location = typeof locations.$inferSelect;
 export type NewLocation = typeof locations.$inferInsert;
 export type LocationOpeningHour = typeof locationOpeningHours.$inferSelect;
 export type NewLocationOpeningHour = typeof locationOpeningHours.$inferInsert;
+export type LocationScheduleException = typeof locationScheduleExceptions.$inferSelect;
+export type NewLocationScheduleException = typeof locationScheduleExceptions.$inferInsert;
 export type OrganizationInvitation = typeof organizationInvitations.$inferSelect;
 export type NewOrganizationInvitation = typeof organizationInvitations.$inferInsert;
 export type AuditLog = typeof auditLog.$inferSelect;

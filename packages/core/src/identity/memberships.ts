@@ -2,7 +2,7 @@ import { and, count, eq } from 'drizzle-orm';
 import type { DatabaseClient, DbExecutor } from '@uttily/database';
 import { lockOrganization, organizationMemberships } from '@uttily/database';
 import type { MembershipRecord, MembershipRole } from './types';
-import { AuthorizationError } from './permissions';
+import { AuthorizationError, can } from './permissions';
 
 /**
  * Récupère la membership d'un utilisateur pour une organisation.
@@ -79,7 +79,7 @@ export async function countActiveOwners(db: DbExecutor, organizationId: string):
 }
 
 /**
- * Change le rôle d'un membre. Réservé à l'OWNER.
+ * Change le rôle d'un membre. Réservé à l'OWNER (Chantier 15B).
  *
  * Garde-fou "au moins un OWNER actif" protégé face à la concurrence :
  * la vérification et la mutation sont effectuées dans une transaction
@@ -91,7 +91,12 @@ export async function changeMemberRole(
   organizationId: string,
   targetUserId: string,
   newRole: MembershipRole,
+  actor?: { userId: string; role: MembershipRole },
 ): Promise<void> {
+  if (actor && !can(actor.role, 'team.changeRole')) {
+    throw new AuthorizationError('Seul un propriétaire (OWNER) peut modifier les rôles.');
+  }
+
   await db.transaction(async (tx) => {
     await lockOrganization(tx, organizationId);
 
@@ -127,18 +132,27 @@ export async function changeMemberRole(
 }
 
 /**
- * Retire un membre (status -> REMOVED, removed_at positionné).
+ * Retire un membre (status -> REMOVED, removed_at positionné) (Chantier 15B).
+ *
+ * Règles hiérarchiques Core :
+ * - OWNER peut retirer n'importe qui (sauf le dernier OWNER).
+ * - ADMIN peut retirer MANAGER ou STAFF, mais JAMAIS OWNER ou ADMIN.
+ * - MANAGER et STAFF ne peuvent rien retirer.
  *
  * Garde-fou "au moins un OWNER actif" protégé face à la concurrence :
  * la vérification et la mutation sont effectuées dans une transaction
  * PostgreSQL tenant un verrou advisory transactionnel par organisation.
- * Deux appels concurrents sur la même organisation sont sérialisés.
  */
 export async function removeMember(
   db: DatabaseClient,
   organizationId: string,
   targetUserId: string,
+  actor?: { userId: string; role: MembershipRole },
 ): Promise<void> {
+  if (actor && !can(actor.role, 'team.remove')) {
+    throw new AuthorizationError('Rôle insuffisant pour retirer un membre.');
+  }
+
   await db.transaction(async (tx) => {
     await lockOrganization(tx, organizationId);
 
@@ -155,6 +169,14 @@ export async function removeMember(
 
     if (!target) {
       throw new AuthorizationError('Membre introuvable dans cette organisation.');
+    }
+
+    if (actor && actor.role === 'ADMIN') {
+      if (target.role === 'OWNER' || target.role === 'ADMIN') {
+        throw new AuthorizationError(
+          'Un administrateur ne peut pas retirer un propriétaire ou un autre administrateur.',
+        );
+      }
     }
 
     if (target.role === 'OWNER' && target.status === 'ACTIVE') {

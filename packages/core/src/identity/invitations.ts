@@ -3,7 +3,7 @@ import { and, eq, lt } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import { organizationInvitations, organizationMemberships, users } from '@uttily/database';
 import type { AuthenticatedUser, InvitationInput, MembershipRole } from './types';
-import { AuthorizationError, canInviteRole } from './permissions';
+import { AuthorizationError, can, canInviteRole } from './permissions';
 
 export const DEFAULT_INVITATION_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 jours
 
@@ -99,7 +99,8 @@ export async function createInvitation(
   }
 
   const token = generateInvitationToken();
-  const expiresAt = new Date(Date.now() + input.ttlSeconds * 1000);
+  const ttlSeconds = input.ttlSeconds ?? DEFAULT_INVITATION_TTL_SECONDS;
+  const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
 
   try {
     const [row] = await db
@@ -148,22 +149,38 @@ export async function listPendingInvitations(db: DatabaseClient, organizationId:
 }
 
 /**
- * Révoque une invitation.
+ * Révoque une invitation (multi-tenant scope strict et vérification des permissions).
  */
 export async function revokeInvitation(
   db: DatabaseClient,
+  organizationId: string,
   invitationId: string,
-  revokedBy: string,
+  actor: { userId: string; role: MembershipRole },
 ): Promise<void> {
-  await db
+  if (!can(actor.role, 'team.invite')) {
+    throw new AuthorizationError('Rôle insuffisant pour révoquer une invitation.');
+  }
+
+  const rows = await db
     .update(organizationInvitations)
-    .set({ status: 'REVOKED', revokedAt: new Date(), revokedBy, updatedAt: new Date() })
+    .set({
+      status: 'REVOKED',
+      revokedAt: new Date(),
+      revokedBy: actor.userId,
+      updatedAt: new Date(),
+    })
     .where(
       and(
         eq(organizationInvitations.id, invitationId),
+        eq(organizationInvitations.organizationId, organizationId),
         eq(organizationInvitations.status, 'PENDING'),
       ),
-    );
+    )
+    .returning({ id: organizationInvitations.id });
+
+  if (rows.length === 0) {
+    throw new AuthorizationError('Invitation introuvable ou déjà traitée.');
+  }
 }
 
 /**

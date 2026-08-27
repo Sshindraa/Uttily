@@ -20,6 +20,9 @@ export interface LocationFormValues {
   city: string;
   postalCode: string;
   countryCode: string;
+  publicPhone: string;
+  pickupInstructions: string;
+  returnInstructions: string;
   coordinates: LocationCoordinates | null;
   pickupEnabled: boolean;
   isPubliclyListed: boolean;
@@ -84,6 +87,9 @@ export function parseLocationFormData(formData: FormData): LocationFormValues {
     city: readText(formData, 'city'),
     postalCode: readText(formData, 'postalCode'),
     countryCode: readText(formData, 'countryCode'),
+    publicPhone: readText(formData, 'publicPhone'),
+    pickupInstructions: readText(formData, 'pickupInstructions'),
+    returnInstructions: readText(formData, 'returnInstructions'),
     coordinates: parseCoordinates(formData),
     pickupEnabled: formData.get('pickupEnabled') === 'on',
     isPubliclyListed: formData.get('isPubliclyListed') === 'on',

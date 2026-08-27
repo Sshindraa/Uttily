@@ -86,6 +86,36 @@ export function LocationFormFields({ location, openingHours = [] }: LocationForm
       </fieldset>
 
       <fieldset>
+        <legend>Contact public et consignes</legend>
+        <label htmlFor="publicPhone">Téléphone public</label>
+        <input
+          id="publicPhone"
+          name="publicPhone"
+          type="tel"
+          placeholder="ex : +33 4 78 12 34 56"
+          defaultValue={location?.publicPhone ?? ''}
+        />
+
+        <label htmlFor="pickupInstructions">Instructions de retrait</label>
+        <textarea
+          id="pickupInstructions"
+          name="pickupInstructions"
+          rows={3}
+          placeholder="Consignes données au locataire pour le retrait (accueil, document à présenter, etc.)"
+          defaultValue={location?.pickupInstructions ?? ''}
+        />
+
+        <label htmlFor="returnInstructions">Instructions de retour</label>
+        <textarea
+          id="returnInstructions"
+          name="returnInstructions"
+          rows={3}
+          placeholder="Consignes données au locataire pour le retour du matériel"
+          defaultValue={location?.returnInstructions ?? ''}
+        />
+      </fieldset>
+
+      <fieldset>
         <legend>Coordonnées géographiques</legend>
         <p id="coordinates-help">Utilisez des coordonnées en degrés décimaux.</p>
         <label htmlFor="latitude">Latitude</label>

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { DatabaseClient, DbExecutor } from '@uttily/database';
 import {
   bookingCancellations,
@@ -97,7 +97,10 @@ export async function listCustomerBookings(
     .select({
       id: bookings.id,
       organizationId: bookings.organizationId,
-      organizationName: organizations.legalName,
+      organizationName:
+        sql<string>`COALESCE(${organizations.publicDisplayName}, ${organizations.legalName})`.as(
+          'organization_name',
+        ),
       status: bookings.status,
       customerStartAt: bookings.customerStartAt,
       customerEndAt: bookings.customerEndAt,
@@ -261,7 +264,10 @@ export async function getCustomerBooking(
     .select({
       id: bookings.id,
       organizationId: bookings.organizationId,
-      organizationName: organizations.legalName,
+      organizationName:
+        sql<string>`COALESCE(${organizations.publicDisplayName}, ${organizations.legalName})`.as(
+          'organization_name',
+        ),
       customerUserId: bookings.customerUserId,
       paymentId: bookings.paymentId,
       status: bookings.status,
@@ -277,6 +283,9 @@ export async function getCustomerBooking(
       locationAddressLine2: locations.addressLine2,
       locationPostalCode: locations.postalCode,
       locationCity: locations.city,
+      locationPublicPhone: locations.publicPhone,
+      locationPickupInstructions: locations.pickupInstructions,
+      locationReturnInstructions: locations.returnInstructions,
     })
     .from(bookings)
     .innerJoin(organizations, eq(bookings.organizationId, organizations.id))
@@ -502,8 +511,8 @@ export async function getCustomerBooking(
     }),
     locationCity: booking.locationCity,
     locationPostalCode: booking.locationPostalCode,
-    locationInstructions: null,
-    locationPhone: null,
+    locationInstructions: booking.locationPickupInstructions ?? null,
+    locationPhone: booking.locationPublicPhone ?? null,
     locationCoordinates: null,
     totalAmountMinor: booking.totalAmountMinor,
     currency: booking.currency,

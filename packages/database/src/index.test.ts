@@ -8,6 +8,7 @@ describe('@uttily/database schema', () => {
     expect(schema.organizationMemberships).toBeDefined();
     expect(schema.locations).toBeDefined();
     expect(schema.locationOpeningHours).toBeDefined();
+    expect(schema.locationScheduleExceptions).toBeDefined();
     expect(schema.organizationInvitations).toBeDefined();
     expect(schema.auditLog).toBeDefined();
   });

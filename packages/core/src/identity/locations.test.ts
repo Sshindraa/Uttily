@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { DatabaseClient } from '@uttily/database';
 import {
   validateLocationCoordinates,
   validateLocationForPublication,
@@ -74,5 +75,35 @@ describe('location publication validation', () => {
     expect(() => validateLocationCoordinates({ latitude: 91, longitude: 4 })).toThrow();
     expect(() => validateLocationCoordinates({ latitude: 45, longitude: 181 })).toThrow();
     expect(() => validateLocationCoordinates({ latitude: Number.NaN, longitude: 4 })).toThrow();
+  });
+
+  describe('schedule exceptions validation', () => {
+    it('upsertLocationScheduleException rejette un format de date invalide', async () => {
+      const { upsertLocationScheduleException } = await import('./locations');
+      const fakeDb = {} as unknown as DatabaseClient;
+      await expect(
+        upsertLocationScheduleException(fakeDb, {
+          organizationId: 'org-1',
+          locationId: 'loc-1',
+          localDate: '25/12/2026', // format invalide
+          kind: 'CLOSED',
+        }),
+      ).rejects.toThrow('Format de date invalide');
+    });
+
+    it('upsertLocationScheduleException OPEN_INTERVAL requiert openTime et closeTime valides', async () => {
+      const { upsertLocationScheduleException } = await import('./locations');
+      const fakeDb = {} as unknown as DatabaseClient;
+      await expect(
+        upsertLocationScheduleException(fakeDb, {
+          organizationId: 'org-1',
+          locationId: 'loc-1',
+          localDate: '2026-12-25',
+          kind: 'OPEN_INTERVAL',
+          openTime: '18:00:00',
+          closeTime: '09:00:00', // open >= close
+        }),
+      ).rejects.toThrow('L’horaire d’ouverture doit être antérieur');
+    });
   });
 });

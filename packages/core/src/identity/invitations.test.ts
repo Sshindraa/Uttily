@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { DatabaseClient } from '@uttily/database';
 import { hashToken, generateInvitationToken, DuplicateInvitationError } from './invitations';
 
 describe('invitations tokens', () => {
@@ -22,5 +23,15 @@ describe('invitations tokens', () => {
     expect(err).toBeInstanceOf(Error);
     expect(err.name).toBe('DuplicateInvitationError');
     expect(err.message).toBe('dup');
+  });
+
+  describe('revokeInvitation', () => {
+    it('rejette si l’acteur n’a pas la capacité team.invite', async () => {
+      const { revokeInvitation } = await import('./invitations');
+      const fakeDb = {} as unknown as DatabaseClient;
+      await expect(
+        revokeInvitation(fakeDb, 'org-1', 'inv-1', { userId: 'u-1', role: 'STAFF' }),
+      ).rejects.toThrow('Rôle insuffisant');
+    });
   });
 });

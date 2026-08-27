@@ -56,12 +56,14 @@ export async function listPendingInvitationsAction(organizationId: string) {
   return listPendingInvitations(db, organizationId);
 }
 
-export async function revokeInvitationAction(invitationId: string) {
+export async function revokeInvitationAction(organizationId: string, invitationId: string) {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Non authentifié.');
   const db = getDb();
-  await revokeInvitation(db, invitationId, user.id);
-  revalidatePath('/invitations');
+  const membership = await getMembership(db, organizationId, user.id);
+  const active = requireMembership(membership, ['OWNER', 'ADMIN']);
+  await revokeInvitation(db, organizationId, invitationId, { userId: user.id, role: active.role });
+  revalidatePath(`/dashboard/${organizationId}/team`);
 }
 
 export async function acceptInvitationAction(token: string) {
