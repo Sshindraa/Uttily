@@ -12,9 +12,10 @@ describe('UnifiedBookingDetailPage (Chantier 8A, 8B, 8C, 8E)', () => {
     expect(pageSource).toContain('getOperationalBookingDetails(db, organizationId, bookingId)');
   });
 
-  it('intègre les flux unifiés de départ et de retour', () => {
+  it('intègre les flux unifiés de départ, de retour et d’annulation', () => {
     expect(pageSource).toContain('<DepartureFlow');
     expect(pageSource).toContain('<ReturnFlow');
+    expect(pageSource).toContain('<CancellationFlow');
   });
 
   it('affiche les 4 piliers unifiés et la timeline humaine', () => {

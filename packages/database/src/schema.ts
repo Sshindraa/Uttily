@@ -481,11 +481,21 @@ export const outboxEventStatus = pgEnum('outbox_event_status', [
   'FAILED',
 ]);
 
+export const cancellationActorReason = pgEnum('cancellation_actor_reason', [
+  'CUSTOMER_CANCELLATION',
+  'MERCHANT_CANCELLATION',
+  'PLATFORM_CANCELLATION',
+  'PAYMENT_COMPENSATION',
+]);
+
 export const refundReason = pgEnum('refund_reason', [
   'LATE_PAYMENT_NO_BOOKING',
   'EXTERNAL_REFUND',
   'BOOKING_MODIFICATION',
   'AMENDMENT_COMPENSATION',
+  'CUSTOMER_CANCELLATION',
+  'MERCHANT_CANCELLATION',
+  'PLATFORM_CANCELLATION',
 ]);
 
 export const refundStatus = pgEnum('refund_status', [
@@ -3056,3 +3066,49 @@ export const connectedAccountPayouts = pgTable(
 
 export type ConnectedAccountPayout = typeof connectedAccountPayouts.$inferSelect;
 export type NewConnectedAccountPayout = typeof connectedAccountPayouts.$inferInsert;
+
+export const bookingCancellations = pgTable(
+  'booking_cancellations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    bookingId: uuid('booking_id')
+      .notNull()
+      .unique()
+      .references(() => bookings.id),
+    cancelledByUserId: uuid('cancelled_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    actorReason: cancellationActorReason('actor_reason').notNull(),
+    policyCode: text('policy_code').notNull(),
+    policySnapshot: jsonb('policy_snapshot').notNull(),
+    grossPaidMinor: bigint('gross_paid_minor', { mode: 'number' }).notNull(),
+    refundAmountMinor: bigint('refund_amount_minor', { mode: 'number' }).notNull(),
+    retainedAmountMinor: bigint('retained_amount_minor', { mode: 'number' }).notNull(),
+    originalCommissionMinor: bigint('original_commission_minor', { mode: 'number' }).notNull(),
+    commissionRefundedMinor: bigint('commission_refunded_minor', { mode: 'number' }).notNull(),
+    finalCommissionMinor: bigint('final_commission_minor', { mode: 'number' }).notNull(),
+    finalMerchantRevenueMinor: bigint('final_merchant_revenue_minor', { mode: 'number' }).notNull(),
+    currency: text('currency').notNull().default('EUR'),
+    explanationCode: text('explanation_code').notNull(),
+    inventoryReleased: boolean('inventory_released').notNull().default(true),
+    refundId: uuid('refund_id').references(() => refunds.id),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('booking_cancellations_org_idx').on(t.organizationId),
+    index('booking_cancellations_booking_idx').on(t.bookingId),
+    index('booking_cancellations_occurred_at_idx').on(t.occurredAt),
+    check('booking_cancellations_currency_eur', sql`${t.currency} = 'EUR'`),
+    check('booking_cancellations_gross_paid_non_negative', sql`${t.grossPaidMinor} >= 0`),
+    check('booking_cancellations_refund_non_negative', sql`${t.refundAmountMinor} >= 0`),
+    check('booking_cancellations_retained_non_negative', sql`${t.retainedAmountMinor} >= 0`),
+  ],
+);
+
+export type BookingCancellation = typeof bookingCancellations.$inferSelect;
+export type NewBookingCancellation = typeof bookingCancellations.$inferInsert;

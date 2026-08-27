@@ -10,6 +10,7 @@ import {
 } from '@/lib/operations-helpers';
 import { DepartureFlow } from './departure-flow';
 import { ReturnFlow } from './return-flow';
+import { CancellationFlow } from './cancellation-flow';
 import styles from './booking-detail.module.css';
 
 export default async function UnifiedBookingDetailPage({
@@ -139,11 +140,26 @@ export default async function UnifiedBookingDetailPage({
         {/* CTA d'action opérationnelle immédiate */}
         <div className={styles.actionHeroRow}>
           {isPickupPending && (
-            <DepartureFlow orgId={organizationId} bookingId={bookingId} items={formItems} />
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <DepartureFlow orgId={organizationId} bookingId={bookingId} items={formItems} />
+              <CancellationFlow orgId={organizationId} bookingId={bookingId} />
+            </div>
           )}
 
           {isReturnPending && (
             <ReturnFlow orgId={organizationId} bookingId={bookingId} items={formItems} />
+          )}
+
+          {status === 'CANCELLED' && (
+            <div className={styles.cancelledBanner}>
+              <span>🔴</span>
+              <div>
+                <strong>Cette réservation a été annulée.</strong>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem' }}>
+                  Le matériel physique attribué a été libéré et restitué à votre flotte active.
+                </p>
+              </div>
+            </div>
           )}
         </div>
       </div>

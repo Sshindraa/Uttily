@@ -295,6 +295,13 @@
       "when": 1786800000004,
       "tag": "0042_create_connected_account_payouts",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1786800000005,
+      "tag": "0043_create_booking_cancellations",
+      "breakpoints": true
     }
   ]
 }
