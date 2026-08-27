@@ -153,10 +153,11 @@ bornes latitude/longitude ; aucune migration n'est nécessaire.
 
 ### G8B-3B2 — plans tarifaires loueur
 
-Ajouter un parcours dashboard minimal pour créer un plan EUR brouillon, ses
-fenêtres, ses traductions FR/EN et ses éventuels paliers, puis l'activer après
-validation serveur. Les règles d'immutabilité et de version du schéma restent
-l'autorité ; aucun UPDATE manuel d'un plan actif.
+Livré le 2026-08-27 : parcours dashboard pour créer un plan EUR journalier en DRAFT,
+ses traductions requises FR/EN et ses éventuels paliers multi-jours dégressifs,
+puis l'activer via validation transactionnelle autorisée (`saveDailyPricingPlanDraft`,
+`activateDailyPricingPlan`). Les règles d'immutabilité et de version du schéma restent
+l'autorité ; les anciens plans actifs passent automatiquement à RETIRED.
 
 ### G8B-3B3 — readiness accompagnée
 

@@ -38,3 +38,16 @@ export type {
   OpeningHour,
   Candidate,
 } from './types';
+
+export {
+  getVariantPricingSummary,
+  saveDailyPricingPlanDraft,
+  activateDailyPricingPlan,
+} from './management';
+
+export type {
+  PricingPlanSummary,
+  VariantPricingOverview,
+  DiscountTierSummary,
+  SaveDailyPricingPlanDraftInput,
+} from './management';

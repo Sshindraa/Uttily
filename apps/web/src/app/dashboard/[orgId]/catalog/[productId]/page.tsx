@@ -91,15 +91,27 @@ export default async function ProductDetailPage({
         ) : (
           <ul>
             {variants.map((variant) => (
-              <li key={variant.id}>
+              <li key={variant.id} style={{ marginBottom: '8px' }}>
                 <Link
                   href={`/dashboard/${organizationId}/catalog/${product.id}/variants/${variant.id}`}
+                  style={{ fontWeight: 600 }}
                 >
                   {variant.name}
                 </Link>
                 {variant.skuSuffix ? ` — ${variant.skuSuffix}` : ''}
                 {' — '}
                 {variant.isActive ? 'active' : 'inactive'}
+                {canManage && (
+                  <>
+                    {' | '}
+                    <Link
+                      href={`/dashboard/${organizationId}/catalog/${product.id}/variants/${variant.id}/pricing`}
+                      style={{ color: '#0284c7', textDecoration: 'none' }}
+                    >
+                      💳 Gérer le tarif
+                    </Link>
+                  </>
+                )}
               </li>
             ))}
           </ul>

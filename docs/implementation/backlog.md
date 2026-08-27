@@ -227,7 +227,7 @@ complet sont validés dans
 | G8B-3 — Pilote vélo France / Lyon | particuliers en location ponctuelle, vélos de ville et électriques, cible 2 loueurs/20 vélos, kit d'onboarding, contenu réel, juridique/RGPD et Go/No-Go | cadrage G8B-3, décision commerciale et juridique | **En cours — G8B-3A cadrage terminé le 2026-08-27 ; G8B-3B suivant ; G8B-3C bloqué faute de partenaire** |
 | G8B-3B — Onboarding accompagné vélo | collecte structurée, déroulé opérateur, checklist et audit du dashboard | G8B-3A | **En cours — kit et audit livrés le 2026-08-27 ; G8B-3B1 livré le 2026-08-27** |
 | G8B-3B1 — Établissement publiable | formulaire complet adresse, coordonnées, horaires, retrait et publication fail-closed | G8B-3B | **Terminé le 2026-08-27 — Core, dashboard et tests ciblés** |
-| G8B-3B2 — Plans tarifaires loueur | création DRAFT, fenêtres, traductions, paliers et activation via dashboard | G8B-3B1, schéma G7P-A | À implémenter |
+| G8B-3B2 — Plans tarifaires loueur | création DRAFT, fenêtres, traductions, paliers et activation via dashboard | G8B-3B1, schéma G7P-A | **Terminé le 2026-08-27 — Core, dashboard, tests d'intégration et actions serveur** |
 | G8B-3B3 — Readiness accompagnée | checklist serveur par organisation et liens vers les éléments manquants | G8B-3B1, G8B-3B2 | À implémenter |
 | G8B-3B4 — Standard visuel et confiance vélo | trois vues guidées et validées côté serveur, identité professionnelle factuelle, conception du badge vérifié | G8B-3B2, ADR-020, ADR-026 | **Direction produit documentée le 2026-08-27 ; implémentation à planifier** |
 | G8B-3C — Contenu réel pilote | deux loueurs professionnels et vingt vélos réels publiables à Lyon | G8B-3B, partenaires signés | Bloqué — aucun partenaire engagé |

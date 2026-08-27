@@ -102,8 +102,13 @@ export {
   type ResolvedWindow,
   type ResolvedTier,
   type ResolvedTranslation,
-  type OpeningHour,
-  type Candidate,
+  getVariantPricingSummary,
+  saveDailyPricingPlanDraft,
+  activateDailyPricingPlan,
+  type PricingPlanSummary,
+  type VariantPricingOverview,
+  type DiscountTierSummary,
+  type SaveDailyPricingPlanDraftInput,
 } from './pricing-plans';
 
 // G7D-A — Moteur de recherche publique exacte (read-only, informatif).
