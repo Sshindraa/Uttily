@@ -244,3 +244,51 @@ export async function retireInventoryItemAction(
     return item;
   });
 }
+
+export async function bulkCreateInventoryItemsAction(
+  organizationId: string,
+  _prev: ActionResult<{ createdCount: number }>,
+  formData: FormData,
+): Promise<ActionResult<{ createdCount: number }>> {
+  const productVariantId = String(formData.get('productVariantId') ?? '');
+  const currentLocationId = String(formData.get('currentLocationId') ?? '');
+  const countStr = String(formData.get('count') ?? '1');
+  const prefix =
+    String(formData.get('prefix') ?? 'VELO')
+      .trim()
+      .toUpperCase() || 'VELO';
+  const count = parseInt(countStr, 10);
+
+  if (!isValidUuid(productVariantId)) {
+    return { ok: false, code: 'VALIDATION', message: 'Variante invalide.' };
+  }
+  if (!isValidUuid(currentLocationId)) {
+    return { ok: false, code: 'VALIDATION', message: 'Établissement invalide.' };
+  }
+  if (isNaN(count) || count < 1 || count > 50) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Le nombre de vélos doit être compris entre 1 et 50.',
+    };
+  }
+
+  return runAction(async () => {
+    const { db, organizationId: authorizedOrgId } = await requireCatalogManagerOf(organizationId);
+
+    for (let i = 1; i <= count; i++) {
+      await createInventoryItem(db, {
+        organizationId: authorizedOrgId,
+        productVariantId,
+        currentLocationId,
+        internalSku: `${prefix}-${String(Date.now()).slice(-4)}-${i}`,
+        status: 'ACTIVE',
+        condition: 'NEW',
+      });
+    }
+
+    revalidatePath(`/dashboard/${authorizedOrgId}/inventory`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+    return { createdCount: count };
+  });
+}

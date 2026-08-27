@@ -14,6 +14,9 @@ import {
   publishProduct,
   archiveProduct,
   restoreArchivedProduct,
+  listVariants,
+  updateVariant,
+  activateDailyPricingPlan,
   type ProductRecord,
   type CreateProductInput,
 } from '@uttily/core';
@@ -192,5 +195,91 @@ export async function restoreArchivedProductAction(
     revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
     revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${parsed.productId}`);
     return product;
+  });
+}
+
+export async function createBikeDraftAction(
+  organizationId: string,
+  _prev: ActionResult<{ bikeId: string }>,
+  formData: FormData,
+): Promise<ActionResult<{ bikeId: string }>> {
+  const name = String(formData.get('name') ?? '').trim();
+  const categoryId = String(formData.get('categoryId') ?? '');
+  const size = String(formData.get('size') ?? '').trim();
+  const description = String(formData.get('description') ?? '').trim();
+
+  const fieldErrors: Record<string, string> = {};
+  if (name.length < 2) {
+    fieldErrors.name = 'Le nom du vélo doit comporter au moins 2 caractères.';
+  }
+  if (!isValidUuid(categoryId)) {
+    fieldErrors.categoryId = 'Veuillez sélectionner une catégorie valide.';
+  }
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Veuillez renseigner correctement les informations du vélo.',
+      fieldErrors,
+    };
+  }
+
+  return runAction(async () => {
+    const { db, organizationId: authorizedOrgId } = await requireCatalogManagerOf(organizationId);
+    const product = await createProduct(db, {
+      organizationId: authorizedOrgId,
+      categoryId,
+      name,
+      ...(description ? { description } : {}),
+    });
+
+    if (size) {
+      const variants = await listVariants(db, authorizedOrgId, product.id);
+      if (variants[0]) {
+        await updateVariant(db, authorizedOrgId, variants[0].id, {
+          name: size,
+          skuSuffix: size.toUpperCase(),
+          attributes: { size },
+        });
+      }
+    }
+
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${product.id}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${product.id}/setup`);
+    return { bikeId: product.id };
+  });
+}
+
+export async function publishBikeFromSetupAction(
+  organizationId: string,
+  _prev: ActionResult<{ bikeId: string }>,
+  formData: FormData,
+): Promise<ActionResult<{ bikeId: string }>> {
+  const productId = String(formData.get('productId') ?? '');
+  const pricingPlanId = String(formData.get('pricingPlanId') ?? '');
+
+  if (!isValidUuid(productId)) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Identifiant de vélo invalide.',
+    };
+  }
+
+  return runAction(async () => {
+    const { db, organizationId: authorizedOrgId } = await requireCatalogManagerOf(organizationId);
+
+    // Si un plan tarifaire draft a été transmis, on l'active
+    if (isValidUuid(pricingPlanId)) {
+      await activateDailyPricingPlan(db, authorizedOrgId, pricingPlanId);
+    }
+
+    await publishProduct(db, authorizedOrgId, productId);
+
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${productId}`);
+    return { bikeId: productId };
   });
 }

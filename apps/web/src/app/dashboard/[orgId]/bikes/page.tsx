@@ -48,7 +48,7 @@ export default async function BikesListPage({
         </div>
 
         {canManage && (
-          <Link href={`/dashboard/${organizationId}/catalog/new`} className={styles.addBikeBtn}>
+          <Link href={`/dashboard/${organizationId}/bikes/new`} className={styles.addBikeBtn}>
             <span>+</span> Ajouter un vélo
           </Link>
         )}
@@ -66,7 +66,7 @@ export default async function BikesListPage({
           </p>
           {canManage && (
             <Link
-              href={`/dashboard/${organizationId}/catalog/new`}
+              href={`/dashboard/${organizationId}/bikes/new`}
               className={styles.addBikeBtn}
               style={{ marginTop: '8px' }}
             >
@@ -79,7 +79,12 @@ export default async function BikesListPage({
           {bikes.map((bike) => {
             const isReadyOrOnline =
               bike.statusSummary === 'ONLINE_AVAILABLE' ||
+              bike.statusSummary === 'ONLINE_UNAVAILABLE' ||
               bike.statusSummary === 'READY_TO_PUBLISH';
+
+            const targetHref = isReadyOrOnline
+              ? `/dashboard/${organizationId}/bikes/${bike.id}`
+              : `/dashboard/${organizationId}/bikes/${bike.id}/setup`;
 
             return (
               <article
@@ -127,11 +132,8 @@ export default async function BikesListPage({
                   </div>
                 </div>
 
-                <Link
-                  href={`/dashboard/${organizationId}/bikes/${bike.id}`}
-                  className={styles.cardActionLink}
-                >
-                  {isReadyOrOnline ? 'Gérer le vélo →' : 'Terminer la configuration →'}
+                <Link href={targetHref} className={styles.cardActionLink}>
+                  {isReadyOrOnline ? 'Gérer le vélo →' : 'Continuer la configuration →'}
                 </Link>
               </article>
             );

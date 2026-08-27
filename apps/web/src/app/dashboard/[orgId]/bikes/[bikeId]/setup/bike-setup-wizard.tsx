@@ -1,0 +1,881 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import type { PhotoSlotType } from '@uttily/contracts';
+import { PhotoCoachModal } from '@/components/photo-coach/PhotoCoachModal';
+import { updateProductAction, publishBikeFromSetupAction } from '@/app/actions/products';
+import { saveDailyPricingPlanDraftAction } from '@/app/actions/pricing';
+import { bulkCreateInventoryItemsAction } from '@/app/actions/inventory';
+import styles from './setup.module.css';
+
+export type SetupStep = 'IDENTITY' | 'PHOTOS' | 'PRICING' | 'INVENTORY' | 'REVIEW';
+
+export interface SetupBikeDTO {
+  id: string;
+  name: string;
+  description: string;
+  categoryId: string;
+  categoryName: string;
+  variantId: string;
+  variantName: string;
+  photos: Array<{ id: string; publicId: string; sortOrder: number }>;
+  isPhotosComplete: boolean;
+  currentPriceEuros: number | null;
+  draftPricingPlanId?: string | null | undefined;
+  discountTiers?: Array<{ thresholdDays: number; discountPercent: number }> | undefined;
+  inventoryCount: number;
+  isPublicationReady: boolean;
+  publicationFailures: string[];
+}
+
+interface BikeSetupWizardProps {
+  organizationId: string;
+  bike: SetupBikeDTO;
+  initialStep: SetupStep;
+  categories: Array<{ id: string; name: string }>;
+  locations: Array<{ id: string; name: string }>;
+}
+
+const STEPS: Array<{ key: SetupStep; num: number; label: string }> = [
+  { key: 'IDENTITY', num: 1, label: '1. Mon vélo' },
+  { key: 'PHOTOS', num: 2, label: '2. Mes photos' },
+  { key: 'PRICING', num: 3, label: '3. Mon tarif' },
+  { key: 'INVENTORY', num: 4, label: '4. Mes exemplaires' },
+  { key: 'REVIEW', num: 5, label: '5. Mettre en ligne' },
+];
+
+export function BikeSetupWizard({
+  organizationId,
+  bike,
+  initialStep,
+  categories,
+  locations,
+}: BikeSetupWizardProps): React.ReactElement {
+  const router = useRouter();
+  const [currentStep, setCurrentStep] = useState<SetupStep>(initialStep);
+
+  // Étape 1 : Identité
+  const [name, setName] = useState(bike.name);
+  const [categoryId, setCategoryId] = useState(bike.categoryId);
+  const [description, setDescription] = useState(bike.description);
+
+  // Étape 2 : Photos
+  const [activePhotoSlot, setActivePhotoSlot] = useState<PhotoSlotType | null>(null);
+
+  // Étape 3 : Tarif
+  const [dailyPrice, setDailyPrice] = useState(
+    bike.currentPriceEuros ? String(bike.currentPriceEuros) : '25',
+  );
+  const [tier3, setTier3] = useState(
+    String(bike.discountTiers?.find((t) => t.thresholdDays === 3)?.discountPercent ?? 10),
+  );
+  const [tier7, setTier7] = useState(
+    String(bike.discountTiers?.find((t) => t.thresholdDays === 7)?.discountPercent ?? 20),
+  );
+  const [tier14, setTier14] = useState(
+    String(bike.discountTiers?.find((t) => t.thresholdDays === 14)?.discountPercent ?? 30),
+  );
+
+  // Étape 4 : Flotte
+  const [fleetCount, setFleetCount] = useState(bike.inventoryCount > 0 ? bike.inventoryCount : 3);
+  const [locationId, setLocationId] = useState(locations[0]?.id ?? '');
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // 1. Sauvegarde Étape Identité
+  async function handleSaveIdentity(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.set('productId', bike.id);
+      formData.set('name', name);
+      formData.set('categoryId', categoryId);
+      formData.set('description', description);
+
+      const res = await updateProductAction(
+        organizationId,
+        { ok: false, code: 'UNKNOWN', message: '' },
+        formData,
+      );
+      if (!res.ok) throw new Error(res.message || 'Erreur lors de la sauvegarde.');
+
+      setCurrentStep('PHOTOS');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  // 3. Sauvegarde Étape Tarif
+  async function handleSavePricing(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.set('productId', bike.id);
+      formData.set('variantId', bike.variantId);
+      formData.set('dailyPriceEuros', dailyPrice);
+      formData.set('currency', 'EUR');
+      formData.set('internalLabel', `Tarif ${dailyPrice} €/j`);
+      if (parseInt(tier3, 10) > 0) formData.set('tier3DiscountPercent', tier3);
+      if (parseInt(tier7, 10) > 0) formData.set('tier7DiscountPercent', tier7);
+      if (parseInt(tier14, 10) > 0) formData.set('tier14DiscountPercent', tier14);
+
+      const res = await saveDailyPricingPlanDraftAction(
+        organizationId,
+        { ok: false, code: 'UNKNOWN', message: '' },
+        formData,
+      );
+      if (!res.ok) throw new Error(res.message || 'Erreur lors de la sauvegarde du tarif.');
+
+      setCurrentStep('INVENTORY');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  // 4. Sauvegarde Étape Flotte
+  async function handleSaveInventory(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+    try {
+      // Si des exemplaires n'ont pas encore été créés, on les crée d'un coup
+      if (bike.inventoryCount === 0 && fleetCount > 0) {
+        const formData = new FormData();
+        formData.set('productVariantId', bike.variantId);
+        formData.set('currentLocationId', locationId);
+        formData.set('count', String(fleetCount));
+        formData.set('prefix', name.slice(0, 3).toUpperCase());
+
+        const res = await bulkCreateInventoryItemsAction(
+          organizationId,
+          { ok: false, code: 'UNKNOWN', message: '' },
+          formData,
+        );
+        if (!res.ok) throw new Error(res.message || 'Erreur lors de la création des exemplaires.');
+      }
+
+      setCurrentStep('REVIEW');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  // 5. Mise en ligne finale
+  async function handlePublish(): Promise<void> {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.set('productId', bike.id);
+      if (bike.draftPricingPlanId) {
+        formData.set('pricingPlanId', bike.draftPricingPlanId);
+      }
+
+      const res = await publishBikeFromSetupAction(
+        organizationId,
+        { ok: false, code: 'UNKNOWN', message: '' },
+        formData,
+      );
+      if (!res.ok) throw new Error(res.message || 'Erreur lors de la mise en ligne.');
+
+      router.push(`/dashboard/${organizationId}/bikes/${bike.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue.');
+      setIsLoading(false);
+    }
+  }
+
+  const heroPhoto = bike.photos[0];
+  const threeQuarterPhoto = bike.photos[1];
+  const signaturePhoto = bike.photos[2];
+  const selectedLocation = locations.find((l) => l.id === locationId) ?? locations[0];
+
+  return (
+    <div className={styles.container}>
+      {/* Barre supérieure */}
+      <div className={styles.topBar}>
+        <nav aria-label="Fil d’Ariane" className={styles.breadcrumb}>
+          <Link href={`/dashboard/${organizationId}/bikes`} className={styles.breadcrumbLink}>
+            ← Mes vélos
+          </Link>
+          <span>/</span>
+          <span>Configuration : {bike.name}</span>
+        </nav>
+
+        <span className={styles.autosaveStatus}>
+          <span>✓</span> Enregistré en direct
+        </span>
+      </div>
+
+      {/* Stepper interactif */}
+      <nav aria-label="Étapes de configuration" className={styles.stepper}>
+        {STEPS.map((s) => {
+          const isActive = currentStep === s.key;
+          return (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => setCurrentStep(s.key)}
+              className={`${styles.stepTab} ${isActive ? styles.stepTabActive : ''}`}
+            >
+              <span className={styles.stepNumber}>Étape {s.num}</span>
+              <span className={styles.stepLabel}>{s.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {error && (
+        <div
+          style={{
+            padding: '12px 16px',
+            background: '#fef2f2',
+            border: '1px solid #fecaca',
+            color: '#b91c1c',
+            borderRadius: '12px',
+            fontSize: '0.88rem',
+          }}
+        >
+          {error}
+        </div>
+      )}
+
+      {/* ÉCRAN 1 : IDENTITÉ */}
+      {currentStep === 'IDENTITY' && (
+        <div className={styles.card}>
+          <div className={styles.stepTitleArea}>
+            <span className={styles.stepBadge}>Étape 1 sur 5</span>
+            <h2 className={styles.stepTitle}>🚲 Quel vélo proposez-vous ?</h2>
+            <p className={styles.stepSubtitle}>
+              Précisez le nom de marque, la catégorie et la description commerciale du vélo.
+            </p>
+          </div>
+
+          <form
+            onSubmit={handleSaveIdentity}
+            style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label
+                htmlFor="step-name"
+                style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}
+              >
+                Nom du modèle :
+              </label>
+              <input
+                id="step-name"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                disabled={isLoading}
+                style={{
+                  padding: '12px 16px',
+                  border: '1.5px solid #cbd5e1',
+                  borderRadius: '12px',
+                  fontSize: '0.95rem',
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label
+                htmlFor="step-cat"
+                style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}
+              >
+                Catégorie :
+              </label>
+              <select
+                id="step-cat"
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                required
+                disabled={isLoading}
+                style={{
+                  padding: '12px 16px',
+                  border: '1.5px solid #cbd5e1',
+                  borderRadius: '12px',
+                  fontSize: '0.95rem',
+                }}
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label
+                htmlFor="step-desc"
+                style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}
+              >
+                Description pour les locataires :
+              </label>
+              <textarea
+                id="step-desc"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={4}
+                required
+                disabled={isLoading}
+                style={{
+                  padding: '12px 16px',
+                  border: '1.5px solid #cbd5e1',
+                  borderRadius: '12px',
+                  fontSize: '0.95rem',
+                  resize: 'vertical',
+                }}
+              />
+            </div>
+
+            <div className={styles.stepFooter}>
+              <Link href={`/dashboard/${organizationId}/bikes`} className={styles.backBtn}>
+                Quitter
+              </Link>
+              <button type="submit" disabled={isLoading} className={styles.primaryActionBtn}>
+                {isLoading ? 'Enregistrement…' : 'Continuer vers les photos →'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ÉCRAN 2 : PHOTOS */}
+      {currentStep === 'PHOTOS' && (
+        <div className={styles.card}>
+          <div className={styles.stepTitleArea}>
+            <span className={styles.stepBadge}>Étape 2 sur 5</span>
+            <h2 className={styles.stepTitle}>📸 Montrez votre vélo (Standard Photo Coach)</h2>
+            <p className={styles.stepSubtitle}>
+              Prenez 3 photos normées avec le guide de cadrage interactif pour garantir la confiance
+              des locataires.
+            </p>
+          </div>
+
+          <div className={styles.photosGrid}>
+            {/* Slot 1 : Profil */}
+            <div
+              onClick={() => setActivePhotoSlot('HERO_PROFILE')}
+              className={`${styles.photoSlotCard} ${heroPhoto ? styles.photoSlotCardFilled : ''}`}
+            >
+              {heroPhoto ? (
+                <>
+                  <img
+                    src={`/api/public/product-photos/${heroPhoto.publicId}`}
+                    alt="Profil"
+                    className={styles.photoSlotThumbnail}
+                  />
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>1. Profil latéral Hero</div>
+                  <span style={{ fontSize: '0.8rem', color: '#059669', fontWeight: 700 }}>
+                    ✓ Conforme
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: '2.2rem' }}>🚲</div>
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>1. Profil latéral Hero</div>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                    Vue complète de profil
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.primaryActionBtn}
+                    style={{ fontSize: '0.82rem', padding: '6px 12px' }}
+                  >
+                    + Prendre la photo
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Slot 2 : 3/4 Avant */}
+            <div
+              onClick={() => setActivePhotoSlot('THREE_QUARTER_FRONT')}
+              className={`${styles.photoSlotCard} ${threeQuarterPhoto ? styles.photoSlotCardFilled : ''}`}
+            >
+              {threeQuarterPhoto ? (
+                <>
+                  <img
+                    src={`/api/public/product-photos/${threeQuarterPhoto.publicId}`}
+                    alt="3/4 avant"
+                    className={styles.photoSlotThumbnail}
+                  />
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>2. 3/4 Avant dynamique</div>
+                  <span style={{ fontSize: '0.8rem', color: '#059669', fontWeight: 700 }}>
+                    ✓ Conforme
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: '2.2rem' }}>📐</div>
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>2. 3/4 Avant dynamique</div>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                    Volume et poste de pilotage
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.primaryActionBtn}
+                    style={{ fontSize: '0.82rem', padding: '6px 12px' }}
+                  >
+                    + Prendre la photo
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Slot 3 : Vue libre */}
+            <div
+              onClick={() => setActivePhotoSlot('SECONDARY_VIEW')}
+              className={`${styles.photoSlotCard} ${signaturePhoto ? styles.photoSlotCardFilled : ''}`}
+            >
+              {signaturePhoto ? (
+                <>
+                  <img
+                    src={`/api/public/product-photos/${signaturePhoto.publicId}`}
+                    alt="Détail"
+                    className={styles.photoSlotThumbnail}
+                  />
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>
+                    3. Vue libre valorisante
+                  </div>
+                  <span style={{ fontSize: '0.8rem', color: '#059669', fontWeight: 700 }}>
+                    ✓ Conforme
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: '2.2rem' }}>✨</div>
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>
+                    3. Vue libre valorisante
+                  </div>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                    Détail, écran ou transmission
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.primaryActionBtn}
+                    style={{ fontSize: '0.82rem', padding: '6px 12px' }}
+                  >
+                    + Prendre la photo
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className={styles.stepFooter}>
+            <button
+              type="button"
+              onClick={() => setCurrentStep('IDENTITY')}
+              className={styles.backBtn}
+            >
+              ← Retour
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentStep('PRICING')}
+              className={styles.primaryActionBtn}
+            >
+              Continuer vers le tarif →
+            </button>
+          </div>
+
+          {activePhotoSlot && (
+            <PhotoCoachModal
+              orgId={organizationId}
+              productId={bike.id}
+              slotType={activePhotoSlot}
+              isOpen={true}
+              onClose={() => setActivePhotoSlot(null)}
+              onPhotoUploaded={() => {
+                setActivePhotoSlot(null);
+                router.refresh();
+              }}
+            />
+          )}
+        </div>
+      )}
+
+      {/* ÉCRAN 3 : TARIFICATION */}
+      {currentStep === 'PRICING' && (
+        <div className={styles.card}>
+          <div className={styles.stepTitleArea}>
+            <span className={styles.stepBadge}>Étape 3 sur 5</span>
+            <h2 className={styles.stepTitle}>🏷️ Quel est votre tarif de location ?</h2>
+            <p className={styles.stepSubtitle}>
+              Fixez votre tarif journalier de base. Les réductions dégressives encouragent les
+              locations longue durée.
+            </p>
+          </div>
+
+          <form
+            onSubmit={handleSavePricing}
+            style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label
+                htmlFor="step-price"
+                style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}
+              >
+                Prix de base par jour (€ TTC) :
+              </label>
+              <input
+                id="step-price"
+                type="text"
+                value={dailyPrice}
+                onChange={(e) => setDailyPrice(e.target.value)}
+                placeholder="25.00"
+                required
+                disabled={isLoading}
+                style={{
+                  padding: '12px 16px',
+                  border: '1.5px solid #cbd5e1',
+                  borderRadius: '12px',
+                  fontSize: '1.1rem',
+                  fontWeight: 800,
+                }}
+              />
+            </div>
+
+            {/* Paliers */}
+            <div
+              style={{
+                background: '#f8fafc',
+                padding: '18px',
+                borderRadius: '14px',
+                border: '1px solid #e2e8f0',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+              }}
+            >
+              <strong style={{ fontSize: '0.9rem', color: '#1e293b' }}>
+                Réductions longue durée :
+              </strong>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '10px',
+                  alignItems: 'center',
+                }}
+              >
+                <label htmlFor="step-tier3" style={{ fontSize: '0.85rem', color: '#475569' }}>
+                  Dès 3 jours (% remise) :
+                </label>
+                <input
+                  id="step-tier3"
+                  type="number"
+                  value={tier3}
+                  onChange={(e) => setTier3(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    border: '1.5px solid #cbd5e1',
+                    borderRadius: '8px',
+                  }}
+                />
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '10px',
+                  alignItems: 'center',
+                }}
+              >
+                <label htmlFor="step-tier7" style={{ fontSize: '0.85rem', color: '#475569' }}>
+                  Dès 7 jours (% remise) :
+                </label>
+                <input
+                  id="step-tier7"
+                  type="number"
+                  value={tier7}
+                  onChange={(e) => setTier7(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    border: '1.5px solid #cbd5e1',
+                    borderRadius: '8px',
+                  }}
+                />
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '10px',
+                  alignItems: 'center',
+                }}
+              >
+                <label htmlFor="step-tier14" style={{ fontSize: '0.85rem', color: '#475569' }}>
+                  Dès 14 jours (% remise) :
+                </label>
+                <input
+                  id="step-tier14"
+                  type="number"
+                  value={tier14}
+                  onChange={(e) => setTier14(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    border: '1.5px solid #cbd5e1',
+                    borderRadius: '8px',
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className={styles.stepFooter}>
+              <button
+                type="button"
+                onClick={() => setCurrentStep('PHOTOS')}
+                className={styles.backBtn}
+              >
+                ← Retour
+              </button>
+              <button type="submit" disabled={isLoading} className={styles.primaryActionBtn}>
+                {isLoading ? 'Enregistrement…' : 'Continuer vers la flotte →'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ÉCRAN 4 : FLOTTE */}
+      {currentStep === 'INVENTORY' && (
+        <div className={styles.card}>
+          <div className={styles.stepTitleArea}>
+            <span className={styles.stepBadge}>Étape 4 sur 5</span>
+            <h2 className={styles.stepTitle}>🚲 Combien d’exemplaires avez-vous en stock ?</h2>
+            <p className={styles.stepSubtitle}>
+              Indiquez le nombre de vélos disponibles dans votre boutique. Chaque vélo sera suivi
+              individuellement.
+            </p>
+          </div>
+
+          <form
+            onSubmit={handleSaveInventory}
+            style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+          >
+            <div className={styles.stepperRow}>
+              <button
+                type="button"
+                onClick={() => setFleetCount((c) => Math.max(1, c - 1))}
+                disabled={fleetCount <= 1 || isLoading}
+                className={styles.counterBtn}
+              >
+                −
+              </button>
+              <span className={styles.counterValue}>{fleetCount}</span>
+              <button
+                type="button"
+                onClick={() => setFleetCount((c) => Math.min(50, c + 1))}
+                disabled={fleetCount >= 50 || isLoading}
+                className={styles.counterBtn}
+              >
+                +
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label
+                htmlFor="step-loc"
+                style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}
+              >
+                Boutique / Point de retrait :
+              </label>
+              <select
+                id="step-loc"
+                value={locationId}
+                onChange={(e) => setLocationId(e.target.value)}
+                required
+                disabled={isLoading}
+                style={{
+                  padding: '12px 16px',
+                  border: '1.5px solid #cbd5e1',
+                  borderRadius: '12px',
+                  fontSize: '0.95rem',
+                }}
+              >
+                {locations.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.stepFooter}>
+              <button
+                type="button"
+                onClick={() => setCurrentStep('PRICING')}
+                className={styles.backBtn}
+              >
+                ← Retour
+              </button>
+              <button type="submit" disabled={isLoading} className={styles.primaryActionBtn}>
+                {isLoading ? 'Création des exemplaires…' : 'Continuer vers la vérification →'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ÉCRAN 5 : VÉRIFICATION & MISE EN LIGNE */}
+      {currentStep === 'REVIEW' && (
+        <div className={styles.card}>
+          <div className={styles.stepTitleArea}>
+            <span className={styles.stepBadge}>Étape 5 sur 5</span>
+            <h2 className={styles.stepTitle}>🎉 Votre vélo est prêt pour la mise en ligne !</h2>
+            <p className={styles.stepSubtitle}>
+              Vérifiez les informations avant de publier votre annonce sur Uttily.
+            </p>
+          </div>
+
+          {/* Aperçu de l'offre */}
+          <div className={styles.offerPreviewCard}>
+            {heroPhoto ? (
+              <img
+                src={`/api/public/product-photos/${heroPhoto.publicId}`}
+                alt={bike.name}
+                className={styles.previewHeroImg}
+              />
+            ) : (
+              <div
+                style={{
+                  height: '180px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: '#f8fafc',
+                  color: '#94a3b8',
+                }}
+              >
+                Aucune photo principale
+              </div>
+            )}
+
+            <div className={styles.previewContent}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0284c7' }}>
+                {bike.categoryName} • Taille {bike.variantName}
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, color: '#0f172a' }}>
+                {bike.name}
+              </h3>
+              <div className={styles.previewPrice}>
+                {dailyPrice} €{' '}
+                <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 600 }}>
+                  / jour
+                </span>
+              </div>
+              <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                📍 Disponible à {selectedLocation?.name ?? 'votre boutique'} ({fleetCount} vélos)
+              </div>
+            </div>
+          </div>
+
+          {/* Checklist de validation */}
+          <div
+            style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '16px',
+              padding: '18px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '8px',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#059669',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+              }}
+            >
+              <span>✓</span> Nom et description commerciale complets
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: bike.isPhotosComplete ? '#059669' : '#d97706',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+              }}
+            >
+              <span>{bike.isPhotosComplete ? '✓' : '○'}</span> {bike.photos.length}/3 photos
+              conformes au Standard Photo Coach
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#059669',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+              }}
+            >
+              <span>✓</span> Tarification journalière définie ({dailyPrice} €/j)
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#059669',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+              }}
+            >
+              <span>✓</span> {fleetCount} exemplaire(s) physique(s) en service
+            </div>
+          </div>
+
+          <div className={styles.stepFooter}>
+            <button
+              type="button"
+              onClick={() => setCurrentStep('INVENTORY')}
+              className={styles.backBtn}
+            >
+              ← Retour
+            </button>
+            <button
+              type="button"
+              onClick={handlePublish}
+              disabled={isLoading || !bike.isPublicationReady}
+              className={styles.primaryActionBtn}
+              style={{ background: '#059669', boxShadow: '0 2px 10px rgba(5, 150, 105, 0.3)' }}
+            >
+              {isLoading ? 'Mise en ligne en cours…' : '🚀 Mettre en ligne mon vélo'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
