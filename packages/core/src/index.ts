@@ -170,3 +170,6 @@ export * from './maintenance';
 
 // Chantier 10 — Planning Opérationnel.
 export * from './planning';
+
+// Chantier 11 — Revenus & Versements.
+export * from './finances';

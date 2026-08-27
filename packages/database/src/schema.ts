@@ -3008,3 +3008,51 @@ export const maintenanceCases = pgTable(
 
 export type MaintenanceCase = typeof maintenanceCases.$inferSelect;
 export type NewMaintenanceCase = typeof maintenanceCases.$inferInsert;
+
+// Chantier 11 — Revenus & Versements (Projection locale des versements Stripe)
+export const connectedAccountPayoutStatus = pgEnum('connected_account_payout_status', [
+  'PENDING',
+  'IN_TRANSIT',
+  'PAID',
+  'FAILED',
+  'CANCELLED',
+]);
+
+export const connectedAccountPayouts = pgTable(
+  'connected_account_payouts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    provider: paymentProvider('provider').notNull().default('STRIPE'),
+    environment: paymentEnvironment('environment').notNull(),
+    providerPayoutId: text('provider_payout_id').notNull(),
+    providerAccountId: text('provider_account_id').notNull(),
+    amountMinor: bigint('amount_minor', { mode: 'number' }).notNull(),
+    currency: text('currency').notNull().default('EUR'),
+    status: connectedAccountPayoutStatus('status').notNull(),
+    arrivalDate: timestamp('arrival_date', { withTimezone: true }),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
+    failedAt: timestamp('failed_at', { withTimezone: true }),
+    failureCode: text('failure_code'),
+    failureMessage: text('failure_message'),
+    providerCreatedAt: bigint('provider_created_at', { mode: 'number' }),
+    lastProviderEventAt: timestamp('last_provider_event_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (t) => [
+    unique('connected_account_payouts_provider_payout_unique').on(
+      t.provider,
+      t.environment,
+      t.providerPayoutId,
+    ),
+    index('connected_account_payouts_org_status_index').on(t.organizationId, t.status),
+    index('connected_account_payouts_org_arrival_index').on(t.organizationId, t.arrivalDate),
+  ],
+);
+
+export type ConnectedAccountPayout = typeof connectedAccountPayouts.$inferSelect;
+export type NewConnectedAccountPayout = typeof connectedAccountPayouts.$inferInsert;

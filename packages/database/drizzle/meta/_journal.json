@@ -288,6 +288,13 @@
       "when": 1786800000003,
       "tag": "0041_create_maintenance_cases",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1786800000004,
+      "tag": "0042_create_connected_account_payouts",
+      "breakpoints": true
     }
   ]
 }

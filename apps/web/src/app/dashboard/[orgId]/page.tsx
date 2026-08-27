@@ -6,6 +6,7 @@ import {
   listInventorySummaries,
   getOrganizationOnboardingReadiness,
   getOrganizationById,
+  getMerchantFinanceOverview,
   type MaintenanceDashboardSignal,
 } from '@uttily/core';
 import { requireFulfillmentOperatorOf } from '@/lib/fulfillment-auth';
@@ -44,6 +45,7 @@ export default async function OrganizationDashboardPage({
   const maintenanceSignals = await listMaintenanceDashboardSignals(db, organizationId, { asOf });
   const allBookings = await listOperationalBookings(db, organizationId);
   const inventoryItems = await listInventorySummaries(db, organizationId);
+  const financesOverview = await getMerchantFinanceOverview(db, organizationId);
 
   // Calculs du Cockpit "Aujourd'hui"
   const endOfDay = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate(), 23, 59, 59);
@@ -278,6 +280,19 @@ export default async function OrganizationDashboardPage({
             </div>
 
             <div className={styles.weekSummary}>
+              <div className={styles.weekStatRow}>
+                <span>Revenus nets ({financesOverview.period.label})</span>
+                <Link
+                  href={`/dashboard/${organizationId}/finances`}
+                  style={{ color: '#059669', fontWeight: 800, textDecoration: 'none' }}
+                >
+                  {(financesOverview.merchant.netAfterCommissionMinor / 100).toLocaleString(
+                    'fr-FR',
+                    { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+                  )}{' '}
+                  € →
+                </Link>
+              </div>
               <div className={styles.weekStatRow}>
                 <span>Réservations actives</span>
                 <strong>{allBookings.length}</strong>
