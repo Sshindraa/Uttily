@@ -144,7 +144,7 @@ export default async function BookingsListPage({
                 <div className={styles.cardFooter}>
                   {isPickupPending && (
                     <Link
-                      href={`/dashboard/${organizationId}/operations/${booking.id}`}
+                      href={`/dashboard/${organizationId}/bookings/${booking.id}`}
                       className={styles.ctaPrimary}
                     >
                       Préparer le départ →
@@ -153,7 +153,7 @@ export default async function BookingsListPage({
 
                   {isReturnPending && (
                     <Link
-                      href={`/dashboard/${organizationId}/operations/${booking.id}`}
+                      href={`/dashboard/${organizationId}/bookings/${booking.id}`}
                       className={styles.ctaSecondary}
                     >
                       Effectuer le retour →
@@ -162,7 +162,7 @@ export default async function BookingsListPage({
 
                   {!isPickupPending && !isReturnPending && (
                     <Link
-                      href={`/dashboard/${organizationId}/operations/${booking.id}`}
+                      href={`/dashboard/${organizationId}/bookings/${booking.id}`}
                       className={styles.ctaNeutral}
                     >
                       Voir le dossier →

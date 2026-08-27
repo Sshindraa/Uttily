@@ -200,14 +200,14 @@ export default async function OrganizationDashboardPage({
                     <div>
                       {isPickup ? (
                         <Link
-                          href={`/dashboard/${organizationId}/operations/${task.bookingId}`}
+                          href={`/dashboard/${organizationId}/bookings/${task.bookingId}`}
                           className={styles.taskBtnPickup}
                         >
                           Préparer le départ →
                         </Link>
                       ) : (
                         <Link
-                          href={`/dashboard/${organizationId}/operations/${task.bookingId}`}
+                          href={`/dashboard/${organizationId}/bookings/${task.bookingId}`}
                           className={styles.taskBtnReturn}
                         >
                           Effectuer le retour →

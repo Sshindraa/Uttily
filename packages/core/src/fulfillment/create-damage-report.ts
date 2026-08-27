@@ -4,6 +4,7 @@ import {
   bookings,
   bookingItems,
   damageReports,
+  inventoryBlocks,
   inventoryItems,
   outboxEvents,
 } from '@uttily/database';
@@ -28,13 +29,14 @@ const MAX_IDEMPOTENCY_KEY_LENGTH = 200;
 const ALLOWED_DAMAGE_STATUSES: readonly BookingStatus[] = ['ACTIVE', 'RETURNED'];
 
 /**
- * @uttily/core — Use case transactionnel de déclaration de dommage (G3B).
+ * @uttily/core — Use case transactionnel de déclaration de dommage (G3B / Chantier 8D).
  *
  * Règles métier MVP :
  * - booking.status doit être ACTIVE ou RETURNED
  * - booking_item doit appartenir au booking
  * - inventoryItemId est DÉRIVÉ du booking_item verrouillé (jamais accepté du client)
  * - actor doit avoir une membership ACTIVE dans FULFILLMENT_OPERATORS
+ * - Si input.blocksInventory est true : l'exemplaire est marqué BROKEN et un bloc MAINTENANCE est créé
  *
  * Ordre des verrous :
  * 1. lockKey(tx, idempotencyRecordId)
@@ -42,8 +44,8 @@ const ALLOWED_DAMAGE_STATUSES: readonly BookingStatus[] = ['ACTIVE', 'RETURNED']
  * 3. booking FOR UPDATE
  * 4. booking_item FOR UPDATE
  *
- * Atomicité : damage_reports + audit_log + outbox_events + completeKey
- * dans une seule transaction. Aucun appel externe.
+ * Atomicité : damage_reports + inventory_items (optionnel) + inventory_blocks (optionnel)
+ * + audit_log + outbox_events + completeKey dans une seule transaction.
  */
 export async function createDamageReport(
   db: DatabaseClient,
@@ -57,6 +59,7 @@ export async function createDamageReport(
     bookingItemId: input.bookingItemId,
     actorUserId: input.actorUserId,
     description: normalized.description,
+    blocksInventory: input.blocksInventory,
   });
 
   const reservation = await reserveKey(db, {
@@ -173,6 +176,28 @@ export async function createDamageReport(
       const reportId = reportRows[0]!.id;
       const createdAt = reportRows[0]!.createdAt;
 
+      // Si blocksInventory est activé (Chantier 8D) :
+      // 1. Marquer l'exemplaire comme BROKEN
+      // 2. Créer un inventoryBlock de type MAINTENANCE
+      if (input.blocksInventory) {
+        await tx
+          .update(inventoryItems)
+          .set({ condition: 'BROKEN', updatedAt: sql`now()` })
+          .where(eq(inventoryItems.id, inventoryItemId));
+
+        await tx.insert(inventoryBlocks).values({
+          organizationId: input.organizationId,
+          inventoryItemId,
+          type: 'MAINTENANCE',
+          status: 'ACTIVE',
+          customerStartAt: sql`now()`,
+          customerEndAt: sql`now() + interval '7 days'`,
+          blockedStartAt: sql`now()`,
+          blockedEndAt: sql`now() + interval '7 days'`,
+          sourceId: reportId,
+        });
+      }
+
       // Audit (SANS description)
       await writeAuditEntry(tx, {
         actorUserId: input.actorUserId,
@@ -184,6 +209,7 @@ export async function createDamageReport(
           bookingId: booking.id,
           bookingItemId: bookingItem.id,
           inventoryItemId,
+          ...(input.blocksInventory ? { blockedInventory: true } : {}),
         },
       });
 
@@ -204,6 +230,7 @@ export async function createDamageReport(
             inventoryItemId,
             organizationId: input.organizationId,
             createdAt: createdAt.toISOString(),
+            ...(input.blocksInventory ? { blockedInventory: true } : {}),
           },
           status: 'PENDING',
           attemptCount: 0,
@@ -221,6 +248,7 @@ export async function createDamageReport(
         bookingId: booking.id,
         bookingItemId: bookingItem.id,
         inventoryItemId,
+        ...(input.blocksInventory ? { blockedInventory: true } : {}),
       };
       await completeKey(tx, reservation.record.id, {
         resourceId: reportId,

@@ -47,9 +47,11 @@ export function computeDamageReportFingerprint(input: {
   bookingItemId: string;
   actorUserId: string;
   description: string;
+  blocksInventory?: boolean | undefined;
 }): string {
   const canonical = {
     actor_user_id: input.actorUserId,
+    blocks_inventory: input.blocksInventory ?? false,
     booking_id: input.bookingId,
     booking_item_id: input.bookingItemId,
     description: input.description,

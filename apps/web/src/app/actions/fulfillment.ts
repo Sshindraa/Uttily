@@ -110,12 +110,16 @@ function parseDamageReportForm(formData: FormData):
       bookingItemId: string;
       description: string;
       idempotencyKey: string;
+      blocksInventory: boolean;
     } {
   const fieldErrors: Record<string, string> = {};
   const bookingId = String(formData.get('bookingId') ?? '');
   const bookingItemId = String(formData.get('bookingItemId') ?? '');
   const description = String(formData.get('description') ?? '').trim();
   const idempotencyKey = String(formData.get('idempotencyKey') ?? '').trim();
+  const blocksInventoryRaw = formData.get('blocksInventory');
+  const blocksInventory =
+    blocksInventoryRaw === 'true' || blocksInventoryRaw === 'on' || blocksInventoryRaw === '1';
 
   if (!isValidUuid(bookingId)) fieldErrors.bookingId = 'Réservation invalide.';
   if (!isValidUuid(bookingItemId))
@@ -128,7 +132,7 @@ function parseDamageReportForm(formData: FormData):
     fieldErrors.idempotencyKey = `La clé ne doit pas dépasser ${MAX_IDEMPOTENCY_KEY_LENGTH} caractères.`;
 
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
-  return { bookingId, bookingItemId, description, idempotencyKey };
+  return { bookingId, bookingItemId, description, idempotencyKey, blocksInventory };
 }
 
 export async function prepareBookingAction(
@@ -322,9 +326,13 @@ export async function createDamageReportAction(
       actorUserId: user.id,
       idempotencyKey: parsed.idempotencyKey,
       description: parsed.description,
+      blocksInventory: parsed.blocksInventory,
     });
     revalidatePath(`/dashboard/${authorizedOrgId}/operations`);
     revalidatePath(`/dashboard/${authorizedOrgId}/operations/${parsed.bookingId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings/${parsed.bookingId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/fleet`);
     return result;
   });
 }

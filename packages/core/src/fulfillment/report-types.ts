@@ -37,6 +37,7 @@ export interface ConditionReportInput extends ReportInput {
 
 export interface DamageReportInput extends ReportInput {
   description: string;
+  blocksInventory?: boolean | undefined;
 }
 
 /**
@@ -61,6 +62,7 @@ export interface DamageReportResult {
   bookingId: string;
   bookingItemId: string;
   inventoryItemId: string;
+  blockedInventory?: boolean | undefined;
 }
 
 /**
