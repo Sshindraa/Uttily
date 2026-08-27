@@ -34,9 +34,21 @@ configuration staging recommandée.
   simulé sans réseau, rejeu idempotent, remplacement et suppression physique ;
 - typecheck Core/Web et ESLint des fichiers touchés : verts.
 
-## Suite staging
+## Validation staging
 
-Provisionner un bucket R2 photo dédié, renseigner uniquement les credentials
-R2 TEST/staging, exécuter un smoke test avec trois photos réelles, puis vérifier
-la publication et les URLs publiques. Stripe LIVE reste interdit tant que les
-verrous commerciaux, juridiques et de sécurité ne sont pas explicitement clos.
+Le smoke test réel est validé le 2026-08-27. Le déploiement Vercel staging
+`ae7ce01` utilise le bucket R2 privé EU `uttily-staging-photos` et un token
+limité à ce bucket. Le compte Clerk TEST `uttily-staging-e2e+clerk_test@example.com`
+est membre `Admin` de l'organisation de démonstration.
+
+Sur `Kayak Lac d’Annecy`, déjà doté de trois photos valides, une image PNG
+synthétique de 1200×900 a été envoyée depuis le dashboard. Le serveur l'a
+acceptée, l'objet est visible sous le préfixe `product-photos/` dans R2 et la
+fiche affiche quatre photos `AVAILABLE`. La galerie publique a ensuite chargé
+les quatre images par la route applicative contrôlée, dont la nouvelle image en
+1200×900. Aucun secret LIVE, fournisseur réel ou accès R2 public n'a été utilisé.
+
+La preuve détaillée est conservée dans
+`docs/implementation/g8b-1-staging-smoke-test.md`. Stripe LIVE reste interdit
+tant que les verrous commerciaux, juridiques et de sécurité ne sont pas
+explicitement clos.
