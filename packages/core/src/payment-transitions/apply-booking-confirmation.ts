@@ -33,6 +33,7 @@ import {
   resolveAnalyticsEnvironmentFromProcessEnv,
   type ResolvedAnalyticsEnvironment,
 } from '../product-analytics';
+import { scheduleBookingConfirmedNotifications } from '../notifications/scheduling';
 import type { LockedBusinessRows } from './types';
 
 /** Résultat de la confirmation. */
@@ -449,6 +450,9 @@ export async function applyBookingConfirmation(
     .onConflictDoNothing({
       target: [outboxEvents.idempotencyKey],
     });
+
+  // 10b. Planification transactionnelle des notifications et rappels (Chantier 13)
+  await scheduleBookingConfirmedNotifications(tx, bookingId, { now: confirmedAt });
 
   // G7H-B — Émettre BOOKING_CONFIRMED après la création du booking et l'insertion
   // outbox BOOKING_CONFIRMED.v1, avant le retour. L'écriture analytics est isolée

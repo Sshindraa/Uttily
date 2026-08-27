@@ -11,6 +11,7 @@ import {
 } from '@uttily/database';
 import { CatalogError } from '../catalog/errors';
 import { reserveKey, lockKey, completeKey, failKey } from '../idempotency/idempotency';
+import { scheduleBookingCancelledNotifications } from '../notifications/scheduling';
 import { previewBookingCancellation } from './preview-booking-cancellation';
 import type { CancelConfirmedBookingInput, CancelConfirmedBookingResult } from './types';
 
@@ -212,6 +213,9 @@ export async function cancelConfirmedBooking(
         refundId,
         occurredAt: now,
       });
+
+      // 6b. Planification des notifications d'annulation et annulation des rappels (Chantier 13)
+      await scheduleBookingCancelledNotifications(tx, input.bookingId, cancellationId, { now });
 
       // 7. Événements Outbox distincts :
       // Événement 1 : BOOKING_CANCELLED (métier / timeline / notifications)

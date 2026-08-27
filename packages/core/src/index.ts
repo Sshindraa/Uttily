@@ -176,3 +176,6 @@ export * from './finances';
 
 // Chantier 12 — Annulations & Remboursements.
 export * from './cancellations';
+
+// Chantier 13 — Notifications Transactionnelles.
+export * from './notifications';

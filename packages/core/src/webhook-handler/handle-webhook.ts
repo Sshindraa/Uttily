@@ -58,6 +58,10 @@ import {
 import { compensateLatePayment } from './compensate-late';
 import { resolveAmendmentAttempt } from './resolve-amendment-attempt';
 import { handleSupplementPaymentWebhook } from '../booking-amendments/apply-supplement-amendment';
+import {
+  scheduleRefundConfirmedNotification,
+  scheduleRefundActionRequiredNotification,
+} from '../notifications/scheduling';
 
 /** Types d'événements de refund (journalisés et projetés, pas de worker en Phase 6). */
 const REFUND_EVENT_TYPES = new Set<string>([
@@ -1849,10 +1853,18 @@ async function projectRefundStatus(
             updatedAt: now,
             providerEventCreatedAt: event.created,
           };
-          if (effectiveStatus === 'SUCCEEDED') updateData.succeededAt = now;
+          if (effectiveStatus === 'SUCCEEDED') {
+            updateData.succeededAt = now;
+            await scheduleRefundConfirmedNotification(sp, existingRow.id);
+          }
           if (effectiveStatus === 'FAILED') {
             updateData.failedAt = now;
             updateData.failureCode = 'STRIPE_REFUND_FAILED';
+            await scheduleRefundActionRequiredNotification(
+              sp,
+              existingRow.id,
+              'STRIPE_REFUND_FAILED',
+            );
           }
           await sp.update(refunds).set(updateData).where(eq(refunds.id, existingRow.id));
           anyProjected = true;

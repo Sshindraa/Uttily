@@ -10,6 +10,7 @@ import {
   validateBatchLimit,
 } from './scheduling';
 import { executeRefundRequest } from './execute-refund-request';
+import { scheduleRefundActionRequiredNotification } from '../notifications/scheduling';
 import type {
   ClaimedRefundRequest,
   RefundRequestBatchResult,
@@ -116,6 +117,7 @@ async function fail(
           AND organization_id = ${claimed.organizationId}::uuid
           AND status NOT IN ('SUCCEEDED', 'FAILED_REQUIRES_MANUAL_ACTION', 'SETTLED_OFF_PLATFORM')
       `);
+      await scheduleRefundActionRequiredNotification(tx, refund.id, failureCode);
     }
     return 'failed';
   });

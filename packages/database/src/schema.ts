@@ -3112,3 +3112,60 @@ export const bookingCancellations = pgTable(
 
 export type BookingCancellation = typeof bookingCancellations.$inferSelect;
 export type NewBookingCancellation = typeof bookingCancellations.$inferInsert;
+
+export const notificationChannel = pgEnum('notification_channel', ['EMAIL']);
+
+export const notificationTemplate = pgEnum('notification_template', [
+  'BOOKING_CONFIRMED_CUSTOMER',
+  'BOOKING_CONFIRMED_MERCHANT',
+  'BOOKING_CANCELLED_CUSTOMER',
+  'BOOKING_CANCELLED_MERCHANT',
+  'REFUND_CONFIRMED_CUSTOMER',
+  'PICKUP_REMINDER_CUSTOMER',
+  'RETURN_REMINDER_CUSTOMER',
+  'REFUND_ACTION_REQUIRED_MERCHANT',
+]);
+
+export const notificationStatus = pgEnum('notification_status', [
+  'PENDING',
+  'SENDING',
+  'SENT',
+  'FAILED',
+  'CANCELLED',
+]);
+
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id').references(() => organizations.id),
+    bookingId: uuid('booking_id').references(() => bookings.id),
+    refundId: uuid('refund_id').references(() => refunds.id),
+    channel: notificationChannel('channel').notNull().default('EMAIL'),
+    template: notificationTemplate('template').notNull(),
+    recipient: text('recipient').notNull(),
+    status: notificationStatus('status').notNull().default('PENDING'),
+    providerMessageId: text('provider_message_id'),
+    attemptCount: integer('attempt_count').notNull().default(0),
+    scheduledFor: timestamp('scheduled_for', { withTimezone: true }).notNull().defaultNow(),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+    failedAt: timestamp('failed_at', { withTimezone: true }),
+    failureCode: text('failure_code'),
+    idempotencyKey: text('idempotency_key').notNull().unique(),
+    metadata: jsonb('metadata').notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('notifications_due_idx')
+      .on(t.status, t.scheduledFor)
+      .where(sql`${t.status} = 'PENDING'`),
+    index('notifications_booking_id_idx').on(t.bookingId, t.status),
+    index('notifications_org_idx').on(t.organizationId, t.createdAt),
+    check('notifications_recipient_nonempty', sql`length(btrim(${t.recipient})) > 0`),
+    check('notifications_idempotency_key_nonempty', sql`length(btrim(${t.idempotencyKey})) > 0`),
+  ],
+);
+
+export type NotificationRecord = typeof notifications.$inferSelect;
+export type NewNotificationRecord = typeof notifications.$inferInsert;
