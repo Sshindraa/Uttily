@@ -42,7 +42,20 @@ export interface LocationRecord {
   name: string;
   slug: string;
   timeZone: string;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  postalCode: string | null;
+  countryCode: string | null;
+  latitude: number | null;
+  longitude: number | null;
   pickupEnabled: boolean;
+  isPubliclyListed: boolean;
+}
+
+export interface LocationCoordinates {
+  latitude: number;
+  longitude: number;
 }
 
 export interface OpeningHourInput {

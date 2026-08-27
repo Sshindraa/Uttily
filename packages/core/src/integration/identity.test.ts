@@ -12,6 +12,9 @@ import {
   getOrganizationBySlug,
   listLocations,
   createLocation,
+  getLocation,
+  listOpeningHours,
+  updateLocation,
   getMembership,
   listMembers,
   changeMemberRole,
@@ -279,6 +282,45 @@ describe.skipIf(shouldSkipIntegrationTests())('Identity integration — multi-te
       ],
     });
     expect(loc.id).toBeDefined();
+  });
+
+  it('établissement publiable : adresse, coordonnées, horaires et publication sont persistés', async () => {
+    if (!ctx || !db) return;
+    const user = await createUser(db, 'published-location@example.com');
+    const { organization } = await createOrganizationForUser(db, user, {
+      legalName: 'Published Location Org',
+    });
+    const loc = await createLocation(db, {
+      organizationId: organization.id,
+      name: 'Lyon République',
+      timeZone: 'Europe/Paris',
+      addressLine1: '10 rue de la République',
+      addressLine2: 'Bâtiment A',
+      city: 'Lyon',
+      postalCode: '69001',
+      countryCode: 'fr',
+      coordinates: { latitude: 45.764, longitude: 4.8357 },
+      pickupEnabled: true,
+      isPubliclyListed: true,
+      openingHours: [
+        { weekday: 0, openTime: '09:00:00', closeTime: '12:00:00' },
+        { weekday: 0, openTime: '14:00:00', closeTime: '18:00:00' },
+      ],
+    });
+
+    expect(loc.countryCode).toBe('FR');
+    expect(loc.latitude).toBeCloseTo(45.764, 5);
+    expect(loc.longitude).toBeCloseTo(4.8357, 5);
+    expect(loc.isPubliclyListed).toBe(true);
+    expect(await listOpeningHours(db, loc.id)).toHaveLength(2);
+
+    const updated = await updateLocation(db, organization.id, loc.id, {
+      coordinates: { latitude: 45.765, longitude: 4.836 },
+      isPubliclyListed: true,
+    });
+    expect(updated.latitude).toBeCloseTo(45.765, 5);
+    expect(updated.longitude).toBeCloseTo(4.836, 5);
+    expect((await getLocation(db, organization.id, loc.id))?.isPubliclyListed).toBe(true);
   });
 
   it('horaires : open_time >= close_time rejeté par la base', async () => {

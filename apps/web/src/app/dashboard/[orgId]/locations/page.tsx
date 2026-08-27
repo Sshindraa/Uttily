@@ -35,6 +35,8 @@ export default async function LocationsListPage({
               {loc.timeZone}
               {' — retrait: '}
               {loc.pickupEnabled ? 'oui' : 'non'}
+              {' — publication: '}
+              {loc.isPubliclyListed ? 'publique' : 'brouillon'}
             </li>
           ))}
         </ul>
