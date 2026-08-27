@@ -46,25 +46,29 @@ export default async function OrganizationLayout({
         <nav className={styles.navBar} aria-label="Navigation principale">
           <div className={styles.navInner}>
             <Link href={`/dashboard/${orgId}`} className={styles.navLink}>
-              📊 Tableau de bord
+              🏠 Accueil
             </Link>
             <Link href={`/dashboard/${orgId}/bikes`} className={styles.navLink}>
               🚲 Mes vélos
             </Link>
-            <Link href={`/dashboard/${orgId}/inventory`} className={styles.navLink}>
-              📦 Inventaire
+            <Link href={`/dashboard/${orgId}/bookings`} className={styles.navLink}>
+              📅 Réservations
+            </Link>
+            <Link href={`/dashboard/${orgId}/fleet`} className={styles.navLink}>
+              🔧 Flotte
             </Link>
             <Link href={`/dashboard/${orgId}/locations`} className={styles.navLink}>
               📍 Établissements
             </Link>
-            <Link href={`/dashboard/${orgId}/operations`} className={styles.navLink}>
-              🗓️ Opérations
+            <Link href={`/dashboard/${orgId}/finances`} className={styles.navLink}>
+              💰 Revenus
             </Link>
+            <span className={styles.navSeparator} aria-hidden="true" />
             <Link href={`/dashboard/${orgId}/team`} className={styles.navLink}>
               👥 Équipe
             </Link>
-            <Link href={`/dashboard/${orgId}/finances`} className={styles.navLink}>
-              💰 Revenus
+            <Link href={`/dashboard/${orgId}/settings`} className={styles.navLink}>
+              ⚙️ Paramètres
             </Link>
           </div>
         </nav>

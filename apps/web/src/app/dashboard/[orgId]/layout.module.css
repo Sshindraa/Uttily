@@ -111,6 +111,13 @@
   border-bottom-color: #cbd5e1;
 }
 
+.navSeparator {
+  width: 1px;
+  height: 20px;
+  background: #e2e8f0;
+  margin: 0 4px;
+}
+
 .mainContent {
   max-width: 1200px;
   margin: 0 auto;
