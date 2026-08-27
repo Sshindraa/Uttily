@@ -176,9 +176,9 @@ export async function createDamageReport(
       const reportId = reportRows[0]!.id;
       const createdAt = reportRows[0]!.createdAt;
 
-      // Si blocksInventory est activé (Chantier 8D) :
+      // Si blocksInventory est activé (Chantiers 8D / 8.1) :
       // 1. Marquer l'exemplaire comme BROKEN
-      // 2. Créer un inventoryBlock de type MAINTENANCE
+      // 2. Créer un inventoryBlock de type MAINTENANCE indéfini (horizon 9999) jusqu'à résolution explicite
       if (input.blocksInventory) {
         await tx
           .update(inventoryItems)
@@ -191,9 +191,9 @@ export async function createDamageReport(
           type: 'MAINTENANCE',
           status: 'ACTIVE',
           customerStartAt: sql`now()`,
-          customerEndAt: sql`now() + interval '7 days'`,
+          customerEndAt: new Date('9999-12-31T23:59:59.999Z'),
           blockedStartAt: sql`now()`,
-          blockedEndAt: sql`now() + interval '7 days'`,
+          blockedEndAt: new Date('9999-12-31T23:59:59.999Z'),
           sourceId: reportId,
         });
       }

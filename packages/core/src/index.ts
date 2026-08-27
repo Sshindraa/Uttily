@@ -164,3 +164,6 @@ export * from './product-analytics';
 
 // G7M-B1 — Projection canonique getEffectiveBooking (ADR-023 §4.1, read-only).
 export * from './booking-amendments';
+
+// Chantier 9 — Domaine Maintenance & Atelier.
+export * from './maintenance';

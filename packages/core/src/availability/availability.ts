@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNull, ne, sql } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import { inventoryItems } from '@uttily/database';
 import type { AvailableItemSummary } from './types';
@@ -6,7 +6,8 @@ import { CatalogError } from '../catalog/errors';
 
 /**
  * Trouve les exemplaires ACTIVE dans un établissement qui n'ont AUCUN bloc
- * ACTIVE ou PAYMENT_PROCESSING chevauchant la période [startAt, endAt].
+ * ACTIVE ou PAYMENT_PROCESSING chevauchant la période [startAt, endAt],
+ * et dont l'état physique n'est pas BROKEN.
  *
  * Utilise un NOT EXISTS subquery sur inventory_blocks avec tstzrange overlap.
  * La disponibilité est calculée côté PostgreSQL (autorité transactionnelle).
@@ -51,6 +52,7 @@ export async function findAvailableItems(
         eq(inventoryItems.organizationId, organizationId),
         eq(inventoryItems.currentLocationId, locationId),
         eq(inventoryItems.status, 'ACTIVE'),
+        ne(inventoryItems.condition, 'BROKEN'),
         isNull(inventoryItems.deletedAt),
         // NOT EXISTS : aucun bloc ACTIVE/PAYMENT_PROCESSING chevauchant la période.
         sql`NOT EXISTS (

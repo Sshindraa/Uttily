@@ -253,8 +253,16 @@ export async function listMaintenanceDashboardSignals(
     },
   );
 
-  return orderMaintenanceDashboardSignals([...maintenanceSignals, ...brokenSignals]).slice(
-    0,
-    limit,
-  );
+  const ordered = orderMaintenanceDashboardSignals([...maintenanceSignals, ...brokenSignals]);
+  const seenItemIds = new Set<string>();
+  const deduplicated: MaintenanceDashboardSignal[] = [];
+
+  for (const signal of ordered) {
+    if (!seenItemIds.has(signal.inventoryItemId)) {
+      seenItemIds.add(signal.inventoryItemId);
+      deduplicated.push(signal);
+    }
+  }
+
+  return deduplicated.slice(0, limit);
 }

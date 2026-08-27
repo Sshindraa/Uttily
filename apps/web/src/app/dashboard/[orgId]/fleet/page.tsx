@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { listInventorySummaries, getMembership, CATALOG_MANAGERS } from '@uttily/core';
 import { requireCatalogViewerOf } from '@/lib/catalog-auth';
+import { OpenMaintenanceModal } from './open-maintenance-modal';
 import styles from './fleet.module.css';
 
 export default async function FleetListPage({
@@ -18,6 +19,12 @@ export default async function FleetListPage({
   ).length;
   const maintenanceCount = items.filter((i) => i.condition === 'BROKEN').length;
 
+  const selectableItems = items.map((i) => ({
+    id: i.id,
+    internalSku: i.internalSku,
+    productName: `${i.productName} (${i.variantName})`,
+  }));
+
   return (
     <div className={styles.container}>
       <div className={styles.headerRow}>
@@ -28,11 +35,24 @@ export default async function FleetListPage({
           </p>
         </div>
 
-        {canManage && (
-          <Link href={`/dashboard/${organizationId}/inventory/new`} className={styles.addBtn}>
-            + Ajouter un exemplaire
+        <div className={styles.headerActions}>
+          <Link
+            href={`/dashboard/${organizationId}/fleet/maintenance`}
+            className={styles.workshopBtn}
+          >
+            🔧 Atelier ({maintenanceCount})
           </Link>
-        )}
+
+          {canManage && items.length > 0 && (
+            <OpenMaintenanceModal orgId={organizationId} items={selectableItems} />
+          )}
+
+          {canManage && (
+            <Link href={`/dashboard/${organizationId}/inventory/new`} className={styles.addBtn}>
+              + Ajouter un exemplaire
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Badges de synthèse rapide */}
@@ -67,7 +87,7 @@ export default async function FleetListPage({
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Code & SKU</th>
+                <th>Code &amp; SKU</th>
                 <th>Modèle / Variante</th>
                 <th>N° de série</th>
                 <th>État physique</th>
@@ -77,47 +97,55 @@ export default async function FleetListPage({
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
-                <tr key={item.id}>
-                  <td className={styles.skuCell}>
-                    <Link href={`/dashboard/${organizationId}/inventory/${item.id}`}>
-                      {item.internalSku}
-                    </Link>
-                  </td>
-                  <td className={styles.modelCell}>
-                    <strong>{item.productName}</strong>
-                    <span className={styles.variantBadge}>{item.variantName}</span>
-                  </td>
-                  <td className={styles.serialCell}>{item.serialNumber ?? '—'}</td>
-                  <td>
-                    <span
-                      className={`${styles.conditionBadge} ${
-                        item.condition === 'BROKEN' ? styles.conditionBroken : styles.conditionGood
-                      }`}
-                    >
-                      {item.condition}
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      className={`${styles.statusBadge} ${
-                        item.status === 'ACTIVE' ? styles.statusActive : ''
-                      }`}
-                    >
-                      {item.status}
-                    </span>
-                  </td>
-                  <td className={styles.locationCell}>📍 {item.locationName}</td>
-                  <td style={{ textAlign: 'right' }}>
-                    <Link
-                      href={`/dashboard/${organizationId}/inventory/${item.id}`}
-                      className={styles.viewLink}
-                    >
-                      Détail →
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+              {items.map((item) => {
+                const isBroken = item.condition === 'BROKEN';
+
+                return (
+                  <tr key={item.id}>
+                    <td className={styles.skuCell}>
+                      <Link href={`/dashboard/${organizationId}/inventory/${item.id}`}>
+                        {item.internalSku}
+                      </Link>
+                    </td>
+                    <td className={styles.modelCell}>
+                      <strong>{item.productName}</strong>
+                      <span className={styles.variantBadge}>{item.variantName}</span>
+                    </td>
+                    <td className={styles.serialCell}>{item.serialNumber ?? '—'}</td>
+                    <td>
+                      <span
+                        className={`${styles.conditionBadge} ${
+                          isBroken ? styles.conditionBroken : styles.conditionGood
+                        }`}
+                      >
+                        {item.condition}
+                      </span>
+                    </td>
+                    <td>
+                      <span
+                        className={`${styles.statusBadge} ${
+                          isBroken
+                            ? styles.statusMaintenance
+                            : item.status === 'ACTIVE'
+                              ? styles.statusActive
+                              : ''
+                        }`}
+                      >
+                        {isBroken ? 'MAINTENANCE' : item.status}
+                      </span>
+                    </td>
+                    <td className={styles.locationCell}>📍 {item.locationName}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <Link
+                        href={`/dashboard/${organizationId}/inventory/${item.id}`}
+                        className={styles.viewLink}
+                      >
+                        Détail →
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
