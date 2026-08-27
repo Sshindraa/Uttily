@@ -51,6 +51,12 @@ import {
   ResendConfigError,
   type ResendConfig,
 } from './adapters/resend-transactional-email-sender.js';
+import {
+  ResendNotificationEmailSender,
+  type ResendNotificationConfig,
+} from './adapters/resend-notification-email-sender.js';
+import type { NotificationEmailSender } from '@uttily/core';
+import { FakeNotificationEmailSender } from '@uttily/core';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Erreur de configuration normalisée.
@@ -89,6 +95,9 @@ export interface WorkerResourceFactories {
   readonly createDatabase: (databaseUrl: string) => DatabaseClient;
   readonly createR2Storage: (config: R2Config) => R2ObjectStorage;
   readonly createResendSender: (config: ResendConfig) => ResendTransactionalEmailSender;
+  readonly createResendNotificationSender?: (
+    config: ResendNotificationConfig,
+  ) => ResendNotificationEmailSender;
   readonly createRenderer: () => PdfLibDocumentRenderer;
   readonly createLogger: () => ConsoleWorkerLogger;
   readonly createMetrics: () => InMemoryMetricsCollector;
@@ -122,6 +131,7 @@ const defaultResourceFactories: WorkerResourceFactories = {
   createDatabase: (url) => createDatabase(url),
   createR2Storage: (config) => new R2ObjectStorage(config),
   createResendSender: (config) => new ResendTransactionalEmailSender(config),
+  createResendNotificationSender: (config) => new ResendNotificationEmailSender(config),
   createRenderer: () => new PdfLibDocumentRenderer(),
   createLogger: () => new ConsoleWorkerLogger(),
   createMetrics: () => new InMemoryMetricsCollector(),
@@ -226,6 +236,15 @@ export async function createWorkerDependenciesFromEnv(
     created.db = factories.createDatabase(databaseUrl);
     created.r2 = factories.createR2Storage(r2Config);
     const resendSender = factories.createResendSender(resendConfig);
+    const notificationSender =
+      factories.createResendNotificationSender?.({
+        apiKey: resendConfig.apiKey,
+        fromEmail: resendConfig.fromEmail,
+      }) ??
+      new ResendNotificationEmailSender({
+        apiKey: resendConfig.apiKey,
+        fromEmail: resendConfig.fromEmail,
+      });
     const renderer = factories.createRenderer();
     const logger = factories.createLogger();
     const metrics = factories.createMetrics();
@@ -235,6 +254,7 @@ export async function createWorkerDependenciesFromEnv(
       renderer,
       storage: created.r2,
       sender: resendSender,
+      notificationSender,
       logger,
       metrics,
       executeDocumentPipeline,
@@ -341,6 +361,7 @@ export function createWorkerDependenciesForTesting(params: {
   renderer: DocumentRenderer;
   storage: ObjectStorage;
   sender: TransactionalEmailSender;
+  notificationSender?: NotificationEmailSender;
   logger?: WorkerLogger;
   metrics?: WorkerMetricsCollector;
 }): WorkerDependencies {
@@ -349,6 +370,7 @@ export function createWorkerDependenciesForTesting(params: {
     renderer: params.renderer,
     storage: params.storage,
     sender: params.sender,
+    notificationSender: params.notificationSender ?? new FakeNotificationEmailSender(),
     logger: params.logger ?? new ConsoleWorkerLogger(),
     metrics: params.metrics ?? new InMemoryMetricsCollector(),
     executeDocumentPipeline,

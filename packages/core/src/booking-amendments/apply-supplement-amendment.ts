@@ -33,6 +33,7 @@ import { withInvariantHandling } from '../webhook-handler/with-invariant-handlin
 import { lockOrganization } from '@uttily/database';
 import { calculateSupplementCommission } from './supplement-commission';
 import { compensateAmendmentPayment } from './compensate-amendment-payment';
+import { rescheduleBookingReminders } from '../notifications/scheduling';
 
 interface LockedSupplementRows {
   booking: typeof bookings.$inferSelect;
@@ -611,6 +612,18 @@ async function applySupplement(
     .update(bookingAmendments)
     .set({ status: 'APPLIED', appliedAt: now, updatedAt: now })
     .where(eq(bookingAmendments.id, amendment.id));
+
+  // Chantier 13.1 — Reprogrammation des rappels de réservation sur amendement
+  if (amendment.newCustomerStartAt || amendment.newCustomerEndAt) {
+    await rescheduleBookingReminders(
+      tx,
+      resolved.bookingId,
+      amendment.newCustomerStartAt ?? undefined,
+      amendment.newCustomerEndAt ?? undefined,
+      { now },
+    );
+  }
+
   await projectFinancialSuccess();
   const outboxPayload = {
     organizationId: resolved.organizationId,

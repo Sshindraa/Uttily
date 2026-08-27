@@ -38,6 +38,7 @@ import {
 } from '@uttily/contracts';
 import { reserveKey, lockKey, completeKey, failKey } from '../idempotency/idempotency';
 import { requireMembership, AuthorizationError, LOCATION_MANAGERS } from '../identity/permissions';
+import { rescheduleBookingReminders } from '../notifications/scheduling';
 import { getMembership } from '../identity/memberships';
 import type { AuthenticatedUser } from '../identity/types';
 import { quoteFlexiblePricing } from '../pricing-plans/quote-flexible-pricing';
@@ -1191,6 +1192,17 @@ async function executeBusinessLogic(
     .update(bookingAmendments)
     .set({ status: 'APPLIED', appliedAt: now, updatedAt: now })
     .where(eq(bookingAmendments.id, amendmentId));
+
+  // Chantier 13.1 — Reprogrammation des rappels de réservation sur amendement
+  if (newCustomerStartAt || newCustomerEndAt) {
+    await rescheduleBookingReminders(
+      sp,
+      command.bookingId,
+      newCustomerStartAt ?? undefined,
+      newCustomerEndAt ?? undefined,
+      { now },
+    );
+  }
 
   // --- INSERTION DU REFUND ET EVENT REFUND_REQUESTED ---
   if (expectedClassification === 'REFUND') {

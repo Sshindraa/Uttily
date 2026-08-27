@@ -3152,14 +3152,21 @@ export const notifications = pgTable(
     failedAt: timestamp('failed_at', { withTimezone: true }),
     failureCode: text('failure_code'),
     idempotencyKey: text('idempotency_key').notNull().unique(),
+    leaseToken: text('lease_token'),
+    leaseUntil: timestamp('lease_until', { withTimezone: true }),
+    nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }),
+    providerFirstAttemptStartedAt: timestamp('provider_first_attempt_started_at', {
+      withTimezone: true,
+    }),
+    requiresManualReview: boolean('requires_manual_review').notNull().default(false),
     metadata: jsonb('metadata').notNull().default({}),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index('notifications_due_idx')
-      .on(t.status, t.scheduledFor)
-      .where(sql`${t.status} = 'PENDING'`),
+      .on(t.status, t.scheduledFor, t.nextAttemptAt, t.leaseUntil)
+      .where(sql`${t.status} IN ('PENDING', 'SENDING')`),
     index('notifications_booking_id_idx').on(t.bookingId, t.status),
     index('notifications_org_idx').on(t.organizationId, t.createdAt),
     check('notifications_recipient_nonempty', sql`length(btrim(${t.recipient})) > 0`),

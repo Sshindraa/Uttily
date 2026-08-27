@@ -306,3 +306,57 @@ export async function scheduleRefundActionRequiredNotification(
     })
     .onConflictDoNothing();
 }
+
+/**
+ * Recalcule et met à jour les dates des rappels de réservation non encore envoyés
+ * lors d'une modification d'horaires (amendement).
+ */
+export async function rescheduleBookingReminders(
+  db: DbExecutor,
+  bookingId: string,
+  newStartAt?: Date,
+  newEndAt?: Date,
+  options?: { now?: Date },
+): Promise<void> {
+  const now = options?.now ?? new Date();
+
+  if (newStartAt) {
+    const newPickupScheduledFor = new Date(
+      Math.max(now.getTime(), newStartAt.getTime() - 24 * 60 * 60 * 1000),
+    );
+    await db
+      .update(notifications)
+      .set({
+        scheduledFor: newPickupScheduledFor,
+        status: 'PENDING',
+        updatedAt: sql`now()`,
+      })
+      .where(
+        and(
+          eq(notifications.bookingId, bookingId),
+          eq(notifications.template, 'PICKUP_REMINDER_CUSTOMER'),
+          inArray(notifications.status, ['PENDING', 'CANCELLED']),
+        ),
+      );
+  }
+
+  if (newEndAt) {
+    const newReturnScheduledFor = new Date(
+      Math.max(now.getTime(), newEndAt.getTime() - 2 * 60 * 60 * 1000),
+    );
+    await db
+      .update(notifications)
+      .set({
+        scheduledFor: newReturnScheduledFor,
+        status: 'PENDING',
+        updatedAt: sql`now()`,
+      })
+      .where(
+        and(
+          eq(notifications.bookingId, bookingId),
+          eq(notifications.template, 'RETURN_REMINDER_CUSTOMER'),
+          inArray(notifications.status, ['PENDING', 'CANCELLED']),
+        ),
+      );
+  }
+}

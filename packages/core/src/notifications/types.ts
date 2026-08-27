@@ -1,5 +1,4 @@
 import type { DatabaseClient } from '@uttily/database';
-import type { TransactionalEmailSender } from '../transactional-documents/ports';
 
 export type NotificationChannel = 'EMAIL';
 
@@ -15,9 +14,22 @@ export type NotificationTemplate =
 
 export type NotificationStatus = 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'CANCELLED';
 
+export type NotificationErrorCategory = 'TRANSIENT' | 'DETERMINISTIC' | 'UNCERTAIN';
+
+export class NotificationSendError extends Error {
+  readonly category: NotificationErrorCategory;
+  readonly code: string;
+
+  constructor(category: NotificationErrorCategory, code: string, message: string) {
+    super(message);
+    this.name = 'NotificationSendError';
+    this.category = category;
+    this.code = code;
+  }
+}
+
 export interface NotificationDependencies {
   readonly db: DatabaseClient;
-  readonly emailSender: TransactionalEmailSender;
 }
 
 export interface RenderedEmail {
@@ -29,11 +41,13 @@ export interface RenderedEmail {
 export interface ProcessNotificationOptions {
   readonly batchLimit?: number;
   readonly now?: Date;
+  readonly leaseDurationSeconds?: number;
 }
 
 export interface ProcessNotificationBatchResult {
   readonly claimedCount: number;
   readonly sentCount: number;
   readonly failedCount: number;
+  readonly retriedCount: number;
   readonly cancelledCount: number;
 }

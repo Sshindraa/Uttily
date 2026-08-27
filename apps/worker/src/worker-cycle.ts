@@ -19,8 +19,18 @@
  */
 
 import type { DatabaseClient } from '@uttily/database';
-import type { DocumentRenderer, ObjectStorage, TransactionalEmailSender } from '@uttily/core';
-import { executeDocumentPipeline, executeTransactionalEmailPipeline } from '@uttily/core';
+import type {
+  DocumentRenderer,
+  ObjectStorage,
+  TransactionalEmailSender,
+  NotificationEmailSender,
+  ProcessNotificationBatchResult,
+} from '@uttily/core';
+import {
+  executeDocumentPipeline,
+  executeTransactionalEmailPipeline,
+  processDueNotifications,
+} from '@uttily/core';
 import type { DocumentPipelineResult, TransactionalEmailPipelineResult } from '@uttily/core';
 import { validateOutboxBatchLimit } from '@uttily/core';
 
@@ -66,6 +76,16 @@ export type EmailFinalizerFn = (
 ) => Promise<EmailDeliveryFinalizerResult>;
 
 /**
+ * Fonction pipeline de notifications, injectée pour la testabilité.
+ * Par défaut, pointe vers `processDueNotifications` depuis `@uttily/core`.
+ */
+export type NotificationPipelineFn = (
+  db: DatabaseClient,
+  sender: NotificationEmailSender,
+  batchLimit?: number,
+) => Promise<ProcessNotificationBatchResult>;
+
+/**
  * Dépendances injectées du worker. Toutes les dépendances sont explicites
  * pour permettre l'injection en tests (stubs typés) et le harness local.
  */
@@ -74,6 +94,7 @@ export interface WorkerDependencies {
   readonly renderer: DocumentRenderer;
   readonly storage: ObjectStorage;
   readonly sender: TransactionalEmailSender;
+  readonly notificationSender?: NotificationEmailSender;
   readonly logger: WorkerLogger;
   readonly metrics: WorkerMetricsCollector;
   /** Fonction pipeline de documents (défaut : executeDocumentPipeline). */
@@ -82,6 +103,8 @@ export interface WorkerDependencies {
   readonly executeTransactionalEmailPipeline: EmailPipelineFn;
   /** Fonction finaliseur DB-only des livraisons email (défaut : finalizeEmailDeliveries). */
   readonly executeEmailFinalizer?: EmailFinalizerFn;
+  /** Fonction pipeline de notifications transactionnelles (défaut : processDueNotifications). */
+  readonly executeNotificationsPipeline?: NotificationPipelineFn;
 }
 
 /**
@@ -93,12 +116,13 @@ export interface WorkerCycleOptions {
 }
 
 /**
- * Résultat agrégé d'un cycle, séparant documents, finalizer et emails.
+ * Résultat agrégé d'un cycle, séparant documents, finalizer, emails et notifications.
  */
 export interface WorkerCycleResult {
   readonly documents: DocumentPipelineResult | PipelineGlobalFailure;
   readonly finalizer?: EmailDeliveryFinalizerResult | PipelineGlobalFailure;
   readonly emails: TransactionalEmailPipelineResult | PipelineGlobalFailure;
+  readonly notifications?: ProcessNotificationBatchResult | PipelineGlobalFailure | undefined;
 }
 
 /**
@@ -118,7 +142,9 @@ export function isPipelineGlobalFailure(
     | DocumentPipelineResult
     | TransactionalEmailPipelineResult
     | EmailDeliveryFinalizerResult
-    | PipelineGlobalFailure,
+    | ProcessNotificationBatchResult
+    | PipelineGlobalFailure
+    | undefined,
 ): result is PipelineGlobalFailure {
   return (
     typeof result === 'object' &&
@@ -129,32 +155,24 @@ export function isPipelineGlobalFailure(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Cycle principal — unité testable.
+// Exécution d'un cycle
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Exécute un cycle complet du worker de documents transactionnels :
- * 1. Logger cycle_started.
- * 2. Exécuter executeDocumentPipeline (pipeline documents).
- * 3. Logger document_pipeline_completed avec compteurs post-commit.
- * 4. Émettre métriques documents.
- * 5. Exécuter executeEmailFinalizer (finalizer DB-only des livraisons email).
- * 6. Logger finalizer_completed / finalizer_failed.
- * 7. Exécuter executeTransactionalEmailPipeline (pipeline emails).
- * 8. Logger email_pipeline_completed avec compteurs post-commit.
- * 9. Émettre métriques emails.
- * 10. Retourner un résultat agrégé fermé.
- * 11. Logger cycle_completed.
+ * Exécute un cycle complet du worker : pipeline documentaire PUIS finalizer
+ * PUIS pipeline email.
  *
- * Isolation des erreurs :
- * - Une exception globale du pipeline documents est normalisée (UNKNOWN_ERROR),
- *   journalisée via pipeline_failed (pipeline='documents'), et NE doit PAS
- *   empêcher le traitement d'événements déjà prêts pour l'email.
- * - Une exception globale du pipeline email est normalisée, journalisée via
- *   pipeline_failed (pipeline='emails'), et NE doit pas falsifier le résultat
- *   documentaire.
- * - Aucune exception brute ou message fournisseur n'est propagé dans
- *   logs/métriques. Le logger ne reçoit que des failureCode normalisés.
+ * Principes de conception (G5F) :
+ * 1. Isolation : si le pipeline documents lève une exception globale, le
+ *    cycle continue et exécute le pipeline email. Les exceptions brutes
+ *    sont attrapées et normalisées en PipelineGlobalFailure avec failureCode
+ *    'UNKNOWN_ERROR'. Aucune exception ne s'échappe de cette fonction.
+ * 2. Observabilité : logs structurés sans PII, métriques émises aux moments
+ *    clés (après commit DB uniquement, pas sur les chemins de rollback).
+ * 3. Validation de configuration : batchLimit est validé via
+ *    validateOutboxBatchLimit avant traitement.
+ * 4. Pas de dépendance directe aux fournisseurs : tout passe par les interfaces
+ *    injectées (DocumentRenderer, ObjectStorage, TransactionalEmailSender).
  */
 export async function runTransactionalDocumentsWorkerCycle(
   deps: WorkerDependencies,
@@ -167,9 +185,6 @@ export async function runTransactionalDocumentsWorkerCycle(
 
   // Valider batchLimit avant tout traitement.
   const batchLimit = validateOutboxBatchLimit(options.batchLimit);
-
-  // Défaut finaliseur DB-only si non injecté.
-  const executeEmailFinalizer = deps.executeEmailFinalizer ?? finalizeEmailDeliveries;
 
   // ── Pipeline documents ──────────────────────────────────────────────────
   const docStart = Date.now();
@@ -233,6 +248,7 @@ export async function runTransactionalDocumentsWorkerCycle(
   // épuisé en REQUIRES_MANUAL_REVIEW. Une erreur globale du finalizer ne
   // bloque pas l'email pipeline : les emails déjà prêts doivent être traités.
   let finalizer: EmailDeliveryFinalizerResult | PipelineGlobalFailure;
+  const executeEmailFinalizer = deps.executeEmailFinalizer ?? finalizeEmailDeliveries;
   try {
     const finalizerResult = await executeEmailFinalizer(deps.db, batchLimit);
 
@@ -318,12 +334,28 @@ export async function runTransactionalDocumentsWorkerCycle(
     emails = { kind: 'GLOBAL_FAILURE', failureCode };
   }
 
+  // ── Pipeline notifications transactionnelles (Chantier 13.1) ───────────
+  let notifications: ProcessNotificationBatchResult | PipelineGlobalFailure | undefined;
+  if (deps.notificationSender && deps.executeNotificationsPipeline) {
+    try {
+      notifications = await deps.executeNotificationsPipeline(
+        deps.db,
+        deps.notificationSender,
+        batchLimit,
+      );
+    } catch {
+      const failureCode: WorkerFailureCode = 'UNKNOWN_ERROR';
+      notifications = { kind: 'GLOBAL_FAILURE', failureCode };
+    }
+  }
+
   // ── Cycle completed ─────────────────────────────────────────────────────
   const cycleDuration = Date.now() - cycleStart;
   const cycleOutcome =
     isPipelineGlobalFailure(documents) ||
     isPipelineGlobalFailure(emails) ||
-    isPipelineGlobalFailure(finalizer)
+    isPipelineGlobalFailure(finalizer) ||
+    (notifications !== undefined && isPipelineGlobalFailure(notifications))
       ? ('failed' as const)
       : ('success' as const);
   logger.cycleCompleted({
@@ -332,7 +364,7 @@ export async function runTransactionalDocumentsWorkerCycle(
   });
   metrics.incWorkerCyclesTotal(cycleOutcome);
 
-  return { documents, finalizer, emails };
+  return { documents, finalizer, emails, notifications };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -358,6 +390,13 @@ export async function runWorkerCycle(
       executeDocumentPipeline,
       executeTransactionalEmailPipeline,
       executeEmailFinalizer: deps.executeEmailFinalizer ?? finalizeEmailDeliveries,
+      executeNotificationsPipeline:
+        deps.executeNotificationsPipeline ??
+        ((db, sender, limit) =>
+          processDueNotifications(
+            { db, emailSender: sender },
+            limit !== undefined ? { batchLimit: limit } : undefined,
+          )),
     },
     options,
   );

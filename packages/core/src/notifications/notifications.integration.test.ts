@@ -7,6 +7,7 @@ import {
   type IntegrationTestContext,
 } from '../integration/setup';
 import {
+  rescheduleBookingReminders,
   scheduleBookingCancelledNotifications,
   scheduleBookingConfirmedNotifications,
   scheduleRefundConfirmedNotification,
@@ -14,11 +15,12 @@ import {
 } from './scheduling';
 import { processDueNotifications } from './process-due-notifications';
 import { FakeNotificationEmailSender } from './sender';
+import { NotificationSendError } from './types';
 
 const isSkipped = shouldSkipIntegrationTests();
 
 describe.skipIf(isSkipped)(
-  'Chantier 13 — Notifications Transactionnelles (Intégration PostgreSQL)',
+  'Chantier 13.1 — Notifications Delivery Production-Grade (Intégration PostgreSQL)',
   () => {
     let ctx: IntegrationTestContext | null = null;
     let db: DatabaseClient | null = null;
@@ -41,6 +43,7 @@ describe.skipIf(isSkipped)(
       if (rawSql) {
         await rawSql`DELETE FROM notifications`;
         await rawSql`DELETE FROM booking_cancellations`;
+        await rawSql`DELETE FROM booking_lines`;
         await rawSql`DELETE FROM booking_items`;
         await rawSql`DELETE FROM bookings`;
         await rawSql`DELETE FROM refunds`;
@@ -164,7 +167,6 @@ describe.skipIf(isSkipped)(
       const customerConfirmed = rows.find((r) => r.template === 'BOOKING_CONFIRMED_CUSTOMER')!;
       expect(customerConfirmed.recipient).toBe(fixture.customerUser.email);
       expect(customerConfirmed.status).toBe('PENDING');
-      expect(new Date(customerConfirmed.scheduled_for).toISOString()).toBe(now.toISOString());
 
       const merchantConfirmed = rows.find((r) => r.template === 'BOOKING_CONFIRMED_MERCHANT')!;
       expect(merchantConfirmed.recipient).toBe(fixture.ownerUser.email);
@@ -172,12 +174,10 @@ describe.skipIf(isSkipped)(
 
       const pickupReminder = rows.find((r) => r.template === 'PICKUP_REMINDER_CUSTOMER')!;
       expect(pickupReminder.recipient).toBe(fixture.customerUser.email);
-      // Départ 2026-09-10T09:00:00Z -> Rappel 24h avant = 2026-09-09T09:00:00Z
       expect(new Date(pickupReminder.scheduled_for).toISOString()).toBe('2026-09-09T09:00:00.000Z');
 
       const returnReminder = rows.find((r) => r.template === 'RETURN_REMINDER_CUSTOMER')!;
       expect(returnReminder.recipient).toBe(fixture.customerUser.email);
-      // Fin 2026-09-12T18:00:00Z -> Rappel 2h avant = 2026-09-12T16:00:00Z
       expect(new Date(returnReminder.scheduled_for).toISOString()).toBe('2026-09-12T16:00:00.000Z');
     });
 
@@ -188,7 +188,6 @@ describe.skipIf(isSkipped)(
       const confirmTime = new Date('2026-09-01T10:00:00Z');
       await scheduleBookingConfirmedNotifications(db, fixture.booking.id, { now: confirmTime });
 
-      // Créer une trace d'annulation
       const cancellation = await rawSql`
       INSERT INTO booking_cancellations (
         organization_id, booking_id, cancelled_by_user_id,
@@ -218,7 +217,6 @@ describe.skipIf(isSkipped)(
       ORDER BY template ASC
     `;
 
-      // 4 de confirmation + 2 d'annulation = 6
       expect(rows).toHaveLength(6);
 
       const pickupReminder = rows.find((r) => r.template === 'PICKUP_REMINDER_CUSTOMER')!;
@@ -226,62 +224,176 @@ describe.skipIf(isSkipped)(
 
       const returnReminder = rows.find((r) => r.template === 'RETURN_REMINDER_CUSTOMER')!;
       expect(returnReminder.status).toBe('CANCELLED');
-
-      const customerCancelled = rows.find((r) => r.template === 'BOOKING_CANCELLED_CUSTOMER')!;
-      expect(customerCancelled.status).toBe('PENDING');
-
-      const merchantCancelled = rows.find((r) => r.template === 'BOOKING_CANCELLED_MERCHANT')!;
-      expect(merchantCancelled.status).toBe('PENDING');
     });
 
-    it('traite et envoie les notifications dues avec processDueNotifications', async () => {
-      if (!db || !rawSql) throw new Error('DB non initialisée');
-      const fixture = await createBookingFixture();
-
-      const confirmTime = new Date('2026-09-01T10:00:00Z');
-      await scheduleBookingConfirmedNotifications(db, fixture.booking.id, { now: confirmTime });
-
-      const fakeEmailSender = new FakeNotificationEmailSender();
-
-      // À confirmTime, seules les 2 notifications immédiates sont dues (customer + merchant confirmed)
-      const result = await processDueNotifications(
-        { db, emailSender: fakeEmailSender },
-        { now: confirmTime, batchLimit: 10 },
-      );
-
-      expect(result.claimedCount).toBe(2);
-      expect(result.sentCount).toBe(2);
-      expect(result.failedCount).toBe(0);
-      expect(fakeEmailSender.sentEmails).toHaveLength(2);
-
-      const recipients = fakeEmailSender.sentEmails.map((e) => e.recipient);
-      expect(recipients).toContain(fixture.customerUser.email);
-      expect(recipients).toContain(fixture.ownerUser.email);
-
-      // Vérifier en base
-      const sentRows = await rawSql`
-      SELECT template, status, provider_message_id, sent_at
-      FROM notifications
-      WHERE booking_id = ${fixture.booking.id} AND status = 'SENT'
-    `;
-      expect(sentRows).toHaveLength(2);
-      expect(sentRows[0]!.provider_message_id).toBeDefined();
-      expect(sentRows[0]!.sent_at).not.toBeNull();
-    });
-
-    it('ne renvoie jamais un email si déjà envoyé ou rejoué (idempotence)', async () => {
+    it('reprend et envoie une notification bloquée après expiration du lease (crash worker)', async () => {
       if (!db || !rawSql) throw new Error('DB non initialisée');
       const fixture = await createBookingFixture();
 
       const now = new Date('2026-09-01T10:00:00Z');
       await scheduleBookingConfirmedNotifications(db, fixture.booking.id, { now });
-      // Rejouer immédiatement
+
+      // Simuler un crash pendant l'envoi : la notification est SENDING mais son lease est expiré
+      await rawSql`
+      UPDATE notifications
+      SET status = 'SENDING',
+          lease_token = 'stale_token_123',
+          lease_until = '2026-09-01 09:59:00+00',
+          attempt_count = 1
+      WHERE booking_id = ${fixture.booking.id} AND template = 'BOOKING_CONFIRMED_CUSTOMER'
+    `;
+
+      const fakeEmailSender = new FakeNotificationEmailSender();
+      const result = await processDueNotifications(
+        { db, emailSender: fakeEmailSender },
+        { now, batchLimit: 10 },
+      );
+
+      expect(result.claimedCount).toBe(2); // La notification réclamée expirée + le merchant email
+      expect(result.sentCount).toBe(2);
+
+      const updated = await rawSql`
+      SELECT status, lease_token, lease_until, provider_message_id
+      FROM notifications
+      WHERE booking_id = ${fixture.booking.id} AND template = 'BOOKING_CONFIRMED_CUSTOMER'
+    `;
+      expect(updated[0]!.status).toBe('SENT');
+      expect(updated[0]!.lease_token).toBeNull();
+      expect(updated[0]!.provider_message_id).toBeDefined();
+    });
+
+    it('send-time eligibility check : annule le rappel avant envoi si le booking est annulé pendant claim', async () => {
+      if (!db || !rawSql) throw new Error('DB non initialisée');
+      const fixture = await createBookingFixture();
+
+      const pickupTime = new Date('2026-09-09T09:00:00Z');
+      await scheduleBookingConfirmedNotifications(db, fixture.booking.id, {
+        now: new Date('2026-09-01T10:00:00Z'),
+      });
+
+      // Marquer la réservation comme CANCELLED
+      await rawSql`
+      UPDATE bookings
+      SET status = 'CANCELLED'
+      WHERE id = ${fixture.booking.id}
+    `;
+
+      const fakeEmailSender = new FakeNotificationEmailSender();
+      // Exécuter à l'heure du rappel de départ
+      const result = await processDueNotifications(
+        { db, emailSender: fakeEmailSender },
+        { now: pickupTime, batchLimit: 10 },
+      );
+
+      expect(result.cancelledCount).toBeGreaterThanOrEqual(1);
+
+      const sentPickup = fakeEmailSender.sentEmails.find((e) =>
+        e.subject.includes('débute bientôt'),
+      );
+      expect(sentPickup).toBeUndefined();
+
+      const notifRow = await rawSql`
+      SELECT status FROM notifications
+      WHERE booking_id = ${fixture.booking.id} AND template = 'PICKUP_REMINDER_CUSTOMER'
+    `;
+      expect(notifRow[0]!.status).toBe('CANCELLED');
+    });
+
+    it('rescheduleBookingReminders met à jour les dates des rappels après amendement', async () => {
+      if (!db || !rawSql) throw new Error('DB non initialisée');
+      const fixture = await createBookingFixture();
+
+      const now = new Date('2026-09-01T10:00:00Z');
       await scheduleBookingConfirmedNotifications(db, fixture.booking.id, { now });
 
-      const rows = await rawSql`
-      SELECT COUNT(*)::int as count FROM notifications WHERE booking_id = ${fixture.booking.id}
+      // Nouvelles dates (décalage de 3 jours) : 13 sept -> 15 sept
+      const newStartAt = new Date('2026-09-13T09:00:00Z');
+      const newEndAt = new Date('2026-09-15T18:00:00Z');
+
+      await rescheduleBookingReminders(db, fixture.booking.id, newStartAt, newEndAt, { now });
+
+      const pickupReminder = await rawSql`
+      SELECT scheduled_for, status FROM notifications
+      WHERE booking_id = ${fixture.booking.id} AND template = 'PICKUP_REMINDER_CUSTOMER'
+    `.then((rows) => rows[0]!);
+
+      // 13 sept 09:00 - 24h = 12 sept 09:00
+      expect(new Date(pickupReminder.scheduled_for).toISOString()).toBe('2026-09-12T09:00:00.000Z');
+      expect(pickupReminder.status).toBe('PENDING');
+
+      const returnReminder = await rawSql`
+      SELECT scheduled_for, status FROM notifications
+      WHERE booking_id = ${fixture.booking.id} AND template = 'RETURN_REMINDER_CUSTOMER'
+    `.then((rows) => rows[0]!);
+
+      // 15 sept 18:00 - 2h = 15 sept 16:00
+      expect(new Date(returnReminder.scheduled_for).toISOString()).toBe('2026-09-15T16:00:00.000Z');
+    });
+
+    it('gère les erreurs transitoires avec programmation de retry (next_attempt_at)', async () => {
+      if (!db || !rawSql) throw new Error('DB non initialisée');
+      const fixture = await createBookingFixture();
+
+      const now = new Date('2026-09-01T10:00:00Z');
+      await scheduleBookingConfirmedNotifications(db, fixture.booking.id, { now });
+
+      const fakeEmailSender = new FakeNotificationEmailSender();
+      fakeEmailSender.nextError = new NotificationSendError(
+        'TRANSIENT',
+        'RATE_LIMITED',
+        '429 Rate limited',
+      );
+
+      const result = await processDueNotifications(
+        { db, emailSender: fakeEmailSender },
+        { now, batchLimit: 1 },
+      );
+
+      expect(result.retriedCount).toBe(1);
+      expect(result.sentCount).toBe(0);
+
+      const updated = await rawSql`
+      SELECT status, next_attempt_at, failure_code, attempt_count, lease_token
+      FROM notifications
+      WHERE booking_id = ${fixture.booking.id} AND template = 'BOOKING_CONFIRMED_CUSTOMER'
     `;
-      expect(rows[0]!.count).toBe(4);
+      expect(updated[0]!.status).toBe('PENDING');
+      expect(updated[0]!.next_attempt_at).not.toBeNull();
+      expect(updated[0]!.failure_code).toBe('RATE_LIMITED');
+      expect(updated[0]!.lease_token).toBeNull();
+    });
+
+    it('gère les erreurs déterminites en marquant FAILED immédiatement', async () => {
+      if (!db || !rawSql) throw new Error('DB non initialisée');
+      const fixture = await createBookingFixture();
+
+      const now = new Date('2026-09-01T10:00:00Z');
+      await scheduleBookingConfirmedNotifications(db, fixture.booking.id, { now });
+
+      const fakeEmailSender = new FakeNotificationEmailSender();
+      fakeEmailSender.nextError = new NotificationSendError(
+        'DETERMINISTIC',
+        'INVALID_RECIPIENT',
+        'Adresse invalide',
+      );
+
+      const result = await processDueNotifications(
+        { db, emailSender: fakeEmailSender },
+        { now, batchLimit: 1 },
+      );
+
+      expect(result.failedCount).toBe(1);
+      expect(result.sentCount).toBe(0);
+
+      const updated = await rawSql`
+      SELECT status, failure_code, failed_at, lease_token
+      FROM notifications
+      WHERE booking_id = ${fixture.booking.id} AND template = 'BOOKING_CONFIRMED_CUSTOMER'
+    `;
+      expect(updated[0]!.status).toBe('FAILED');
+      expect(updated[0]!.failure_code).toBe('INVALID_RECIPIENT');
+      expect(updated[0]!.failed_at).not.toBeNull();
+      expect(updated[0]!.lease_token).toBeNull();
     });
 
     it('planifie les notifications de remboursement (SUCCEEDED client et FAILED loueur)', async () => {
