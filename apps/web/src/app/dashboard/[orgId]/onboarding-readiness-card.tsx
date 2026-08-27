@@ -33,7 +33,7 @@ export function OnboardingReadinessCard({
             <span style={{ color: '#10b981' }}>●</span> Boutique active
           </span>
           <span className={styles.healthBadge}>
-            <span style={{ color: '#10b981' }}>●</span> Paiements Stripe connectés
+            <span style={{ color: '#10b981' }}>●</span> Versements bancaires activés
           </span>
           <span className={styles.healthBadge}>
             <span style={{ color: '#10b981' }}>●</span> Tarifs & Flotte prêts
@@ -93,9 +93,9 @@ export function OnboardingReadinessCard({
         };
       case 'PAYMENTS':
         return {
-          title: '7. Paiements Stripe Connect',
-          ctaLabel: 'Activer les paiements',
-          href: `/dashboard/${orgId}/settings/payments`,
+          title: '7. Recevoir mes virements',
+          ctaLabel: 'Activer mes virements',
+          href: `/dashboard/${orgId}/finances`,
         };
     }
   };
@@ -128,13 +128,13 @@ export function OnboardingReadinessCard({
         />
       </div>
 
-      {/* Message clé si la configuration (1 à 6) est terminée mais que Stripe manque */}
+      {/* Message clé si la configuration (1 à 6) est terminée mais que les virements manquent */}
       {readiness.isConfigurationComplete && !readiness.isReadyForReservations && (
         <div className={styles.celebrationBanner}>
           <div className={styles.celebrationTitle}>🎉 Votre configuration est terminée !</div>
           <div className={styles.celebrationText}>
-            Votre offre est prête à être publiée. Connectez Stripe pour recevoir vos premières
-            réservations.
+            Votre offre est prête à être publiée. Activez vos versements pour recevoir l’argent de
+            vos premières réservations.
           </div>
         </div>
       )}

@@ -44,7 +44,7 @@ describe('OnboardingReadinessCard Component (G8B-3B3)', () => {
     );
 
     expect(html).toContain('Ajouter mes vélos →');
-    expect(html).toContain('Activer les paiements →');
+    expect(html).toContain('Activer mes virements →');
   });
 
   it('affiche le bandeau de célébration quand la configuration 6/7 est terminée', () => {
@@ -73,7 +73,7 @@ describe('OnboardingReadinessCard Component (G8B-3B3)', () => {
     );
 
     expect(html).toContain('🎉 Votre configuration est terminée !');
-    expect(html).toContain('Votre offre est prête à être publiée');
+    expect(html).toContain('Activez vos versements pour recevoir');
     expect(html).toContain('Dernière étape requise');
   });
 
@@ -96,6 +96,6 @@ describe('OnboardingReadinessCard Component (G8B-3B3)', () => {
 
     expect(html).toContain('Votre boutique est en ligne et opérationnelle');
     expect(html).toContain('Boutique active');
-    expect(html).toContain('Paiements Stripe connectés');
+    expect(html).toContain('Versements bancaires activés');
   });
 });

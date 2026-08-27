@@ -13,3 +13,4 @@ export {
 export { createConnectedAccount } from './create-connected-account';
 export { createOnboardingLink } from './create-onboarding-link';
 export { getConnectedAccountReadiness } from './get-connected-account-readiness';
+export * from './payout-status';

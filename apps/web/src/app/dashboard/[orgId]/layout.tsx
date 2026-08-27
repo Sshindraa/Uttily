@@ -63,8 +63,8 @@ export default async function OrganizationLayout({
             <Link href={`/dashboard/${orgId}/team`} className={styles.navLink}>
               👥 Équipe
             </Link>
-            <Link href={`/dashboard/${orgId}/settings/payments`} className={styles.navLink}>
-              💳 Paiements
+            <Link href={`/dashboard/${orgId}/finances`} className={styles.navLink}>
+              💰 Revenus
             </Link>
           </div>
         </nav>
