@@ -1,8 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import type { MerchantFinanceOverview, PayoutAccountStatus } from '@uttily/core';
+import {
+  ConnectComponentsProvider,
+  ConnectAccountOnboarding,
+  ConnectAccountManagement,
+} from '@stripe/react-connect-js';
+import { loadConnectAndInitialize, type StripeConnectInstance } from '@stripe/connect-js';
 import {
   createConnectedAccountAction,
   createAccountSessionAction,
@@ -34,31 +40,17 @@ export function FinancesHub({
   const [searchQuery, setSearchQuery] = useState('');
   const [showBankSettings, setShowBankSettings] = useState(!status.isReady);
 
-  // State pour l'onboarding bancaire embedded
+  // State pour l'onboarding Connect Embedded
   const [country, setCountry] = useState<string>('FR');
   const [isEmbeddedActive, setIsEmbeddedActive] = useState(false);
-  const [sessionClientSecret, setSessionClientSecret] = useState<string | null>(null);
+  const [stripeConnectInstance, setStripeConnectInstance] = useState<StripeConnectInstance | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Filtrage local interactif
-  const filteredActivity = overview.activity.filter((item) => {
-    if (filterType === 'PAYMENTS' && item.type !== 'PAYMENT') return false;
-    if (filterType === 'REFUNDS' && item.type !== 'REFUND') return false;
-
-    if (searchQuery.trim().length > 0) {
-      const q = searchQuery.toLowerCase().trim();
-      const matchRef = item.bookingReference.toLowerCase().includes(q);
-      const matchProd = item.productName?.toLowerCase().includes(q) ?? false;
-      const matchClient = item.customerEmail?.toLowerCase().includes(q) ?? false;
-      if (!matchRef && !matchProd && !matchClient) return false;
-    }
-
-    return true;
-  });
-
-  // Gestion de la session Connect Embedded
-  async function handleStartEmbeddedSession(): Promise<void> {
+  // Initialisation de Stripe Connect Embedded instance
+  const handleStartEmbeddedSession = useCallback(async (): Promise<void> => {
     setError(null);
     setIsLoading(true);
     try {
@@ -70,7 +62,26 @@ export function FinancesHub({
       }
 
       const session = await createAccountSessionAction(organizationId);
-      setSessionClientSecret(session.clientSecret);
+
+      const instance = loadConnectAndInitialize({
+        publishableKey: session.publishableKey,
+        fetchClientSecret: async () => {
+          const freshSession = await createAccountSessionAction(organizationId);
+          if (!freshSession.clientSecret) {
+            throw new Error('Impossible de générer le client secret Connect.');
+          }
+          return freshSession.clientSecret;
+        },
+        appearance: {
+          overlays: 'dialog',
+          variables: {
+            colorPrimary: '#0284c7',
+            fontFamily: 'inherit',
+          },
+        },
+      });
+
+      setStripeConnectInstance(instance);
       setIsEmbeddedActive(true);
     } catch (err) {
       setError(
@@ -79,8 +90,9 @@ export function FinancesHub({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [organizationId, status.readiness, country]);
 
+  // Fallback portail hébergé
   async function handleHostedFallback(): Promise<void> {
     setError(null);
     setIsLoading(true);
@@ -97,6 +109,26 @@ export function FinancesHub({
       setIsLoading(false);
     }
   }
+
+  function handleConnectExit(): void {
+    window.location.reload();
+  }
+
+  // Filtrage local interactif
+  const filteredActivity = overview.activity.filter((item) => {
+    if (filterType === 'PAYMENTS' && item.type !== 'PAYMENT') return false;
+    if (filterType === 'REFUNDS' && item.type !== 'REFUND') return false;
+
+    if (searchQuery.trim().length > 0) {
+      const q = searchQuery.toLowerCase().trim();
+      const matchRef = item.bookingReference.toLowerCase().includes(q);
+      const matchProd = item.productName?.toLowerCase().includes(q) ?? false;
+      const matchClient = item.customerEmail?.toLowerCase().includes(q) ?? false;
+      if (!matchRef && !matchProd && !matchClient) return false;
+    }
+
+    return true;
+  });
 
   function formatEur(minor: number): string {
     const absVal = Math.abs(minor) / 100;
@@ -344,32 +376,41 @@ export function FinancesHub({
                 </div>
 
                 <div className={styles.embeddedContentBox}>
-                  {sessionClientSecret ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      <p style={{ margin: 0, fontSize: '0.88rem', color: '#334155' }}>
-                        Session sécurisée active. Une fois vos coordonnées saisies ou mises à jour
-                        sur le portail sécurisé, cliquez sur Actualiser.
-                      </p>
-                      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          onClick={() => window.location.reload()}
-                          className={styles.btnPrimary}
-                        >
-                          🔄 Actualiser le statut
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleHostedFallback}
-                          className={styles.fallbackLinkBtn}
-                        >
-                          Ouvrir la page de configuration externe ↗
-                        </button>
-                      </div>
-                    </div>
+                  {stripeConnectInstance ? (
+                    <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
+                      {status.readiness === 'ENABLED' || status.isReady ? (
+                        <ConnectAccountManagement />
+                      ) : (
+                        <ConnectAccountOnboarding onExit={handleConnectExit} />
+                      )}
+                    </ConnectComponentsProvider>
                   ) : (
-                    <p>Chargement de la session…</p>
+                    <p>Chargement du composant sécurisé…</p>
                   )}
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginTop: '12px',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={handleHostedFallback}
+                    className={styles.fallbackLinkBtn}
+                  >
+                    Ouvrir sur le portail externe de secours ↗
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.location.reload()}
+                    className={styles.btnSecondary}
+                  >
+                    🔄 Rafraîchir le statut
+                  </button>
                 </div>
               </div>
             )}

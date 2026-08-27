@@ -26,6 +26,9 @@ describe('FinancesPage (Revenus & Versements V2 - Chantier 11.1 Hardening)', () 
 
   it('intègre l’onboarding financier embedded sans redirection externe obligatoire et sans formulaire local sensible', () => {
     expect(hubSource).toContain('createAccountSessionAction');
+    expect(hubSource).toContain('ConnectComponentsProvider');
+    expect(hubSource).toContain('ConnectAccountOnboarding');
+    expect(hubSource).toContain('ConnectAccountManagement');
     expect(hubSource).toContain('handleHostedFallback');
     expect(hubSource).toContain('export-csv');
     expect(hubSource).not.toContain('completeEmbeddedOnboardingSimulationAction');
