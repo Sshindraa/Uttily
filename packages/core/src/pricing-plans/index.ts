@@ -14,6 +14,7 @@ export { quoteFlexiblePricing } from './quote-flexible-pricing';
 export { computeQuote } from './quote-engine';
 export { loadPricingContext } from './load-pricing-context';
 export {
+  isDayRangeBoundariesCompatibleWithSchedule,
   isWithinOpeningHours,
   validateDayRangeBoundariesAgainstSchedule,
 } from './opening-hours';

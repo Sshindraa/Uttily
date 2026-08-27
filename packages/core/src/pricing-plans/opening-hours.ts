@@ -14,6 +14,52 @@ import { FlexiblePricingError } from './errors';
 import { civilDayNumber, getTimeInMinutes, minutesBetween, toLocalParts } from './time-utils';
 
 /**
+ * Vérifie si les bornes de retrait et de retour d'un plan DAILY (DAY_RANGE) sont
+ * compatibles avec le planning effectif de l'établissement.
+ * Retourne false si l'établissement est fermé ou si les heures tombent hors créneaux effectifs.
+ */
+export function isDayRangeBoundariesCompatibleWithSchedule(
+  boundaries: DayRangeBoundaries,
+  openingHours: OpeningHour[],
+  scheduleExceptions: LocationScheduleExceptionRecord[] = [],
+  locationId: string = '',
+): boolean {
+  if (openingHours.length === 0 && scheduleExceptions.length === 0) {
+    return true; // fail-open
+  }
+
+  // 1. Premier jour (retrait)
+  const firstSchedule = resolveEffectiveScheduleFromRules(
+    boundaries.firstDay.localDate,
+    openingHours,
+    scheduleExceptions,
+    locationId,
+  );
+  if (!firstSchedule.isOpen) return false;
+  if (firstSchedule.slots.length > 0) {
+    if (!isTimeWithinEffectiveSchedule(boundaries.firstDay.startTime, firstSchedule)) {
+      return false;
+    }
+  }
+
+  // 2. Dernier jour inclus (retour)
+  const lastSchedule = resolveEffectiveScheduleFromRules(
+    boundaries.lastDay.localDate,
+    openingHours,
+    scheduleExceptions,
+    locationId,
+  );
+  if (!lastSchedule.isOpen) return false;
+  if (lastSchedule.slots.length > 0) {
+    if (!isTimeWithinEffectiveSchedule(boundaries.lastDay.endTime, lastSchedule)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
  * Valide les bornes effectives de retrait et de retour d'un plan DAILY (DAY_RANGE)
  * contre le planning effectif de l'établissement (horaires hebdomadaires + exceptions de calendrier).
  *

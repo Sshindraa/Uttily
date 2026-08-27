@@ -90,6 +90,7 @@ export {
   computeQuote,
   loadPricingContext,
   isWithinOpeningHours,
+  isDayRangeBoundariesCompatibleWithSchedule,
   validateDayRangeBoundariesAgainstSchedule,
   FlexiblePricingError,
   type QuoteFlexiblePricingInput,

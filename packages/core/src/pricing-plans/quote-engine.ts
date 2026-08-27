@@ -19,7 +19,11 @@ import type {
 } from './types';
 import { FlexiblePricingError } from './errors';
 import { safeAdd } from './safe-arithmetic';
-import { isWithinOpeningHours, validateDayRangeBoundariesAgainstSchedule } from './opening-hours';
+import {
+  isDayRangeBoundariesCompatibleWithSchedule,
+  isWithinOpeningHours,
+  validateDayRangeBoundariesAgainstSchedule,
+} from './opening-hours';
 import { generateCandidates } from './candidate-generator';
 import { calculateAmount } from './amount-calculator';
 import { validateGrid } from './grid-validator';
@@ -94,6 +98,37 @@ export function computeQuote(context: PricingContext): QuoteFlexiblePricingResul
         `Aucun plan éligible pour la variante ${line.variantId}`,
       );
     }
+
+    // Filtrer les candidats incompatibles avec le planning effectif (Chantier 15.2.1 Requirement 10).
+    const compatibleCandidates = candidates.filter((c) => {
+      if (!c.dayRangeBoundaries) return true;
+      return isDayRangeBoundariesCompatibleWithSchedule(
+        c.dayRangeBoundaries,
+        context.openingHours,
+        context.scheduleExceptions,
+        context.locationId,
+      );
+    });
+
+    if (compatibleCandidates.length === 0) {
+      // Aucun candidat compatible -> valider le premier candidat pour lever l'erreur exacte
+      // (LOCATION_CLOSED ou OUTSIDE_OPENING_HOURS).
+      const firstDaily = candidates.find((c) => c.dayRangeBoundaries !== null);
+      if (firstDaily?.dayRangeBoundaries) {
+        validateDayRangeBoundariesAgainstSchedule(
+          firstDaily.dayRangeBoundaries,
+          context.openingHours,
+          context.scheduleExceptions,
+          context.locationId,
+        );
+      }
+      throw new FlexiblePricingError(
+        'NO_ELIGIBLE_PLAN',
+        `Aucun plan éligible pour la variante ${line.variantId}`,
+      );
+    }
+
+    candidates = compatibleCandidates;
 
     // 4d. Calculer les montants.
     candidates = candidates.map((c) => calculateAmount(c, context.tiers));

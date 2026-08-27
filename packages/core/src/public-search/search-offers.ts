@@ -104,6 +104,7 @@ import { generateCandidates } from '../pricing-plans/candidate-generator';
 import { calculateAmount } from '../pricing-plans/amount-calculator';
 import { validateGrid } from '../pricing-plans/grid-validator';
 import {
+  isDayRangeBoundariesCompatibleWithSchedule,
   isWithinOpeningHours,
   validateDayRangeBoundariesAgainstSchedule,
 } from '../pricing-plans/opening-hours';
@@ -1645,7 +1646,7 @@ async function loadPricingContextsBatch(
  *
  * @returns le résumé public du prix, ou null si aucun plan éligible.
  */
-function computePriceForCandidate(
+export function computePriceForCandidate(
   context: PricingContext,
   variantId: string,
 ): { price: PublicPriceSummary; best: Candidate } | null {
@@ -1659,6 +1660,32 @@ function computePriceForCandidate(
 
   let candidates = generateCandidates(variantId, 1, context);
   if (candidates.length === 0) return null;
+
+  // Filtrer les candidats incompatibles avec le planning effectif (Chantier 15.2.1 Requirement 10).
+  const compatibleCandidates = candidates.filter((c) => {
+    if (!c.dayRangeBoundaries) return true;
+    return isDayRangeBoundariesCompatibleWithSchedule(
+      c.dayRangeBoundaries,
+      context.openingHours,
+      context.scheduleExceptions,
+      context.locationId,
+    );
+  });
+
+  if (compatibleCandidates.length === 0) {
+    const firstDaily = candidates.find((c) => c.dayRangeBoundaries !== null);
+    if (firstDaily?.dayRangeBoundaries) {
+      validateDayRangeBoundariesAgainstSchedule(
+        firstDaily.dayRangeBoundaries,
+        context.openingHours,
+        context.scheduleExceptions,
+        context.locationId,
+      );
+    }
+    return null;
+  }
+
+  candidates = compatibleCandidates;
 
   candidates = candidates.map((c) => calculateAmount(c, context.tiers));
   validateGrid(candidates);
