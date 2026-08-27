@@ -11,12 +11,13 @@ Avant de créer l'application, lire dans cet ordre :
 1. [Périmètre MVP](docs/product/mvp-scope.md)
 2. [Business plan et stratégie](docs/product/business-plan.md)
 3. [Vision long terme](docs/product/long-term-vision.md)
-4. [Contexte pour agents de développement](docs/implementation/agent-context.md)
-5. [Backlog de démarrage](docs/implementation/backlog.md)
-6. [Vue d'ensemble technique](docs/architecture/overview.md)
-7. [Réservations et disponibilité](docs/architecture/booking-and-availability.md)
-8. [Modèle de données](docs/architecture/data-model.md)
-9. [Décisions d'architecture](docs/decisions/)
+4. [Expérience loueur & fiche vélo unifiée](docs/product/loueur-experience-and-unified-bike.md)
+5. [Contexte pour agents de développement](docs/implementation/agent-context.md)
+6. [Backlog de démarrage](docs/implementation/backlog.md)
+7. [Vue d'ensemble technique](docs/architecture/overview.md)
+8. [Réservations et disponibilité](docs/architecture/booking-and-availability.md)
+9. [Modèle de données](docs/architecture/data-model.md)
+10. [Décisions d'architecture](docs/decisions/)
 
 ## Principes non négociables
 
