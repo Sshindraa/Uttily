@@ -78,7 +78,7 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
   },
   SECONDARY_VIEW: {
     type: 'SECONDARY_VIEW',
-    title: 'Vue Libre Valorisante',
+    title: 'Détail ou angle libre',
     shortDescription: 'Détail utile (cockpit, panier, écran, selle) ou vue 3/4 arrière',
     required: true,
     minMediaCount: 1,

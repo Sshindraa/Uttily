@@ -63,6 +63,75 @@ function SlotIcon({ slotType }: { slotType: PhotoSlotType }): ReactElement | nul
   }
 }
 
+function SlotSilhouette({ slotType }: { slotType: PhotoSlotType }): ReactElement {
+  switch (slotType) {
+    case 'HERO_PROFILE':
+      return (
+        <svg
+          viewBox="0 0 160 80"
+          width="100%"
+          height="100%"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="35" cy="55" r="18" />
+          <circle cx="125" cy="55" r="18" />
+          <path d="M35 55 L70 55 L60 30 L35 55" />
+          <path d="M70 55 L100 28 L60 30" />
+          <path d="M100 28 L125 55" />
+          <path d="M100 28 L104 18 Q106 14 114 16" strokeWidth="3" />
+          <path d="M60 30 L57 20 M50 20 H64" strokeWidth="3" />
+        </svg>
+      );
+    case 'THREE_QUARTER_FRONT':
+      return (
+        <svg
+          viewBox="0 0 160 80"
+          width="100%"
+          height="100%"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <ellipse cx="118" cy="54" rx="14" ry="20" transform="rotate(-8 118 54)" strokeWidth="3" />
+          <ellipse cx="42" cy="46" rx="10" ry="14" transform="rotate(-6 42 46)" />
+          <path d="M42 46 L75 52 L66 32 L42 46" />
+          <path d="M75 52 L106 28 L66 32" />
+          <path d="M106 28 L118 54" strokeWidth="3" />
+          <path d="M106 28 L109 18 M98 17 Q109 19 122 17" strokeWidth="3.5" />
+          <path d="M66 32 L64 24 M58 24 H70" />
+        </svg>
+      );
+    case 'SECONDARY_VIEW':
+    default:
+      return (
+        <svg
+          viewBox="0 0 160 80"
+          width="100%"
+          height="100%"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="80" cy="40" r="20" strokeDasharray="6 4" strokeWidth="2.5" />
+          <circle cx="80" cy="40" r="3" fill="currentColor" />
+          <path d="M58 24 H50 V32" strokeWidth="3" />
+          <path d="M102 24 H110 V32" strokeWidth="3" />
+          <path d="M58 56 H50 V48" strokeWidth="3" />
+          <path d="M102 56 H110 V48" strokeWidth="3" />
+          <circle cx="80" cy="40" r="10" strokeWidth="2" opacity="0.6" />
+        </svg>
+      );
+  }
+}
+
 export default function PhotoCoachDemoPage(): ReactElement {
   const [selectedSlot, setSelectedSlot] = useState<PhotoSlotType>('HERO_PROFILE');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -103,6 +172,12 @@ export default function PhotoCoachDemoPage(): ReactElement {
 
   const availableSlots: PhotoSlotType[] = ['HERO_PROFILE', 'THREE_QUARTER_FRONT', 'SECONDARY_VIEW'];
 
+  const getCtaLabel = (slot: PhotoSlotType): string => {
+    if (slot === 'HERO_PROFILE') return '📸 Commencer par la vue profil';
+    if (slot === 'THREE_QUARTER_FRONT') return '📸 Continuer avec la vue 3/4 avant';
+    return '📸 Compléter avec le détail ou angle libre';
+  };
+
   return (
     <main className={styles.container}>
       <div className={styles.wrapper}>
@@ -110,10 +185,7 @@ export default function PhotoCoachDemoPage(): ReactElement {
           <div className={styles.tagline}>Standard de confiance visuelle • Prise de vue guidée</div>
           <h1 className={styles.title}>Photo Coach Vélo Uttily</h1>
           <p className={styles.description}>
-            Expérimentez le tunnel de prise de vue guidée en 3 images e-commerce :
-            <strong> Profil Hero</strong> (accroche), <strong>Vue 3/4 Avant</strong> (volume &
-            dynamisme) et <strong>Vue Libre Valorisante</strong> (détail utile au choix : cockpit,
-            panier, écran, selle, ou angle 3/4 arrière).
+            3 photos suffisent pour présenter votre vélo sous son meilleur angle.
           </p>
         </header>
 
@@ -121,8 +193,8 @@ export default function PhotoCoachDemoPage(): ReactElement {
           <PhotoProgress
             slots={{
               hasHeroProfile,
-              hasThreeQuarter: hasThreeQuarter,
-              hasSignatureDetail: hasSecondaryView,
+              hasThreeQuarterFront: hasThreeQuarter,
+              hasSecondaryView,
             }}
             totalRequiredSlots={3}
           />
@@ -152,6 +224,9 @@ export default function PhotoCoachDemoPage(): ReactElement {
                     className={`${styles.slotButton} ${isSelected ? styles.slotButtonActive : ''}`}
                     onClick={() => setSelectedSlot(slotKey)}
                   >
+                    <div className={styles.slotIllustrationBox}>
+                      <SlotSilhouette slotType={slotKey} />
+                    </div>
                     <div
                       style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}
                     >
@@ -174,7 +249,7 @@ export default function PhotoCoachDemoPage(): ReactElement {
               className={styles.openCoachBtn}
               onClick={() => handleOpenCoach(selectedSlot)}
             >
-              📸 Commencer la prise de vue guidée ({BIKE_PHOTO_SLOTS[selectedSlot].title})
+              {getCtaLabel(selectedSlot)}
             </button>
           </div>
         </section>
