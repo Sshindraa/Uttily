@@ -742,4 +742,152 @@ describe('computeQuote — moteur pur', () => {
     expect(result.lines[0]!.lineTotalAmountMinor).toBe(4000); // 500 * 4 * 2
     expect(result.totalAmountMinor).toBe(4000);
   });
+
+  describe('DAY_RANGE et exceptions de calendrier (Chantier 15.2.1)', () => {
+    const dailyPlan = makePlan({
+      id: 'plan-daily-ex',
+      planType: 'DAILY',
+      priceAmountMinor: 5000,
+      minDurationMinutes: null,
+      maxDurationMinutes: null,
+      billingIncrementMinutes: null,
+      includedDurationMinutes: null,
+    });
+    const dailyWindow: ResolvedWindow = {
+      pricingPlanId: 'plan-daily-ex',
+      weekdayMask: 127,
+      startTime: '09:00:00',
+      endTime: '18:00:00',
+    };
+
+    it('rejette avec OUTSIDE_OPENING_HOURS si l’heure de retrait est incompatible avec l’OPEN_INTERVAL du premier jour', () => {
+      const ctx = makeContext({
+        intent: {
+          kind: 'DAY_RANGE',
+          startDate: '2026-08-24', // Lundi
+          endDateExclusive: '2026-08-28', // Vendredi (fin exclusive)
+        },
+        plans: [dailyPlan],
+        windows: [dailyWindow],
+        openingHours: WEEKDAY_OPENING_HOURS,
+        scheduleExceptions: [
+          {
+            id: 'ex-start-incompat',
+            organizationId: ORG_ID,
+            locationId: LOCATION_ID,
+            localDate: '2026-08-24',
+            kind: 'OPEN_INTERVAL',
+            openTime: '12:00:00',
+            closeTime: '15:00:00',
+            reason: 'Ouverture partielle',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+        translations: [frTranslation('plan-daily-ex', 'Journée')],
+      });
+
+      expect(() => computeQuote(ctx)).toThrow(
+        expect.objectContaining({ code: 'OUTSIDE_OPENING_HOURS' }),
+      );
+    });
+
+    it('rejette avec OUTSIDE_OPENING_HOURS si l’heure de retour est incompatible avec l’OPEN_INTERVAL du dernier jour', () => {
+      const ctx = makeContext({
+        intent: {
+          kind: 'DAY_RANGE',
+          startDate: '2026-08-24', // Lundi
+          endDateExclusive: '2026-08-28', // Vendredi (dernier jour inclus: 27/08 Jeudi)
+        },
+        plans: [dailyPlan],
+        windows: [dailyWindow],
+        openingHours: WEEKDAY_OPENING_HOURS,
+        scheduleExceptions: [
+          {
+            id: 'ex-end-incompat',
+            organizationId: ORG_ID,
+            locationId: LOCATION_ID,
+            localDate: '2026-08-27', // Jeudi
+            kind: 'OPEN_INTERVAL',
+            openTime: '09:00:00',
+            closeTime: '16:00:00', // Fenêtre finit à 18:00 -> hors créneau
+            reason: 'Fermeture tôt',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+        translations: [frTranslation('plan-daily-ex', 'Journée')],
+      });
+
+      expect(() => computeQuote(ctx)).toThrow(
+        expect.objectContaining({ code: 'OUTSIDE_OPENING_HOURS' }),
+      );
+    });
+
+    it('accepte si l’OPEN_INTERVAL du premier jour et du dernier jour couvrent les heures de retrait et retour', () => {
+      const ctx = makeContext({
+        intent: {
+          kind: 'DAY_RANGE',
+          startDate: '2026-08-24',
+          endDateExclusive: '2026-08-28',
+        },
+        plans: [dailyPlan],
+        windows: [dailyWindow],
+        openingHours: WEEKDAY_OPENING_HOURS,
+        scheduleExceptions: [
+          {
+            id: 'ex-start-compat',
+            organizationId: ORG_ID,
+            locationId: LOCATION_ID,
+            localDate: '2026-08-24',
+            kind: 'OPEN_INTERVAL',
+            openTime: '08:00:00',
+            closeTime: '19:00:00',
+            reason: 'Nocturne',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+        translations: [frTranslation('plan-daily-ex', 'Journée')],
+      });
+
+      const result = computeQuote(ctx);
+      expect(result.lines).toHaveLength(1);
+      expect(result.lines[0]!.planType).toBe('DAILY');
+      expect(result.totalAmountMinor).toBe(20000); // 4 jours * 5000
+    });
+
+    it('accepte une location DAY_RANGE même si un jour intermédiaire (ex: Mardi) est fermé par exception', () => {
+      const ctx = makeContext({
+        intent: {
+          kind: 'DAY_RANGE',
+          startDate: '2026-08-24', // Lundi
+          endDateExclusive: '2026-08-28', // Vendredi (fin exclusive)
+        },
+        plans: [dailyPlan],
+        windows: [dailyWindow],
+        openingHours: WEEKDAY_OPENING_HOURS,
+        scheduleExceptions: [
+          {
+            id: 'ex-mid-closed',
+            organizationId: ORG_ID,
+            locationId: LOCATION_ID,
+            localDate: '2026-08-25', // Mardi fermé
+            kind: 'CLOSED',
+            openTime: null,
+            closeTime: null,
+            reason: 'Fermeture exceptionnelle',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+        translations: [frTranslation('plan-daily-ex', 'Journée')],
+      });
+
+      const result = computeQuote(ctx);
+      expect(result.lines).toHaveLength(1);
+      expect(result.lines[0]!.planType).toBe('DAILY');
+      expect(result.totalAmountMinor).toBe(20000);
+    });
+  });
 });

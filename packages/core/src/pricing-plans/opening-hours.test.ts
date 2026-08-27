@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isWithinOpeningHours } from './opening-hours';
+import { isWithinOpeningHours, validateDayRangeBoundariesAgainstSchedule } from './opening-hours';
 import type { OpeningHour, ResolvedFlexiblePricingIntent } from './types';
 import type { LocationScheduleExceptionRecord } from '../identity/types';
 
@@ -239,4 +239,170 @@ describe('opening-hours & schedule exceptions validation', () => {
       ).not.toThrow();
     });
   });
+
+  describe('validateDayRangeBoundariesAgainstSchedule (Chantier 15.2.1)', () => {
+    const standardBoundaries = {
+      kind: 'DAY_RANGE_BOUNDARIES' as const,
+      firstDay: {
+        localDate: '2026-08-24', // Lundi
+        weekdayMask: 1,
+        startTime: '09:00:00',
+        endTime: '18:00:00',
+      },
+      lastDay: {
+        localDate: '2026-08-27', // Jeudi (4 jours: lun, mar, mer, jeu)
+        weekdayMask: 8,
+        startTime: '09:00:00',
+        endTime: '18:00:00',
+      },
+    };
+
+    it('accepte des bornes régulières dans les horaires hebdomadaires', () => {
+      expect(() =>
+        validateDayRangeBoundariesAgainstSchedule(standardBoundaries, weeklyHours, []),
+      ).not.toThrow();
+    });
+
+    it('rejette avec LOCATION_CLOSED si le premier jour a une exception CLOSED', () => {
+      const exceptions: LocationScheduleExceptionRecord[] = [
+        {
+          id: 'ex-close-1',
+          organizationId: 'org-1',
+          locationId: 'loc-1',
+          localDate: '2026-08-24',
+          kind: 'CLOSED',
+          openTime: null,
+          closeTime: null,
+          reason: 'Fermeture exceptionnelle',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+
+      expect(() =>
+        validateDayRangeBoundariesAgainstSchedule(standardBoundaries, weeklyHours, exceptions),
+      ).toThrow(expect.objectContaining({ code: 'LOCATION_CLOSED' }));
+    });
+
+    it('rejette avec LOCATION_CLOSED si le dernier jour a une exception CLOSED', () => {
+      const exceptions: LocationScheduleExceptionRecord[] = [
+        {
+          id: 'ex-close-last',
+          organizationId: 'org-1',
+          locationId: 'loc-1',
+          localDate: '2026-08-27',
+          kind: 'CLOSED',
+          openTime: null,
+          closeTime: null,
+          reason: 'Fermeture exceptionnelle',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+
+      expect(() =>
+        validateDayRangeBoundariesAgainstSchedule(standardBoundaries, weeklyHours, exceptions),
+      ).toThrow(expect.objectContaining({ code: 'LOCATION_CLOSED' }));
+    });
+
+    it('rejette avec OUTSIDE_OPENING_HOURS si firstDay.startTime est hors de l’OPEN_INTERVAL effectif (ex: 09h quand ouvert 12h-15h)', () => {
+      const exceptions: LocationScheduleExceptionRecord[] = [
+        {
+          id: 'ex-interval-start',
+          organizationId: 'org-1',
+          locationId: 'loc-1',
+          localDate: '2026-08-24',
+          kind: 'OPEN_INTERVAL',
+          openTime: '12:00:00',
+          closeTime: '15:00:00',
+          reason: 'Ouverture partielle',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+
+      // standardBoundaries.firstDay.startTime = '09:00:00' -> hors de 12h-15h -> rejet
+      expect(() =>
+        validateDayRangeBoundariesAgainstSchedule(standardBoundaries, weeklyHours, exceptions),
+      ).toThrow(expect.objectContaining({ code: 'OUTSIDE_OPENING_HOURS' }));
+    });
+
+    it('rejette avec OUTSIDE_OPENING_HOURS si lastDay.endTime est hors de l’OPEN_INTERVAL effectif (ex: 18h quand ouvert 09h-16h)', () => {
+      const exceptions: LocationScheduleExceptionRecord[] = [
+        {
+          id: 'ex-interval-end',
+          organizationId: 'org-1',
+          locationId: 'loc-1',
+          localDate: '2026-08-27',
+          kind: 'OPEN_INTERVAL',
+          openTime: '09:00:00',
+          closeTime: '16:00:00',
+          reason: 'Fermeture anticipée',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+
+      // standardBoundaries.lastDay.endTime = '18:00:00' -> hors de 09h-16h -> rejet
+      expect(() =>
+        validateDayRangeBoundariesAgainstSchedule(standardBoundaries, weeklyHours, exceptions),
+      ).toThrow(expect.objectContaining({ code: 'OUTSIDE_OPENING_HOURS' }));
+    });
+
+    it('accepte si firstDay.startTime et lastDay.endTime sont compatibles avec les OPEN_INTERVAL effectifs', () => {
+      const exceptions: LocationScheduleExceptionRecord[] = [
+        {
+          id: 'ex-interval-wide-1',
+          organizationId: 'org-1',
+          locationId: 'loc-1',
+          localDate: '2026-08-24',
+          kind: 'OPEN_INTERVAL',
+          openTime: '08:00:00',
+          closeTime: '19:00:00',
+          reason: 'Horaires étendus',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 'ex-interval-wide-2',
+          organizationId: 'org-1',
+          locationId: 'loc-1',
+          localDate: '2026-08-27',
+          kind: 'OPEN_INTERVAL',
+          openTime: '08:00:00',
+          closeTime: '19:00:00',
+          reason: 'Horaires étendus',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+
+      expect(() =>
+        validateDayRangeBoundariesAgainstSchedule(standardBoundaries, weeklyHours, exceptions),
+      ).not.toThrow();
+    });
+
+    it('accepte une location DAY_RANGE même si un jour intermédiaire (ex: Mardi 25/08) est CLOSED', () => {
+      const exceptions: LocationScheduleExceptionRecord[] = [
+        {
+          id: 'ex-mid-closed',
+          organizationId: 'org-1',
+          locationId: 'loc-1',
+          localDate: '2026-08-25', // Mardi fermé
+          kind: 'CLOSED',
+          openTime: null,
+          closeTime: null,
+          reason: 'Maintenance boutique',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+
+      // Premier jour (24/08) et dernier jour (27/08) sont ouverts
+      expect(() =>
+        validateDayRangeBoundariesAgainstSchedule(standardBoundaries, weeklyHours, exceptions),
+      ).not.toThrow();
+    });
+  });
 });
+

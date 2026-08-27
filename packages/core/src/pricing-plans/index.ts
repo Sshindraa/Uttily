@@ -13,6 +13,10 @@
 export { quoteFlexiblePricing } from './quote-flexible-pricing';
 export { computeQuote } from './quote-engine';
 export { loadPricingContext } from './load-pricing-context';
+export {
+  isWithinOpeningHours,
+  validateDayRangeBoundariesAgainstSchedule,
+} from './opening-hours';
 
 export { FlexiblePricingError } from './errors';
 export type { FlexiblePricingErrorCode } from './errors';

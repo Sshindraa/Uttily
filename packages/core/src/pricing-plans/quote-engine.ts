@@ -19,7 +19,7 @@ import type {
 } from './types';
 import { FlexiblePricingError } from './errors';
 import { safeAdd } from './safe-arithmetic';
-import { isWithinOpeningHours } from './opening-hours';
+import { isWithinOpeningHours, validateDayRangeBoundariesAgainstSchedule } from './opening-hours';
 import { generateCandidates } from './candidate-generator';
 import { calculateAmount } from './amount-calculator';
 import { validateGrid } from './grid-validator';
@@ -103,6 +103,16 @@ export function computeQuote(context: PricingContext): QuoteFlexiblePricingResul
 
     // 4f. Sélectionner le meilleur candidat.
     const best = selectBestCandidate(candidates);
+
+    // Valider les bornes effectives du candidat DAY_RANGE (Chantier 15.2.1).
+    if (best.dayRangeBoundaries !== null) {
+      validateDayRangeBoundariesAgainstSchedule(
+        best.dayRangeBoundaries,
+        context.openingHours,
+        context.scheduleExceptions,
+        context.locationId,
+      );
+    }
 
     // 4g. Résoudre le libellé.
     const publicLabel = getTranslation(best.plan.id, resolvedLocale, context.translations);

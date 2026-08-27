@@ -89,6 +89,8 @@ export {
   quoteFlexiblePricing,
   computeQuote,
   loadPricingContext,
+  isWithinOpeningHours,
+  validateDayRangeBoundariesAgainstSchedule,
   FlexiblePricingError,
   type QuoteFlexiblePricingInput,
   type QuoteFlexiblePricingResult,

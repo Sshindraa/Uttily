@@ -5,10 +5,80 @@
  */
 
 import type { LocationScheduleExceptionRecord } from '../identity/types';
-import { resolveEffectiveScheduleFromRules } from '../identity/schedule';
-import type { OpeningHour, ResolvedFlexiblePricingIntent } from './types';
+import {
+  isTimeWithinEffectiveSchedule,
+  resolveEffectiveScheduleFromRules,
+} from '../identity/schedule';
+import type { DayRangeBoundaries, OpeningHour, ResolvedFlexiblePricingIntent } from './types';
 import { FlexiblePricingError } from './errors';
 import { civilDayNumber, getTimeInMinutes, minutesBetween, toLocalParts } from './time-utils';
+
+/**
+ * Valide les bornes effectives de retrait et de retour d'un plan DAILY (DAY_RANGE)
+ * contre le planning effectif de l'établissement (horaires hebdomadaires + exceptions de calendrier).
+ *
+ * @throws FlexiblePricingError('LOCATION_CLOSED') si l'établissement est fermé le 1er ou dernier jour.
+ * @throws FlexiblePricingError('OUTSIDE_OPENING_HOURS') si l'heure de retrait ou de retour tombe hors créneau effectif.
+ */
+export function validateDayRangeBoundariesAgainstSchedule(
+  boundaries: DayRangeBoundaries,
+  openingHours: OpeningHour[],
+  scheduleExceptions: LocationScheduleExceptionRecord[] = [],
+  locationId: string = '',
+): void {
+  if (openingHours.length === 0 && scheduleExceptions.length === 0) {
+    // Pas d'horaires configurés ni d'exceptions → fail-open
+    return;
+  }
+
+  // 1. Premier jour (retrait)
+  const firstSchedule = resolveEffectiveScheduleFromRules(
+    boundaries.firstDay.localDate,
+    openingHours,
+    scheduleExceptions,
+    locationId,
+  );
+
+  if (!firstSchedule.isOpen) {
+    throw new FlexiblePricingError(
+      'LOCATION_CLOSED',
+      `L’établissement est fermé le premier jour de la location (${boundaries.firstDay.localDate}).`,
+    );
+  }
+
+  if (firstSchedule.slots.length > 0) {
+    if (!isTimeWithinEffectiveSchedule(boundaries.firstDay.startTime, firstSchedule)) {
+      throw new FlexiblePricingError(
+        'OUTSIDE_OPENING_HOURS',
+        `L'heure de retrait (${boundaries.firstDay.startTime}) n'est pas dans les horaires d'ouverture effectifs du jour de début (${boundaries.firstDay.localDate})`,
+      );
+    }
+  }
+
+  // 2. Dernier jour inclus (retour)
+  const lastSchedule = resolveEffectiveScheduleFromRules(
+    boundaries.lastDay.localDate,
+    openingHours,
+    scheduleExceptions,
+    locationId,
+  );
+
+  if (!lastSchedule.isOpen) {
+    throw new FlexiblePricingError(
+      'LOCATION_CLOSED',
+      `L’établissement est fermé le dernier jour de la location (${boundaries.lastDay.localDate}).`,
+    );
+  }
+
+  if (lastSchedule.slots.length > 0) {
+    if (!isTimeWithinEffectiveSchedule(boundaries.lastDay.endTime, lastSchedule)) {
+      throw new FlexiblePricingError(
+        'OUTSIDE_OPENING_HOURS',
+        `L'heure de retour (${boundaries.lastDay.endTime}) n'est pas dans les horaires d'ouverture effectifs du jour de fin (${boundaries.lastDay.localDate})`,
+      );
+    }
+  }
+}
 
 /**
  * Vérifie que la période demandée tombe dans les horaires d'ouverture effectifs

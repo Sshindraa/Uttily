@@ -103,7 +103,10 @@ import { selectBestCandidate, compareCandidates } from '../pricing-plans/selecto
 import { generateCandidates } from '../pricing-plans/candidate-generator';
 import { calculateAmount } from '../pricing-plans/amount-calculator';
 import { validateGrid } from '../pricing-plans/grid-validator';
-import { isWithinOpeningHours } from '../pricing-plans/opening-hours';
+import {
+  isWithinOpeningHours,
+  validateDayRangeBoundariesAgainstSchedule,
+} from '../pricing-plans/opening-hours';
 import { resolveLocale, getTranslation } from '../pricing-plans/locale-resolver';
 import { FlexiblePricingError } from '../pricing-plans/errors';
 import {
@@ -1660,6 +1663,16 @@ function computePriceForCandidate(
   candidates = candidates.map((c) => calculateAmount(c, context.tiers));
   validateGrid(candidates);
   const best = selectBestCandidate(candidates);
+
+  // Valider les bornes effectives du candidat DAY_RANGE (Chantier 15.2.1).
+  if (best.dayRangeBoundaries !== null) {
+    validateDayRangeBoundariesAgainstSchedule(
+      best.dayRangeBoundaries,
+      context.openingHours,
+      context.scheduleExceptions,
+      context.locationId,
+    );
+  }
 
   // Résoudre le libellé public.
   const availableLocales = collectAvailableLocales(context.translations);

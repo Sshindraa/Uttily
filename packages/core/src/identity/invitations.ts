@@ -13,13 +13,41 @@ import { AuthorizationError, can, canInviteRole } from './permissions';
 
 export const DEFAULT_INVITATION_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 jours
 
-function getInvitationSecret(): string {
-  return (
-    process.env.INVITATION_SECRET ||
-    process.env.CLERK_SECRET_KEY ||
-    process.env.CRON_SECRET ||
-    'uttily-invitation-signing-secret-development-only'
-  );
+export class InvitationSecretConfigurationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvitationSecretConfigurationError';
+  }
+}
+
+/**
+ * Récupère le secret de signature des tokens d'invitation (Chantier 15.2.1).
+ *
+ * - Strictement requis en production/LIVE (pas de réutilisation de Clerk/Cron, pas de secret statique faible).
+ * - Vérifie une entropie minimale de 32 caractères.
+ * - Fallback de test/dev explicite uniquement hors production.
+ */
+export function getInvitationSecret(env: NodeJS.ProcessEnv = process.env): string {
+  const raw = env.INVITATION_SECRET;
+  const isProductionLike = env.NODE_ENV === 'production' || env.STRIPE_ENVIRONMENT === 'LIVE';
+
+  if (!raw || raw.trim().length === 0) {
+    if (isProductionLike) {
+      throw new InvitationSecretConfigurationError(
+        'INVITATION_SECRET est requis et doit être configuré en production.',
+      );
+    }
+    return 'uttily-invitation-signing-secret-dev-32chars-minimum!!';
+  }
+
+  const trimmed = raw.trim();
+  if (trimmed.length < 32) {
+    throw new InvitationSecretConfigurationError(
+      'INVITATION_SECRET doit comporter au moins 32 caractères pour garantir une entropie suffisante.',
+    );
+  }
+
+  return trimmed;
 }
 
 /**
@@ -34,15 +62,18 @@ export function hashToken(token: string): string {
  * Reconstructible côté serveur par le loader de notification sans nécessiter
  * d'écrire le secret en clair dans `notifications.metadata` (Chantier 15.2).
  */
-export function createSignedInvitationToken(data: {
-  invitationId: string;
-  organizationId: string;
-  email: string;
-  expiresAt: Date | number;
-}): string {
+export function createSignedInvitationToken(
+  data: {
+    invitationId: string;
+    organizationId: string;
+    email: string;
+    expiresAt: Date | number;
+  },
+  env: NodeJS.ProcessEnv = process.env,
+): string {
   const expiresAtMs = data.expiresAt instanceof Date ? data.expiresAt.getTime() : data.expiresAt;
   const payload = `${data.invitationId}:${data.organizationId}:${data.email.trim().toLowerCase()}:${expiresAtMs}`;
-  const hmac = createHmac('sha256', getInvitationSecret()).update(payload).digest('hex');
+  const hmac = createHmac('sha256', getInvitationSecret(env)).update(payload).digest('hex');
   return `${data.invitationId}.${expiresAtMs}.${hmac}`;
 }
 
@@ -52,6 +83,7 @@ export function createSignedInvitationToken(data: {
 export function verifySignedInvitationToken(
   token: string,
   context: { organizationId: string; email: string },
+  env: NodeJS.ProcessEnv = process.env,
 ): { valid: boolean; invitationId?: string; expiresAt?: Date } {
   const parts = token.split('.');
   if (parts.length !== 3) return { valid: false };
@@ -61,12 +93,15 @@ export function verifySignedInvitationToken(
   const expiresAtMs = parseInt(expiresAtStr, 10);
   if (isNaN(expiresAtMs)) return { valid: false };
 
-  const expectedToken = createSignedInvitationToken({
-    invitationId,
-    organizationId: context.organizationId,
-    email: context.email,
-    expiresAt: expiresAtMs,
-  });
+  const expectedToken = createSignedInvitationToken(
+    {
+      invitationId,
+      organizationId: context.organizationId,
+      email: context.email,
+      expiresAt: expiresAtMs,
+    },
+    env,
+  );
 
   if (token !== expectedToken) return { valid: false };
   return { valid: true, invitationId, expiresAt: new Date(expiresAtMs) };
