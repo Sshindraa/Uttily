@@ -207,4 +207,32 @@ describe('Chantier 12 — Domaine Annulations & Remboursements V2', () => {
     expect(result.explanationCode).toBe('STATUS_NOT_ELIGIBLE');
     expect(result.inventoryWillBeReleased).toBe(false);
   });
+
+  it('génère un previewFingerprint déterministe et sensible aux montants', async () => {
+    const mockDb1 = createMockDb({
+      customerStartAt: new Date('2026-09-10T10:00:00Z'),
+    });
+    const p1 = await previewBookingCancellation(
+      mockDb1,
+      '00000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000002',
+      {
+        actorReason: 'CUSTOMER_CANCELLATION',
+        now: new Date('2026-09-08T10:00:00Z'),
+      },
+    );
+    expect(p1.previewFingerprint).toBeDefined();
+    expect(p1.previewFingerprint.length).toBe(64); // SHA-256 hex length
+
+    const p2 = await previewBookingCancellation(
+      mockDb1,
+      '00000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000002',
+      {
+        actorReason: 'CUSTOMER_CANCELLATION',
+        now: new Date('2026-09-09T22:00:00Z'), // < 24h -> 0%
+      },
+    );
+    expect(p2.previewFingerprint).not.toBe(p1.previewFingerprint);
+  });
 });

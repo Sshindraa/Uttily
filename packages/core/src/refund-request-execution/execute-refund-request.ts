@@ -3,12 +3,14 @@ import {
   amendmentPaymentAttempts,
   amendmentPayments,
   bookingAmendments,
+  bookingCancellations,
+  bookings,
   paymentAttempts,
   payments,
   refunds,
   type DatabaseClient,
 } from '@uttily/database';
-import { parseRefundRequestedV1Event } from '@uttily/contracts';
+import { parseRefundRequestedEvent, type RefundRequestedEvent } from '@uttily/contracts';
 import type { PaymentProviderAdapter, StripeEnvironment } from '../payments/types';
 import { RefundRequestError } from './errors';
 import type {
@@ -23,12 +25,12 @@ const TERMINAL_REFUND_STATUSES = new Set([
   'SETTLED_OFF_PLATFORM',
 ]);
 
-function parseClaimedEvent(claimed: ClaimedRefundRequest) {
+function parseClaimedEvent(claimed: ClaimedRefundRequest): RefundRequestedEvent {
   if (!claimed.payloadValid) {
-    throw new RefundRequestError('PAYLOAD_MALFORMED', 'Payload REFUND_REQUESTED.v1 invalide');
+    throw new RefundRequestError('PAYLOAD_MALFORMED', 'Payload REFUND_REQUESTED invalide');
   }
   try {
-    return parseRefundRequestedV1Event({
+    return parseRefundRequestedEvent({
       aggregateType: claimed.aggregateType,
       eventType: claimed.eventType,
       eventVersion: claimed.eventVersion,
@@ -36,7 +38,7 @@ function parseClaimedEvent(claimed: ClaimedRefundRequest) {
       payload: claimed.payload,
     });
   } catch {
-    throw new RefundRequestError('PAYLOAD_MALFORMED', 'Payload REFUND_REQUESTED.v1 invalide');
+    throw new RefundRequestError('PAYLOAD_MALFORMED', 'Payload REFUND_REQUESTED invalide');
   }
 }
 
@@ -79,9 +81,9 @@ export async function verifyRefundRequest(
       throw new RefundRequestError('LEASE_LOST', 'Événement outbox non détenu');
     }
 
-    let authoritativeEvent;
+    let authoritativeEvent: RefundRequestedEvent;
     try {
-      authoritativeEvent = parseRefundRequestedV1Event({
+      authoritativeEvent = parseRefundRequestedEvent({
         aggregateType: outbox.aggregate_type,
         eventType: outbox.event_type,
         eventVersion: outbox.event_version,
@@ -91,13 +93,13 @@ export async function verifyRefundRequest(
     } catch {
       throw new RefundRequestError('PAYLOAD_MALFORMED', 'Payload outbox invalide');
     }
+
     if (
       outbox.id !== claimed.outboxEventId ||
       outbox.organization_id !== event.payload.organizationId ||
       outbox.organization_id !== authoritativeEvent.payload.organizationId ||
       authoritativeEvent.aggregateId !== event.payload.refundId ||
       authoritativeEvent.payload.bookingId !== event.payload.bookingId ||
-      authoritativeEvent.payload.amendmentId !== event.payload.amendmentId ||
       authoritativeEvent.payload.refundId !== event.payload.refundId
     ) {
       throw new RefundRequestError('OUTBOX_METADATA_MISMATCH', 'Métadonnées outbox incohérentes');
@@ -135,25 +137,153 @@ export async function verifyRefundRequest(
       }
       throw new RefundRequestError('REFUND_STATUS_INVALID', 'Refund non éligible');
     }
-    if (refund.reason !== 'BOOKING_MODIFICATION' && refund.reason !== 'AMENDMENT_COMPENSATION') {
-      throw new RefundRequestError('REFUND_REASON_MISMATCH', 'Raison refund non éligible');
-    }
+
     if (!Number.isSafeInteger(refund.amountMinor) || refund.amountMinor <= 0) {
       throw new RefundRequestError('AMOUNT_INVALID', 'Montant refund invalide');
     }
     if (refund.currency !== 'EUR') {
       throw new RefundRequestError('PAYMENT_CURRENCY_MISMATCH', 'Devise refund non supportée');
     }
-    if (!refund.reverseTransfer || !refund.refundApplicationFee) {
-      throw new RefundRequestError('REFUND_FLAGS_INVALID', 'Flags refund invalides');
-    }
-    if (refund.providerIdempotencyKey !== `refund_amendment_${refund.id}`) {
+
+    // Standardisation de la clé d'idempotence : accepte refund_<id> ou legacy refund_amendment_<id>
+    const expectedStandardKey = `refund_${refund.id}`;
+    const expectedLegacyKey = `refund_amendment_${refund.id}`;
+    if (
+      refund.providerIdempotencyKey !== expectedStandardKey &&
+      refund.providerIdempotencyKey !== expectedLegacyKey
+    ) {
       throw new RefundRequestError('IDEMPOTENCY_KEY_MISMATCH', 'Clé refund incohérente');
+    }
+
+    let origin: 'BOOKING_AMENDMENT' | 'AMENDMENT_COMPENSATION' | 'BOOKING_CANCELLATION';
+    if (authoritativeEvent.eventVersion === 'v1') {
+      origin = 'BOOKING_AMENDMENT';
+    } else {
+      origin = authoritativeEvent.payload.origin;
     }
 
     let providerPaymentIntentId: string;
 
-    if (refund.reason === 'BOOKING_MODIFICATION') {
+    if (origin === 'BOOKING_CANCELLATION') {
+      const cancellationPayload = authoritativeEvent.payload as {
+        cancellationId: string;
+      };
+
+      if (
+        refund.reason !== 'CUSTOMER_CANCELLATION' &&
+        refund.reason !== 'MERCHANT_CANCELLATION' &&
+        refund.reason !== 'PLATFORM_CANCELLATION'
+      ) {
+        throw new RefundRequestError(
+          'REFUND_REASON_MISMATCH',
+          'Raison refund non éligible pour annulation',
+        );
+      }
+
+      if (refund.paymentId === null || refund.amendmentPaymentId !== null) {
+        throw new RefundRequestError(
+          'REFUND_PAYMENT_ORIGIN_INVALID',
+          'Origine paiement refund incohérente',
+        );
+      }
+
+      const paymentRows = await tx
+        .select()
+        .from(payments)
+        .where(eq(payments.id, refund.paymentId))
+        .for('update');
+      const payment = paymentRows[0];
+      if (payment === undefined) {
+        throw new RefundRequestError('PAYMENT_NOT_FOUND', 'Paiement introuvable');
+      }
+      if (payment.organizationId !== refund.organizationId) {
+        throw new RefundRequestError(
+          'PAYMENT_ORGANIZATION_MISMATCH',
+          'Organisation paiement incohérente',
+        );
+      }
+      if (payment.status !== 'SUCCEEDED') {
+        throw new RefundRequestError('PAYMENT_NOT_SUCCEEDED', 'Paiement initial non réussi');
+      }
+      if (payment.currency !== 'EUR') {
+        throw new RefundRequestError('PAYMENT_CURRENCY_MISMATCH', 'Devise paiement non supportée');
+      }
+      if (payment.environment !== environment) {
+        throw new RefundRequestError('ENVIRONMENT_MISMATCH', 'Environnement paiement incohérent');
+      }
+
+      // Vérification de la réservation annulée
+      const bookingRows = await tx
+        .select()
+        .from(bookings)
+        .where(eq(bookings.id, authoritativeEvent.payload.bookingId))
+        .for('update');
+      const booking = bookingRows[0];
+      if (booking === undefined) {
+        throw new RefundRequestError('BOOKING_NOT_FOUND', 'Réservation introuvable');
+      }
+      if (booking.status !== 'CANCELLED') {
+        throw new RefundRequestError(
+          'REFUND_STATUS_INVALID',
+          'La réservation doit être au statut CANCELLED pour exécuter le remboursement d’annulation',
+        );
+      }
+
+      // Vérification de la trace d'annulation
+      const cancellationRows = await tx
+        .select()
+        .from(bookingCancellations)
+        .where(eq(bookingCancellations.id, cancellationPayload.cancellationId))
+        .for('update');
+      const cancellation = cancellationRows[0];
+      if (cancellation === undefined) {
+        throw new RefundRequestError('CANCELLATION_NOT_FOUND', 'Trace d’annulation introuvable');
+      }
+      if (
+        cancellation.organizationId !== refund.organizationId ||
+        cancellation.bookingId !== authoritativeEvent.payload.bookingId ||
+        cancellation.refundId !== refund.id
+      ) {
+        throw new RefundRequestError(
+          'OUTBOX_METADATA_MISMATCH',
+          'Incohérence trace d’annulation / remboursement',
+        );
+      }
+
+      const attemptRows = await tx
+        .select({
+          id: paymentAttempts.id,
+          providerPaymentIntentId: paymentAttempts.providerPaymentIntentId,
+        })
+        .from(paymentAttempts)
+        .where(
+          and(
+            eq(paymentAttempts.paymentId, payment.id),
+            eq(paymentAttempts.organizationId, payment.organizationId),
+            eq(paymentAttempts.status, 'SUCCEEDED'),
+            isNotNull(paymentAttempts.providerPaymentIntentId),
+          ),
+        )
+        .orderBy(sql`${paymentAttempts.createdAt} DESC, ${paymentAttempts.id} DESC`)
+        .limit(1)
+        .for('update');
+      const attempt = attemptRows[0];
+      if (attempt === undefined || attempt.providerPaymentIntentId === null) {
+        throw new RefundRequestError(
+          'ATTEMPT_NOT_SUCCEEDED',
+          'Tentative paiement réussie introuvable',
+        );
+      }
+      providerPaymentIntentId = attempt.providerPaymentIntentId;
+    } else if (origin === 'BOOKING_AMENDMENT') {
+      const amendmentPayload = authoritativeEvent.payload as {
+        amendmentId: string;
+      };
+
+      if (refund.reason !== 'BOOKING_MODIFICATION') {
+        throw new RefundRequestError('REFUND_REASON_MISMATCH', 'Raison refund non éligible');
+      }
+
       if (refund.paymentId === null || refund.amendmentPaymentId !== null) {
         throw new RefundRequestError(
           'REFUND_PAYMENT_ORIGIN_INVALID',
@@ -188,7 +318,7 @@ export async function verifyRefundRequest(
       const amendmentRows = await tx
         .select()
         .from(bookingAmendments)
-        .where(eq(bookingAmendments.id, authoritativeEvent.payload.amendmentId))
+        .where(eq(bookingAmendments.id, amendmentPayload.amendmentId))
         .for('update');
       const amendment = amendmentRows[0];
       if (amendment === undefined) {
@@ -230,6 +360,14 @@ export async function verifyRefundRequest(
       providerPaymentIntentId = attempt.providerPaymentIntentId;
     } else {
       // AMENDMENT_COMPENSATION
+      const compensationPayload = authoritativeEvent.payload as {
+        amendmentId: string;
+      };
+
+      if (refund.reason !== 'AMENDMENT_COMPENSATION') {
+        throw new RefundRequestError('REFUND_REASON_MISMATCH', 'Raison refund non éligible');
+      }
+
       if (refund.paymentId !== null || refund.amendmentPaymentId === null) {
         throw new RefundRequestError(
           'REFUND_PAYMENT_ORIGIN_INVALID',
@@ -252,7 +390,7 @@ export async function verifyRefundRequest(
         );
       }
       if (
-        amendmentPayment.amendmentId !== authoritativeEvent.payload.amendmentId ||
+        amendmentPayment.amendmentId !== compensationPayload.amendmentId ||
         amendmentPayment.bookingId !== authoritativeEvent.payload.bookingId
       ) {
         throw new RefundRequestError(
@@ -279,7 +417,7 @@ export async function verifyRefundRequest(
       const amendmentRows = await tx
         .select()
         .from(bookingAmendments)
-        .where(eq(bookingAmendments.id, authoritativeEvent.payload.amendmentId))
+        .where(eq(bookingAmendments.id, compensationPayload.amendmentId))
         .for('update');
       const amendment = amendmentRows[0];
       if (amendment === undefined) {
@@ -353,6 +491,8 @@ export async function verifyRefundRequest(
       amountMinor: refund.amountMinor,
       idempotencyKey: refund.providerIdempotencyKey,
       organizationId: refund.organizationId,
+      reverseTransfer: refund.reverseTransfer,
+      refundApplicationFee: refund.refundApplicationFee,
     };
   });
 }
@@ -370,12 +510,12 @@ export async function executeRefundRequest(
     paymentIntentId: verification.paymentIntentId,
     amountMinor: verification.amountMinor,
     idempotencyKey: verification.idempotencyKey,
-    reverseTransfer: true,
-    refundApplicationFee: true,
+    reverseTransfer: verification.reverseTransfer,
+    refundApplicationFee: verification.refundApplicationFee,
     metadata: {
       refund_id: verification.refundId,
       organization_id: verification.organizationId,
-      protocol_version: 'refund-requested-v1',
+      protocol_version: 'refund-requested-v2',
     },
   });
 

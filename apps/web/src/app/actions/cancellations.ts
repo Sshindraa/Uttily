@@ -34,6 +34,7 @@ export async function cancelConfirmedBookingAction(
   bookingId: string,
   actorReason: CancellationActorReason,
   idempotencyKey: string,
+  previewFingerprint?: string,
 ): Promise<CancelConfirmedBookingResult> {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Non authentifié.');
@@ -48,6 +49,7 @@ export async function cancelConfirmedBookingAction(
     actorUserId: user.id,
     actorReason,
     idempotencyKey,
+    previewFingerprint,
   });
 
   revalidatePath(`/dashboard/${organizationId}/bookings/${bookingId}`);

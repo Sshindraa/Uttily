@@ -41,6 +41,8 @@ export interface RefundRequestVerification {
   readonly amountMinor: number;
   readonly idempotencyKey: string;
   readonly organizationId: string;
+  readonly reverseTransfer: boolean;
+  readonly refundApplicationFee: boolean;
 }
 
 export interface RefundRequestExecutionResult {

@@ -661,6 +661,160 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
     expect((await state(fixture)).outbox.status).toBe('PROCESSED');
   });
 
+  it('exécute un remboursement issu d’une annulation (BOOKING_CANCELLATION)', async () => {
+    if (!rawSql || !db) throw new Error('DB non initialisée');
+    const suffix = Math.random().toString(36).slice(2, 10);
+    const org = await rawSql`
+      INSERT INTO organizations (legal_name, slug)
+      VALUES (${'Cancel Org ' + suffix}, ${'cancel-org-' + suffix})
+      RETURNING id
+    `.then((rows) => rows[0]!);
+    const user = await rawSql`
+      INSERT INTO users (email)
+      VALUES (${'cancel-' + suffix + '@example.com'})
+      RETURNING id
+    `.then((rows) => rows[0]!);
+    const location = await rawSql`
+      INSERT INTO locations (organization_id, name, slug, time_zone, operating_currency)
+      VALUES (${org.id}, 'Cancel Loc', ${'cancel-loc-' + suffix}, 'Europe/Paris', 'EUR')
+      RETURNING id
+    `.then((rows) => rows[0]!);
+    const draft = await rawSql`
+      INSERT INTO booking_drafts (
+        organization_id, location_id, customer_user_id, status,
+        customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
+        timezone, prep_buffer_minutes, cleanup_buffer_minutes,
+        subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
+        tax_status, tax_amount_minor, tax_rate_bps, commission_amount_minor,
+        billable_unit, billable_unit_count, currency, cancellation_policy_snapshot
+      ) VALUES (
+        ${org.id}, ${location.id}, ${user.id}, 'CONVERTED',
+        '2026-04-10 09:00:00+00', '2026-04-12 17:00:00+00',
+        '2026-04-10 08:30:00+00', '2026-04-12 17:30:00+00',
+        'Europe/Paris', 30, 30, 10000, 0, 10000,
+        'NOT_APPLICABLE', 0, NULL, 500, 'DAY', 2, 'EUR',
+        ${rawSql.json({ policy_code: 'FLEXIBLE', policy_version: '1', timezone: 'Europe/Paris' })}
+      ) RETURNING id
+    `.then((rows) => rows[0]!);
+    const payment = await rawSql`
+      INSERT INTO payments (
+        organization_id, draft_id, customer_user_id, status,
+        amount_minor, currency, tax_status, tax_amount_minor,
+        commission_amount_minor, financial_terms_version, legal_terms_version,
+        terms_acceptance_snapshot, connected_account_id, charge_model,
+        settlement_merchant_mode, environment, succeeded_at
+      ) VALUES (
+        ${org.id}, ${draft.id}, ${user.id}, 'SUCCEEDED', 10000, 'EUR',
+        'NOT_APPLICABLE', 0, 500, 'v1', 'v1',
+        ${rawSql.json({ version: 'v1', user_id: user.id, accepted_at: '2026-01-01T00:00:00Z' })},
+        'acct_cancel', 'DESTINATION', 'CONNECTED_ACCOUNT', 'TEST'::payment_environment, now()
+      ) RETURNING id
+    `.then((rows) => rows[0]!);
+    await rawSql`
+      INSERT INTO payment_attempts (
+        organization_id, payment_id, attempt_number, status,
+        amount_minor, currency, client_secret, provider_payment_intent_id,
+        environment, succeeded_at
+      ) VALUES (
+        ${org.id}, ${payment.id}, 1, 'SUCCEEDED',
+        10000, 'EUR', 'pi_secret_cancel', 'pi_intent_cancel_123',
+        'TEST'::payment_environment, now()
+      )
+    `;
+    const booking = await rawSql`
+      INSERT INTO bookings (
+        organization_id, location_id, customer_user_id, draft_id, payment_id,
+        status, customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
+        timezone, prep_buffer_minutes, cleanup_buffer_minutes, currency,
+        subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
+        tax_status, tax_amount_minor, tax_rate_bps, commission_amount_minor,
+        billable_unit, billable_unit_count, cancellation_policy_snapshot,
+        terms_acceptance_snapshot, confirmed_at
+      ) VALUES (
+        ${org.id}, ${location.id}, ${user.id}, ${draft.id}, ${payment.id}, 'CANCELLED',
+        '2026-04-10 09:00:00+00', '2026-04-12 17:00:00+00',
+        '2026-04-10 08:30:00+00', '2026-04-12 17:30:00+00', 'Europe/Paris', 30, 30, 'EUR',
+        10000, 0, 10000, 'NOT_APPLICABLE', 0, NULL, 500, 'DAY', 2,
+        ${rawSql.json({ policy_code: 'FLEXIBLE', policy_version: '1', timezone: 'Europe/Paris' })},
+        ${rawSql.json({ version: 'v1', user_id: user.id, accepted_at: '2026-01-01T00:00:00Z' })}, now()
+      ) RETURNING id
+    `.then((rows) => rows[0]!);
+    const refund = await rawSql`
+      INSERT INTO refunds (
+        organization_id, payment_id, reason, status,
+        amount_minor, currency, provider_idempotency_key,
+        reverse_transfer, refund_application_fee, requested_at
+      ) VALUES (
+        ${org.id}, ${payment.id}, 'MERCHANT_CANCELLATION', 'PENDING',
+        10000, 'EUR', 'refund_placeholder',
+        true, true, now()
+      ) RETURNING id
+    `.then((rows) => rows[0]!);
+    await rawSql`
+      UPDATE refunds
+      SET provider_idempotency_key = ${'refund_' + refund.id}
+      WHERE id = ${refund.id}
+    `;
+    const cancellation = await rawSql`
+      INSERT INTO booking_cancellations (
+        organization_id, booking_id, cancelled_by_user_id,
+        actor_reason, policy_code, policy_snapshot,
+        gross_paid_minor, refund_amount_minor, retained_amount_minor,
+        original_commission_minor, commission_refunded_minor,
+        final_commission_minor, final_merchant_revenue_minor,
+        currency, explanation_code, inventory_released, refund_id
+      ) VALUES (
+        ${org.id}, ${booking.id}, ${user.id},
+        'MERCHANT_CANCELLATION', 'FLEXIBLE',
+        ${rawSql.json({ policy_code: 'FLEXIBLE', policy_version: '1' })},
+        10000, 10000, 0, 500, 500, 0, 0,
+        'EUR', 'FULL_REFUND_MERCHANT', true, ${refund.id}
+      ) RETURNING id
+    `.then((rows) => rows[0]!);
+    const outbox = await rawSql`
+      INSERT INTO outbox_events (
+        organization_id, aggregate_type, aggregate_id,
+        event_type, event_version, payload,
+        status, attempt_count, available_at, idempotency_key
+      ) VALUES (
+        ${org.id}, 'REFUND', ${refund.id},
+        'REFUND_REQUESTED', 'v2',
+        ${rawSql.json({
+          organizationId: org.id,
+          bookingId: booking.id,
+          refundId: refund.id,
+          origin: 'BOOKING_CANCELLATION',
+          cancellationId: cancellation.id,
+        })},
+        'PENDING', 0, now(), ${'refund_requested_' + refund.id}
+      ) RETURNING id
+    `.then((rows) => rows[0]!);
+
+    const provider = new RecordingRefundProvider('TEST');
+    const result = await executeRefundRequestBatch(
+      { db, provider },
+      { environment: 'TEST', batchLimit: 1 },
+    );
+    expect(result).toMatchObject({ claimedCount: 1, submittedCount: 1, failedCount: 0 });
+    expect(provider.calls).toHaveLength(1);
+    expect(provider.calls[0]!.paymentIntentId).toBe('pi_intent_cancel_123');
+    expect(provider.calls[0]!.amountMinor).toBe(10000);
+    expect(provider.calls[0]!.idempotencyKey).toBe('refund_' + refund.id);
+
+    const updatedRefund =
+      await rawSql`SELECT status, provider_refund_id FROM refunds WHERE id = ${refund.id}`.then(
+        (rows) => rows[0]!,
+      );
+    expect(updatedRefund.status).toBe('SUBMITTED');
+    expect(updatedRefund.provider_refund_id).not.toBeNull();
+
+    const updatedOutbox =
+      await rawSql`SELECT status FROM outbox_events WHERE id = ${outbox.id}`.then(
+        (rows) => rows[0]!,
+      );
+    expect(updatedOutbox.status).toBe('PROCESSED');
+  });
+
   it('SKIP LOCKED laisse le second événement avançable en concurrence réelle', async () => {
     if (!ctx || !rawSql || !db) throw new Error('DB non initialisée');
     const first = await seedFixture();

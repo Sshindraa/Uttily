@@ -1,4 +1,5 @@
 import { and, eq } from 'drizzle-orm';
+import { createHash } from 'node:crypto';
 import type { DbExecutor } from '@uttily/database';
 import { bookings, locations, payments } from '@uttily/database';
 import { CatalogError } from '../catalog/errors';
@@ -13,6 +14,29 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 export interface PreviewCancellationOptions {
   actorReason?: CancellationActorReason | undefined;
   now?: Date | undefined;
+}
+
+export function computeCancellationPreviewFingerprint(params: {
+  bookingId: string;
+  actorReason: CancellationActorReason;
+  policyCode: string;
+  refundAmountMinor: number;
+  retainedAmountMinor: number;
+  commissionRefundedMinor: number;
+  finalMerchantRevenueMinor: number;
+  explanationCode: string;
+}): string {
+  const payload = JSON.stringify({
+    b: params.bookingId,
+    r: params.actorReason,
+    p: params.policyCode,
+    rf: params.refundAmountMinor,
+    rt: params.retainedAmountMinor,
+    cr: params.commissionRefundedMinor,
+    fm: params.finalMerchantRevenueMinor,
+    e: params.explanationCode,
+  });
+  return createHash('sha256').update(payload).digest('hex');
 }
 
 export async function previewBookingCancellation(
@@ -79,6 +103,7 @@ export async function previewBookingCancellation(
       inventoryWillBeReleased: false,
       customerStartAt: booking.customerStartAt,
       locationTimeZone: booking.locationTimeZone,
+      previewFingerprint: '',
     };
   }
 
@@ -186,6 +211,17 @@ export async function previewBookingCancellation(
     finalMerchantRevenueMinor = retainedAmountMinor - finalCommissionMinor;
   }
 
+  const previewFingerprint = computeCancellationPreviewFingerprint({
+    bookingId,
+    actorReason,
+    policyCode,
+    refundAmountMinor,
+    retainedAmountMinor,
+    commissionRefundedMinor,
+    finalMerchantRevenueMinor,
+    explanationCode,
+  });
+
   return {
     allowed: true,
     bookingId,
@@ -203,5 +239,6 @@ export async function previewBookingCancellation(
     inventoryWillBeReleased: true,
     customerStartAt: booking.customerStartAt,
     locationTimeZone: booking.locationTimeZone,
+    previewFingerprint,
   };
 }

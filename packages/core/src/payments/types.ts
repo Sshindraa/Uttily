@@ -114,7 +114,7 @@ export interface RefundResult {
 export interface RefundMetadata {
   refund_id: string;
   organization_id: string;
-  protocol_version: 'refund-requested-v1';
+  protocol_version: 'refund-requested-v1' | 'refund-requested-v2';
 }
 
 /**

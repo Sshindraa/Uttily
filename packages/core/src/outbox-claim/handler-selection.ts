@@ -34,7 +34,7 @@ export type KnownHandlerSelection =
   | {
       readonly kind: 'REFUND_REQUEST';
       readonly eventType: 'REFUND_REQUESTED';
-      readonly eventVersion: 'v1';
+      readonly eventVersion: 'v1' | 'v2';
       readonly aggregateType: 'REFUND';
     };
 
@@ -124,13 +124,13 @@ export function validateHandlerSelection(selection: unknown): KnownHandlerSelect
   if (s.kind === 'REFUND_REQUEST') {
     if (
       s.eventType === 'REFUND_REQUESTED' &&
-      s.eventVersion === 'v1' &&
+      (s.eventVersion === 'v1' || s.eventVersion === 'v2') &&
       s.aggregateType === 'REFUND'
     ) {
       return {
         kind: 'REFUND_REQUEST',
         eventType: 'REFUND_REQUESTED',
-        eventVersion: 'v1',
+        eventVersion: s.eventVersion,
         aggregateType: 'REFUND',
       };
     }

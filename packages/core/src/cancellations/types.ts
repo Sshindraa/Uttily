@@ -30,6 +30,7 @@ export interface CancellationPreviewResult {
   inventoryWillBeReleased: boolean;
   customerStartAt: Date;
   locationTimeZone: string;
+  previewFingerprint: string;
 }
 
 export interface CancelConfirmedBookingInput {
@@ -38,6 +39,7 @@ export interface CancelConfirmedBookingInput {
   actorUserId: string;
   actorReason: CancellationActorReason;
   idempotencyKey: string;
+  previewFingerprint?: string | undefined;
   now?: Date | undefined;
 }
 

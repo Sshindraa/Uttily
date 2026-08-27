@@ -106,6 +106,18 @@ export async function cancelConfirmedBooking(
         );
       }
 
+      // Invariant UX : Vérification anti-preview stale
+      if (
+        input.previewFingerprint &&
+        input.previewFingerprint.trim().length > 0 &&
+        input.previewFingerprint !== preview.previewFingerprint
+      ) {
+        throw new CatalogError(
+          'PREVIEW_STALE',
+          "Les conditions financières ou les montants d'annulation ont évolué depuis votre dernière prévisualisation. Veuillez vérifier les nouveaux montants avant de confirmer.",
+        );
+      }
+
       // 3. Mise à jour du statut de la réservation à CANCELLED
       await tx
         .update(bookings)
@@ -142,69 +154,64 @@ export async function cancelConfirmedBooking(
           and(eq(inventoryBlocks.sourceId, input.bookingId), eq(inventoryBlocks.status, 'ACTIVE')),
         );
 
-      // 5. Création du remboursement PENDING si applicable
+      // 5. Création du remboursement PENDING avec standardisation de l'idempotence
       let refundId: string | null = null;
       if (preview.refundAmountMinor > 0 && booking.paymentId) {
+        refundId = crypto.randomUUID();
         const refundReasonValue =
           input.actorReason === 'PAYMENT_COMPENSATION'
             ? 'AMENDMENT_COMPENSATION'
             : input.actorReason;
 
-        const refundRows = await tx
-          .insert(refunds)
-          .values({
-            organizationId: input.organizationId,
-            paymentId: booking.paymentId,
-            reason: refundReasonValue,
-            status: 'PENDING',
-            amountMinor: preview.refundAmountMinor,
-            currency: 'EUR',
-            reverseTransfer: true,
-            refundApplicationFee: preview.commissionRefundedMinor > 0,
-            providerIdempotencyKey: `${input.idempotencyKey}:refund`,
-            requestedAt: now,
-          })
-          .returning({ id: refunds.id });
-
-        refundId = refundRows[0]!.id;
+        await tx.insert(refunds).values({
+          id: refundId,
+          organizationId: input.organizationId,
+          paymentId: booking.paymentId,
+          reason: refundReasonValue,
+          status: 'PENDING',
+          amountMinor: preview.refundAmountMinor,
+          currency: 'EUR',
+          reverseTransfer: true,
+          refundApplicationFee: preview.commissionRefundedMinor > 0,
+          providerIdempotencyKey: `refund_${refundId}`,
+          requestedAt: now,
+        });
       }
 
       // 6. Insertion de la trace d'annulation
-      const cancellationRows = await tx
-        .insert(bookingCancellations)
-        .values({
-          organizationId: input.organizationId,
-          bookingId: input.bookingId,
-          cancelledByUserId: input.actorUserId,
-          actorReason: input.actorReason,
-          policyCode: preview.policyCode,
-          policySnapshot: booking.cancellationPolicySnapshot,
-          grossPaidMinor: preview.paidAmountMinor,
-          refundAmountMinor: preview.refundAmountMinor,
-          retainedAmountMinor: preview.retainedAmountMinor,
-          originalCommissionMinor: preview.originalCommissionMinor,
-          commissionRefundedMinor: preview.commissionRefundedMinor,
-          finalCommissionMinor: preview.finalCommissionMinor,
-          finalMerchantRevenueMinor: preview.finalMerchantRevenueMinor,
-          currency: 'EUR',
-          explanationCode: preview.explanationCode,
-          inventoryReleased: true,
-          refundId,
-          occurredAt: now,
-        })
-        .returning({ id: bookingCancellations.id });
+      const cancellationId = crypto.randomUUID();
+      await tx.insert(bookingCancellations).values({
+        id: cancellationId,
+        organizationId: input.organizationId,
+        bookingId: input.bookingId,
+        cancelledByUserId: input.actorUserId,
+        actorReason: input.actorReason,
+        policyCode: preview.policyCode,
+        policySnapshot: booking.cancellationPolicySnapshot,
+        grossPaidMinor: preview.paidAmountMinor,
+        refundAmountMinor: preview.refundAmountMinor,
+        retainedAmountMinor: preview.retainedAmountMinor,
+        originalCommissionMinor: preview.originalCommissionMinor,
+        commissionRefundedMinor: preview.commissionRefundedMinor,
+        finalCommissionMinor: preview.finalCommissionMinor,
+        finalMerchantRevenueMinor: preview.finalMerchantRevenueMinor,
+        currency: 'EUR',
+        explanationCode: preview.explanationCode,
+        inventoryReleased: true,
+        refundId,
+        occurredAt: now,
+      });
 
-      const cancellationId = cancellationRows[0]!.id;
-
-      // 7. Événement Outbox pour notification et exécution worker asynchrone
+      // 7. Événements Outbox distincts :
+      // Événement 1 : BOOKING_CANCELLED (métier / timeline / notifications)
       await tx.insert(outboxEvents).values({
         organizationId: input.organizationId,
         aggregateType: 'booking',
         aggregateId: input.bookingId,
-        eventType: 'booking.cancelled',
+        eventType: 'BOOKING_CANCELLED',
         eventVersion: 'v1',
         availableAt: now,
-        idempotencyKey: `${input.idempotencyKey}:outbox`,
+        idempotencyKey: `${input.idempotencyKey}:outbox_booking_cancelled`,
         payload: {
           bookingId: input.bookingId,
           cancellationId,
@@ -214,6 +221,26 @@ export async function cancelConfirmedBooking(
           actorReason: input.actorReason,
         },
       });
+
+      // Événement 2 : REFUND_REQUESTED (financier / worker asynchrone) si remboursement requis
+      if (preview.refundAmountMinor > 0 && refundId !== null) {
+        await tx.insert(outboxEvents).values({
+          organizationId: input.organizationId,
+          aggregateType: 'REFUND',
+          aggregateId: refundId,
+          eventType: 'REFUND_REQUESTED',
+          eventVersion: 'v2',
+          availableAt: now,
+          idempotencyKey: `refund_requested_${refundId}`,
+          payload: {
+            organizationId: input.organizationId,
+            bookingId: input.bookingId,
+            refundId,
+            origin: 'BOOKING_CANCELLATION',
+            cancellationId,
+          },
+        });
+      }
 
       const outcome: CancelConfirmedBookingResult = {
         cancellationId,

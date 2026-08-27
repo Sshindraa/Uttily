@@ -20,10 +20,12 @@ export function CancellationFlow({ orgId, bookingId }: CancellationFlowProps): R
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [staleWarning, setStaleWarning] = useState<string | null>(null);
 
   async function handleOpenModal(): Promise<void> {
     setIsOpen(true);
     setError(null);
+    setStaleWarning(null);
     setIsLoadingPreview(true);
     try {
       const res = await previewBookingCancellationAction(orgId, bookingId, actorReason);
@@ -41,6 +43,7 @@ export function CancellationFlow({ orgId, bookingId }: CancellationFlowProps): R
 
   async function handleReasonChange(newReason: CancellationActorReason): Promise<void> {
     setActorReason(newReason);
+    setStaleWarning(null);
     setIsLoadingPreview(true);
     try {
       const res = await previewBookingCancellationAction(orgId, bookingId, newReason);
@@ -58,16 +61,40 @@ export function CancellationFlow({ orgId, bookingId }: CancellationFlowProps): R
 
   async function handleConfirmCancellation(): Promise<void> {
     setError(null);
+    setStaleWarning(null);
     setIsSubmitting(true);
     try {
-      await cancelConfirmedBookingAction(orgId, bookingId, actorReason, crypto.randomUUID());
+      await cancelConfirmedBookingAction(
+        orgId,
+        bookingId,
+        actorReason,
+        crypto.randomUUID(),
+        preview?.previewFingerprint,
+      );
       window.location.reload();
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Erreur lors de l'exécution de l'annulation de la réservation.",
-      );
+      const message = err instanceof Error ? err.message : '';
+      if (message.includes('PREVIEW_STALE') || message.includes('évolué')) {
+        setStaleWarning(
+          "⚠️ Les conditions d'annulation viennent d'être mises à jour par le système. Les montants ci-dessous ont été actualisés. Veuillez les vérifier attentivement avant de confirmer.",
+        );
+        try {
+          const freshPreview = await previewBookingCancellationAction(
+            orgId,
+            bookingId,
+            actorReason,
+          );
+          setPreview(freshPreview);
+        } catch {
+          // ignore
+        }
+      } else {
+        setError(
+          message.length > 0
+            ? message
+            : "Erreur lors de l'exécution de l'annulation de la réservation.",
+        );
+      }
       setIsSubmitting(false);
     }
   }
@@ -98,6 +125,7 @@ export function CancellationFlow({ orgId, bookingId }: CancellationFlowProps): R
             </div>
 
             {error && <div className={styles.errorAlert}>{error}</div>}
+            {staleWarning && <div className={styles.staleAlert}>{staleWarning}</div>}
 
             <div className={styles.modalBody}>
               <div className={styles.reasonSelectorGroup}>

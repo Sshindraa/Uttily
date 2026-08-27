@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
-import { parseRefundRequestedV1Event } from '@uttily/contracts';
+import { parseRefundRequestedEvent } from '@uttily/contracts';
 import type { StripeEnvironment } from '../payments/types';
 import { poseLease } from '../outbox-claim/claim-outbox-batch';
 import { REFUND_REQUEST_SELECTION } from '../outbox-claim/handler-selection';
@@ -8,7 +8,7 @@ import { DEFAULT_BATCH_LIMIT, MAX_ATTEMPTS, validateBatchLimit } from './schedul
 import type { ClaimedRefundRequest } from './types';
 
 /**
- * Claims only REFUND_REQUESTED.v1/REFUND events whose authoritative payment is
+ * Claims only REFUND_REQUESTED (v1 ou v2)/REFUND events whose authoritative payment is
  * in the requested Stripe environment. Malformed payloads are claimed as
  * quarantinable work so they cannot remain invisible forever.
  */
@@ -40,7 +40,7 @@ export async function claimRefundRequestBatch(
       LEFT JOIN "payments" p ON p.id = r.payment_id
       LEFT JOIN "amendment_payments" ap ON ap.id = r.amendment_payment_id
       WHERE oe.event_type = ${REFUND_REQUEST_SELECTION.eventType}
-        AND oe.event_version = ${REFUND_REQUEST_SELECTION.eventVersion}
+        AND oe.event_version IN ('v1', 'v2')
         AND oe.aggregate_type = ${REFUND_REQUEST_SELECTION.aggregateType}
         AND oe.status IN ('PENDING', 'PROCESSING')
         AND oe.available_at <= now()
@@ -82,7 +82,7 @@ export async function claimRefundRequestBatch(
 
       let payloadValid = false;
       try {
-        parseRefundRequestedV1Event({
+        parseRefundRequestedEvent({
           aggregateType: row.aggregate_type,
           eventType: row.event_type,
           eventVersion: row.event_version,
