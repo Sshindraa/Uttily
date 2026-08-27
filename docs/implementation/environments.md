@@ -23,7 +23,7 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
     connexion PostgreSQL.
   - Le seed ne crée aucun utilisateur Clerk, compte/provider réel, paiement,
     réservation ou appel réseau externe. Il prépare l'offre publique de
-    démonstration `annecy-dev` / `kayak-dev` (lieu `annecy-shop-dev`, SKU
+    démonstration `lyon-dev` / `kayak-dev` (lieu `lyon-shop-dev`, SKU
     `KAY-DEV-001`) sans supprimer de ligne.
   - `Ctrl+C` arrête Web et le worker proprement ; PostgreSQL reste actif et
     n'est jamais arrêté ou supprimé automatiquement. La garantie d'arrêt complet

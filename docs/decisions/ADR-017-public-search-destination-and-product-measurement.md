@@ -15,6 +15,11 @@
 > pour les décisions produit approuvées et ADR-018 pour la conception de la
 > tarification flexible et de la recherche temporelle.
 
+> **Note de révision (2026-08-27)** : ADR-027 remplace la recommandation
+> Geoapify par une architecture de résolution local-first, Lyon comme première
+> ville produit et un benchmark local PostgreSQL/Photon/IGN avant le choix du
+> fournisseur final.
+
 ## 1. Contexte et portée du gel G7B
 
 Le Lot 7 rend l'offre exploitable côté client : recherche par destination,

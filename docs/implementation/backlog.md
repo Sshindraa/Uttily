@@ -222,7 +222,7 @@ complet sont validés dans
 | Lot | Résultat | Dépendances | Statut |
 | --- | --- | --- | --- |
 | G8B-1 — Upload réel des photos produit | upload R2 sécurisé, validation serveur, trois photos avant publication, suppression/remplacement idempotents, URLs publiques contrôlées, UI accessible et tests | G7F-A2, ADR-026 | **Terminé le 2026-08-27 ; smoke test staging R2 validé** |
-| G8B-2 — Géocodage réel | fournisseur configuré, cache et droits documentés, test de recherche réel | ADR-017, ADR-021 | À planifier |
+| G8B-2 — Géocodage réel | registre local-first, autocomplétion, benchmark fournisseur, cache et droits documentés, recherche réelle | ADR-017, ADR-021, ADR-027 | **En cours — G8B-2A livré localement le 2026-08-27 ; benchmark G8B-2B suivant** |
 | G8B-3 — Contenu pilote et validations | contenu loueurs, juridique/RGPD, checklist Go/No-Go | décision commerciale et juridique | À planifier |
 
 ## Horizons stratégiques post-MVP — option C

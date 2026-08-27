@@ -622,7 +622,7 @@ opérationnelle (pas de seed dans la migration).
 
 #### `destinations`
 
-Table des destinations globales configurées (pilote : Annecy). Chaque
+Table des destinations globales configurées (première ville produit : Lyon). Chaque
 destination porte un `public_id` (UUID stable, immuable via trigger), un `slug`
 unique au format kebab-case (`^[a-z0-9]+(?:-[a-z0-9]+)*$`), un `country_code`
 text NOT NULL (FK vers `countries`), un `place_type` text NOT NULL

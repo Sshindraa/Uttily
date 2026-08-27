@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { PublicSearchCategoryOption, PublicSearchDestinationOption } from '@uttily/core';
 import type { PublicSearchFormValues, PublicUiLocale } from '@/lib/public-search';
 import { getPublicCategoryLabel } from '@/lib/public-search-labels';
+import { DestinationCombobox } from './destination-combobox';
 import styles from './search.module.css';
 
 interface SearchFormProps {
@@ -27,21 +28,13 @@ export function SearchForm({
   return (
     <form action={`/${locale}/search`} method="get" className={styles.form}>
       <div className={styles.fieldWide}>
-        <label htmlFor="destinationPublicId">{fr ? 'Destination' : 'Destination'}</label>
-        <select
-          id="destinationPublicId"
-          name="destinationPublicId"
-          defaultValue={values.destinationPublicId}
-          aria-describedby={fieldErrors.destinationPublicId ? 'destination-error' : undefined}
-          required
-        >
-          <option value="">{fr ? 'Choisir une destination' : 'Choose a destination'}</option>
-          {destinations.map((destination) => (
-            <option key={destination.publicId} value={destination.publicId}>
-              {destination.label} · {destination.countryCode}
-            </option>
-          ))}
-        </select>
+        <label htmlFor="destinationQuery">{fr ? 'Destination' : 'Destination'}</label>
+        <DestinationCombobox
+          destinations={destinations}
+          defaultPublicId={values.destinationPublicId}
+          locale={locale}
+          error={fieldErrors.destinationPublicId}
+        />
         {fieldErrors.destinationPublicId ? (
           <span id="destination-error" className={styles.fieldError}>
             {fieldErrors.destinationPublicId}

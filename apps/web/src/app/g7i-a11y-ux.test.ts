@@ -43,7 +43,7 @@ describe('G7I — static accessibility guardrails', () => {
 
   it('search-form.tsx: labels use htmlFor, inputs/selects are keyboard-accessible, aria-describedby for errors', () => {
     // Labels associated via htmlFor
-    expect(searchForm).toContain('htmlFor="destinationPublicId"');
+    expect(searchForm).toContain('htmlFor="destinationQuery"');
     expect(searchForm).toContain('htmlFor="intent"');
     expect(searchForm).toContain('htmlFor="startDate"');
     expect(searchForm).toContain('htmlFor="endDateExclusive"');

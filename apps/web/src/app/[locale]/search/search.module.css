@@ -140,6 +140,60 @@
   font-size: 0.78rem;
 }
 
+.combobox {
+  position: relative;
+}
+
+.suggestionList {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  right: 0;
+  left: 0;
+  z-index: 10;
+  overflow: hidden;
+  margin: 0;
+  padding: 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: white;
+  box-shadow: 0 14px 36px rgb(23 34 28 / 16%);
+  list-style: none;
+}
+
+.suggestionButton {
+  display: flex;
+  width: 100%;
+  min-height: auto !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.75rem !important;
+  color: var(--ink) !important;
+  background: transparent !important;
+  text-align: left;
+}
+
+.suggestionButton small {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.suggestionActive,
+.suggestionButton:hover {
+  border-radius: 0.55rem;
+  background: #edf2ee !important;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .notice,
 .error {
   margin: 1rem 0 0;

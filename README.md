@@ -118,8 +118,8 @@ explicitement ce marqueur, et `dev:full -- --seed` l'injecte dans son
 environnement enfant ; aucun de ces chemins ne révèle l'URL de base ou un secret.
 La fixture reste idempotente et sans utilisateur Clerk, provider réel, Stripe,
 réservation ou paiement. Elle crée une offre publique de démonstration recherchable dans
-`/fr/search` avec la destination `annecy-dev`, l'organisation
-`test-org-dev`, le lieu `annecy-shop-dev`, le produit `kayak-dev` et le SKU
+`/fr/search` avec la destination `lyon-dev`, l'organisation
+`test-org-dev`, le lieu `lyon-shop-dev`, le produit `kayak-dev` et le SKU
 `KAY-DEV-001`. Elle n'appelle aucun service externe et ne supprime aucune ligne.
 
 Pour protéger strictement le Web local contre une configuration héritée, `dev:full`

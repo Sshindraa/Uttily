@@ -4,15 +4,15 @@ import postgres from 'postgres';
 
 const LOCAL_DATABASE_URL = 'postgresql://uttily:uttily@127.0.0.1:5432/uttily';
 const LOCAL_DATABASE_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
-const DEMO_DESTINATION_SLUG = 'annecy-dev';
+const DEMO_DESTINATION_SLUG = 'lyon-dev';
 const DEMO_ORGANIZATION_SLUG = 'test-org-dev';
-const DEMO_LOCATION_SLUG = 'annecy-shop-dev';
+const DEMO_LOCATION_SLUG = 'lyon-shop-dev';
 const DEMO_PRODUCT_SLUG = 'kayak-dev';
 const DEMO_VARIANT_SKU_SUFFIX = 'dev-standard';
 const DEMO_INVENTORY_SKU = 'KAY-DEV-001';
 const DEMO_PLAN_INTERNAL_LABEL = 'local-demo-seed';
-const ANNECY_LONGITUDE = 6.12;
-const ANNECY_LATITUDE = 45.89;
+const LYON_LONGITUDE = 4.8357;
+const LYON_LATITUDE = 45.764;
 const DEMO_PHOTOS = [
   {
     storageKey: 'product-photos/dev-kayak-0',
@@ -103,8 +103,8 @@ async function ensureDestination(tx) {
       )
       VALUES (
         ${DEMO_DESTINATION_SLUG}, 'FR', 'CITY',
-        ST_SetSRID(ST_MakePoint(${ANNECY_LONGITUDE}, ${ANNECY_LATITUDE}), 4326),
-        45.88, 6.10, 45.90, 6.14, false
+        ST_SetSRID(ST_MakePoint(${LYON_LONGITUDE}, ${LYON_LATITUDE}), 4326),
+        45.707, 4.771, 45.809, 4.899, false
       )
       RETURNING "id"
     `;
@@ -124,11 +124,11 @@ async function ensureDestination(tx) {
     SET
       "country_code" = 'FR',
       "place_type" = 'CITY',
-      "center" = ST_SetSRID(ST_MakePoint(${ANNECY_LONGITUDE}, ${ANNECY_LATITUDE}), 4326),
-      "bbox_south" = 45.88,
-      "bbox_west" = 6.10,
-      "bbox_north" = 45.90,
-      "bbox_east" = 6.14,
+      "center" = ST_SetSRID(ST_MakePoint(${LYON_LONGITUDE}, ${LYON_LATITUDE}), 4326),
+      "bbox_south" = 45.707,
+      "bbox_west" = 4.771,
+      "bbox_north" = 45.809,
+      "bbox_east" = 4.899,
       "sort_order" = 0,
       "deleted_at" = NULL,
       "updated_at" = now()
@@ -137,8 +137,8 @@ async function ensureDestination(tx) {
   await tx`
     INSERT INTO "destination_translations" ("destination_id", "locale", "label")
     VALUES
-      (${destinationId}, 'fr', 'Annecy'),
-      (${destinationId}, 'en', 'Annecy')
+      (${destinationId}, 'fr', 'Lyon'),
+      (${destinationId}, 'en', 'Lyon')
     ON CONFLICT ("destination_id", "locale") DO UPDATE SET
       "label" = EXCLUDED."label",
       "updated_at" = now()
@@ -215,9 +215,9 @@ async function ensureLocation(tx, organizationId) {
         "prep_buffer_minutes", "cleanup_buffer_minutes", "operating_currency"
       )
       VALUES (
-        ${organizationId}, 'Annecy Shop Dev', ${DEMO_LOCATION_SLUG}, 'Europe/Paris',
-        '1 rue du lac', NULL, 'Annecy', '74000', 'FR',
-        ST_SetSRID(ST_MakePoint(${ANNECY_LONGITUDE}, ${ANNECY_LATITUDE}), 4326),
+        ${organizationId}, 'Lyon Shop Dev', ${DEMO_LOCATION_SLUG}, 'Europe/Paris',
+        '1 place Bellecour', NULL, 'Lyon', '69002', 'FR',
+        ST_SetSRID(ST_MakePoint(${LYON_LONGITUDE}, ${LYON_LATITUDE}), 4326),
         true, true, 30, 30, 'EUR'
       )
       RETURNING "id"
@@ -230,14 +230,14 @@ async function ensureLocation(tx, organizationId) {
   await tx`
     UPDATE "locations"
     SET
-      "name" = 'Annecy Shop Dev',
+      "name" = 'Lyon Shop Dev',
       "time_zone" = 'Europe/Paris',
-      "address_line1" = '1 rue du lac',
+      "address_line1" = '1 place Bellecour',
       "address_line2" = NULL,
-      "city" = 'Annecy',
-      "postal_code" = '74000',
+      "city" = 'Lyon',
+      "postal_code" = '69002',
       "country_code" = 'FR',
-      "geo_point" = ST_SetSRID(ST_MakePoint(${ANNECY_LONGITUDE}, ${ANNECY_LATITUDE}), 4326),
+      "geo_point" = ST_SetSRID(ST_MakePoint(${LYON_LONGITUDE}, ${LYON_LATITUDE}), 4326),
       "pickup_enabled" = true,
       "is_publicly_listed" = true,
       "prep_buffer_minutes" = 30,
@@ -681,7 +681,7 @@ function isMainModule() {
 if (isMainModule()) {
   seedLocalDemo()
     .then(() => {
-      console.log('Local demo seed applied: destination=annecy-dev product=kayak-dev');
+      console.log('Local demo seed applied: destination=lyon-dev product=kayak-dev');
     })
     .catch(() => {
       console.error('Local demo seed failed.');

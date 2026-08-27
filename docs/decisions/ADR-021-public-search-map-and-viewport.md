@@ -5,6 +5,11 @@
 - **Décideurs** : Porteur produit Uttily, engineering
 - **Relie à** : ADR-017, ADR-018, ADR-020 ; G7D-A ; G7E-A
 
+> **Note de révision (2026-08-27)** : ADR-027 autorise pour G8B-2D des
+> élargissements successifs 10/25/50 km, toujours séparés explicitement des
+> résultats exacts. Le présent ADR continue de décrire le comportement livré
+> avant cet élargissement.
+
 ## 1. Contexte
 
 G7E-A expose la recherche publique exacte sur `/{locale}/search` et
