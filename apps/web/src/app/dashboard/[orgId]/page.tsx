@@ -3,6 +3,7 @@ import {
   listMaintenanceDashboardSignals,
   listPendingInvitations,
   getOrganizationOnboardingReadiness,
+  getOrganizationById,
   type MaintenanceDashboardSignal,
 } from '@uttily/core';
 import { requireFulfillmentOperatorOf } from '@/lib/fulfillment-auth';
@@ -36,6 +37,7 @@ export default async function OrganizationDashboardPage({
   const { orgId } = await params;
   const { db, organizationId } = await requireFulfillmentOperatorOf(orgId);
   const asOf = new Date();
+  const org = await getOrganizationById(db, organizationId);
   const readiness = await getOrganizationOnboardingReadiness(db, organizationId);
   const locations = await listLocations(db, organizationId);
   const invitations = await listPendingInvitations(db, organizationId);
@@ -43,7 +45,15 @@ export default async function OrganizationDashboardPage({
 
   return (
     <>
-      <h1>Organisation</h1>
+      <div style={{ marginBottom: '28px' }}>
+        <h1 style={{ margin: 0, fontSize: '1.85rem', fontWeight: 800, color: '#0f172a' }}>
+          Tableau de bord
+        </h1>
+        <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '0.95rem' }}>
+          {org?.legalName ?? 'Organisation'} • Gestion de l’activité, de la flotte et des
+          réservations
+        </p>
+      </div>
 
       <OnboardingReadinessCard orgId={organizationId} readiness={readiness} />
 

@@ -116,6 +116,18 @@ export async function getOrganizationBySlug(
   return row ? mapOrganization(row) : null;
 }
 
+export async function getOrganizationById(
+  db: DatabaseClient,
+  id: string,
+): Promise<OrganizationRecord | null> {
+  const [row] = await db
+    .select()
+    .from(organizations)
+    .where(and(eq(organizations.id, id), isNull(organizations.deletedAt)))
+    .limit(1);
+  return row ? mapOrganization(row) : null;
+}
+
 function mapOrganization(row: typeof organizations.$inferSelect): OrganizationRecord {
   return {
     id: row.id,

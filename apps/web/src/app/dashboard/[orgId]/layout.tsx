@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
-import { getMembership, requireMembership } from '@uttily/core';
+import { getMembership, requireMembership, getOrganizationById } from '@uttily/core';
 import Link from 'next/link';
+import styles from './layout.module.css';
 
 // Layout partagé de la section organisation.
 // Authentifie l'utilisateur et vérifie la membership une seule fois
@@ -21,32 +22,55 @@ export default async function OrganizationLayout({
   const db = getDb();
   const membership = await getMembership(db, orgId, user.id);
   requireMembership(membership, ['OWNER', 'ADMIN', 'MANAGER', 'STAFF']);
+  const org = await getOrganizationById(db, orgId);
 
   return (
-    <div>
-      <nav aria-label="Navigation principale">
-        <ul>
-          <li>
-            <Link href={`/dashboard/${orgId}/locations`}>Établissements</Link>
-          </li>
-          <li>
-            <Link href={`/dashboard/${orgId}/catalog`}>Catalogue</Link>
-          </li>
-          <li>
-            <Link href={`/dashboard/${orgId}/inventory`}>Inventaire</Link>
-          </li>
-          <li>
-            <Link href={`/dashboard/${orgId}/operations`}>Opérations</Link>
-          </li>
-          <li>
-            <Link href={`/dashboard/${orgId}/team`}>Équipe</Link>
-          </li>
-          <li>
-            <Link href={`/dashboard/${orgId}/settings/payments`}>Paiements</Link>
-          </li>
-        </ul>
-      </nav>
-      {children}
+    <div className={styles.wrapper}>
+      <header className={styles.topBar}>
+        <div className={styles.topBarInner}>
+          <div className={styles.brandOrg}>
+            <Link href="/dashboard" className={styles.brandLogo}>
+              <span>⚡</span> Uttily Pro
+            </Link>
+            <span className={styles.brandDivider}>/</span>
+            <Link href={`/dashboard/${orgId}`} className={styles.orgSelector}>
+              <span>🏢</span>
+              <span>{org?.legalName ?? 'Organisation'}</span>
+              <span className={styles.roleBadge}>{membership?.role}</span>
+            </Link>
+          </div>
+
+          <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{user.email}</div>
+        </div>
+
+        <nav className={styles.navBar} aria-label="Navigation principale">
+          <div className={styles.navInner}>
+            <Link href={`/dashboard/${orgId}`} className={styles.navLink}>
+              📊 Tableau de bord
+            </Link>
+            <Link href={`/dashboard/${orgId}/catalog`} className={styles.navLink}>
+              🚲 Catalogue
+            </Link>
+            <Link href={`/dashboard/${orgId}/inventory`} className={styles.navLink}>
+              📦 Inventaire
+            </Link>
+            <Link href={`/dashboard/${orgId}/locations`} className={styles.navLink}>
+              📍 Établissements
+            </Link>
+            <Link href={`/dashboard/${orgId}/operations`} className={styles.navLink}>
+              🗓️ Opérations
+            </Link>
+            <Link href={`/dashboard/${orgId}/team`} className={styles.navLink}>
+              👥 Équipe
+            </Link>
+            <Link href={`/dashboard/${orgId}/settings/payments`} className={styles.navLink}>
+              💳 Paiements
+            </Link>
+          </div>
+        </nav>
+      </header>
+
+      <main className={styles.mainContent}>{children}</main>
     </div>
   );
 }

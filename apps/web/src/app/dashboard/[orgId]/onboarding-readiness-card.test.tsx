@@ -35,7 +35,7 @@ describe('OnboardingReadinessCard Component (G8B-3B3)', () => {
     expect(html).toContain('5 sur 7 étapes terminées');
   });
 
-  it('affiche les CTA pour les étapes non complétées', () => {
+  it('affiche les CTA pour les étapes non complétées avec bouton prioritaire pour la prochaine', () => {
     const html = renderToStaticMarkup(
       <OnboardingReadinessCard
         orgId="1c13f5b8-cbc1-4c5c-a474-47f0a9d00172"
@@ -44,7 +44,7 @@ describe('OnboardingReadinessCard Component (G8B-3B3)', () => {
     );
 
     expect(html).toContain('Ajouter mes vélos →');
-    expect(html).toContain('Activer les virements →');
+    expect(html).toContain('Activer les paiements →');
   });
 
   it('affiche le bandeau de célébration quand la configuration 6/7 est terminée', () => {
@@ -72,6 +72,30 @@ describe('OnboardingReadinessCard Component (G8B-3B3)', () => {
       />,
     );
 
-    expect(html).toContain('🎉 Votre annonce est prête !');
+    expect(html).toContain('🎉 Votre configuration est terminée !');
+    expect(html).toContain('Votre offre est prête à être publiée');
+    expect(html).toContain('Dernière étape requise');
+  });
+
+  it('affiche la barre de santé opérationnelle quand la boutique est à 100 %', () => {
+    const allDoneReadiness: OrganizationOnboardingReadiness = {
+      ...sampleReadiness,
+      completedCount: 7,
+      percentage: 100,
+      isConfigurationComplete: true,
+      isReadyForReservations: true,
+      milestones: sampleReadiness.milestones.map((m) => ({ ...m, completed: true })),
+    };
+
+    const html = renderToStaticMarkup(
+      <OnboardingReadinessCard
+        orgId="1c13f5b8-cbc1-4c5c-a474-47f0a9d00172"
+        readiness={allDoneReadiness}
+      />,
+    );
+
+    expect(html).toContain('Votre boutique est en ligne et opérationnelle');
+    expect(html).toContain('Boutique active');
+    expect(html).toContain('Paiements Stripe connectés');
   });
 });
