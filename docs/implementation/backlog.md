@@ -228,7 +228,7 @@ complet sont validés dans
 | G8B-3B — Onboarding accompagné vélo | collecte structurée, déroulé opérateur, checklist et audit du dashboard | G8B-3A | **En cours — kit et audit livrés le 2026-08-27 ; G8B-3B1 livré le 2026-08-27** |
 | G8B-3B1 — Établissement publiable | formulaire complet adresse, coordonnées, horaires, retrait et publication fail-closed | G8B-3B | **Terminé le 2026-08-27 — Core, dashboard et tests ciblés** |
 | G8B-3B2 — Plans tarifaires loueur | création DRAFT, fenêtres, traductions, paliers et activation via dashboard | G8B-3B1, schéma G7P-A | **Terminé le 2026-08-27 — Core, dashboard, tests d'intégration et actions serveur** |
-| G8B-3B3 — Readiness accompagnée | checklist serveur par organisation et liens vers les éléments manquants | G8B-3B1, G8B-3B2 | À implémenter |
+| G8B-3B3 — Readiness accompagnée | checklist serveur par organisation et liens vers les éléments manquants | G8B-3B1, G8B-3B2 | **Terminé le 2026-08-27 — Core, composant OnboardingReadinessCard, 7 jalons et tests** |
 | G8B-3B4 — Standard visuel et confiance vélo | trois vues guidées et validées côté serveur, identité professionnelle factuelle, conception du badge vérifié | G8B-3B2, ADR-020, ADR-026 | **Direction produit documentée le 2026-08-27 ; implémentation à planifier** |
 | G8B-3C — Contenu réel pilote | deux loueurs professionnels et vingt vélos réels publiables à Lyon | G8B-3B, partenaires signés | Bloqué — aucun partenaire engagé |
 | G8B-3D — Go/No-Go LIVE | finance, juridique, RGPD, Stripe LIVE, observabilité et smoke final | G8B-3C, validations externes | Bloqué par décisions finance/juridique/RGPD |

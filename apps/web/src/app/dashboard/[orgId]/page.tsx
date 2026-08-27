@@ -2,11 +2,13 @@ import {
   listLocations,
   listMaintenanceDashboardSignals,
   listPendingInvitations,
+  getOrganizationOnboardingReadiness,
   type MaintenanceDashboardSignal,
 } from '@uttily/core';
 import { requireFulfillmentOperatorOf } from '@/lib/fulfillment-auth';
 import { formatDateTimeInTimeZone } from '@/lib/operations-helpers';
 import Link from 'next/link';
+import { OnboardingReadinessCard } from './onboarding-readiness-card';
 
 function maintenanceSignalLabel(kind: MaintenanceDashboardSignal['kind']): string {
   switch (kind) {
@@ -34,6 +36,7 @@ export default async function OrganizationDashboardPage({
   const { orgId } = await params;
   const { db, organizationId } = await requireFulfillmentOperatorOf(orgId);
   const asOf = new Date();
+  const readiness = await getOrganizationOnboardingReadiness(db, organizationId);
   const locations = await listLocations(db, organizationId);
   const invitations = await listPendingInvitations(db, organizationId);
   const maintenanceSignals = await listMaintenanceDashboardSignals(db, organizationId, { asOf });
@@ -41,6 +44,8 @@ export default async function OrganizationDashboardPage({
   return (
     <>
       <h1>Organisation</h1>
+
+      <OnboardingReadinessCard orgId={organizationId} readiness={readiness} />
 
       <section aria-labelledby="maintenance-signals-heading">
         <h2 id="maintenance-signals-heading">

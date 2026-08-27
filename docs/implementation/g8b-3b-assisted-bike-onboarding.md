@@ -161,9 +161,10 @@ l'autorité ; les anciens plans actifs passent automatiquement à RETIRED.
 
 ### G8B-3B3 — readiness accompagnée
 
-Afficher une checklist calculée côté serveur pour chaque organisation, avec
-liens vers les éléments manquants. Ce read model ne publie rien et ne remplace
-aucun gate PostgreSQL.
+Livré le 2026-08-27 : read model pur `getOrganizationOnboardingReadiness(db, organizationId)`
+évaluant 7 jalons stricts (Entreprise, Boutique, Premier vélo, Photos, Tarif, Flotte, Paiements)
+et composant visuel `OnboardingReadinessCard` sur le dashboard de l'organisation avec calcul
+transparent `X / 7 étapes`, liens profonds contextuels et distinction entre configuration terminée
+et activation Stripe. Ce read model observe les gates et ne modifie aucun invariant de publication.
 
-Ordre recommandé : G8B-3B1, G8B-3B2, puis G8B-3B3. Cet ordre permet de corriger
-les données avant d'afficher leur synthèse.
+Les sous-lots G8B-3B1, G8B-3B2 et G8B-3B3 sont livrés et validés.
