@@ -88,7 +88,7 @@ pilote (`Bloque pilote = Oui`).
 
 | Sujet | État technique | État documentaire | Owner du sign-off | Preuve / lien | Bloque pilote |
 | --- | --- | --- | --- | --- | --- |
-| Politique de confidentialité | `BLOCKED` | `BLOCKED` | DPO + Juridique | **Aucune politique de confidentialité n'existe** : aucune page, aucun fichier, aucune occurrence de « politique de confidentialité » ou « privacy policy » dans `apps/`, `packages/` ou `docs/`. | **Oui** |
+| Politique de confidentialité | `BLOCKED` | `BLOCKED` | DPO + Juridique | **Aucune politique de confidentialité publiable n'existe dans l'application** : aucune page ni aucun fichier de politique sous `apps/`, `packages/` ou `public/`. La présente matrice ne constitue pas une politique. | **Oui** |
 | Finalités | `NOT_APPLICABLE` | `BLOCKED` | DPO | Aucun registre des finalités. Non déductible du code : le code dit *ce qui est fait*, jamais *pour quelle finalité déclarée*. | **Oui** |
 | Rétention — annonce aux personnes | `TECHNICALLY_VERIFIED` | `BLOCKED` | DPO | Rétention analytics techniquement implémentée (90 j raw / 24 mois agrégats, ADR-022). **Non annoncée nulle part** faute de politique de confidentialité. | **Oui** |
 | Suppression / effacement | `BLOCKED` | `BLOCKED` | DPO + Juridique + Engineering | **Aucun mécanisme n'existe.** Zéro occurrence de « anonymisation », « effacement », « suppression de compte », « erasure » ou « GDPR/RGPD » dans `packages/` et `apps/`. Voir C4-F1. | **Oui** |
