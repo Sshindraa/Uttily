@@ -1,0 +1,162 @@
+openapi: 3.0.3
+info:
+  title: Uttily Mobile API
+  version: 1.0.0
+  description: |
+    Contrat commun préparatoire pour les futurs clients Client et Pro.
+    Le chantier 21-M0 ne déploie encore aucun chemin /api/v1 ; paths est donc
+    volontairement vide. Les composants décrivent les enveloppes et headers
+    qui devront être utilisés par l'adaptateur API M1.
+servers:
+  - url: https://app.uttily.example/api/v1
+    description: URL illustrative à remplacer par la configuration de l'environnement
+paths: {}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Token Clerk validé exclusivement côté serveur.
+  parameters:
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      description: Identifiant de corrélation généré ou accepté sous contrôle serveur.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Clé stable pour la même intention utilisateur et réutilisée à chaque retry.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+    AcceptLanguage:
+      name: Accept-Language
+      in: header
+      required: false
+      description: Préférence de locale BCP 47 ; la locale finale est résolue côté serveur.
+      schema:
+        type: string
+        minLength: 2
+        maxLength: 35
+  schemas:
+    MobileApiErrorCode:
+      type: string
+      enum:
+        - UNAUTHENTICATED
+        - FORBIDDEN
+        - NOT_FOUND
+        - VALIDATION_ERROR
+        - CONFLICT
+        - IDEMPOTENCY_CONFLICT
+        - HOLD_EXPIRED
+        - INSUFFICIENT_AVAILABILITY
+        - PAYMENT_ACTION_REQUIRED
+        - PAYMENT_PENDING
+        - RATE_LIMITED
+        - INTERNAL_ERROR
+    MobileRetryPolicy:
+      type: string
+      enum:
+        - RETRY_SAFE
+        - RETRY_WITH_SAME_IDEMPOTENCY_KEY
+        - DO_NOT_RETRY
+        - REFRESH_STATE_BEFORE_RETRY
+    FieldErrors:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: string
+    MobileApiError:
+      type: object
+      required:
+        - code
+        - retryable
+        - retryPolicy
+      properties:
+        code:
+          $ref: '#/components/schemas/MobileApiErrorCode'
+        retryable:
+          type: boolean
+        retryPolicy:
+          $ref: '#/components/schemas/MobileRetryPolicy'
+        fieldErrors:
+          $ref: '#/components/schemas/FieldErrors'
+      additionalProperties: false
+    MobileApiSuccess:
+      type: object
+      required:
+        - ok
+        - data
+        - requestId
+      properties:
+        ok:
+          type: boolean
+          enum: [true]
+        data:
+          description: Read model public du endpoint, sans identifiant interne.
+        requestId:
+          type: string
+        replayed:
+          type: boolean
+          description: Vrai uniquement lorsque le résultat terminal provient d'un rejeu idempotent.
+      additionalProperties: false
+    MobileApiFailure:
+      type: object
+      required:
+        - ok
+        - error
+        - requestId
+      properties:
+        ok:
+          type: boolean
+          enum: [false]
+        error:
+          $ref: '#/components/schemas/MobileApiError'
+        requestId:
+          type: string
+        replayed:
+          type: boolean
+          description: Vrai uniquement lorsque l'erreur terminale provient d'un rejeu idempotent.
+      additionalProperties: false
+    Page:
+      type: object
+      required:
+        - nextCursor
+        - hasMore
+      properties:
+        nextCursor:
+          type: string
+          nullable: true
+        hasMore:
+          type: boolean
+      additionalProperties: false
+    Money:
+      type: object
+      required:
+        - amountMinor
+        - currency
+      properties:
+        amountMinor:
+          type: integer
+          format: int64
+          minimum: 0
+        currency:
+          type: string
+          pattern: '^[A-Z]{3}$'
+      additionalProperties: false
+  headers:
+    X-Request-Id:
+      description: Identifiant de corrélation renvoyé avec chaque réponse.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
