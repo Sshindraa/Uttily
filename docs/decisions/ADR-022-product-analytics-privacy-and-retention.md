@@ -98,9 +98,16 @@ répétitivement.
 - Les agrégats quotidiens ne contiennent que des compteurs sans identifiant
   source, soumis à validation privacy : ils ne contiennent que des compteurs
   par jour et par environnement.
-- La rétention est bornée : G7H-A fournit une primitive de purge, mais aucun
-  worker/cron n'est encore branché : 90 jours pour le raw, 24 mois pour
-  les agrégats.
+- La rétention est bornée : 90 jours pour le raw, 24 mois pour les agrégats.
+  La primitive de purge `purgeExpiredProductAnalytics` (G7H-A) traite les deux
+  familles. **Amendement Chantier 18-A** : la purge est désormais exécutée par
+  un cron Vercel quotidien (`apps/web/vercel.json`, `17 3 * * *`) exposant
+  `GET /api/cron/process-product-analytics`, qui agrège puis purge via
+  `apps/web/src/lib/product-analytics-maintenance.ts`. La maintenance exclut
+  `PRODUCTION` au niveau du type (`Exclude<AnalyticsEnvironment, 'PRODUCTION'>`)
+  et de la valeur. La phrase d'origine (« aucun worker/cron n'est encore
+  branché ») est donc caduque ; l'activation de la collecte PRODUCTION reste
+  néanmoins verrouillée.
 - L'activation production reste soumise à validation privacy et juridique
   séparée (question ouverte G7B-R3).
 
