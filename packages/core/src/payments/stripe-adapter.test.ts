@@ -489,7 +489,9 @@ describe('StripeAdapter', () => {
         });
         mockPaymentIntentsCreate.mockResolvedValue(makeMockPaymentIntent({ livemode: false }));
 
-        await expect(liveAdapter.createPaymentIntent(baseCreatePaymentIntentParams())).rejects.toMatchObject({
+        await expect(
+          liveAdapter.createPaymentIntent(baseCreatePaymentIntentParams()),
+        ).rejects.toMatchObject({
           code: 'PAYMENT_ENVIRONMENT_MISMATCH',
           providerErrorCode: 'environment_mismatch',
         });
