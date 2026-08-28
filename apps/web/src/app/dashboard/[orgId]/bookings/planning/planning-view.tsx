@@ -94,7 +94,7 @@ export function PlanningView({
     return {
       status: 'AVAILABLE' as const,
       label: '🟢 Disponible',
-      link: `/dashboard/${orgId}/inventory/${itemId}`,
+      link: `/dashboard/${orgId}/fleet`,
     };
   }
 
@@ -118,7 +118,7 @@ export function PlanningView({
             <select
               value={selectedLocationId ?? ''}
               onChange={(e) =>
-                router.push(`/dashboard/${orgId}/planning?locationId=${e.target.value}`)
+                router.push(`/dashboard/${orgId}/bookings/planning?locationId=${e.target.value}`)
               }
               className={styles.locationSelect}
             >

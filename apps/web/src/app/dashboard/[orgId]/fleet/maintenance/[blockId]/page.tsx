@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { getMaintenanceCaseDetails } from '@uttily/core';
 import { requireCatalogViewerOf } from '@/lib/catalog-auth';
 import { formatDateTimeInTimeZone, isValidUuid } from '@/lib/operations-helpers';
+import { getInventoryConditionPresentation } from '@/lib/status-presentation';
+import type { InventoryCondition } from '@uttily/contracts';
 import { ResolveMaintenanceModal } from './resolve-maintenance-modal';
 import styles from './case-detail.module.css';
 
@@ -130,17 +132,19 @@ export default async function MaintenanceCaseDetailPage({
 
           <div className={styles.itemInfo}>
             <div className={styles.detailRow}>
-              <span>Code / SKU :</span>
-              <Link
-                href={`/dashboard/${organizationId}/inventory/${caseDetails.inventoryItemId}`}
-                className={styles.itemSkuLink}
-              >
+              <span>Référence vélo :</span>
+              <Link href={`/dashboard/${organizationId}/fleet`} className={styles.itemSkuLink}>
                 {caseDetails.internalSku} →
               </Link>
             </div>
             <div className={styles.detailRow}>
               <span>État physique :</span>
-              <strong>{caseDetails.condition}</strong>
+              <strong>
+                {
+                  getInventoryConditionPresentation(caseDetails.condition as InventoryCondition)
+                    .label
+                }
+              </strong>
             </div>
             <div className={styles.detailRow}>
               <span>Disponibilité réservation :</span>

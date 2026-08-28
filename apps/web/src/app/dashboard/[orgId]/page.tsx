@@ -259,7 +259,7 @@ export default async function OrganizationDashboardPage({
                       </div>
 
                       <Link
-                        href={`/dashboard/${organizationId}/inventory/${signal.inventoryItemId}`}
+                        href={`/dashboard/${organizationId}/fleet`}
                         className={styles.alertLink}
                       >
                         Voir →

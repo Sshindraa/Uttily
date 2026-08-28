@@ -1,39 +1,25 @@
-import { getOperationalPlanning, listLocations } from '@uttily/core';
-import { requireFulfillmentOperatorOf } from '@/lib/fulfillment-auth';
-import { PlanningView } from './planning-view';
-import styles from './planning.module.css';
+import { redirect } from 'next/navigation';
 
-export default async function PlanningPage({
+/**
+ * Route historique du planning (Chantier 10).
+ *
+ * Chantier 17 — IA Pro définitive : le planning n'est plus une entrée de
+ * navigation top-level ; il vit dans **Réservations**. Cette URL continue
+ * de fonctionner via une redirection propre qui préserve les query params.
+ */
+export default async function LegacyPlanningRedirect({
   params,
   searchParams,
 }: {
   params: Promise<{ orgId: string }>;
   searchParams?: Promise<{ locationId?: string; from?: string; to?: string }>;
-}): Promise<React.ReactElement> {
+}): Promise<never> {
   const { orgId } = await params;
   const sp = (await searchParams) ?? {};
-
-  const { db, organizationId } = await requireFulfillmentOperatorOf(orgId);
-  const locations = await listLocations(db, organizationId);
-
-  const selectedLocationId = sp.locationId ?? locations[0]?.id ?? null;
-  const fromDate = sp.from ? new Date(sp.from) : undefined;
-  const toDate = sp.to ? new Date(sp.to) : undefined;
-
-  const planning = await getOperationalPlanning(db, organizationId, {
-    locationId: selectedLocationId ?? undefined,
-    from: fromDate,
-    to: toDate,
-  });
-
-  return (
-    <main className={styles.main}>
-      <PlanningView
-        orgId={organizationId}
-        planning={planning}
-        locations={locations.map((l) => ({ id: l.id, name: l.name }))}
-        selectedLocationId={selectedLocationId}
-      />
-    </main>
-  );
+  const query = new URLSearchParams();
+  if (sp.locationId) query.set('locationId', sp.locationId);
+  if (sp.from) query.set('from', sp.from);
+  if (sp.to) query.set('to', sp.to);
+  const suffix = query.toString();
+  redirect(`/dashboard/${orgId}/bookings/planning${suffix ? `?${suffix}` : ''}`);
 }

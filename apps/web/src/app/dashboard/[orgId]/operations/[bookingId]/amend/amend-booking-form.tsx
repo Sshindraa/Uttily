@@ -88,7 +88,7 @@ export function SupplementPaymentHandoff({
         </button>
 
         <Link
-          href={`/dashboard/${organizationId}/operations/${bookingId}`}
+          href={`/dashboard/${organizationId}/bookings/${bookingId}`}
           style={{
             display: 'inline-block',
             padding: '0.625rem 1rem',
@@ -397,7 +397,7 @@ export function AmendBookingForm({
         ) : (
           <div>
             <Link
-              href={`/dashboard/${organizationId}/operations/${bookingId}`}
+              href={`/dashboard/${organizationId}/bookings/${bookingId}`}
               style={{
                 display: 'inline-block',
                 padding: '0.625rem 1.25rem',

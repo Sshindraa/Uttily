@@ -297,14 +297,14 @@ describe('operations-helpers', () => {
     it("filtre 'all' → URL sans query string", () => {
       const allFilter = QUICK_FILTERS.find((f) => f.key === 'all')!;
       expect(buildFilterUrl('00000000-0000-0000-0000-000000000001', allFilter)).toBe(
-        '/dashboard/00000000-0000-0000-0000-000000000001/operations',
+        '/dashboard/00000000-0000-0000-0000-000000000001/bookings',
       );
     });
 
     it("filtre mono-statut 'to_prepare' → ?status=CONFIRMED", () => {
       const filter = QUICK_FILTERS.find((f) => f.key === 'to_prepare')!;
       expect(buildFilterUrl('00000000-0000-0000-0000-000000000001', filter)).toBe(
-        '/dashboard/00000000-0000-0000-0000-000000000001/operations?status=CONFIRMED',
+        '/dashboard/00000000-0000-0000-0000-000000000001/bookings?status=CONFIRMED',
       );
     });
 

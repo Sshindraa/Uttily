@@ -8,6 +8,7 @@
  * utilisé par les Server Actions Next.js.
  */
 export * from './action-result';
+export * from './enums';
 export * from './booking-confirmed-event';
 export * from './booking-amended-event';
 export * from './booking-amendment-requested-event';

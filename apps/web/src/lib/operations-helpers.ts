@@ -1,19 +1,18 @@
-export type BookingStatus =
-  'CONFIRMED' | 'READY_FOR_PICKUP' | 'ACTIVE' | 'RETURNED' | 'CLOSED' | 'CANCELLED' | 'REFUNDED';
+import {
+  BOOKING_STATUSES,
+  type BookingStatus,
+  type InventoryCondition,
+  type ConditionReportPhase,
+  type FulfillmentEventType,
+} from '@uttily/contracts';
 
-export const BOOKING_STATUSES: readonly BookingStatus[] = [
-  'CONFIRMED',
-  'READY_FOR_PICKUP',
-  'ACTIVE',
-  'RETURNED',
-  'CLOSED',
-  'CANCELLED',
-  'REFUNDED',
-] as const;
-
-export type InventoryCondition = 'NEW' | 'GOOD' | 'FAIR' | 'POOR' | 'BROKEN';
-export type ConditionReportPhase = 'PICKUP' | 'RETURN';
-export type FulfillmentEventType = 'PREPARED' | 'PICKED_UP' | 'RETURNED' | 'CLOSED';
+export {
+  BOOKING_STATUSES,
+  type BookingStatus,
+  type InventoryCondition,
+  type ConditionReportPhase,
+  type FulfillmentEventType,
+};
 
 /**
  * Helpers purs pour l'interface des opérations terrain (G4B).
@@ -151,7 +150,7 @@ export const QUICK_FILTERS: readonly QuickFilter[] = [
  * Le filtre 'all' retourne l'URL sans query string.
  */
 export function buildFilterUrl(orgId: string, filter: QuickFilter): string {
-  const base = `/dashboard/${orgId}/operations`;
+  const base = `/dashboard/${orgId}/bookings`;
   if (filter.key === 'all' || filter.statuses.length === 0) return base;
   const params = new URLSearchParams();
   for (const status of filter.statuses) {

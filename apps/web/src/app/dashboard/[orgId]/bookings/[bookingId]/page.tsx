@@ -142,6 +142,25 @@ export default async function UnifiedBookingDetailPage({
           {isPickupPending && (
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
               <DepartureFlow orgId={organizationId} bookingId={bookingId} items={formItems} />
+              {status === 'CONFIRMED' && (
+                <Link
+                  href={`/dashboard/${organizationId}/bookings/${bookingId}/amend`}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    padding: '8px 16px',
+                    backgroundColor: '#ffffff',
+                    color: '#0f172a',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    textDecoration: 'none',
+                  }}
+                >
+                  ✏️ Modifier la réservation
+                </Link>
+              )}
               <CancellationFlow orgId={organizationId} bookingId={bookingId} />
             </div>
           )}
@@ -176,10 +195,7 @@ export default async function UnifiedBookingDetailPage({
             {details.items.map((item) => (
               <div key={item.bookingItemId} className={styles.bikeItem}>
                 <div className={styles.bikeHeader}>
-                  <Link
-                    href={`/dashboard/${organizationId}/inventory/${item.inventoryItemId}`}
-                    className={styles.bikeSku}
-                  >
+                  <Link href={`/dashboard/${organizationId}/fleet`} className={styles.bikeSku}>
                     {item.internalSku}
                   </Link>
                   <span className={styles.conditionChip}>

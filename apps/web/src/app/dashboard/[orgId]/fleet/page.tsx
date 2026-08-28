@@ -1,6 +1,10 @@
 import Link from 'next/link';
 import { listInventorySummaries, getMembership, CATALOG_MANAGERS } from '@uttily/core';
 import { requireCatalogViewerOf } from '@/lib/catalog-auth';
+import {
+  getInventoryConditionPresentation,
+  getInventoryStatusPresentation,
+} from '@/lib/status-presentation';
 import { OpenMaintenanceModal } from './open-maintenance-modal';
 import styles from './fleet.module.css';
 
@@ -48,8 +52,8 @@ export default async function FleetListPage({
           )}
 
           {canManage && (
-            <Link href={`/dashboard/${organizationId}/inventory/new`} className={styles.addBtn}>
-              + Ajouter un exemplaire
+            <Link href={`/dashboard/${organizationId}/bikes`} className={styles.addBtn}>
+              + Gérer mes vélos
             </Link>
           )}
         </div>
@@ -75,10 +79,12 @@ export default async function FleetListPage({
         <div className={styles.emptyState}>
           <span style={{ fontSize: '2.5rem' }}>🚲</span>
           <h3>Aucun exemplaire dans votre flotte</h3>
-          <p>Ajoutez vos vélos physiques pour les rendre disponibles à la réservation.</p>
+          <p>
+            Ajoutez vos vélos physiques depuis la rubrique Mes Vélos pour les rendre disponibles.
+          </p>
           {canManage && (
-            <Link href={`/dashboard/${organizationId}/inventory/new`} className={styles.addBtn}>
-              Ajouter mon premier exemplaire
+            <Link href={`/dashboard/${organizationId}/bikes/new`} className={styles.addBtn}>
+              Ajouter mon premier modèle
             </Link>
           )}
         </div>
@@ -87,7 +93,7 @@ export default async function FleetListPage({
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>Code &amp; SKU</th>
+                <th>Référence vélo</th>
                 <th>Modèle / Variante</th>
                 <th>N° de série</th>
                 <th>État physique</th>
@@ -99,13 +105,14 @@ export default async function FleetListPage({
             <tbody>
               {items.map((item) => {
                 const isBroken = item.condition === 'BROKEN';
+                const conditionPresentation = getInventoryConditionPresentation(item.condition);
+                const statusPresentation = getInventoryStatusPresentation(item.status, isBroken);
+                const bikeLink = `/dashboard/${organizationId}/bikes/${item.productId}`;
 
                 return (
                   <tr key={item.id}>
                     <td className={styles.skuCell}>
-                      <Link href={`/dashboard/${organizationId}/inventory/${item.id}`}>
-                        {item.internalSku}
-                      </Link>
+                      <Link href={bikeLink}>{item.internalSku}</Link>
                     </td>
                     <td className={styles.modelCell}>
                       <strong>{item.productName}</strong>
@@ -117,8 +124,9 @@ export default async function FleetListPage({
                         className={`${styles.conditionBadge} ${
                           isBroken ? styles.conditionBroken : styles.conditionGood
                         }`}
+                        style={conditionPresentation.badgeStyle}
                       >
-                        {item.condition}
+                        {conditionPresentation.label}
                       </span>
                     </td>
                     <td>
@@ -130,17 +138,16 @@ export default async function FleetListPage({
                               ? styles.statusActive
                               : ''
                         }`}
+                        style={statusPresentation.badgeStyle}
                       >
-                        {isBroken ? 'MAINTENANCE' : item.status}
+                        {statusPresentation.icon ? `${statusPresentation.icon} ` : ''}
+                        {statusPresentation.label}
                       </span>
                     </td>
                     <td className={styles.locationCell}>📍 {item.locationName}</td>
                     <td style={{ textAlign: 'right' }}>
-                      <Link
-                        href={`/dashboard/${organizationId}/inventory/${item.id}`}
-                        className={styles.viewLink}
-                      >
-                        Détail →
+                      <Link href={bikeLink} className={styles.viewLink}>
+                        Fiche vélo →
                       </Link>
                     </td>
                   </tr>

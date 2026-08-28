@@ -34,7 +34,7 @@ export default async function AmendBookingPage({
     return (
       <main style={{ maxWidth: '800px', margin: '0 auto', padding: '1.5rem' }}>
         <p>
-          <Link href={`/dashboard/${organizationId}/operations/${bookingId}`}>
+          <Link href={`/dashboard/${organizationId}/bookings/${bookingId}`}>
             ← Retour à la réservation
           </Link>
         </p>
@@ -63,7 +63,7 @@ export default async function AmendBookingPage({
     return (
       <main style={{ maxWidth: '800px', margin: '0 auto', padding: '1.5rem' }}>
         <p>
-          <Link href={`/dashboard/${organizationId}/operations/${bookingId}`}>
+          <Link href={`/dashboard/${organizationId}/bookings/${bookingId}`}>
             ← Retour à la réservation
           </Link>
         </p>
@@ -155,7 +155,7 @@ export default async function AmendBookingPage({
   return (
     <main style={{ maxWidth: '800px', margin: '0 auto', padding: '1.5rem' }}>
       <p>
-        <Link href={`/dashboard/${organizationId}/operations/${bookingId}`}>
+        <Link href={`/dashboard/${organizationId}/bookings/${bookingId}`}>
           ← Retour à la réservation
         </Link>
       </p>

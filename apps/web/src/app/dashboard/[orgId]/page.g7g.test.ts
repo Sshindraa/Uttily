@@ -29,9 +29,9 @@ describe('G7G — dashboard maintenance projection', () => {
     expect(page).toContain('maintenanceSignals.length');
   });
 
-  it('affiche le fuseau IANA et relie chaque signal au détail inventaire', () => {
+  it('affiche le fuseau IANA et relie chaque signal à la flotte', () => {
     expect(page).toContain('formatDateTimeInTimeZone');
     expect(page).toContain('signal.locationTimeZone');
-    expect(page).toContain('/inventory/${signal.inventoryItemId}');
+    expect(page).toContain('/fleet');
   });
 });

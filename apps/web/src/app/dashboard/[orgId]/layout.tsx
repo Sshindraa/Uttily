@@ -51,9 +51,6 @@ export default async function OrganizationLayout({
             <Link href={`/dashboard/${orgId}/bikes`} className={styles.navLink}>
               🚲 Mes vélos
             </Link>
-            <Link href={`/dashboard/${orgId}/planning`} className={styles.navLink}>
-              📅 Planning
-            </Link>
             <Link href={`/dashboard/${orgId}/bookings`} className={styles.navLink}>
               📋 Réservations
             </Link>

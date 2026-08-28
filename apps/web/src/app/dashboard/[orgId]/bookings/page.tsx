@@ -43,6 +43,22 @@ export default async function BookingsListPage({
         </div>
       </div>
 
+      {/* Onglets de vue : Liste / Planning (IA Pro — le planning vit dans Réservations) */}
+      <nav aria-label="Vue des réservations" className={styles.tabsNav}>
+        <div className={styles.tabsList}>
+          <Link
+            href={`/dashboard/${organizationId}/bookings`}
+            className={`${styles.tabBtn} ${styles.tabBtnActive}`}
+            aria-current="page"
+          >
+            Liste
+          </Link>
+          <Link href={`/dashboard/${organizationId}/bookings/planning`} className={styles.tabBtn}>
+            📅 Planning
+          </Link>
+        </div>
+      </nav>
+
       {/* Onglets de filtrage rapide */}
       <nav aria-label="Filtres de réservation" className={styles.tabsNav}>
         <div className={styles.tabsList}>
