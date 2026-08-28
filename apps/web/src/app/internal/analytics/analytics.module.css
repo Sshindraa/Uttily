@@ -1,0 +1,195 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.header {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 1.75rem;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: #94a3b8;
+  font-size: 0.95rem;
+}
+
+/* Bandeau de vérité : la collecte PRODUCTION est désactivée. */
+.notice {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 1rem 1.15rem;
+  border-radius: 10px;
+  border: 1px solid #92400e;
+  background: rgba(146, 64, 14, 0.14);
+  color: #fcd34d;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.noticeIcon {
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.noticeTitle {
+  font-weight: 700;
+  color: #fde68a;
+}
+
+.rangeBar {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 1.25rem;
+}
+
+.rangeLabel {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.rangeLink {
+  padding: 0.4rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  background: #111827;
+  color: #94a3b8;
+  border: 1px solid #1f2937;
+  transition: all 0.15s ease;
+}
+
+.rangeLink:hover {
+  background: #1e293b;
+  color: #f8fafc;
+}
+
+.rangeLinkActive {
+  background: #1e3a5f;
+  color: #e0f2fe;
+  border-color: #38bdf8;
+}
+
+.windowInfo {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.envGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.envCard {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.envHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.envTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.envBadge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  background: #111827;
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.metricCard {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+}
+
+.metricLabel {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  margin-bottom: 0.3rem;
+}
+
+.metricValue {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  font-variant-numeric: tabular-nums;
+}
+
+.ratioGrid {
+  margin-top: 1rem;
+  border-top: 1px solid #1f2937;
+  padding-top: 0.9rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.ratioRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ratioLabel {
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.ratioValue {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #38bdf8;
+  font-variant-numeric: tabular-nums;
+}
+
+.ratioEmpty {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.privacyNote {
+  font-size: 0.78rem;
+  color: #64748b;
+  line-height: 1.6;
+  border-top: 1px solid #1f2937;
+  padding-top: 1rem;
+}

@@ -94,6 +94,9 @@ export default async function InternalLayout({
             <Link href="/internal/audit" className={styles.navLink}>
               📜 Journal d’audit
             </Link>
+            <Link href="/internal/analytics" className={styles.navLink}>
+              📊 Funnel produit
+            </Link>
           </div>
         </nav>
       </header>
