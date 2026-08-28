@@ -23,10 +23,13 @@ export async function GET(
       },
     });
   } catch (error) {
+    const isAuthError =
+      error instanceof Error &&
+      (error.message === 'UNAUTHENTICATED' || error.message === 'FORBIDDEN');
     return new NextResponse(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'UNAUTHORIZED' }),
+      JSON.stringify({ error: isAuthError ? error.message : 'UNAUTHORIZED' }),
       {
-        status: 401,
+        status: isAuthError && error.message === 'FORBIDDEN' ? 403 : 401,
         headers: { 'Content-Type': 'application/json' },
       },
     );
