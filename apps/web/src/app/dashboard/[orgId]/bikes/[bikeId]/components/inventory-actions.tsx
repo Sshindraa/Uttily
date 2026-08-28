@@ -216,8 +216,8 @@ export function InventoryActions({
           }}
         >
           <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b' }}>
-            Aucun vélo enregistré. Cliquez sur « Ajouter un vélo » pour renseigner
-            vos premiers vélos en boutique.
+            Aucun vélo enregistré. Cliquez sur « Ajouter un vélo » pour renseigner vos premiers
+            vélos en boutique.
           </p>
         </div>
       )}

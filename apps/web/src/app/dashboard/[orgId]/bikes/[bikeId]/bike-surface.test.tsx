@@ -67,7 +67,7 @@ function buildBike(currency = 'EUR'): UnifiedBike {
         internalLabel: 'Tarif journalier',
         lifecycleState: 'ACTIVE',
         version: 1,
-        discountTiers: [{ thresholdDays: 7, discountPercent: 20 }],
+        discountTiers: [{ id: 'tier-7', thresholdDays: 7, discountPercent: 20 }],
         translations: [],
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-01T00:00:00Z'),

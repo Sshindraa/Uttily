@@ -29,9 +29,7 @@ import LegacyCatalogVariantPricing from './catalog/[productId]/variants/[variant
 import LegacyInventoryEdit from './inventory/[itemId]/edit/page';
 import LegacyInventoryTransfer from './inventory/[itemId]/transfer/page';
 
-type LegacyPage = (args: {
-  params: Promise<Record<string, string>>;
-}) => Promise<never>;
+type LegacyPage = (args: { params: Promise<Record<string, string>> }) => Promise<never>;
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111';
 const PRODUCT_ID = '22222222-2222-4222-8222-222222222222';
