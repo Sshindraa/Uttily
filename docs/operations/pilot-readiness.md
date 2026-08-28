@@ -1,9 +1,10 @@
 # Pilot Readiness — Matrice unique de clôture avant pilote réel
 
-**Chantier :** 20-C — Legal, Privacy & Commercial Readiness
-**Branche :** `chantier/20-c-legal-readiness`
-**Base :** `origin/main = bd0450d05a56ccf7a7c058c7d42ac496894fa4bb`
+**Chantier :** 21-P0 — External Decision Preparation (matrice héritée du Chantier 20-C)
+**Branche :** `chantier/21-p0-external-decisions`
+**Base :** `origin/main = eb08f2830abad5fd6643978aee6056e6e59e7171`
 **Date d'établissement :** 2026-08-28
+**Mise à jour 21-P0 :** 2026-08-29
 
 ## Statut de ce document
 
@@ -47,10 +48,34 @@ Un sujet n'est clos que lorsque **ses deux états** valent `APPROVED`.
 
 **Aucun sujet n'est `APPROVED`, dans aucune des deux colonnes.** Aucune preuve
 de validation humaine écrite (juridique, comptable, DPO) n'existe dans le dépôt
-à la base `bd0450d`.
+à la base `eb08f2830abad5fd6643978aee6056e6e59e7171`.
 
 **Verdict : le premier pilote réel est bloqué.** 31 sujets sur 39 bloquent le
 pilote (`Bloque pilote = Oui`).
+
+## Préparation des décisions externes — Chantier 21-P0
+
+La préparation externe est complète, mais aucune décision humaine n'est
+approuvée par cette matrice :
+
+| Statut | Valeur | Référence |
+| --- | --- | --- |
+| `TECHNICAL_READY` | Repris de la preuve du Chantier 20, non recalculé ici | [`mvp-pilot-readiness.md`](../implementation/mvp-pilot-readiness.md) |
+| `EXTERNAL_DECISION_READY` | `PASS` | [`decision-registry.md`](decision-registry.md), [`pilot-unblock-plan.md`](pilot-unblock-plan.md) |
+| `EXTERNAL_SIGNOFF_READY` | `BLOCKED` | Les réponses humaines restent absentes |
+| `PILOT_READY` | `BLOCKED` | Les 31 blockers et les cases préparatoires restent ouverts |
+
+Packs de décision : [`legal-decision-pack.md`](signoff/legal-decision-pack.md),
+[`finance-decision-pack.md`](signoff/finance-decision-pack.md),
+[`privacy-decision-pack.md`](signoff/privacy-decision-pack.md) et
+[`subprocessors-inventory.md`](signoff/subprocessors-inventory.md).
+La collecte partenaire et l'exécution opérateur sont préparées dans
+[`pilot-partner-readiness.md`](pilot-partner-readiness.md) et
+[`live-operator-checklist.md`](live-operator-checklist.md).
+
+**Règle absolue 21-P0 :** les valeurs techniques existantes (`v1`,
+`NOT_APPLICABLE`, `invoiceIssuer: Uttily`, taux documenté), les états provider
+et le drill local ne valent pas une approbation humaine ou commerciale.
 
 ---
 
@@ -280,7 +305,7 @@ et aux autres personnes) est une décision DPO, pas un choix technique.
 ## AVANT LE PREMIER PILOTE RÉEL
 
 Aucune case n'est cochée : aucune preuve de validation humaine écrite n'existe
-dans le dépôt à la base `bd0450d`.
+dans le dépôt à la base `eb08f2830abad5fd6643978aee6056e6e59e7171`.
 
 - [ ] Validation juridique CGU/CGV
 - [ ] Validation annulation/remboursement
@@ -289,13 +314,31 @@ dans le dépôt à la base `bd0450d`.
 - [ ] Stripe LIVE credentials configurés
 - [ ] Stripe LIVE webhooks configurés
 - [ ] Connected Account LIVE partenaire pilote ready
-- [ ] Backup/restore drill validé
+- [ ] Backup/provider recovery et RPO/RTO validés
 - [ ] Incident contacts définis
 - [ ] Go explicite porteur produit
 
 **Règle de cochage :** une case ne peut être cochée que si la preuve
 correspondante est présente dans ce document ou dans un document référencé. Une
 case non prouvée reste non cochée. Une case non cochée bloque le pilote.
+
+### Séparation recovery — ne pas confondre les preuves
+
+| Élément | Statut actuel | Preuve / limite | Owner, méthode et prochaine action |
+| --- | --- | --- | --- |
+| Restore mechanism local drill | `PASS` | [`chantier-20b-restore-drill-report.md`](../implementation/chantier-20b-restore-drill-report.md) : PostgreSQL/PostGIS local éphémère, `pg_dump` custom puis `pg_restore`, fixture vérifiée, résultat `PASS`. | Owner recovery ; rejouer localement avec `UTTILY_RECOVERY_DRILL=1 NODE_ENV=test` après changement de migration ; cela ne teste pas production. |
+| Production/provider restore procedure | `TO_VERIFY` | [`chantier-20b-recovery.md`](../implementation/chantier-20b-recovery.md) décrit un runbook, mais la méthode Neon/provider, les droits et une restauration isolée réelle ne sont pas prouvés. | Owner recovery + opérateur Neon ; demander la procédure supportée et les droits, puis consigner une réponse provider et un exercice isolé autorisé. |
+| Provider backup configuration | `TO_VERIFY` | Aucune preuve Neon/provider de fréquence, rétention ou configuration effective n'est présente dans la base. | Owner recovery + opérateur Neon ; vérifier dans le projet provider, conserver une preuve non secrète et documenter fréquence/rétention/propriétaire. |
+| Production RPO/RTO | `TO_CONFIRM` | Le drill local mesure environ 10,8 s de bout en bout ; aucune mesure Neon/Vercel ni SLA production n'est déduite. | Owner recovery + engineering ; autoriser un exercice par environnement, mesurer point de récupération et temps de reprise, puis faire accepter les limites. |
+
+Le statut `PASS` du drill local ne coche donc pas la case de recovery de
+production et ne transforme pas les statuts provider en preuve de disponibilité.
+
+### Analytics production
+
+`PRODUCTION ANALYTICS = OFF`. Les verrous runtime/type/configuration restent
+inchangés ; aucune activation ni modification privacy n'est réalisée dans ce
+chantier.
 
 ---
 
@@ -323,6 +366,14 @@ déblocage :
 
 ## Références
 
+- [`decision-registry.md`](decision-registry.md) — registre canonique des décisions 21-P0
+- [`pilot-unblock-plan.md`](pilot-unblock-plan.md) — plan des 31 blockers et des cases préparatoires
+- [`signoff/legal-decision-pack.md`](signoff/legal-decision-pack.md) — pack juridique
+- [`signoff/finance-decision-pack.md`](signoff/finance-decision-pack.md) — pack finance et matrice money flow
+- [`signoff/privacy-decision-pack.md`](signoff/privacy-decision-pack.md) — pack DPO et data map
+- [`signoff/subprocessors-inventory.md`](signoff/subprocessors-inventory.md) — inventaire à vérifier
+- [`pilot-partner-readiness.md`](pilot-partner-readiness.md) — collecte partenaire sans données réelles
+- [`live-operator-checklist.md`](live-operator-checklist.md) — séquence de configuration LIVE sans secrets
 - `docs/product/lot4-legal-validation.md` — politiques d'annulation, base de remboursement
 - `docs/product/lot5-finance-legal-validation.md` — décisions A à F, garde-fou d'environnement
 - `docs/implementation/mvp-pilot-readiness.md` — baseline technique après Lot 7
