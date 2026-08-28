@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getStripeAdapter } from '@/lib/stripe';
 import { resolveStripeEnvironment } from '@/lib/payment-config';
-import { executeCompensationBatch } from '@uttily/core';
+import { emitOperationalLog, executeCompensationBatch } from '@uttily/core';
 
 // Désactive l'optimisation statique : cet endpoint doit toujours s'exécuter
 // dynamiquement (cron).
@@ -61,7 +61,11 @@ function verifyCronSecret(request: Request): boolean {
 export async function GET(request: Request): Promise<NextResponse> {
   // 1. Authentification.
   if (!verifyCronSecret(request)) {
-    console.warn('cron.process-compensations: 401 Unauthorized — secret manquant ou incorrect.');
+    emitOperationalLog({
+      operation: 'cron_process_compensations',
+      outcome: 'failed',
+      errorCode: 'UNAUTHORIZED',
+    });
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -71,7 +75,11 @@ export async function GET(request: Request): Promise<NextResponse> {
   try {
     environment = resolveStripeEnvironment();
   } catch {
-    console.error('cron.process-compensations: configuration Stripe invalide.');
+    emitOperationalLog({
+      operation: 'cron_process_compensations',
+      outcome: 'failed',
+      errorCode: 'CONFIGURATION_INVALID',
+    });
     return NextResponse.json({ error: 'Configuration Error' }, { status: 500 });
   }
 
@@ -86,32 +94,29 @@ export async function GET(request: Request): Promise<NextResponse> {
     // 4. Log structuré avec métriques ADR-010 §13.
     const durationMs = Date.now() - startTime;
     const anomalyCount = result.anomalies.length;
-    console.log(
-      JSON.stringify({
-        event: 'cron.process-compensations',
-        durationMs,
-        environment,
-        claimedCount: result.claimedCount,
-        submittedCount: result.submittedCount,
-        alreadySucceededCount: result.alreadySucceededCount,
-        failedCount: result.failedCount,
-        rescheduledCount: result.rescheduledCount,
-        anomalyCount,
-      }),
-    );
+    emitOperationalLog({
+      operation: 'cron_process_compensations',
+      outcome: result.failedCount > 0 || anomalyCount > 0 ? 'degraded' : 'success',
+      durationMs,
+      counts: {
+        claimed: result.claimedCount,
+        submitted: result.submittedCount,
+        alreadyResolved: result.alreadySucceededCount,
+        failed: result.failedCount,
+        rescheduled: result.rescheduledCount,
+        anomalies: anomalyCount,
+      },
+    });
 
     // Alerte si échecs ou anomalies détectées.
     if (result.failedCount > 0 || anomalyCount > 0) {
-      console.warn(
-        JSON.stringify({
-          event: 'cron.process-compensations.alert',
-          durationMs,
-          environment,
-          failedCount: result.failedCount,
-          anomalyCount,
-          codes: result.anomalies.map((a) => a.code),
-        }),
-      );
+      emitOperationalLog({
+        operation: 'cron_process_compensations',
+        outcome: 'degraded',
+        durationMs,
+        counts: { failed: result.failedCount, anomalies: anomalyCount },
+        errorCode: 'ANOMALY_DETECTED',
+      });
     }
 
     // 5. Réponse sans données sensibles (compteurs uniquement).
@@ -125,17 +130,15 @@ export async function GET(request: Request): Promise<NextResponse> {
       rescheduledCount: result.rescheduledCount,
       anomalyCount,
     });
-  } catch (error) {
+  } catch {
     // 6. Erreur technique : log et 500.
     const durationMs = Date.now() - startTime;
-    console.error(
-      JSON.stringify({
-        event: 'cron.process-compensations.error',
-        durationMs,
-        environment,
-        error: error instanceof Error ? error.message : String(error),
-      }),
-    );
+    emitOperationalLog({
+      operation: 'cron_process_compensations',
+      outcome: 'failed',
+      durationMs,
+      errorCode: 'INTERNAL_ERROR',
+    });
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

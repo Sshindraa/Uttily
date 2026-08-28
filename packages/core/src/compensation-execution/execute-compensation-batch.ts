@@ -34,6 +34,7 @@ import {
 } from './scheduling';
 import { claimCompensationBatch } from './claim-compensation-batch';
 import { executeCompensation } from './execute-compensation';
+import { emitOperationalLog } from '../observability';
 import type {
   CompensationDependencies,
   CompensationOptions,
@@ -73,15 +74,14 @@ async function markOutboxProcessed(
       }
       return 'processed';
     });
-  } catch (error) {
+  } catch {
     // P2-4 : Best-effort — si la tx échoue, le lease expirera naturellement.
-    console.warn(
-      JSON.stringify({
-        event: 'compensation.mark_outbox_processed_error',
-        outboxEventId: claimed.outboxEventId,
-        error: error instanceof Error ? error.message : String(error),
-      }),
-    );
+    emitOperationalLog({
+      operation: 'refunds',
+      outcome: 'failed',
+      counts: { anomalies: 1 },
+      errorCode: 'INTERNAL_ERROR',
+    });
     return 'error';
   }
 }
@@ -123,16 +123,14 @@ async function rescheduleOutbox(
       }
       return 'rescheduled';
     });
-  } catch (error) {
+  } catch {
     // P2-4 : Best-effort — si la tx échoue, le lease expirera naturellement.
-    console.warn(
-      JSON.stringify({
-        event: 'compensation.reschedule_outbox_error',
-        outboxEventId: claimed.outboxEventId,
-        attemptCount: claimed.attemptCount,
-        error: error instanceof Error ? error.message : String(error),
-      }),
-    );
+    emitOperationalLog({
+      operation: 'refunds',
+      outcome: 'degraded',
+      counts: { anomalies: 1 },
+      errorCode: 'INTERNAL_ERROR',
+    });
     return 'error';
   }
 }
@@ -205,13 +203,11 @@ async function markOutboxFailed(
         lockedRefund !== undefined &&
         (lockedRefund.status === 'SUCCEEDED' || lockedRefund.status === 'SUBMITTED')
       ) {
-        console.info(
-          JSON.stringify({
-            event: 'compensation.refund_already_submitted_or_succeeded',
-            outboxEventId: claimed.outboxEventId,
-            refundId: lockedRefund.id,
-          }),
-        );
+        emitOperationalLog({
+          operation: 'refunds',
+          outcome: 'success',
+          counts: { alreadyResolved: 1 },
+        });
         await tx.execute(sql`
           UPDATE "outbox_events"
           SET "status" = 'PROCESSED',
@@ -254,16 +250,14 @@ async function markOutboxFailed(
       }
       return 'failed';
     });
-  } catch (error) {
+  } catch {
     // P2-3 : Best-effort — si la tx échoue, le lease expirera naturellement.
-    console.warn(
-      JSON.stringify({
-        event: 'compensation.mark_outbox_failed_error',
-        outboxEventId: claimed.outboxEventId,
-        failureCode,
-        error: error instanceof Error ? error.message : String(error),
-      }),
-    );
+    emitOperationalLog({
+      operation: 'refunds',
+      outcome: 'failed',
+      counts: { anomalies: 1 },
+      errorCode: 'INTERNAL_ERROR',
+    });
     return 'lease_lost';
   }
 }
@@ -335,12 +329,12 @@ export async function executeCompensationBatch(
     // sans faire échouer le batch ; ils sont intraitables (FAILED durable +
     // anomalie) mais ne bloquent JAMAIS les autres événements.
     if (!claimed.payloadValid) {
-      console.warn(
-        JSON.stringify({
-          event: 'compensation.payload_malformed',
-          outboxEventId: claimed.outboxEventId,
-        }),
-      );
+      emitOperationalLog({
+        operation: 'refunds',
+        outcome: 'degraded',
+        counts: { anomalies: 1 },
+        errorCode: 'PAYLOAD_MALFORMED',
+      });
       const malformedOutcome = await markOutboxFailed(db, claimed, 'PAYLOAD_MALFORMED', {
         terminalRefund: false,
       });
@@ -372,13 +366,12 @@ export async function executeCompensationBatch(
           case 'REFUND_ALREADY_FAILED': {
             // P1-4 : Le refund est déjà FAILED — remboursement non abouti.
             // Échec durable avec alerte, JAMAIS compté comme soumis.
-            console.warn(
-              JSON.stringify({
-                event: 'compensation.refund_failed',
-                outboxEventId: claimed.outboxEventId,
-                code: error.code,
-              }),
-            );
+            emitOperationalLog({
+              operation: 'refunds',
+              outcome: 'degraded',
+              counts: { anomalies: 1 },
+              errorCode: error.code,
+            });
             const alreadyFailedOutcome = await markOutboxFailed(db, claimed, error.code, {
               terminalRefund: false,
             });
@@ -417,13 +410,12 @@ export async function executeCompensationBatch(
               terminalRefund: false,
             });
             if (anomalyOutcome === 'failed') {
-              console.warn(
-                JSON.stringify({
-                  event: 'compensation.anomaly',
-                  outboxEventId: claimed.outboxEventId,
-                  code: error.code,
-                }),
-              );
+              emitOperationalLog({
+                operation: 'refunds',
+                outcome: 'degraded',
+                counts: { anomalies: 1 },
+                errorCode: error.code,
+              });
               result.failedCount++;
               result.anomalies.push({ outboxEventId: claimed.outboxEventId, code: error.code });
             } else if (anomalyOutcome === 'processed') {
@@ -445,13 +437,12 @@ export async function executeCompensationBatch(
           terminalRefund: true,
         });
         if (refusalOutcome === 'failed') {
-          console.warn(
-            JSON.stringify({
-              event: 'compensation.stripe_refusal',
-              outboxEventId: claimed.outboxEventId,
-              code: failureCode,
-            }),
-          );
+          emitOperationalLog({
+            operation: 'refunds',
+            outcome: 'failed',
+            counts: { failed: 1, anomalies: 1 },
+            errorCode: failureCode,
+          });
           result.failedCount++;
           result.anomalies.push({ outboxEventId: claimed.outboxEventId, code: failureCode });
         } else if (refusalOutcome === 'processed') {
@@ -467,13 +458,12 @@ export async function executeCompensationBatch(
             terminalRefund: false,
           });
           if (maxAttemptsOutcome === 'failed') {
-            console.warn(
-              JSON.stringify({
-                event: 'compensation.max_attempts_exceeded',
-                outboxEventId: claimed.outboxEventId,
-                attemptCount: claimed.attemptCount + 1,
-              }),
-            );
+            emitOperationalLog({
+              operation: 'refunds',
+              outcome: 'failed',
+              counts: { failed: 1, anomalies: 1 },
+              errorCode: 'MAX_ATTEMPTS_EXCEEDED',
+            });
             result.failedCount++;
             result.anomalies.push({
               outboxEventId: claimed.outboxEventId,

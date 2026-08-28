@@ -35,6 +35,7 @@ import {
 } from './scheduling';
 import { claimReconciliationBatch } from './claim-reconciliation-batch';
 import { applyReconciliationResult } from './apply-reconciliation-result';
+import { emitOperationalLog } from '../observability';
 import type {
   ReconciliationDependencies,
   ReconciliationOptions,
@@ -142,13 +143,12 @@ export async function reconcilePaymentsBatch(
         // isKeyExpired est calculé côté PostgreSQL avec transaction_timestamp()
         // dans la transaction de claim (23h, marge de sécurité de 1h).
         if (claimed.isKeyExpired) {
-          console.warn(
-            JSON.stringify({
-              event: 'reconciliation.key_expired',
-              attemptId: claimed.attemptId,
-              code: 'KEY_EXPIRED',
-            }),
-          );
+          emitOperationalLog({
+            operation: 'payment_reconciliation',
+            outcome: 'degraded',
+            counts: { anomalies: 1 },
+            errorCode: 'KEY_EXPIRED',
+          });
           await releaseAndReschedule(db, claimed);
           result.anomalyCount++;
           result.anomalies.push({ attemptId: claimed.attemptId, code: 'KEY_EXPIRED' });
@@ -160,14 +160,12 @@ export async function reconcilePaymentsBatch(
       } else {
         // P1-5 : attempt sans PI mais pas PENDING_PROVIDER → anomalie.
         // Ne pas appeler le provider.
-        console.warn(
-          JSON.stringify({
-            event: 'reconciliation.missing_pi_anomaly',
-            attemptId: claimed.attemptId,
-            attemptStatus: claimed.attemptStatus,
-            code: 'INVARIANT_BROKEN',
-          }),
-        );
+        emitOperationalLog({
+          operation: 'payment_reconciliation',
+          outcome: 'degraded',
+          counts: { anomalies: 1 },
+          errorCode: 'INVARIANT_BROKEN',
+        });
         await releaseAndReschedule(db, claimed);
         result.anomalyCount++;
         result.anomalies.push({ attemptId: claimed.attemptId, code: 'INVARIANT_BROKEN' });
@@ -187,13 +185,12 @@ export async function reconcilePaymentsBatch(
     } catch (error) {
       // 4. Sur erreur technique ou invariant : la tx apply a rollbacké.
       // Ouvrir une tx de récupération : release + reschedule (P1-2 : conditionnel sur token).
-      console.warn(
-        JSON.stringify({
-          event: 'reconciliation.error',
-          attemptId: claimed.attemptId,
-          code: error instanceof ReconciliationError ? error.code : 'INVARIANT_BROKEN',
-        }),
-      );
+      emitOperationalLog({
+        operation: 'payment_reconciliation',
+        outcome: 'degraded',
+        counts: { anomalies: 1 },
+        errorCode: error instanceof ReconciliationError ? error.code : 'INVARIANT_BROKEN',
+      });
       await releaseAndReschedule(db, claimed);
       result.anomalyCount++;
       const code = error instanceof ReconciliationError ? error.code : 'INVARIANT_BROKEN';

@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { expireBookingDraftsBatch, expireSupplementAmendmentsBatch } from '@uttily/core';
+import {
+  emitOperationalLog,
+  expireBookingDraftsBatch,
+  expireSupplementAmendmentsBatch,
+} from '@uttily/core';
 
 // Désactive l'optimisation statique : cet endpoint doit toujours s'exécuter
 // dynamiquement (cron).
@@ -58,7 +62,11 @@ function verifyCronSecret(request: Request): boolean {
 export async function GET(request: Request): Promise<NextResponse> {
   // 1. Authentification.
   if (!verifyCronSecret(request)) {
-    console.warn('cron.expire-holds: 401 Unauthorized — secret manquant ou incorrect.');
+    emitOperationalLog({
+      operation: 'cron_expire_holds',
+      outcome: 'failed',
+      errorCode: 'UNAUTHORIZED',
+    });
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -72,32 +80,27 @@ export async function GET(request: Request): Promise<NextResponse> {
     // 3. Log structuré.
     const durationMs = Date.now() - startTime;
     const expiredHoldCount = draftsResult.expired.reduce((sum, e) => sum + e.blockIds.length, 0);
-    console.log(
-      JSON.stringify({
-        event: 'cron.expire-holds',
-        durationMs,
-        processedCount: draftsResult.processedCount,
-        expiredDraftCount: draftsResult.expiredCount,
-        expiredHoldCount,
-        anomalyCount: draftsResult.anomalyCount,
-        batchLimit: draftsResult.batchLimit,
-        supplements: {
-          processedCount: supplementsResult.processedCount,
-          expiredCount: supplementsResult.expiredCount,
-        },
-      }),
-    );
+    const anomalyCount = draftsResult.anomalyCount;
+    emitOperationalLog({
+      operation: 'cron_expire_holds',
+      outcome: anomalyCount > 0 ? 'degraded' : 'success',
+      durationMs,
+      counts: {
+        processed: draftsResult.processedCount + supplementsResult.processedCount,
+        expired: expiredHoldCount + supplementsResult.expiredCount,
+        anomalies: anomalyCount,
+      },
+    });
 
     // Alerte si anomalies détectées.
     if (draftsResult.anomalyCount > 0) {
-      console.warn(
-        JSON.stringify({
-          event: 'cron.expire-holds.anomalies',
-          durationMs,
-          anomalyCount: draftsResult.anomalyCount,
-          reasons: draftsResult.anomalies.map((a) => a.reason),
-        }),
-      );
+      emitOperationalLog({
+        operation: 'cron_expire_holds',
+        outcome: 'degraded',
+        durationMs,
+        counts: { anomalies: draftsResult.anomalyCount },
+        errorCode: 'ANOMALY_DETECTED',
+      });
     }
 
     // 4. Réponse sans données sensibles (compteurs uniquement).
@@ -118,16 +121,15 @@ export async function GET(request: Request): Promise<NextResponse> {
         expiredCount: supplementsResult.expiredCount,
       },
     });
-  } catch (error) {
+  } catch {
     // 5. Erreur technique : log et 500.
     const durationMs = Date.now() - startTime;
-    console.error(
-      JSON.stringify({
-        event: 'cron.expire-holds.error',
-        durationMs,
-        error: error instanceof Error ? error.message : String(error),
-      }),
-    );
+    emitOperationalLog({
+      operation: 'cron_expire_holds',
+      outcome: 'failed',
+      durationMs,
+      errorCode: 'INTERNAL_ERROR',
+    });
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -29,6 +29,7 @@ import type {
 import {
   executeDocumentPipeline,
   executeTransactionalEmailPipeline,
+  emitOperationalLog,
   processDueNotifications,
 } from '@uttily/core';
 import type { DocumentPipelineResult, TransactionalEmailPipelineResult } from '@uttily/core';
@@ -337,14 +338,37 @@ export async function runTransactionalDocumentsWorkerCycle(
   // ── Pipeline notifications transactionnelles (Chantier 13.1) ───────────
   let notifications: ProcessNotificationBatchResult | PipelineGlobalFailure | undefined;
   if (deps.notificationSender && deps.executeNotificationsPipeline) {
+    const notificationStart = Date.now();
     try {
       notifications = await deps.executeNotificationsPipeline(
         deps.db,
         deps.notificationSender,
         batchLimit,
       );
+      emitOperationalLog({
+        operation: 'notifications',
+        outcome:
+          notifications.failedCount > 0 || notifications.leaseLostCount > 0
+            ? 'degraded'
+            : 'success',
+        durationMs: Date.now() - notificationStart,
+        counts: {
+          claimed: notifications.claimedCount,
+          sent: notifications.sentCount,
+          failed: notifications.failedCount,
+          retried: notifications.retriedCount,
+          cancelled: notifications.cancelledCount,
+          expiredLeases: notifications.leaseLostCount,
+        },
+      });
     } catch {
       const failureCode: WorkerFailureCode = 'UNKNOWN_ERROR';
+      emitOperationalLog({
+        operation: 'notifications',
+        outcome: 'failed',
+        durationMs: Date.now() - notificationStart,
+        errorCode: failureCode,
+      });
       notifications = { kind: 'GLOBAL_FAILURE', failureCode };
     }
   }

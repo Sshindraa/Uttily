@@ -85,6 +85,9 @@ export default async function InternalLayout({
             <Link href="/internal" className={styles.navLink}>
               🔍 Recherche globale
             </Link>
+            <Link href="/internal/health" className={styles.navLink}>
+              🩺 Santé opérationnelle
+            </Link>
             <Link href="/internal/payments" className={styles.navLink}>
               💳 Paiements & Remboursements
             </Link>

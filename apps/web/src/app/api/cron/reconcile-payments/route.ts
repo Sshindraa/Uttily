@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
-import { sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
 import { getStripeAdapter } from '@/lib/stripe';
 import { resolveStripeEnvironment } from '@/lib/payment-config';
-import { reconcilePaymentsBatch, reconcileSupplementPaymentsBatch } from '@uttily/core';
+import {
+  emitOperationalLog,
+  reconcilePaymentsBatch,
+  reconcileSupplementPaymentsBatch,
+} from '@uttily/core';
 
 // Désactive l'optimisation statique : cet endpoint doit toujours s'exécuter
 // dynamiquement (cron).
@@ -61,7 +64,11 @@ function verifyCronSecret(request: Request): boolean {
 export async function GET(request: Request): Promise<NextResponse> {
   // 1. Authentification.
   if (!verifyCronSecret(request)) {
-    console.warn('cron.reconcile-payments: 401 Unauthorized — secret manquant ou incorrect.');
+    emitOperationalLog({
+      operation: 'cron_reconcile_payments',
+      outcome: 'failed',
+      errorCode: 'UNAUTHORIZED',
+    });
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -71,7 +78,11 @@ export async function GET(request: Request): Promise<NextResponse> {
   try {
     environment = resolveStripeEnvironment();
   } catch {
-    console.error('cron.reconcile-payments: configuration Stripe invalide.');
+    emitOperationalLog({
+      operation: 'cron_reconcile_payments',
+      outcome: 'failed',
+      errorCode: 'CONFIGURATION_INVALID',
+    });
     return NextResponse.json({ error: 'Configuration Error' }, { status: 500 });
   }
 
@@ -80,19 +91,6 @@ export async function GET(request: Request): Promise<NextResponse> {
   try {
     const db = getDb();
     const provider = getStripeAdapter();
-
-    // Mesurer l'âge du plus vieux PAYMENT_PROCESSING avant le batch (ADR-010 §12).
-    const oldestRows = (await db.execute(sql`
-      SELECT EXTRACT(EPOCH FROM (transaction_timestamp() - pa.created_at))::bigint AS age_seconds
-      FROM payment_attempts pa
-      JOIN payments p ON p.id = pa.payment_id
-      WHERE pa.status = 'PROCESSING'
-        AND p.environment = ${environment}::payment_environment
-      ORDER BY pa.created_at ASC
-      LIMIT 1
-    `)) as unknown as Array<{ age_seconds: bigint }>;
-    const oldestProcessingAgeSeconds =
-      oldestRows.length > 0 ? Number(oldestRows[0]!.age_seconds) : null;
 
     const initialResult = await reconcilePaymentsBatch({ db, provider }, { environment });
     const supplementResult = await reconcileSupplementPaymentsBatch(
@@ -104,44 +102,30 @@ export async function GET(request: Request): Promise<NextResponse> {
 
     // 4. Log structuré avec métriques ADR-010 §12 et C4-A.
     const durationMs = Date.now() - startTime;
-    console.log(
-      JSON.stringify({
-        event: 'cron.reconcile-payments',
-        durationMs,
-        environment,
-        oldestProcessingAgeSeconds,
-        claimedCount: initialResult.claimedCount,
-        reconciledCount: initialResult.reconciledCount,
-        confirmedCount: initialResult.confirmedCount,
-        cancelledCount: initialResult.cancelledCount,
-        rescheduledCount: initialResult.rescheduledCount,
-        compensationRequestedCount: initialResult.compensationRequestedCount,
-        anomalyCount: totalAnomalyCount,
-        supplements: {
-          claimedCount: supplementResult.claimedCount,
-          reconciledCount: supplementResult.reconciledCount,
-          projectedCount: supplementResult.projectedCount,
-          ignoredLateSuccessCount: supplementResult.ignoredLateSuccessCount,
-          skippedExpiredCount: supplementResult.skippedExpiredCount,
-          anomalyCount: supplementResult.anomalyCount,
-        },
-      }),
-    );
+    emitOperationalLog({
+      operation: 'cron_reconcile_payments',
+      outcome: totalAnomalyCount > 0 ? 'degraded' : 'success',
+      durationMs,
+      counts: {
+        claimed: initialResult.claimedCount + supplementResult.claimedCount,
+        reconciled: initialResult.reconciledCount + supplementResult.reconciledCount,
+        confirmed: initialResult.confirmedCount,
+        cancelled: initialResult.cancelledCount,
+        rescheduled: initialResult.rescheduledCount,
+        compensated: initialResult.compensationRequestedCount,
+        anomalies: totalAnomalyCount,
+      },
+    });
 
     // Alerte si anomalies détectées.
     if (totalAnomalyCount > 0) {
-      console.warn(
-        JSON.stringify({
-          event: 'cron.reconcile-payments.anomalies',
-          durationMs,
-          environment,
-          anomalyCount: totalAnomalyCount,
-          codes: [
-            ...initialResult.anomalies.map((a) => a.code),
-            ...supplementResult.anomalies.map((a) => a.code),
-          ],
-        }),
-      );
+      emitOperationalLog({
+        operation: 'cron_reconcile_payments',
+        outcome: 'degraded',
+        durationMs,
+        counts: { anomalies: totalAnomalyCount },
+        errorCode: 'ANOMALY_DETECTED',
+      });
     }
 
     // 5. Réponse sans données sensibles (compteurs uniquement).
@@ -173,17 +157,15 @@ export async function GET(request: Request): Promise<NextResponse> {
         anomalyCount: supplementResult.anomalyCount,
       },
     });
-  } catch (error) {
+  } catch {
     // 6. Erreur technique : log et 500.
     const durationMs = Date.now() - startTime;
-    console.error(
-      JSON.stringify({
-        event: 'cron.reconcile-payments.error',
-        durationMs,
-        environment,
-        error: error instanceof Error ? error.message : String(error),
-      }),
-    );
+    emitOperationalLog({
+      operation: 'cron_reconcile_payments',
+      outcome: 'failed',
+      durationMs,
+      errorCode: 'INTERNAL_ERROR',
+    });
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

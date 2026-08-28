@@ -179,6 +179,9 @@ export * from './planning';
 // Chantier 11 — Revenus & Versements.
 export * from './finances';
 
+// Chantier 18-B — logs opérationnels serveur et signaux de santé internes.
+export * from './observability';
+
 // Chantier 12 — Annulations & Remboursements.
 export * from './cancellations';
 
