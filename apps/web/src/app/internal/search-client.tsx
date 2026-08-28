@@ -18,7 +18,12 @@ export function SupportSearchForm({ initialQuery }: { initialQuery?: string | un
   };
 
   return (
-    <form className={styles.searchForm} onSubmit={handleSubmit} role="search" aria-label="Recherche support">
+    <form
+      className={styles.searchForm}
+      onSubmit={handleSubmit}
+      role="search"
+      aria-label="Recherche support"
+    >
       <input
         type="text"
         className={styles.searchInput}

@@ -14,7 +14,8 @@ export default async function PaymentsSupportPage({
   const { db } = await requireSupportPlatformAdmin();
   const { status } = await searchParams;
 
-  const validStatus = status === 'FAILED' || status === 'PENDING' || status === 'SUCCEEDED' ? status : undefined;
+  const validStatus =
+    status === 'FAILED' || status === 'PENDING' || status === 'SUCCEEDED' ? status : undefined;
   const payments = await listPaymentsSupport(db, {
     status: validStatus,
     limit: 50,
@@ -37,7 +38,8 @@ export default async function PaymentsSupportPage({
       <div className={styles.header}>
         <h1 className={styles.title}>💳 Diagnostic Paiements & Remboursements</h1>
         <p className={styles.subtitle}>
-          Surveillance des flux financiers, PaymentIntents Stripe, échecs et forçage de réconciliation.
+          Surveillance des flux financiers, PaymentIntents Stripe, échecs et forçage de
+          réconciliation.
         </p>
 
         <div className={styles.filtersBar}>
@@ -107,7 +109,10 @@ export default async function PaymentsSupportPage({
                     )}
                   </td>
                   <td className={styles.td}>
-                    <Link href={`/internal/organizations/${p.organizationId}`} style={{ color: '#cbd5e1' }}>
+                    <Link
+                      href={`/internal/organizations/${p.organizationId}`}
+                      style={{ color: '#cbd5e1' }}
+                    >
                       {p.organizationName}
                     </Link>
                   </td>
@@ -119,15 +124,15 @@ export default async function PaymentsSupportPage({
                     <span className={getStatusBadge(p.status)}>{p.status}</span>
                   </td>
                   <td className={styles.td}>
-                    <strong>{(p.amountMinor / 100).toFixed(2)} {p.currency}</strong>
+                    <strong>
+                      {(p.amountMinor / 100).toFixed(2)} {p.currency}
+                    </strong>
                   </td>
                   <td className={styles.td} style={{ color: p.lastError ? '#f87171' : '#64748b' }}>
                     {p.lastError ?? '—'}
                   </td>
                   <td className={styles.td}>
-                    {p.status !== 'SUCCEEDED' && (
-                      <ReconcilePaymentButton paymentId={p.id} />
-                    )}
+                    {p.status !== 'SUCCEEDED' && <ReconcilePaymentButton paymentId={p.id} />}
                   </td>
                 </tr>
               ))

@@ -192,10 +192,7 @@ export async function searchSupport(
       .where(
         isUuid
           ? or(eq(refunds.id, query), eq(refunds.paymentId, query))
-          : or(
-              sql`${refunds.id}::text ILIKE ${pattern}`,
-              ilike(refunds.providerRefundId, pattern),
-            ),
+          : or(sql`${refunds.id}::text ILIKE ${pattern}`, ilike(refunds.providerRefundId, pattern)),
       )
       .orderBy(desc(refunds.createdAt))
       .limit(limit),
@@ -271,7 +268,8 @@ export async function searchSupport(
       url: `/internal/payments#payment-${r.id}`,
       badge: {
         label: r.status,
-        variant: r.status === 'SUCCEEDED' ? 'success' : r.status === 'FAILED' ? 'danger' : 'warning',
+        variant:
+          r.status === 'SUCCEEDED' ? 'success' : r.status === 'FAILED' ? 'danger' : 'warning',
       },
       metadata: { intentId: r.providerPaymentIntentId, orgId: r.organizationId },
     };

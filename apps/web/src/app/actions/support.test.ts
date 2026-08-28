@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { DatabaseClient } from '@uttily/database';
 import {
   retryNotificationAction,
   cancelNotificationAction,
@@ -35,7 +36,7 @@ describe('Support Server Actions (Apps/Web)', () => {
     oidcSubject: 'sub_admin',
     emailVerified: true,
   };
-  const fakeDb = {} as any;
+  const fakeDb = {} as unknown as DatabaseClient;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -104,6 +105,8 @@ describe('Support Server Actions (Apps/Web)', () => {
   });
 
   describe('resendInvitationNotificationAction', () => {
+    const SUPPORT_REQUEST_ID = '9f1c3b2a-1234-4abc-9def-111111111111';
+
     it('renvoie l’invitation et consigne l’audit sans fuite de secret', async () => {
       vi.spyOn(supportAuth, 'requireSupportPlatformAdmin').mockResolvedValueOnce({
         user: adminUser,
@@ -115,11 +118,57 @@ describe('Support Server Actions (Apps/Web)', () => {
         notificationId: 'notif-1',
       });
 
-      const res = await resendInvitationNotificationAction('inv-1', 'Invitation non reçue');
+      const res = await resendInvitationNotificationAction(
+        'inv-1',
+        'Invitation non reçue',
+        SUPPORT_REQUEST_ID,
+      );
       expect(res.ok).toBe(true);
       if (res.ok) {
         expect(res.data.invitationId).toBe('inv-1');
       }
+    });
+
+    it('transmet intégralement le supportRequestId reçu au Core (preuve end-to-end 16.1.1)', async () => {
+      vi.spyOn(supportAuth, 'requireSupportPlatformAdmin').mockResolvedValueOnce({
+        user: adminUser,
+        db: fakeDb,
+      });
+      const resendMock = vi
+        .spyOn(core, 'resendInvitationNotificationSupport')
+        .mockResolvedValueOnce({
+          ok: true,
+          invitationId: 'inv-1',
+          notificationId: 'notif-1',
+        });
+
+      await resendInvitationNotificationAction('inv-1', 'Invitation non reçue', SUPPORT_REQUEST_ID);
+
+      expect(resendMock).toHaveBeenCalledTimes(1);
+      const coreInput = resendMock.mock.calls[0]?.[1];
+      expect(coreInput).toMatchObject({
+        invitationId: 'inv-1',
+        reason: 'Invitation non reçue',
+        actorUserId: adminUser.id,
+        supportRequestId: SUPPORT_REQUEST_ID,
+      });
+    });
+
+    it('refuse fail-closed sans supportRequestId et n’appelle jamais le Core', async () => {
+      vi.spyOn(supportAuth, 'requireSupportPlatformAdmin').mockResolvedValueOnce({
+        user: adminUser,
+        db: fakeDb,
+      });
+      const resendMock = vi.spyOn(core, 'resendInvitationNotificationSupport');
+
+      for (const missing of ['', '   ']) {
+        const res = await resendInvitationNotificationAction('inv-1', 'Motif', missing);
+        expect(res.ok).toBe(false);
+        if (!res.ok) {
+          expect(res.code).toBe('SUPPORT_ACTION_INVALID_STATE');
+        }
+      }
+      expect(resendMock).not.toHaveBeenCalled();
     });
   });
 

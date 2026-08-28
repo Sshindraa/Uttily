@@ -49,10 +49,7 @@ export async function getOrganizationSupportDetails(
 
   // 2. Readiness officielle (autorité du domaine)
   // Casting db to DatabaseClient for readiness loader which expects DatabaseClient
-  const readiness = await getOrganizationOnboardingReadiness(
-    db as DatabaseClient,
-    organizationId,
-  );
+  const readiness = await getOrganizationOnboardingReadiness(db as DatabaseClient, organizationId);
 
   // 3. Établissements
   const locationRows = await db
@@ -71,8 +68,8 @@ export async function getOrganizationSupportDetails(
 
   const locationIds = locationRows.map((l) => l.id);
 
-  let openingHoursCounts: Record<string, number> = {};
-  let scheduleExceptionsCounts: Record<string, number> = {};
+  const openingHoursCounts: Record<string, number> = {};
+  const scheduleExceptionsCounts: Record<string, number> = {};
 
   if (locationIds.length > 0) {
     const hoursRows = await db
@@ -275,22 +272,14 @@ export async function getOrganizationSupportDetails(
     .where(
       and(
         eq(notifications.organizationId, organizationId),
-        or(
-          eq(notifications.status, 'FAILED'),
-          eq(notifications.requiresManualReview, true),
-        ),
+        or(eq(notifications.status, 'FAILED'), eq(notifications.requiresManualReview, true)),
       ),
     );
 
   const [failedPaymentsRow] = await db
     .select({ val: count() })
     .from(payments)
-    .where(
-      and(
-        eq(payments.organizationId, organizationId),
-        eq(payments.status, 'FAILED'),
-      ),
-    );
+    .where(and(eq(payments.organizationId, organizationId), eq(payments.status, 'FAILED')));
 
   const failedNotifsCount = Number(failedNotifsRow?.val ?? 0);
   const failedPaymentsCount = Number(failedPaymentsRow?.val ?? 0);

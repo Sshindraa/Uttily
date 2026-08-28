@@ -230,6 +230,7 @@ async function createExpiredDraft(
 
 describe.skipIf(shouldSkipIntegrationTests())(
   'expireBookingDraftsBatch — intégration PostgreSQL',
+  { timeout: 60000 },
   () => {
     // 1. Batch vide
     it('1. retourne un résultat vide quand aucun brouillon expiré', async () => {

@@ -45,7 +45,8 @@ export default async function InternalCockpitPage({
         <div className={styles.resultsSection}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>
-              Résultats de recherche pour <span style={{ color: '#38bdf8' }}>« {searchResults.query} »</span>
+              Résultats de recherche pour{' '}
+              <span style={{ color: '#38bdf8' }}>« {searchResults.query} »</span>
             </h2>
             <span className={styles.resultBadge}>{searchResults.totalMatches} résultat(s)</span>
           </div>
@@ -85,7 +86,9 @@ export default async function InternalCockpitPage({
                             <td className={styles.td}>{org.subtitle}</td>
                             <td className={styles.td}>
                               {org.badge && (
-                                <span className={`${styles.statusTag} ${getBadgeClass(org.badge.variant)}`}>
+                                <span
+                                  className={`${styles.statusTag} ${getBadgeClass(org.badge.variant)}`}
+                                >
                                   {org.badge.label}
                                 </span>
                               )}
@@ -132,7 +135,9 @@ export default async function InternalCockpitPage({
                             <td className={styles.td}>{b.subtitle}</td>
                             <td className={styles.td}>
                               {b.badge && (
-                                <span className={`${styles.statusTag} ${getBadgeClass(b.badge.variant)}`}>
+                                <span
+                                  className={`${styles.statusTag} ${getBadgeClass(b.badge.variant)}`}
+                                >
                                   {b.badge.label}
                                 </span>
                               )}
@@ -178,7 +183,9 @@ export default async function InternalCockpitPage({
                             <td className={styles.td}>{p.subtitle}</td>
                             <td className={styles.td}>
                               {p.badge && (
-                                <span className={`${styles.statusTag} ${getBadgeClass(p.badge.variant)}`}>
+                                <span
+                                  className={`${styles.statusTag} ${getBadgeClass(p.badge.variant)}`}
+                                >
                                   {p.badge.label}
                                 </span>
                               )}
@@ -221,7 +228,9 @@ export default async function InternalCockpitPage({
                             <td className={styles.td}>{r.subtitle}</td>
                             <td className={styles.td}>
                               {r.badge && (
-                                <span className={`${styles.statusTag} ${getBadgeClass(r.badge.variant)}`}>
+                                <span
+                                  className={`${styles.statusTag} ${getBadgeClass(r.badge.variant)}`}
+                                >
                                   {r.badge.label}
                                 </span>
                               )}
@@ -264,7 +273,9 @@ export default async function InternalCockpitPage({
                             <td className={styles.td}>{u.subtitle}</td>
                             <td className={styles.td}>
                               {u.badge && (
-                                <span className={`${styles.statusTag} ${getBadgeClass(u.badge.variant)}`}>
+                                <span
+                                  className={`${styles.statusTag} ${getBadgeClass(u.badge.variant)}`}
+                                >
                                   {u.badge.label}
                                 </span>
                               )}
@@ -290,19 +301,31 @@ export default async function InternalCockpitPage({
           <div className={styles.statsGrid}>
             <div className={styles.statCard}>
               <span className={styles.statLabel}>Accès Rapide</span>
-              <Link href="/internal/payments" className={styles.link} style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+              <Link
+                href="/internal/payments"
+                className={styles.link}
+                style={{ fontSize: '1.1rem', fontWeight: 600 }}
+              >
                 💳 Diagnostics Paiements & Remboursements →
               </Link>
             </div>
             <div className={styles.statCard}>
               <span className={styles.statLabel}>Console</span>
-              <Link href="/internal/notifications" className={styles.link} style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+              <Link
+                href="/internal/notifications"
+                className={styles.link}
+                style={{ fontSize: '1.1rem', fontWeight: 600 }}
+              >
                 🔔 Traitement des Notifications Échouées →
               </Link>
             </div>
             <div className={styles.statCard}>
               <span className={styles.statLabel}>Conformité & Sécurité</span>
-              <Link href="/internal/audit" className={styles.link} style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+              <Link
+                href="/internal/audit"
+                className={styles.link}
+                style={{ fontSize: '1.1rem', fontWeight: 600 }}
+              >
                 📜 Journal d’audit des actions support →
               </Link>
             </div>

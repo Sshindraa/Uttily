@@ -2,12 +2,7 @@ import type { OrganizationOnboardingReadiness } from '../dashboard/onboarding-re
 import type { MembershipRole } from '../identity/types';
 
 export type SupportEntityType =
-  | 'ORGANIZATION'
-  | 'LOCATION'
-  | 'BOOKING'
-  | 'USER'
-  | 'PAYMENT'
-  | 'REFUND';
+  'ORGANIZATION' | 'LOCATION' | 'BOOKING' | 'USER' | 'PAYMENT' | 'REFUND';
 
 export interface SupportSearchItem {
   readonly id: string;

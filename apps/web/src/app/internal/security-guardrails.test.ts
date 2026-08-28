@@ -10,6 +10,8 @@ import * as auth from '@/lib/auth';
 import * as dbMod from '@/lib/db';
 import { AuthorizationError } from '@uttily/core';
 
+import type { DatabaseClient } from '@uttily/database';
+
 vi.mock('@/lib/auth', () => ({
   getAuthenticatedUser: vi.fn(),
 }));
@@ -23,7 +25,7 @@ vi.mock('next/cache', () => ({
 }));
 
 describe('Chantier 16 — Sécurité & Guardrails Support Back-Office', () => {
-  const fakeDb = {} as any;
+  const fakeDb = {} as unknown as DatabaseClient;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -107,7 +109,11 @@ describe('Chantier 16 — Sécurité & Guardrails Support Back-Office', () => {
         emailVerified: true,
       });
 
-      const res = await resendInvitationNotificationAction('inv-1', 'Test');
+      const res = await resendInvitationNotificationAction(
+        'inv-1',
+        'Test',
+        '9f1c3b2a-1234-4abc-9def-111111111111',
+      );
       expect(res.ok).toBe(false);
       if (!res.ok) {
         expect(res.code).toBe('SUPPORT_UNAUTHORIZED');

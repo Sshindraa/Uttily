@@ -23,7 +23,8 @@ export default async function AuditSupportPage({
       <div className={styles.header}>
         <h1 className={styles.title}>📜 Journal d’Audit Append-Only</h1>
         <p className={styles.subtitle}>
-          Traçabilité intégrale de toutes les mutations, interventions support et événements critiques de la plateforme.
+          Traçabilité intégrale de toutes les mutations, interventions support et événements
+          critiques de la plateforme.
         </p>
       </div>
 
@@ -63,7 +64,14 @@ export default async function AuditSupportPage({
                   </td>
                   <td className={styles.td} style={{ maxWidth: '450px' }}>
                     {log.metadata ? (
-                      <pre style={{ margin: 0, fontSize: '0.75rem', color: '#94a3b8', overflowX: 'auto' }}>
+                      <pre
+                        style={{
+                          margin: 0,
+                          fontSize: '0.75rem',
+                          color: '#94a3b8',
+                          overflowX: 'auto',
+                        }}
+                      >
                         {JSON.stringify(log.metadata, null, 2)}
                       </pre>
                     ) : (

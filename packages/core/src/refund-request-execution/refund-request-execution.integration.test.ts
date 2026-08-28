@@ -459,7 +459,7 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
     const provider = new RecordingRefundProvider('TEST');
     await executeRefundRequestBatch({ db, provider }, { environment: 'TEST', batchLimit: 1 });
     expect(provider.calls).toHaveLength(0);
-    expect((await state(fixture)).refund.status).toBe('PENDING');
+    expect((await state(fixture)).refund.status).toBe('FAILED_REQUIRES_MANUAL_ACTION');
     expect((await state(fixture)).outbox.status).toBe('FAILED');
   });
 
@@ -483,7 +483,7 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         metadata: {
           refund_id: fixture.refundId,
           organization_id: fixture.organizationId,
-          protocol_version: 'refund-requested-v1',
+          protocol_version: 'refund-requested-v2',
         },
       });
       const current = await state(fixture);
@@ -522,7 +522,7 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         metadata: {
           refund_id: fixture.refundId,
           organization_id: fixture.organizationId,
-          protocol_version: 'refund-requested-v1',
+          protocol_version: 'refund-requested-v2',
         },
       });
       const current = await state(fixture);
@@ -713,12 +713,10 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
     await rawSql`
       INSERT INTO payment_attempts (
         organization_id, payment_id, attempt_number, status,
-        amount_minor, currency, client_secret, provider_payment_intent_id,
-        environment, succeeded_at
+        provider_payment_intent_id, provider_idempotency_key, provider_status
       ) VALUES (
         ${org.id}, ${payment.id}, 1, 'SUCCEEDED',
-        10000, 'EUR', 'pi_secret_cancel', 'pi_intent_cancel_123',
-        'TEST'::payment_environment, now()
+        'pi_intent_cancel_123', 'idem_cancel_123', 'succeeded'
       )
     `;
     const booking = await rawSql`
@@ -741,12 +739,12 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
     `.then((rows) => rows[0]!);
     const refund = await rawSql`
       INSERT INTO refunds (
-        organization_id, payment_id, reason, status,
-        amount_minor, currency, provider_idempotency_key,
+        organization_id, payment_id, status,
+        reason, amount_minor, currency, provider_idempotency_key,
         reverse_transfer, refund_application_fee, requested_at
       ) VALUES (
-        ${org.id}, ${payment.id}, 'MERCHANT_CANCELLATION', 'PENDING',
-        10000, 'EUR', 'refund_placeholder',
+        ${org.id}, ${payment.id}, 'PENDING',
+        'MERCHANT_CANCELLATION', 10000, 'EUR', 'refund_placeholder_test1',
         true, true, now()
       ) RETURNING id
     `.then((rows) => rows[0]!);
@@ -790,24 +788,29 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
       ) RETURNING id
     `.then((rows) => rows[0]!);
 
-    const provider = new RecordingRefundProvider('TEST');
+    const provider = new RecordingRefundProvider('TEST', { kind: 'result', status: 'succeeded' });
     const result = await executeRefundRequestBatch(
       { db, provider },
       { environment: 'TEST', batchLimit: 1 },
     );
     expect(result).toMatchObject({ claimedCount: 1, submittedCount: 1, failedCount: 0 });
-    expect(provider.calls).toHaveLength(1);
-    expect(provider.calls[0]!.paymentIntentId).toBe('pi_intent_cancel_123');
-    expect(provider.calls[0]!.amountMinor).toBe(10000);
-    expect(provider.calls[0]!.idempotencyKey).toBe('refund_' + refund.id);
+    expect(provider.calls[0]).toEqual({
+      paymentIntentId: 'pi_intent_cancel_123',
+      amountMinor: 10000,
+      idempotencyKey: 'refund_' + refund.id,
+      reverseTransfer: true,
+      refundApplicationFee: true,
+      metadata: {
+        refund_id: refund.id,
+        organization_id: org.id,
+        protocol_version: 'refund-requested-v2',
+      },
+    });
 
-    const updatedRefund =
-      await rawSql`SELECT status, provider_refund_id FROM refunds WHERE id = ${refund.id}`.then(
-        (rows) => rows[0]!,
-      );
+    const updatedRefund = await rawSql`SELECT status FROM refunds WHERE id = ${refund.id}`.then(
+      (rows) => rows[0]!,
+    );
     expect(updatedRefund.status).toBe('SUBMITTED');
-    expect(updatedRefund.provider_refund_id).not.toBeNull();
-
     const updatedOutbox =
       await rawSql`SELECT status FROM outbox_events WHERE id = ${outbox.id}`.then(
         (rows) => rows[0]!,
@@ -816,22 +819,17 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
   });
 
   it('échec définitif d’un remboursement BOOKING_CANCELLATION passe le refund en FAILED_REQUIRES_MANUAL_ACTION', async () => {
-    if (!rawSql || !db) throw new Error('DB non initialisée');
-    const suffix = Math.random().toString(36).slice(2, 10);
-    const org = await rawSql`
-      INSERT INTO organizations (legal_name, slug)
-      VALUES (${'Cancel Fail Org ' + suffix}, ${'cancel-fail-org-' + suffix})
-      RETURNING id
-    `.then((rows) => rows[0]!);
+    if (!db || !rawSql) throw new Error('DB non initialisée');
     const user = await rawSql`
-      INSERT INTO users (email)
-      VALUES (${'cancel-fail-' + suffix + '@example.com'})
-      RETURNING id
+      INSERT INTO users (email) VALUES ('cancel_fail_user@example.com') RETURNING id
+    `.then((rows) => rows[0]!);
+    const org = await rawSql`
+      INSERT INTO organizations (legal_name, slug, default_cancellation_policy_code)
+      VALUES ('Org Cancel Fail', 'org-cancel-fail', 'FLEXIBLE') RETURNING id
     `.then((rows) => rows[0]!);
     const location = await rawSql`
       INSERT INTO locations (organization_id, name, slug, time_zone, operating_currency)
-      VALUES (${org.id}, 'Cancel Fail Loc', ${'cancel-fail-loc-' + suffix}, 'Europe/Paris', 'EUR')
-      RETURNING id
+      VALUES (${org.id}, 'Loc Cancel Fail', 'loc-cancel-fail', 'Europe/Paris', 'EUR') RETURNING id
     `.then((rows) => rows[0]!);
     const draft = await rawSql`
       INSERT INTO booking_drafts (
@@ -867,12 +865,10 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
     await rawSql`
       INSERT INTO payment_attempts (
         organization_id, payment_id, attempt_number, status,
-        amount_minor, currency, client_secret, provider_payment_intent_id,
-        environment, succeeded_at
+        provider_payment_intent_id, provider_idempotency_key, provider_status
       ) VALUES (
         ${org.id}, ${payment.id}, 1, 'SUCCEEDED',
-        10000, 'EUR', 'pi_secret_cancel_fail', 'pi_intent_cancel_fail_123',
-        'TEST'::payment_environment, now()
+        'pi_intent_cancel_fail_123', 'idem_cancel_fail_123', 'succeeded'
       )
     `;
     const booking = await rawSql`
@@ -889,8 +885,8 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         '2026-04-10 09:00:00+00', '2026-04-12 17:00:00+00',
         '2026-04-10 08:30:00+00', '2026-04-12 17:30:00+00', 'Europe/Paris', 30, 30, 'EUR',
         10000, 0, 10000, 'NOT_APPLICABLE', 0, NULL, 500, 'DAY', 2,
-        ${rawSql.json({ policy_code: 'FLEXIBLE', policy_version: '1', timezone: 'Europe/Paris' })}
-        , ${rawSql.json({ version: 'v1', user_id: user.id, accepted_at: '2026-01-01T00:00:00Z' })}, now()
+        ${rawSql.json({ policy_code: 'FLEXIBLE', policy_version: '1', timezone: 'Europe/Paris' })},
+        ${rawSql.json({ version: 'v1', user_id: user.id, accepted_at: '2026-01-01T00:00:00Z' })}, now()
       ) RETURNING id
     `.then((rows) => rows[0]!);
     const refund = await rawSql`

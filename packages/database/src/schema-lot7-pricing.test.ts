@@ -231,7 +231,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
       const sql = postgres(testUrl, { max: 1 });
       try {
         const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-        expect(rows.length).toBe(39);
+        expect(rows.length).toBe(48);
       } finally {
         await sql.end();
       }
@@ -243,7 +243,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
       const sql = postgres(testUrl, { max: 1 });
       try {
         const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-        expect(rows.length).toBe(39);
+        expect(rows.length).toBe(48);
       } finally {
         await sql.end();
       }

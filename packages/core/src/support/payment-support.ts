@@ -1,12 +1,6 @@
 import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import type { DatabaseClient, DbExecutor } from '@uttily/database';
-import {
-  bookings,
-  organizations,
-  paymentAttempts,
-  payments,
-  users,
-} from '@uttily/database';
+import { bookings, organizations, paymentAttempts, payments, users } from '@uttily/database';
 import type { PaymentSupportListItem } from './types';
 
 export interface ListPaymentsSupportOptions {
@@ -30,7 +24,9 @@ export async function listPaymentsSupport(
   const conditions = [];
 
   if (options?.status) {
-    conditions.push(eq(payments.status, options.status as any));
+    conditions.push(
+      eq(payments.status, options.status as (typeof payments.$inferSelect)['status']),
+    );
   }
   if (options?.organizationId) {
     conditions.push(eq(payments.organizationId, options.organizationId));
@@ -127,7 +123,10 @@ export async function listPaymentsSupport(
 
   return rows.map((r) => {
     const bk = bookingMap[r.id] ?? (r.draftId ? bookingMap[r.draftId] : undefined);
-    const isError = r.status === 'FAILED' || r.status === 'REQUIRES_PAYMENT_METHOD' || r.status === 'REQUIRES_ACTION';
+    const isError =
+      r.status === 'FAILED' ||
+      r.status === 'REQUIRES_PAYMENT_METHOD' ||
+      r.status === 'REQUIRES_ACTION';
     return {
       id: r.id,
       organizationId: r.organizationId,

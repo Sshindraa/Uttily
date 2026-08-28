@@ -32,17 +32,7 @@ describe.skipIf(isSkipped)(
 
     beforeEach(async () => {
       if (rawSql) {
-        await rawSql`DELETE FROM product_photos`;
-        await rawSql`DELETE FROM booking_cancellations`;
-        await rawSql`DELETE FROM booking_lines`;
-        await rawSql`DELETE FROM booking_items`;
-        await rawSql`DELETE FROM bookings`;
-        await rawSql`DELETE FROM refunds`;
-        await rawSql`DELETE FROM payment_attempts`;
-        await rawSql`DELETE FROM payments`;
-        await rawSql`DELETE FROM booking_drafts`;
-        await rawSql`DELETE FROM product_variants`;
-        await rawSql`DELETE FROM products`;
+        await rawSql`TRUNCATE TABLE product_photos, booking_cancellations, booking_lines, booking_items, bookings, refunds, payment_attempts, payments, booking_drafts, product_variants, products, categories, locations, users, organizations CASCADE`;
       }
     });
 
@@ -77,35 +67,61 @@ describe.skipIf(isSkipped)(
         ) RETURNING id, name
       `.then((rows) => rows[0]!);
 
+      const category = await rawSql`
+        INSERT INTO categories (name, slug)
+        VALUES (${'Cat ' + suffix}, ${'cat-' + suffix})
+        RETURNING id
+      `.then((rows) => rows[0]!);
+
       const product = await rawSql`
-        INSERT INTO products (organization_id, name, brand, model)
-        VALUES (${org.id}, 'Canyon Roadlite M', 'Canyon', 'Roadlite 6')
+        INSERT INTO products (organization_id, category_id, name, slug)
+        VALUES (${org.id}, ${category.id}, 'Canyon Roadlite M', ${'canyon-roadlite-' + suffix})
         RETURNING id, name
       `.then((rows) => rows[0]!);
 
       const variant = await rawSql`
-        INSERT INTO product_variants (organization_id, product_id, name, attributes)
-        VALUES (${org.id}, ${product.id}, 'Taille M', ${rawSql.json({ size: 'M' })})
+        INSERT INTO product_variants (product_id, name, attributes)
+        VALUES (${product.id}, 'Taille M', ${rawSql.json({ size: 'M' })})
         RETURNING id, name
       `.then((rows) => rows[0]!);
 
       const photo = await rawSql`
         INSERT INTO product_photos (
-          organization_id, product_id, storage_key, file_state, sort_order
+          organization_id, product_id, storage_key, file_state, sort_order,
+          content_type, byte_size, width_px, height_px, checksum_sha256
         ) VALUES (
-          ${org.id}, ${product.id}, ${'photos/roadlite-' + suffix + '.jpg'}, 'AVAILABLE', 0
+          ${org.id}, ${product.id}, ${'product-photos/roadlite-' + suffix + '.jpg'}, 'AVAILABLE', 0,
+          'image/jpeg', 1024, 800, 600, 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
         ) RETURNING id, public_id
+      `.then((rows) => rows[0]!);
+
+      const draft = await rawSql`
+        INSERT INTO booking_drafts (
+          organization_id, location_id, customer_user_id, status,
+          customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
+          timezone, prep_buffer_minutes, cleanup_buffer_minutes,
+          subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
+          tax_status, tax_amount_minor, tax_rate_bps, commission_amount_minor,
+          billable_unit, billable_unit_count, currency, cancellation_policy_snapshot
+        ) VALUES (
+          ${org.id}, ${location.id}, ${customerA.id}, 'CONVERTED',
+          '2026-09-10 09:00:00+00', '2026-09-12 18:00:00+00',
+          '2026-09-10 08:30:00+00', '2026-09-12 18:30:00+00',
+          'Europe/Paris', 30, 30, 7500, 0, 7500,
+          'NOT_APPLICABLE', 0, NULL, 750, 'DAY', 2, 'EUR',
+          ${rawSql.json({ policy_code: 'FLEXIBLE', policy_version: '1', timezone: 'Europe/Paris' })}
+        ) RETURNING id
       `.then((rows) => rows[0]!);
 
       const paymentA = await rawSql`
         INSERT INTO payments (
-          organization_id, customer_user_id, status, amount_minor, currency,
+          organization_id, draft_id, customer_user_id, status, amount_minor, currency,
           tax_status, tax_amount_minor, commission_amount_minor,
           financial_terms_version, legal_terms_version, terms_acceptance_snapshot,
           connected_account_id, charge_model, settlement_merchant_mode, environment,
           succeeded_at
         ) VALUES (
-          ${org.id}, ${customerA.id}, 'SUCCEEDED', 7500, 'EUR',
+          ${org.id}, ${draft.id}, ${customerA.id}, 'SUCCEEDED', 7500, 'EUR',
           'NOT_APPLICABLE', 0, 750, 'v1', 'v1',
           ${rawSql.json({ version: 'v1', user_id: customerA.id })},
           'acct_test', 'DESTINATION', 'CONNECTED_ACCOUNT', 'TEST'::payment_environment, now()
@@ -114,7 +130,7 @@ describe.skipIf(isSkipped)(
 
       const bookingA = await rawSql`
         INSERT INTO bookings (
-          organization_id, location_id, customer_user_id, payment_id,
+          organization_id, location_id, customer_user_id, draft_id, payment_id,
           status, customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
           timezone, prep_buffer_minutes, cleanup_buffer_minutes, currency,
           subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
@@ -122,7 +138,7 @@ describe.skipIf(isSkipped)(
           billable_unit, billable_unit_count, cancellation_policy_snapshot,
           terms_acceptance_snapshot, confirmed_at
         ) VALUES (
-          ${org.id}, ${location.id}, ${customerA.id}, ${paymentA.id}, 'CONFIRMED',
+          ${org.id}, ${location.id}, ${customerA.id}, ${draft.id}, ${paymentA.id}, 'CONFIRMED',
           '2026-09-10 09:00:00+00', '2026-09-12 18:00:00+00',
           '2026-09-10 08:30:00+00', '2026-09-12 18:30:00+00', 'Europe/Paris', 30, 30, 'EUR',
           7500, 0, 7500, 'NOT_APPLICABLE', 0, 750, 'DAY', 2,
@@ -151,6 +167,8 @@ describe.skipIf(isSkipped)(
         product,
         variant,
         photo,
+        draft,
+        paymentA,
         bookingA,
       };
     }
@@ -162,7 +180,7 @@ describe.skipIf(isSkipped)(
       const detail = await getCustomerBooking(db, fixture.customerA.id, fixture.bookingA.id);
       expect(detail).not.toBeNull();
       expect(detail?.id).toBe(fixture.bookingA.id);
-      expect(detail?.organizationName).toBe(fixture.org.legalName);
+      expect(detail?.organizationName).toBe(fixture.org.legal_name);
       expect(detail?.productName).toBe('Canyon Roadlite M');
       expect(detail?.status).toBe('CONFIRMED');
       expect(detail?.heroPhotoUrl).toBe(`/api/public/product-photos/${fixture.photo.public_id}`);
@@ -177,20 +195,19 @@ describe.skipIf(isSkipped)(
       expect(detail?.cancellation.allowed).toBe(true);
     });
 
-    it('vérité paiement fail-closed : si la ligne payment est absente, status est UNAVAILABLE', async () => {
+    it('vérité paiement fail-closed : si le statut payment n’est pas SUCCEEDED, status est PENDING', async () => {
       if (!db || !rawSql) throw new Error('DB non initialisée');
       const fixture = await createCustomerBookingFixture();
 
-      // Dissocier le paiement de la réservation
       await rawSql`
-        UPDATE bookings
-        SET payment_id = '00000000-0000-0000-0000-000000000099'
-        WHERE id = ${fixture.bookingA.id}
+        UPDATE payments
+        SET status = 'REQUIRES_PAYMENT_METHOD', succeeded_at = NULL
+        WHERE id = ${fixture.paymentA.id}
       `;
 
       const detail = await getCustomerBooking(db, fixture.customerA.id, fixture.bookingA.id);
       expect(detail).not.toBeNull();
-      expect(detail?.payment?.status).toBe('UNAVAILABLE');
+      expect(detail?.payment?.status).toBe('PENDING');
       expect(detail?.payment?.paidAt).toBeNull();
     });
 

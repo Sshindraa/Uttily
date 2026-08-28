@@ -144,6 +144,12 @@ export async function verifyRefundRequest(
     if (refund.currency !== 'EUR') {
       throw new RefundRequestError('PAYMENT_CURRENCY_MISMATCH', 'Devise refund non supportée');
     }
+    if (!refund.reverseTransfer || !refund.refundApplicationFee) {
+      throw new RefundRequestError(
+        'REFUND_FLAGS_INVALID',
+        'reverseTransfer et refundApplicationFee doivent être à true',
+      );
+    }
 
     // Standardisation de la clé d'idempotence : accepte refund_<id> ou legacy refund_amendment_<id>
     const expectedStandardKey = `refund_${refund.id}`;
@@ -157,7 +163,11 @@ export async function verifyRefundRequest(
 
     let origin: 'BOOKING_AMENDMENT' | 'AMENDMENT_COMPENSATION' | 'BOOKING_CANCELLATION';
     if (authoritativeEvent.eventVersion === 'v1') {
-      origin = 'BOOKING_AMENDMENT';
+      if (refund.reason === 'AMENDMENT_COMPENSATION') {
+        origin = 'AMENDMENT_COMPENSATION';
+      } else {
+        origin = 'BOOKING_AMENDMENT';
+      }
     } else {
       origin = authoritativeEvent.payload.origin;
     }

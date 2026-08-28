@@ -9,7 +9,9 @@ export function RetryNotificationButton({ notificationId }: { notificationId: st
   const [msg, setMsg] = useState<string | null>(null);
 
   const handleRetry = async () => {
-    const reason = window.prompt('Motif support pour la relance de la notification (consigné dans l’audit) :');
+    const reason = window.prompt(
+      'Motif support pour la relance de la notification (consigné dans l’audit) :',
+    );
     if (!reason || !reason.trim()) return;
 
     setLoading(true);
@@ -30,15 +32,14 @@ export function RetryNotificationButton({ notificationId }: { notificationId: st
 
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-      <button
-        type="button"
-        className={styles.actionBtn}
-        onClick={handleRetry}
-        disabled={loading}
-      >
+      <button type="button" className={styles.actionBtn} onClick={handleRetry} disabled={loading}>
         {loading ? 'Relance...' : '🔄 Relancer'}
       </button>
-      {msg && <span style={{ fontSize: '0.75rem', color: msg.startsWith('✅') ? '#4ade80' : '#f87171' }}>{msg}</span>}
+      {msg && (
+        <span style={{ fontSize: '0.75rem', color: msg.startsWith('✅') ? '#4ade80' : '#f87171' }}>
+          {msg}
+        </span>
+      )}
     </div>
   );
 }

@@ -164,10 +164,18 @@
   border: 2px solid #0b0f19;
 }
 
-.dotSuccess { background: #22c55e; }
-.dotWarning { background: #f59e0b; }
-.dotError { background: #ef4444; }
-.dotInfo { background: #38bdf8; }
+.dotSuccess {
+  background: #22c55e;
+}
+.dotWarning {
+  background: #f59e0b;
+}
+.dotError {
+  background: #ef4444;
+}
+.dotInfo {
+  background: #38bdf8;
+}
 
 .timelineHeader {
   display: flex;

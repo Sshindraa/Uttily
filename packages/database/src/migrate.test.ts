@@ -109,7 +109,7 @@ describe.skipIf(shouldSkipIntegrationTests())('runMigrations — base vierge via
     // Vérifie la table de suivi Drizzle (et non l'ancienne __migrations).
     // Drizzle Kit crée __drizzle_migrations dans le schéma "drizzle".
     const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-    expect(rows.length).toBe(39);
+    expect(rows.length).toBe(48);
 
     // Vérifie le seed de catégories.
     const cats = await sql`SELECT count(*)::int as n FROM categories`;
@@ -190,7 +190,7 @@ describe.skipIf(shouldSkipIntegrationTests())('runMigrations — base vierge via
     await runMigrations(testUrl);
     const sql = postgres(testUrl, { max: 1 });
     const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-    expect(rows.length).toBe(39);
+    expect(rows.length).toBe(48);
     await sql.end();
   });
 });

@@ -21,10 +21,7 @@ import {
   refunds,
   users,
 } from '@uttily/database';
-import type {
-  BookingSupportDetails,
-  SupportTimelineEvent,
-} from './types';
+import type { BookingSupportDetails, SupportTimelineEvent } from './types';
 import { projectCustomerBookingStatus } from '../customer-bookings/get-customer-bookings';
 
 export class SupportBookingNotFoundError extends Error {
@@ -436,7 +433,12 @@ export async function getBookingSupportDetails(
       timestamp: r.createdAt,
       label: `Remboursement (${r.status})`,
       description: `Montant: ${(r.amountMinor / 100).toFixed(2)} ${r.currency} • Motif: ${r.reason}${r.failureCode ? ` • Erreur: ${r.failureCode}` : ''}`,
-      type: r.status === 'SUCCEEDED' ? 'SUCCESS' : r.status === 'FAILED_REQUIRES_MANUAL_ACTION' ? 'ERROR' : 'WARNING',
+      type:
+        r.status === 'SUCCEEDED'
+          ? 'SUCCESS'
+          : r.status === 'FAILED_REQUIRES_MANUAL_ACTION'
+            ? 'ERROR'
+            : 'WARNING',
     });
   }
 
@@ -470,7 +472,8 @@ export async function getBookingSupportDetails(
     refundRows[0]?.amountMinor,
   );
 
-  const latestPaymentIntentId = paymentAttemptsData[paymentAttemptsData.length - 1]?.providerPaymentIntentId ?? null;
+  const latestPaymentIntentId =
+    paymentAttemptsData[paymentAttemptsData.length - 1]?.providerPaymentIntentId ?? null;
 
   return {
     id: bookingRow.id,

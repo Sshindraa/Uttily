@@ -1,9 +1,6 @@
 import { getAuthenticatedUser } from './auth';
 import { getDb } from './db';
-import {
-  requirePlatformAdmin,
-  type AuthenticatedUser,
-} from '@uttily/core';
+import { requirePlatformAdmin, type AuthenticatedUser } from '@uttily/core';
 import type { DatabaseClient } from '@uttily/database';
 
 export interface SupportPlatformAdminContext {

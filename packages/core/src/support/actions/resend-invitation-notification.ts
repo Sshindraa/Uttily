@@ -1,29 +1,36 @@
 import { eq } from 'drizzle-orm';
-import { randomUUID } from 'node:crypto';
 import type { DatabaseClient } from '@uttily/database';
-import {
-  auditLog,
-  notifications,
-  organizationInvitations,
-  organizations,
-} from '@uttily/database';
+import { auditLog, notifications, organizationInvitations, organizations } from '@uttily/database';
 import type { SupportActionContext } from '../types';
 import { NotificationActionError } from './retry-notification';
 
 export interface ResendInvitationNotificationInput extends SupportActionContext {
   readonly invitationId: string;
-  readonly supportRequestId?: string | undefined;
+  /**
+   * Identifiant d'idempotence de l'intention de renvoi, généré par le client
+   * (UUID stable pour UNE intention de renvoi, réutilisé si la même soumission
+   * est rejouée après timeout/retry). Obligatoire et validé : le Core refuse un
+   * requestId vide ou non-UUID et n'applique AUCUN fallback silencieux.
+   */
+  readonly supportRequestId: string;
 }
 
+/** Format UUID RFC 4122 accepté pour les requestId d'intention de renvoi. */
+const SUPPORT_REQUEST_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
- * Use case Support : Renvoi d'une notification d'invitation d'équipe (Chantier 16.1).
+ * Use case Support : Renvoi d'une notification d'invitation d'équipe (Chantier 16.1, durci en 16.1.1).
  *
  * Invariants de sécurité :
  * 1. L'invitation doit être PENDING et non expirée.
  * 2. L'organisation doit être ACTIVE.
  * 3. Préserve l'historique complet : ne modifie JAMAIS l'ancienne notification SENT/FAILED.
  * 4. Crée une NOUVELLE notification PENDING avec une clé d'idempotence propre.
- * 5. L'action support est idempotente via `supportRequestId`.
+ * 5. L'action support est idempotente via `supportRequestId` : même
+ *    `invitationId + supportRequestId` => même notification, aucun nouvel audit ;
+ *    nouveau requestId => nouvelle notification. Le requestId est OBLIGATOIRE
+ *    (UUID valide) : aucun `randomUUID()` de secours dans le Core.
  * 6. Zéro secret, token ou token_hash dans les métadonnées ou le journal d'audit.
  */
 export async function resendInvitationNotificationSupport(
@@ -36,6 +43,14 @@ export async function resendInvitationNotificationSupport(
     throw new NotificationActionError(
       'SUPPORT_ACTION_INVALID_STATE',
       'Un motif explicite est obligatoire pour renvoyer une invitation.',
+    );
+  }
+
+  const trimmedRequestId = supportRequestId.trim();
+  if (!trimmedRequestId || !SUPPORT_REQUEST_ID_PATTERN.test(trimmedRequestId)) {
+    throw new NotificationActionError(
+      'SUPPORT_ACTION_INVALID_STATE',
+      'supportRequestId est obligatoire et doit être un UUID valide pour le renvoi d’une invitation (aucun fallback silencieux).',
     );
   }
 
@@ -84,9 +99,7 @@ export async function resendInvitationNotificationSupport(
       );
     }
 
-    const newIdempotencyKey = supportRequestId
-      ? `invitation_resend:${invitation.id}:${supportRequestId.trim()}`
-      : `invitation_resend:${invitation.id}:${randomUUID()}`;
+    const newIdempotencyKey = `invitation_resend:${invitation.id}:${trimmedRequestId}`;
 
     // Vérifier l'idempotence de l'action support
     const [existingResend] = await tx
@@ -134,7 +147,7 @@ export async function resendInvitationNotificationSupport(
       targetId: invitationId,
       metadata: {
         reason: reason.trim(),
-        supportRequestId: supportRequestId ?? null,
+        supportRequestId: trimmedRequestId,
         notificationId: newNotif.id,
         idempotencyKey: newIdempotencyKey,
         organizationId: invitation.organizationId,

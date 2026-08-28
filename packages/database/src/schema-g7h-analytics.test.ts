@@ -244,12 +244,12 @@ describe.skipIf(shouldSkipIntegrationTests())('G7H-A — Fondations analytics', 
       const sql = postgres(testUrl, { max: 1 });
       try {
         const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-        expect(rows.length).toBe(39);
+        expect(rows.length).toBe(48);
 
         const __dirname = dirname(fileURLToPath(import.meta.url));
         const journalPath = join(__dirname, '..', 'drizzle', 'meta', '_journal.json');
         const journal = JSON.parse(readFileSync(journalPath, 'utf-8'));
-        expect(journal.entries.length).toBe(39);
+        expect(journal.entries.length).toBe(48);
         expect(journal.entries[34]!.tag).toBe('0035_g7h_analytics_foundations');
         expect(journal.entries[34]!.idx).toBe(34);
       } finally {

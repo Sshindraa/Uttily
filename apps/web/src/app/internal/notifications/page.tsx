@@ -42,7 +42,8 @@ export default async function NotificationsSupportPage({
       <div className={styles.header}>
         <h1 className={styles.title}>🔔 Console Notifications & Invitations</h1>
         <p className={styles.subtitle}>
-          Supervision des emails transactionnels, relances sécurisées sans fuite de secrets et diagnostics d’erreurs.
+          Supervision des emails transactionnels, relances sécurisées sans fuite de secrets et
+          diagnostics d’erreurs.
         </p>
 
         <div className={styles.filtersBar}>
@@ -116,7 +117,10 @@ export default async function NotificationsSupportPage({
                   </td>
                   <td className={styles.td}>
                     {n.organizationId ? (
-                      <Link href={`/internal/organizations/${n.organizationId}`} style={{ color: '#cbd5e1' }}>
+                      <Link
+                        href={`/internal/organizations/${n.organizationId}`}
+                        style={{ color: '#cbd5e1' }}
+                      >
                         {n.organizationName ?? 'Organisation'}
                       </Link>
                     ) : (
@@ -136,7 +140,10 @@ export default async function NotificationsSupportPage({
                     <span className={getStatusBadge(n.status)}>{n.status}</span>
                   </td>
                   <td className={styles.td}>{n.attemptCount}</td>
-                  <td className={styles.td} style={{ color: n.failureCode ? '#f87171' : '#64748b' }}>
+                  <td
+                    className={styles.td}
+                    style={{ color: n.failureCode ? '#f87171' : '#64748b' }}
+                  >
                     {n.failureCode ?? '—'}
                     {n.requiresManualReview && (
                       <div style={{ marginTop: '0.2rem' }}>

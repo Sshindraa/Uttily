@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { DatabaseClient } from '@uttily/database';
 import { bookings, notifications, organizationInvitations, organizations } from '@uttily/database';
 import { renderNotificationRecord } from './load-notification-data';
+import { RESEND_IDEMPOTENCY_WINDOW_MS } from './provider-idempotency-window';
 import {
   NotificationSendError,
   type ProcessNotificationBatchResult,
@@ -17,7 +18,6 @@ export interface ProcessDueNotificationsDependencies {
 
 const DEFAULT_LEASE_DURATION_SECONDS = 60;
 const MAX_TRANSIENT_ATTEMPTS = 5;
-const RESEND_IDEMPOTENCY_WINDOW_MS = 24 * 60 * 60 * 1000; // 24 heures
 
 const ALLOWED_PICKUP_REMINDER_BOOKING_STATUSES = ['CONFIRMED', 'READY_FOR_PICKUP'] as const;
 const ALLOWED_RETURN_REMINDER_BOOKING_STATUSES = ['ACTIVE'] as const;

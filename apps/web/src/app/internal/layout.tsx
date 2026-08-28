@@ -11,13 +11,21 @@ export default async function InternalLayout({
   let adminContext;
   try {
     adminContext = await requireSupportPlatformAdmin();
-  } catch (err: any) {
-    if (err?.message === 'UNAUTHENTICATED') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'UNAUTHENTICATED') {
       redirect('/sign-in');
     }
     // Fail-closed pour les utilisateurs non-admin Uttily
     return (
-      <div style={{ padding: '3rem 1.5rem', textAlign: 'center', background: '#0b0f19', minHeight: '100vh', color: '#f87171' }}>
+      <div
+        style={{
+          padding: '3rem 1.5rem',
+          textAlign: 'center',
+          background: '#0b0f19',
+          minHeight: '100vh',
+          color: '#f87171',
+        }}
+      >
         <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>⛔ Accès Interne Refusé</h1>
         <p style={{ color: '#94a3b8', maxWidth: '500px', margin: '0 auto 1.5rem' }}>
           Cette zone est strictement réservée à l’équipe support et administration interne d’Uttily.

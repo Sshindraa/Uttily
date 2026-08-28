@@ -83,12 +83,7 @@ export function NotificationActionButtons({
       )}
 
       {isRetryAllowed && (
-        <button
-          type="button"
-          className={styles.actionBtn}
-          onClick={handleRetry}
-          disabled={loading}
-        >
+        <button type="button" className={styles.actionBtn} onClick={handleRetry} disabled={loading}>
           {loading ? '...' : '🔄 Relancer'}
         </button>
       )}

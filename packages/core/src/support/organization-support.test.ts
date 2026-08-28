@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { DatabaseClient } from '@uttily/database';
 import {
   getOrganizationSupportDetails,
   SupportOrganizationNotFoundError,
@@ -14,7 +15,7 @@ describe('getOrganizationSupportDetails (Unit)', () => {
           }),
         }),
       }),
-    } as any;
+    } as unknown as DatabaseClient;
 
     await expect(
       getOrganizationSupportDetails(fakeDb, '00000000-0000-0000-0000-000000000000'),

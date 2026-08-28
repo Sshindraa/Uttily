@@ -32,18 +32,32 @@ export default async function OrganizationSupportPage({
       {/* Header 360 */}
       <div className={styles.headerCard}>
         <div className={styles.headerMain}>
-          <Link href="/internal" style={{ color: '#38bdf8', fontSize: '0.85rem', textDecoration: 'none', marginBottom: '0.5rem' }}>
+          <Link
+            href="/internal"
+            style={{
+              color: '#38bdf8',
+              fontSize: '0.85rem',
+              textDecoration: 'none',
+              marginBottom: '0.5rem',
+            }}
+          >
             ← Retour à la recherche support
           </Link>
           <h1 className={styles.title}>
             <span>🏢</span> {org.legalName}
           </h1>
           <div className={styles.metaRow}>
-            <span><strong>Slug :</strong> <code>{org.slug}</code></span>
+            <span>
+              <strong>Slug :</strong> <code>{org.slug}</code>
+            </span>
             <span>•</span>
-            <span><strong>ID :</strong> <code>{org.id}</code></span>
+            <span>
+              <strong>ID :</strong> <code>{org.id}</code>
+            </span>
             <span>•</span>
-            <span><strong>Créé le :</strong> {org.createdAt.toLocaleDateString('fr-FR')}</span>
+            <span>
+              <strong>Créé le :</strong> {org.createdAt.toLocaleDateString('fr-FR')}
+            </span>
             <span>•</span>
             <Link
               href={`/dashboard/${org.id}`}
@@ -59,7 +73,9 @@ export default async function OrganizationSupportPage({
           <span
             className={`${styles.readinessBadge} ${isReady ? styles.readySuccess : styles.readyWarning}`}
           >
-            {isReady ? '✅ Prêt pour réservations' : `⚠️ Non prêt (${org.readiness.completedCount}/${org.readiness.totalCount} jalons)`}
+            {isReady
+              ? '✅ Prêt pour réservations'
+              : `⚠️ Non prêt (${org.readiness.completedCount}/${org.readiness.totalCount} jalons)`}
           </span>
         </div>
       </div>
@@ -72,7 +88,8 @@ export default async function OrganizationSupportPage({
               <span>⚠️</span>
               <div>
                 <strong>Notifications : </strong>
-                {org.alerts.failedNotificationsCount} notification(s) transactionnelle(s) en échec pour cette organisation.
+                {org.alerts.failedNotificationsCount} notification(s) transactionnelle(s) en échec
+                pour cette organisation.
               </div>
             </div>
           )}
@@ -81,7 +98,8 @@ export default async function OrganizationSupportPage({
               <span>⚠️</span>
               <div>
                 <strong>Paiements : </strong>
-                {org.alerts.failedPaymentsCount} paiement(s) en échec nécessitant une attention support.
+                {org.alerts.failedPaymentsCount} paiement(s) en échec nécessitant une attention
+                support.
               </div>
             </div>
           )}
@@ -102,23 +120,40 @@ export default async function OrganizationSupportPage({
             </div>
 
             <div className={styles.infoLabel}>Statut Onboarding :</div>
-            <div className={styles.infoVal}>{org.paymentAccount?.onboardingStatus ?? 'NON_CONFIGURÉ'}</div>
+            <div className={styles.infoVal}>
+              {org.paymentAccount?.onboardingStatus ?? 'NON_CONFIGURÉ'}
+            </div>
 
             <div className={styles.infoLabel}>Encaissement activé :</div>
-            <div className={styles.infoVal}>{org.paymentAccount?.chargesEnabled ? '✅ Oui' : '❌ Non'}</div>
+            <div className={styles.infoVal}>
+              {org.paymentAccount?.chargesEnabled ? '✅ Oui' : '❌ Non'}
+            </div>
 
             <div className={styles.infoLabel}>Virements activés :</div>
-            <div className={styles.infoVal}>{org.paymentAccount?.payoutsEnabled ? '✅ Oui' : '❌ Non'}</div>
+            <div className={styles.infoVal}>
+              {org.paymentAccount?.payoutsEnabled ? '✅ Oui' : '❌ Non'}
+            </div>
 
             <div className={styles.infoLabel}>Capacité transferts :</div>
-            <div className={styles.infoVal}>{org.paymentAccount?.transfersCapabilityStatus ?? '—'}</div>
+            <div className={styles.infoVal}>
+              {org.paymentAccount?.transfersCapabilityStatus ?? '—'}
+            </div>
           </div>
 
-          <div style={{ marginTop: '0.5rem', borderTop: '1px solid #1f2937', paddingTop: '0.75rem' }}>
+          <div
+            style={{ marginTop: '0.5rem', borderTop: '1px solid #1f2937', paddingTop: '0.75rem' }}
+          >
             <h3 style={{ fontSize: '0.9rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
               Jalons d’Onboarding Pro ({org.readiness.percentage}%) :
             </h3>
-            <ul style={{ paddingLeft: '1.2rem', fontSize: '0.85rem', color: '#cbd5e1', lineHeight: '1.6' }}>
+            <ul
+              style={{
+                paddingLeft: '1.2rem',
+                fontSize: '0.85rem',
+                color: '#cbd5e1',
+                lineHeight: '1.6',
+              }}
+            >
               {org.readiness.milestones.map((m) => (
                 <li key={m.key}>
                   {m.key} : {m.completed ? '✅ Validé' : '❌ Incomplet'}
@@ -148,7 +183,9 @@ export default async function OrganizationSupportPage({
             <div className={styles.infoVal}>{org.openIncidents.damageReportsCount}</div>
           </div>
 
-          <div style={{ marginTop: '0.5rem', borderTop: '1px solid #1f2937', paddingTop: '0.75rem' }}>
+          <div
+            style={{ marginTop: '0.5rem', borderTop: '1px solid #1f2937', paddingTop: '0.75rem' }}
+          >
             <h3 style={{ fontSize: '0.9rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
               Établissements ({org.locations.length})
             </h3>
@@ -165,10 +202,14 @@ export default async function OrganizationSupportPage({
                 <tbody>
                   {org.locations.map((loc) => (
                     <tr key={loc.id}>
-                      <td className={styles.td}><strong>{loc.name}</strong></td>
+                      <td className={styles.td}>
+                        <strong>{loc.name}</strong>
+                      </td>
                       <td className={styles.td}>{loc.city ?? '—'}</td>
                       <td className={styles.td}>{loc.pickupEnabled ? '✅ Oui' : '❌ Non'}</td>
-                      <td className={styles.td}><code>{loc.timeZone}</code></td>
+                      <td className={styles.td}>
+                        <code>{loc.timeZone}</code>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -199,9 +240,13 @@ export default async function OrganizationSupportPage({
               {org.members.map((m) => (
                 <tr key={m.id}>
                   <td className={styles.td}>Membre</td>
-                  <td className={styles.td}><strong>{m.email}</strong></td>
+                  <td className={styles.td}>
+                    <strong>{m.email}</strong>
+                  </td>
                   <td className={styles.td}>{m.displayName ?? '—'}</td>
-                  <td className={styles.td}><code>{m.role}</code></td>
+                  <td className={styles.td}>
+                    <code>{m.role}</code>
+                  </td>
                   <td className={styles.td}>{m.status}</td>
                   <td className={styles.td}>—</td>
                 </tr>
@@ -209,11 +254,17 @@ export default async function OrganizationSupportPage({
               {org.pendingInvitations.map((inv) => (
                 <tr key={inv.id} style={{ background: 'rgba(245, 158, 11, 0.04)' }}>
                   <td className={styles.td}>Invitation</td>
-                  <td className={styles.td}><strong>{inv.email}</strong></td>
-                  <td className={styles.td}>—</td>
-                  <td className={styles.td}><code>{inv.role}</code></td>
                   <td className={styles.td}>
-                    <span style={{ color: '#fbbf24' }}>En attente (Expire: {inv.expiresAt.toLocaleDateString('fr-FR')})</span>
+                    <strong>{inv.email}</strong>
+                  </td>
+                  <td className={styles.td}>—</td>
+                  <td className={styles.td}>
+                    <code>{inv.role}</code>
+                  </td>
+                  <td className={styles.td}>
+                    <span style={{ color: '#fbbf24' }}>
+                      En attente (Expire: {inv.expiresAt.toLocaleDateString('fr-FR')})
+                    </span>
                   </td>
                   <td className={styles.td}>
                     <ResendInvitationButton invitationId={inv.id} />
@@ -231,7 +282,9 @@ export default async function OrganizationSupportPage({
           <span>📋 Dernières Réservations ({org.recentBookings.length})</span>
         </h2>
         {org.recentBookings.length === 0 ? (
-          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Aucune réservation trouvée pour cette organisation.</p>
+          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
+            Aucune réservation trouvée pour cette organisation.
+          </p>
         ) : (
           <div className={styles.tableWrapper}>
             <table className={styles.table}>
@@ -248,15 +301,22 @@ export default async function OrganizationSupportPage({
               <tbody>
                 {org.recentBookings.map((b) => (
                   <tr key={b.id}>
-                    <td className={styles.td}><code>{b.id.slice(0, 8)}...</code></td>
+                    <td className={styles.td}>
+                      <code>{b.id.slice(0, 8)}...</code>
+                    </td>
                     <td className={styles.td}>{b.customerEmail ?? 'N/A'}</td>
                     <td className={styles.td}>{b.status}</td>
                     <td className={styles.td}>
-                      <strong>{(b.totalAmountMinor / 100).toFixed(2)} {b.currency}</strong>
+                      <strong>
+                        {(b.totalAmountMinor / 100).toFixed(2)} {b.currency}
+                      </strong>
                     </td>
                     <td className={styles.td}>{b.createdAt.toLocaleDateString('fr-FR')}</td>
                     <td className={styles.td}>
-                      <Link href={`/internal/bookings/${b.id}`} style={{ color: '#38bdf8', textDecoration: 'none' }}>
+                      <Link
+                        href={`/internal/bookings/${b.id}`}
+                        style={{ color: '#38bdf8', textDecoration: 'none' }}
+                      >
                         Diagnostic complet →
                       </Link>
                     </td>

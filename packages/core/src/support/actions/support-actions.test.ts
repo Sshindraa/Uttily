@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { DatabaseClient } from '@uttily/database';
 import { retryNotificationSupport, NotificationActionError } from './retry-notification';
 import { cancelNotificationSupport } from './cancel-notification';
 import { resendInvitationNotificationSupport } from './resend-invitation-notification';
@@ -7,7 +8,7 @@ import { reconcilePaymentSupport, PaymentReconcileActionError } from './reconcil
 describe('Support Actions (Unit)', () => {
   describe('retryNotificationSupport', () => {
     it('exige un motif d’action support explicite', async () => {
-      const fakeDb = {} as any;
+      const fakeDb = {} as unknown as DatabaseClient;
       await expect(
         retryNotificationSupport(fakeDb, {
           notificationId: 'notif-1',
@@ -31,7 +32,7 @@ describe('Support Actions (Unit)', () => {
       };
       const fakeDb = {
         transaction: vi.fn((cb) => cb(txMock)),
-      } as any;
+      } as unknown as DatabaseClient;
 
       await expect(
         retryNotificationSupport(fakeDb, {
@@ -64,7 +65,7 @@ describe('Support Actions (Unit)', () => {
         };
         const fakeDb = {
           transaction: vi.fn((cb) => cb(txMock)),
-        } as any;
+        } as unknown as DatabaseClient;
 
         await expect(
           retryNotificationSupport(fakeDb, {
@@ -97,7 +98,7 @@ describe('Support Actions (Unit)', () => {
       };
       const fakeDb = {
         transaction: vi.fn((cb) => cb(txMock)),
-      } as any;
+      } as unknown as DatabaseClient;
 
       await expect(
         retryNotificationSupport(fakeDb, {
@@ -129,7 +130,7 @@ describe('Support Actions (Unit)', () => {
       };
       const fakeDb = {
         transaction: vi.fn((cb) => cb(txMock)),
-      } as any;
+      } as unknown as DatabaseClient;
 
       await expect(
         cancelNotificationSupport(fakeDb, {
@@ -141,15 +142,32 @@ describe('Support Actions (Unit)', () => {
   });
 
   describe('resendInvitationNotificationSupport', () => {
+    const REQUEST_ID = '11111111-2222-4333-8444-555555555555';
+
     it('exige un motif d’action support explicite', async () => {
-      const fakeDb = {} as any;
+      const fakeDb = {} as unknown as DatabaseClient;
       await expect(
         resendInvitationNotificationSupport(fakeDb, {
           invitationId: 'inv-1',
           actorUserId: 'user-1',
           reason: '',
+          supportRequestId: REQUEST_ID,
         }),
       ).rejects.toThrow('Un motif explicite est obligatoire');
+    });
+
+    it('refuse fail-closed un supportRequestId vide, espacé ou non-UUID (aucun fallback silencieux)', async () => {
+      const fakeDb = {} as unknown as DatabaseClient;
+      for (const invalid of ['', '   ', 'req-abc-1', 'not-a-uuid', '11111111-2222-4333-8444']) {
+        await expect(
+          resendInvitationNotificationSupport(fakeDb, {
+            invitationId: 'inv-1',
+            actorUserId: 'user-1',
+            reason: 'Demande renvoi',
+            supportRequestId: invalid,
+          }),
+        ).rejects.toThrow('supportRequestId est obligatoire et doit être un UUID valide');
+      }
     });
 
     it('refuse de renvoyer une invitation expirée', async () => {
@@ -172,13 +190,14 @@ describe('Support Actions (Unit)', () => {
       };
       const fakeDb = {
         transaction: vi.fn((cb) => cb(txMock)),
-      } as any;
+      } as unknown as DatabaseClient;
 
       await expect(
         resendInvitationNotificationSupport(fakeDb, {
           invitationId: 'inv-1',
           actorUserId: 'user-1',
           reason: 'Demande renvoi',
+          supportRequestId: REQUEST_ID,
         }),
       ).rejects.toThrow('Cette invitation est expirée.');
     });
@@ -218,13 +237,14 @@ describe('Support Actions (Unit)', () => {
       };
       const fakeDb = {
         transaction: vi.fn((cb) => cb(txMock)),
-      } as any;
+      } as unknown as DatabaseClient;
 
       await expect(
         resendInvitationNotificationSupport(fakeDb, {
           invitationId: 'inv-1',
           actorUserId: 'user-1',
           reason: 'Demande renvoi',
+          supportRequestId: REQUEST_ID,
         }),
       ).rejects.toThrow('L’organisation associée à cette invitation n’est pas active.');
     });
@@ -232,7 +252,7 @@ describe('Support Actions (Unit)', () => {
 
   describe('reconcilePaymentSupport', () => {
     it('exige un motif d’action support explicite', async () => {
-      const fakeDb = {} as any;
+      const fakeDb = {} as unknown as DatabaseClient;
       await expect(
         reconcilePaymentSupport(fakeDb, {
           paymentId: 'pay-1',
@@ -265,11 +285,18 @@ describe('Support Actions (Unit)', () => {
                 for: vi.fn().mockResolvedValue([]), // aucune tentative éligible
               }),
             }),
+          })
+          .mockReturnValueOnce({
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([]), // aucune tentative non-terminale du tout
+              }),
+            }),
           }),
       };
       const fakeDb = {
         transaction: vi.fn((cb) => cb(txMock)),
-      } as any;
+      } as unknown as DatabaseClient;
 
       await expect(
         reconcilePaymentSupport(fakeDb, {
@@ -278,6 +305,51 @@ describe('Support Actions (Unit)', () => {
           reason: 'Vérification paiement',
         }),
       ).rejects.toThrow(PaymentReconcileActionError);
+    });
+
+    it('refuse avec SUPPORT_ACTION_INVALID_STATE si la tentative est sous lease actif (worker en vol, fencing)', async () => {
+      const txMock = {
+        select: vi
+          .fn()
+          .mockReturnValueOnce({
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([
+                  {
+                    id: 'pay-1',
+                    organizationId: 'org-1',
+                    status: 'PENDING_PROVIDER',
+                  },
+                ]),
+              }),
+            }),
+          })
+          .mockReturnValueOnce({
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                for: vi.fn().mockResolvedValue([]), // lease actif => tentatives éligibles exclues
+              }),
+            }),
+          })
+          .mockReturnValueOnce({
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([{ id: 'attempt-1' }]), // tentative non-terminale existe (sous lease)
+              }),
+            }),
+          }),
+      };
+      const fakeDb = {
+        transaction: vi.fn((cb) => cb(txMock)),
+      } as unknown as DatabaseClient;
+
+      await expect(
+        reconcilePaymentSupport(fakeDb, {
+          paymentId: 'pay-1',
+          actorUserId: 'user-1',
+          reason: 'Vérification paiement',
+        }),
+      ).rejects.toThrow('sous lease de réconciliation actif');
     });
   });
 });

@@ -60,18 +60,24 @@ describe.skipIf(shouldSkipIntegrationTests())(
       const variantId = randomUUID();
 
       await rawSql!`
-      INSERT INTO organizations (id, legal_name, slug, default_currency)
-      VALUES (${orgId}, 'Loueur Vélo Lyon', 'loueur-lyon', 'EUR');
+        INSERT INTO organizations (id, legal_name, slug, default_currency)
+        VALUES (${orgId}, 'Loueur Vélo Lyon', 'loueur-lyon', 'EUR')
+      `;
 
-      INSERT INTO categories (id, name, slug, is_active)
-      VALUES (${catId}, 'Vélo urbain', 'velo-urbain', true);
+      await rawSql!`
+        INSERT INTO categories (id, name, slug, is_active)
+        VALUES (${catId}, 'Vélo urbain', 'velo-urbain', true)
+      `;
 
-      INSERT INTO products (id, organization_id, category_id, name, slug, description, publication_status)
-      VALUES (${prodId}, ${orgId}, ${catId}, 'Vélo Gazelle VAE', 'gazelle-vae', 'Superbe vélo électrique', 'DRAFT');
+      await rawSql!`
+        INSERT INTO products (id, organization_id, category_id, name, slug, description, publication_status)
+        VALUES (${prodId}, ${orgId}, ${catId}, 'Vélo Gazelle VAE', 'gazelle-vae', 'Superbe vélo électrique', 'DRAFT')
+      `;
 
-      INSERT INTO product_variants (id, product_id, name, is_active)
-      VALUES (${variantId}, ${prodId}, 'Taille M', true);
-    `;
+      await rawSql!`
+        INSERT INTO product_variants (id, product_id, name, is_active)
+        VALUES (${variantId}, ${prodId}, 'Taille M', true)
+      `;
 
       return { orgId, userId, catId, prodId, variantId };
     }

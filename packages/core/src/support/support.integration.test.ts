@@ -66,32 +66,40 @@ describe.skipIf(isSkipped)(
       const suffix = Math.random().toString(36).slice(2, 10);
 
       // Support Admin User
-      const adminUser = firstRow(await rawSql<{ id: string; email: string }[]>`
+      const adminUser = firstRow(
+        await rawSql<{ id: string; email: string }[]>`
         INSERT INTO users (email, display_name, is_platform_admin)
         VALUES (${`admin-${suffix}@uttily.com`}, 'Support Agent', true)
         RETURNING id, email
-      `);
+      `,
+      );
 
       // Customer User
-      const customerUser = firstRow(await rawSql<{ id: string; email: string }[]>`
+      const customerUser = firstRow(
+        await rawSql<{ id: string; email: string }[]>`
         INSERT INTO users (email, display_name, is_platform_admin)
         VALUES (${`client-${suffix}@example.com`}, 'Jean Dupont', false)
         RETURNING id, email
-      `);
+      `,
+      );
 
       // Pro Owner User
-      const proUser = firstRow(await rawSql<{ id: string; email: string }[]>`
+      const proUser = firstRow(
+        await rawSql<{ id: string; email: string }[]>`
         INSERT INTO users (email, display_name, is_platform_admin)
         VALUES (${`pro-${suffix}@location-velos.fr`}, 'Pierre Loueur', false)
         RETURNING id, email
-      `);
+      `,
+      );
 
       // Organization
-      const org = firstRow(await rawSql<{ id: string; legal_name: string; slug: string }[]>`
+      const org = firstRow(
+        await rawSql<{ id: string; legal_name: string; slug: string }[]>`
         INSERT INTO organizations (legal_name, slug, public_display_name, status)
         VALUES (${`Cycles Alpes ${suffix}`}, ${`cycles-alpes-${suffix}`}, 'Alpes Vélo Expérience', 'ACTIVE')
         RETURNING id, legal_name, slug
-      `);
+      `,
+      );
 
       // Membership
       await rawSql`
@@ -100,11 +108,13 @@ describe.skipIf(isSkipped)(
       `;
 
       // Location
-      const location = firstRow(await rawSql<{ id: string; name: string; city: string }[]>`
+      const location = firstRow(
+        await rawSql<{ id: string; name: string; city: string }[]>`
         INSERT INTO locations (organization_id, name, slug, operating_currency, address_line1, city, postal_code, country_code, time_zone, pickup_enabled, geo_point)
         VALUES (${org.id}, 'Boutique Annecy Centre', ${`boutique-annecy-${suffix}`}, 'EUR', '10 Rue du Lac', 'Annecy', '74000', 'FR', 'Europe/Paris', true, ST_SetSRID(ST_MakePoint(6.129384, 45.899247), 4326))
         RETURNING id, name, city
-      `);
+      `,
+      );
 
       // Category
       const catRows = await rawSql<{ id: string }[]>`
@@ -113,34 +123,43 @@ describe.skipIf(isSkipped)(
         ON CONFLICT DO NOTHING
         RETURNING id
       `;
-      const catId = catRows[0]?.id ?? (await rawSql<{ id: string }[]>`SELECT id FROM categories LIMIT 1`)[0]!.id;
+      const catId =
+        catRows[0]?.id ??
+        (await rawSql<{ id: string }[]>`SELECT id FROM categories LIMIT 1`)[0]!.id;
 
       // Product
-      const product = firstRow(await rawSql<{ id: string; name: string }[]>`
+      const product = firstRow(
+        await rawSql<{ id: string; name: string }[]>`
         INSERT INTO products (organization_id, category_id, name, slug, description, publication_status)
         VALUES (${org.id}, ${catId}, 'Moustache Samedi 28', ${`moustache-samedi-28-${suffix}`}, 'Super VAE urbain', 'DRAFT')
         RETURNING id, name
-      `);
+      `,
+      );
 
       // Product Variant
-      const variant = firstRow(await rawSql<{ id: string; name: string }[]>`
+      const variant = firstRow(
+        await rawSql<{ id: string; name: string }[]>`
         INSERT INTO product_variants (product_id, name, is_active)
         VALUES (${product.id}, 'Standard Taille M', true)
         RETURNING id, name
-      `);
+      `,
+      );
 
       // Inventory Item
-      const item = firstRow(await rawSql<{ id: string; internal_sku: string }[]>`
+      const item = firstRow(
+        await rawSql<{ id: string; internal_sku: string }[]>`
         INSERT INTO inventory_items (organization_id, product_variant_id, current_location_id, internal_sku, serial_number, status, condition)
         VALUES (${org.id}, ${variant.id}, ${location.id}, 'VAE-001', 'SN-MOUSTACHE-999', 'ACTIVE', 'NEW')
         RETURNING id, internal_sku
-      `);
+      `,
+      );
 
       // Draft & Booking
       const pickupDate = new Date(Date.now() + 86400000);
       const returnDate = new Date(Date.now() + 86400000 * 3);
 
-      const draft = firstRow(await rawSql<{ id: string }[]>`
+      const draft = firstRow(
+        await rawSql<{ id: string }[]>`
         INSERT INTO booking_drafts (
           organization_id, location_id, customer_user_id, status, pricing_snapshot_version,
           customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
@@ -156,7 +175,8 @@ describe.skipIf(isSkipped)(
           '{"code":"FLEXIBLE"}'::jsonb
         )
         RETURNING id
-      `);
+      `,
+      );
 
       await rawSql`
         INSERT INTO booking_draft_lines (draft_id, variant_id, quantity, unit_price_amount_minor, billable_unit_count, line_total_amount_minor, variant_snapshot)
@@ -164,7 +184,8 @@ describe.skipIf(isSkipped)(
       `;
 
       // Payment
-      const payment = firstRow(await rawSql<{ id: string }[]>`
+      const payment = firstRow(
+        await rawSql<{ id: string }[]>`
         INSERT INTO payments (
           organization_id, draft_id, customer_user_id, status,
           amount_minor, currency, tax_status, commission_amount_minor,
@@ -180,7 +201,8 @@ describe.skipIf(isSkipped)(
           now()
         )
         RETURNING id
-      `);
+      `,
+      );
 
       // Payment Attempt
       await rawSql`
@@ -194,7 +216,8 @@ describe.skipIf(isSkipped)(
         )
       `;
 
-      const booking = firstRow(await rawSql<{ id: string; status: string }[]>`
+      const booking = firstRow(
+        await rawSql<{ id: string; status: string }[]>`
         INSERT INTO bookings (
           organization_id, location_id, customer_user_id, draft_id, payment_id, status,
           customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
@@ -210,15 +233,19 @@ describe.skipIf(isSkipped)(
           '{"code":"FLEXIBLE"}'::jsonb, '{"accepted":true}'::jsonb, now()
         )
         RETURNING id, status
-      `);
+      `,
+      );
 
-      const line = firstRow(await rawSql<{ id: string }[]>`
+      const line = firstRow(
+        await rawSql<{ id: string }[]>`
         INSERT INTO booking_lines (booking_id, variant_id, quantity, unit_price_amount_minor, billable_unit_count, line_total_amount_minor, variant_snapshot)
         VALUES (${booking.id}, ${variant.id}, 1, 6000, 2, 12000, '{"name":"Standard"}'::jsonb)
         RETURNING id
-      `);
+      `,
+      );
 
-      const block = firstRow(await rawSql<{ id: string }[]>`
+      const block = firstRow(
+        await rawSql<{ id: string }[]>`
         INSERT INTO inventory_blocks (
           organization_id, inventory_item_id, type, status,
           customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
@@ -230,26 +257,33 @@ describe.skipIf(isSkipped)(
           ${booking.id}
         )
         RETURNING id
-      `);
+      `,
+      );
 
       await rawSql`
         INSERT INTO booking_items (booking_id, booking_line_id, inventory_item_id, booking_block_id)
         VALUES (${booking.id}, ${line.id}, ${item.id}, ${block.id})
       `;
 
-      // Notification FAILED
-      const failedNotif = firstRow(await rawSql<{ id: string; status: string }[]>`
+      // Notification FAILED — cas nominal de relance manuelle sous politique fermée V1 :
+      // MAX_RETRIES_EXCEEDED avec première tentative provider encore dans la fenêtre
+      // d'idempotence (24 h) => relance autorisée avec motif obligatoire.
+      const failedNotif = firstRow(
+        await rawSql<{ id: string; status: string }[]>`
         INSERT INTO notifications (
           organization_id, booking_id, channel, template, recipient,
-          status, failure_code, attempt_count, idempotency_key
+          status, failure_code, requires_manual_review, attempt_count, idempotency_key,
+          provider_first_attempt_started_at
         )
         VALUES (
           ${org.id}, ${booking.id}, 'EMAIL', 'BOOKING_CONFIRMED_CUSTOMER',
-          ${customerUser.email}, 'FAILED', 'PROVIDER_RATE_LIMIT', 3,
-          ${`booking_confirmed_customer:${booking.id}`}
+          ${customerUser.email}, 'FAILED', 'MAX_RETRIES_EXCEEDED', true, 3,
+          ${`booking_confirmed_customer:${booking.id}`},
+          now() - interval '2 hours'
         )
         RETURNING id, status
-      `);
+      `,
+      );
 
       return {
         adminUser,
@@ -339,17 +373,21 @@ describe.skipIf(isSkipped)(
       expect(result.ok).toBe(true);
 
       // 2. Vérifier la réinitialisation explicite du cycle
-      const updatedNotif = firstRow(await rawSql<{
-        status: string;
-        failure_code: string | null;
-        failed_at: Date | null;
-        requires_manual_review: boolean;
-        provider_first_attempt_started_at: Date | null;
-        attempt_count: number;
-      }[]>`
+      const updatedNotif = firstRow(
+        await rawSql<
+          {
+            status: string;
+            failure_code: string | null;
+            failed_at: Date | null;
+            requires_manual_review: boolean;
+            provider_first_attempt_started_at: Date | null;
+            attempt_count: number;
+          }[]
+        >`
         SELECT status, failure_code, failed_at, requires_manual_review, provider_first_attempt_started_at, attempt_count
         FROM notifications WHERE id = ${f.failedNotif.id}
-      `);
+      `,
+      );
       expect(updatedNotif.status).toBe('PENDING');
       expect(updatedNotif.failure_code).toBeNull();
       expect(updatedNotif.failed_at).toBeNull();
@@ -358,15 +396,25 @@ describe.skipIf(isSkipped)(
       expect(updatedNotif.attempt_count).toBe(0);
 
       // 3. Vérifier la trace dans audit_log avec les anciennes valeurs
-      const auditEntry = firstRow(await rawSql<{ action: string; target_type: string; target_id: string; actor_user_id: string; metadata: any }[]>`
+      const auditEntry = firstRow(
+        await rawSql<
+          {
+            action: string;
+            target_type: string;
+            target_id: string;
+            actor_user_id: string;
+            metadata: Record<string, unknown>;
+          }[]
+        >`
         SELECT action, target_type, target_id, actor_user_id, metadata FROM audit_log WHERE target_id = ${f.failedNotif.id}
-      `);
+      `,
+      );
       expect(auditEntry.action).toBe('SUPPORT_NOTIFICATION_RETRY');
       expect(auditEntry.target_type).toBe('notification');
       expect(auditEntry.actor_user_id).toBe(f.adminUser.id);
       expect(auditEntry.metadata.reason).toBe('Client nous a contacté par téléphone');
       expect(auditEntry.metadata.previousStatus).toBe('FAILED');
-      expect(auditEntry.metadata.previousFailureCode).toBe('PROVIDER_RATE_LIMIT');
+      expect(auditEntry.metadata.previousFailureCode).toBe('MAX_RETRIES_EXCEEDED');
       expect(auditEntry.metadata.previousAttemptCount).toBe(3);
 
       // 4. Consultation via listAuditLogsSupport
@@ -379,7 +427,8 @@ describe.skipIf(isSkipped)(
       if (!db || !rawSql) throw new Error('DB non initialisée');
       const f = await createFullFixture();
 
-      const uncertainNotif = firstRow(await rawSql<{ id: string }[]>`
+      const uncertainNotif = firstRow(
+        await rawSql<{ id: string }[]>`
         INSERT INTO notifications (
           organization_id, booking_id, channel, template, recipient,
           status, failure_code, requires_manual_review, attempt_count, idempotency_key
@@ -390,7 +439,8 @@ describe.skipIf(isSkipped)(
           'booking_confirmed_customer_uncertain:123'
         )
         RETURNING id
-      `);
+      `,
+      );
 
       await expect(
         retryNotificationSupport(db, {
@@ -405,7 +455,8 @@ describe.skipIf(isSkipped)(
       if (!db || !rawSql) throw new Error('DB non initialisée');
       const f = await createFullFixture();
 
-      const sentNotif = firstRow(await rawSql<{ id: string }[]>`
+      const sentNotif = firstRow(
+        await rawSql<{ id: string }[]>`
         INSERT INTO notifications (
           organization_id, booking_id, channel, template, recipient,
           status, attempt_count, idempotency_key, sent_at
@@ -415,7 +466,8 @@ describe.skipIf(isSkipped)(
           ${f.customerUser.email}, 'SENT', 1, 'booking_confirmed_customer:sent_123', now()
         )
         RETURNING id
-      `);
+      `,
+      );
 
       await expect(
         retryNotificationSupport(db, {
@@ -437,14 +489,18 @@ describe.skipIf(isSkipped)(
       });
       expect(result.ok).toBe(true);
 
-      const cancelledNotif = firstRow(await rawSql<{ status: string }[]>`
+      const cancelledNotif = firstRow(
+        await rawSql<{ status: string }[]>`
         SELECT status FROM notifications WHERE id = ${f.failedNotif.id}
-      `);
+      `,
+      );
       expect(cancelledNotif.status).toBe('CANCELLED');
 
-      const auditEntry = firstRow(await rawSql<{ action: string; target_id: string }[]>`
+      const auditEntry = firstRow(
+        await rawSql<{ action: string; target_id: string }[]>`
         SELECT action, target_id FROM audit_log WHERE target_id = ${f.failedNotif.id}
-      `);
+      `,
+      );
       expect(auditEntry.action).toBe('SUPPORT_NOTIFICATION_CANCEL');
     });
 
@@ -452,14 +508,17 @@ describe.skipIf(isSkipped)(
       if (!db || !rawSql) throw new Error('DB non initialisée');
       const f = await createFullFixture();
 
-      const invitation = firstRow(await rawSql<{ id: string }[]>`
+      const invitation = firstRow(
+        await rawSql<{ id: string }[]>`
         INSERT INTO organization_invitations (organization_id, email, role, token_hash, status, expires_at)
         VALUES (${f.org.id}, 'nouveau-membre@location-velos.fr', 'STAFF', 'hash-fictif', 'PENDING', now() + interval '5 days')
         RETURNING id
-      `);
+      `,
+      );
 
       // Notification initiale historique déjà envoyée (SENT)
-      const initialNotif = firstRow(await rawSql<{ id: string; status: string }[]>`
+      const initialNotif = firstRow(
+        await rawSql<{ id: string; status: string }[]>`
         INSERT INTO notifications (
           organization_id, channel, template, recipient, status, idempotency_key, sent_at
         )
@@ -468,39 +527,58 @@ describe.skipIf(isSkipped)(
           'SENT', ${`invitation:${invitation.id}`}, now()
         )
         RETURNING id, status
-      `);
+      `,
+      );
+
+      // UUID stables : un par intention de renvoi (générés côté client en réel, 16.1.1).
+      const supportRequestId1 = 'aaaaaaaa-1111-4222-8333-444444444444';
+      const supportRequestId2 = 'bbbbbbbb-1111-4222-8333-444444444444';
 
       // 1. Premier renvoi avec supportRequestId
       const resend1 = await resendInvitationNotificationSupport(db, {
         invitationId: invitation.id,
         actorUserId: f.adminUser.id,
         reason: 'Loueur a redemandé l’invitation',
-        supportRequestId: 'req-abc-1',
+        supportRequestId: supportRequestId1,
       });
       expect(resend1.ok).toBe(true);
       expect(resend1.notificationId).not.toBe(initialNotif.id);
 
       // Vérifier que la notification historique initiale est TOUJOURS SENT et inchangée
-      const historyNotif = firstRow(await rawSql<{ status: string }[]>`
+      const historyNotif = firstRow(
+        await rawSql<{ status: string }[]>`
         SELECT status FROM notifications WHERE id = ${initialNotif.id}
-      `);
+      `,
+      );
       expect(historyNotif.status).toBe('SENT');
 
       // Vérifier que la NOUVELLE notification est créée en PENDING
-      const newNotif = firstRow(await rawSql<{ id: string; template: string; recipient: string; status: string; idempotency_key: string }[]>`
+      const newNotif = firstRow(
+        await rawSql<
+          {
+            id: string;
+            template: string;
+            recipient: string;
+            status: string;
+            idempotency_key: string;
+          }[]
+        >`
         SELECT id, template, recipient, status, idempotency_key FROM notifications WHERE id = ${resend1.notificationId}
-      `);
+      `,
+      );
       expect(newNotif.template).toBe('ORGANIZATION_INVITATION');
       expect(newNotif.recipient).toBe('nouveau-membre@location-velos.fr');
       expect(newNotif.status).toBe('PENDING');
-      expect(newNotif.idempotency_key).toBe(`invitation_resend:${invitation.id}:req-abc-1`);
+      expect(newNotif.idempotency_key).toBe(
+        `invitation_resend:${invitation.id}:${supportRequestId1}`,
+      );
 
       // 2. Deuxième appel avec le MÊME supportRequestId => Doit retourner la même notification sans créer de doublon
       const resend2 = await resendInvitationNotificationSupport(db, {
         invitationId: invitation.id,
         actorUserId: f.adminUser.id,
         reason: 'Deuxième clic rapide',
-        supportRequestId: 'req-abc-1',
+        supportRequestId: supportRequestId1,
       });
       expect(resend2.notificationId).toBe(resend1.notificationId);
 
@@ -509,21 +587,44 @@ describe.skipIf(isSkipped)(
       `;
       expect(Number(totalNotifsForInvitation[0]?.count)).toBe(2); // L'original SENT + la 1ère nouvelle PENDING
 
-      // 3. Appel avec un AUTRE supportRequestId => Crée une deuxième notification distincte
+      // Preuve 16.1.1 : même invitationId + supportRequestId => UN SEUL audit (aucun nouvel audit au replay).
+      const auditRowsAfterReplay = await rawSql<{ count: string }[]>`
+        SELECT COUNT(*) as count FROM audit_log
+        WHERE action = 'SUPPORT_INVITATION_NOTIFICATION_RESEND' AND target_id = ${invitation.id}
+      `;
+      expect(Number(auditRowsAfterReplay[0]?.count)).toBe(1);
+
+      // L'audit unique porte bien le requestId d'intention (UUID non-null) et la notification d'origine.
+      const auditEntry = firstRow(
+        await rawSql<{ metadata: Record<string, unknown> }[]>`
+        SELECT metadata FROM audit_log
+        WHERE action = 'SUPPORT_INVITATION_NOTIFICATION_RESEND' AND target_id = ${invitation.id}
+      `,
+      );
+      expect(auditEntry.metadata.supportRequestId).toBe(supportRequestId1);
+      expect(auditEntry.metadata.notificationId).toBe(resend1.notificationId);
+
+      // 3. Appel avec un AUTRE supportRequestId => Crée une deuxième notification distincte + un nouvel audit
       const resend3 = await resendInvitationNotificationSupport(db, {
         invitationId: invitation.id,
         actorUserId: f.adminUser.id,
         reason: 'Nouvelle demande explicite le lendemain',
-        supportRequestId: 'req-abc-2',
+        supportRequestId: supportRequestId2,
       });
       expect(resend3.notificationId).not.toBe(resend1.notificationId);
+
+      const auditRowsAfterNewIntention = await rawSql<{ count: string }[]>`
+        SELECT COUNT(*) as count FROM audit_log
+        WHERE action = 'SUPPORT_INVITATION_NOTIFICATION_RESEND' AND target_id = ${invitation.id}
+      `;
+      expect(Number(auditRowsAfterNewIntention[0]?.count)).toBe(2);
 
       // Vérifier qu'aucun token ou hash secret n'est exposé dans la liste support
       const notifList = await listNotificationsSupport(db, { recipient: 'nouveau-membre' });
       expect(notifList.length).toBeGreaterThanOrEqual(2);
       for (const n of notifList) {
-        expect((n as any).token).toBeUndefined();
-        expect((n as any).tokenHash).toBeUndefined();
+        expect('token' in n).toBe(false);
+        expect('tokenHash' in n).toBe(false);
       }
     });
 
@@ -532,7 +633,8 @@ describe.skipIf(isSkipped)(
       const f = await createFullFixture();
 
       // Créer un draft et un paiement avec une tentative en attente de réponse provider (PENDING_PROVIDER)
-      const stuckDraft = firstRow(await rawSql<{ id: string }[]>`
+      const stuckDraft = firstRow(
+        await rawSql<{ id: string }[]>`
         INSERT INTO booking_drafts (
           organization_id, location_id, customer_user_id, status, pricing_snapshot_version,
           customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
@@ -548,9 +650,11 @@ describe.skipIf(isSkipped)(
           '{"code":"FLEXIBLE"}'::jsonb
         )
         RETURNING id
-      `);
+      `,
+      );
 
-      const stuckPayment = firstRow(await rawSql<{ id: string; status: string }[]>`
+      const stuckPayment = firstRow(
+        await rawSql<{ id: string; status: string }[]>`
         INSERT INTO payments (
           organization_id, draft_id, customer_user_id, status,
           amount_minor, currency, tax_status, commission_amount_minor,
@@ -564,9 +668,11 @@ describe.skipIf(isSkipped)(
           'acct_test_123', 'CONNECTED_ACCOUNT', 'TEST'
         )
         RETURNING id, status
-      `);
+      `,
+      );
 
-      const attempt = firstRow(await rawSql<{ id: string }[]>`
+      const attempt = firstRow(
+        await rawSql<{ id: string }[]>`
         INSERT INTO payment_attempts (
           organization_id, payment_id, attempt_number, status,
           provider_payment_intent_id, provider_idempotency_key, provider_status,
@@ -578,7 +684,8 @@ describe.skipIf(isSkipped)(
           now() + interval '1 hour'
         )
         RETURNING id
-      `);
+      `,
+      );
 
       // 1. Réconciliation réussie sur tentative éligible
       const reconcileResult = await reconcilePaymentSupport(db, {
@@ -590,13 +697,17 @@ describe.skipIf(isSkipped)(
       expect(reconcileResult.reconciledCount).toBe(1);
 
       // Vérifier que la tentative est immédiatement due pour le worker
-      const updatedAttempt = firstRow(await rawSql<{ reconcile_after: Date }[]>`
+      const updatedAttempt = firstRow(
+        await rawSql<{ reconcile_after: Date }[]>`
         SELECT reconcile_after FROM payment_attempts WHERE id = ${attempt.id}
-      `);
+      `,
+      );
       expect(updatedAttempt.reconcile_after.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
 
       // Vérifier l'audit créé
-      const auditLogRows = await rawSql<{ action: string; target_id: string; metadata: any }[]>`
+      const auditLogRows = await rawSql<
+        { action: string; target_id: string; metadata: Record<string, unknown> }[]
+      >`
         SELECT action, target_id, metadata FROM audit_log WHERE target_id = ${stuckPayment.id}
       `;
       expect(auditLogRows).toHaveLength(1);
@@ -617,6 +728,317 @@ describe.skipIf(isSkipped)(
         SELECT id FROM audit_log WHERE target_id = ${f.payment.id} AND action = 'SUPPORT_PAYMENT_RECONCILE_SCHEDULED'
       `;
       expect(falseAuditRows).toHaveLength(0);
+    });
+
+    it('refuse (fencing 16.1.1) de réconcilier une tentative sous lease actif et ne modifie strictement rien', async () => {
+      if (!db || !rawSql) throw new Error('DB non initialisée');
+      const f = await createFullFixture();
+
+      const fencedDraft = firstRow(
+        await rawSql<{ id: string }[]>`
+        INSERT INTO booking_drafts (
+          organization_id, location_id, customer_user_id, status, pricing_snapshot_version,
+          customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
+          timezone, prep_buffer_minutes, cleanup_buffer_minutes,
+          subtotal_amount_minor, total_amount_minor, billable_unit_count,
+          cancellation_policy_snapshot
+        )
+        VALUES (
+          ${f.org.id}, ${f.location.id}, ${f.customerUser.id}, 'CONVERTED', 'legacy-daily-v1',
+          now() + interval '1 day', now() + interval '3 days', now() + interval '1 day', now() + interval '3 days',
+          'Europe/Paris', 30, 30,
+          12000, 12000, 2,
+          '{"code":"FLEXIBLE"}'::jsonb
+        )
+        RETURNING id
+      `,
+      );
+
+      const fencedPayment = firstRow(
+        await rawSql<{ id: string; status: string }[]>`
+        INSERT INTO payments (
+          organization_id, draft_id, customer_user_id, status,
+          amount_minor, currency, tax_status, commission_amount_minor,
+          financial_terms_version, legal_terms_version, terms_acceptance_snapshot,
+          connected_account_id, settlement_merchant_mode, environment
+        )
+        VALUES (
+          ${f.org.id}, ${fencedDraft.id}, ${f.customerUser.id}, 'PENDING_PROVIDER',
+          12000, 'EUR', 'NOT_APPLICABLE', 1200,
+          'standard-v1', 'standard-v1', '{"accepted":true}'::jsonb,
+          'acct_test_123', 'CONNECTED_ACCOUNT', 'TEST'
+        )
+        RETURNING id, status
+      `,
+      );
+
+      // Tentative sous lease ACTIF (worker de réconciliation en vol) :
+      // token + lease_until futur, reconcile_after déjà dû.
+      const fencedAttempt = firstRow(
+        await rawSql<
+          {
+            id: string;
+            reconcile_after: Date;
+            reconcile_lease_token: string;
+            reconcile_lease_until: Date;
+          }[]
+        >`
+        INSERT INTO payment_attempts (
+          organization_id, payment_id, attempt_number, status,
+          provider_payment_intent_id, provider_idempotency_key, provider_status,
+          reconcile_after, reconcile_lease_token, reconcile_lease_until
+        )
+        VALUES (
+          ${f.org.id}, ${fencedPayment.id}, 1, 'PENDING_PROVIDER',
+          'pi_fenced_123', 'idem_fenced_123', 'processing',
+          now() - interval '1 hour',
+          'cccccccc-1111-4222-8333-444444444444'::uuid,
+          now() + interval '10 minutes'
+        )
+        RETURNING id, reconcile_after, reconcile_lease_token, reconcile_lease_until
+      `,
+      );
+
+      // L'action support doit être REFUSÉE : le lease appartient à un worker en vol.
+      await expect(
+        reconcilePaymentSupport(db, {
+          paymentId: fencedPayment.id,
+          actorUserId: f.adminUser.id,
+          reason: 'Tentative de forçage pendant un worker en vol',
+        }),
+      ).rejects.toThrow('sous lease de réconciliation actif');
+
+      // lease/token/reconcileAfter strictement inchangés (aucune écriture).
+      const afterRefusal = firstRow(
+        await rawSql<
+          {
+            reconcile_after: Date;
+            reconcile_lease_token: string;
+            reconcile_lease_until: Date;
+          }[]
+        >`
+        SELECT reconcile_after, reconcile_lease_token, reconcile_lease_until
+        FROM payment_attempts WHERE id = ${fencedAttempt.id}
+      `,
+      );
+      expect(afterRefusal.reconcile_lease_token).toBe(fencedAttempt.reconcile_lease_token);
+      expect(afterRefusal.reconcile_lease_until.getTime()).toBe(
+        fencedAttempt.reconcile_lease_until.getTime(),
+      );
+      expect(afterRefusal.reconcile_after.getTime()).toBe(fencedAttempt.reconcile_after.getTime());
+
+      // Aucun audit mensonger.
+      const fencedAuditRows = await rawSql<{ id: string }[]>`
+        SELECT id FROM audit_log WHERE target_id = ${fencedPayment.id} AND action = 'SUPPORT_PAYMENT_RECONCILE_SCHEDULED'
+      `;
+      expect(fencedAuditRows).toHaveLength(0);
+    });
+
+    it('réconcilie une tentative dont le lease est expiré, nettoie l’ancien lease et audite (16.1.1)', async () => {
+      if (!db || !rawSql) throw new Error('DB non initialisée');
+      const f = await createFullFixture();
+
+      const staleDraft = firstRow(
+        await rawSql<{ id: string }[]>`
+        INSERT INTO booking_drafts (
+          organization_id, location_id, customer_user_id, status, pricing_snapshot_version,
+          customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
+          timezone, prep_buffer_minutes, cleanup_buffer_minutes,
+          subtotal_amount_minor, total_amount_minor, billable_unit_count,
+          cancellation_policy_snapshot
+        )
+        VALUES (
+          ${f.org.id}, ${f.location.id}, ${f.customerUser.id}, 'CONVERTED', 'legacy-daily-v1',
+          now() + interval '1 day', now() + interval '3 days', now() + interval '1 day', now() + interval '3 days',
+          'Europe/Paris', 30, 30,
+          12000, 12000, 2,
+          '{"code":"FLEXIBLE"}'::jsonb
+        )
+        RETURNING id
+      `,
+      );
+
+      const stalePayment = firstRow(
+        await rawSql<{ id: string; status: string }[]>`
+        INSERT INTO payments (
+          organization_id, draft_id, customer_user_id, status,
+          amount_minor, currency, tax_status, commission_amount_minor,
+          financial_terms_version, legal_terms_version, terms_acceptance_snapshot,
+          connected_account_id, settlement_merchant_mode, environment
+        )
+        VALUES (
+          ${f.org.id}, ${staleDraft.id}, ${f.customerUser.id}, 'PENDING_PROVIDER',
+          12000, 'EUR', 'NOT_APPLICABLE', 1200,
+          'standard-v1', 'standard-v1', '{"accepted":true}'::jsonb,
+          'acct_test_123', 'CONNECTED_ACCOUNT', 'TEST'
+        )
+        RETURNING id, status
+      `,
+      );
+
+      // Lease EXPIRÉ : l'ancien worker est mort, la tentative redevient réconciliable.
+      const staleAttempt = firstRow(
+        await rawSql<{ id: string; reconcile_lease_token: string; reconcile_lease_until: Date }[]>`
+        INSERT INTO payment_attempts (
+          organization_id, payment_id, attempt_number, status,
+          provider_payment_intent_id, provider_idempotency_key, provider_status,
+          reconcile_after, reconcile_lease_token, reconcile_lease_until
+        )
+        VALUES (
+          ${f.org.id}, ${stalePayment.id}, 1, 'PENDING_PROVIDER',
+          'pi_stale_lease_123', 'idem_stale_lease_123', 'processing',
+          now() + interval '1 hour',
+          'dddddddd-1111-4222-8333-444444444444'::uuid,
+          now() - interval '5 minutes'
+        )
+        RETURNING id, reconcile_lease_token, reconcile_lease_until
+      `,
+      );
+
+      const reconcileResult = await reconcilePaymentSupport(db, {
+        paymentId: stalePayment.id,
+        actorUserId: f.adminUser.id,
+        reason: 'Lease expiré du worker mort, réconciliation sûre',
+      });
+      expect(reconcileResult.status).toBe('PENDING_PROVIDER');
+      expect(reconcileResult.reconciledCount).toBe(1);
+
+      // La tentative est immédiatement éligible : ancien lease nettoyé, due maintenant.
+      const afterReconcile = firstRow(
+        await rawSql<
+          {
+            reconcile_after: Date;
+            reconcile_lease_token: string | null;
+            reconcile_lease_until: Date | null;
+          }[]
+        >`
+        SELECT reconcile_after, reconcile_lease_token, reconcile_lease_until
+        FROM payment_attempts WHERE id = ${staleAttempt.id}
+      `,
+      );
+      expect(afterReconcile.reconcile_lease_token).toBeNull();
+      expect(afterReconcile.reconcile_lease_until).toBeNull();
+      expect(afterReconcile.reconcile_after.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
+
+      // Audit présent et truthy.
+      const staleAuditRows = await rawSql<{ action: string; metadata: Record<string, unknown> }[]>`
+        SELECT action, metadata FROM audit_log WHERE target_id = ${stalePayment.id}
+      `;
+      expect(staleAuditRows).toHaveLength(1);
+      expect(staleAuditRows[0]?.action).toBe('SUPPORT_PAYMENT_RECONCILE_SCHEDULED');
+      expect(staleAuditRows[0]?.metadata.reconciledCount).toBe(1);
+    });
+
+    it('restaure exactement l’état initial si l’écriture d’audit échoue (preuve de rollback 16.1.1)', async () => {
+      if (!db || !rawSql) throw new Error('DB non initialisée');
+      const f = await createFullFixture();
+
+      const rollbackDraft = firstRow(
+        await rawSql<{ id: string }[]>`
+        INSERT INTO booking_drafts (
+          organization_id, location_id, customer_user_id, status, pricing_snapshot_version,
+          customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
+          timezone, prep_buffer_minutes, cleanup_buffer_minutes,
+          subtotal_amount_minor, total_amount_minor, billable_unit_count,
+          cancellation_policy_snapshot
+        )
+        VALUES (
+          ${f.org.id}, ${f.location.id}, ${f.customerUser.id}, 'CONVERTED', 'legacy-daily-v1',
+          now() + interval '1 day', now() + interval '3 days', now() + interval '1 day', now() + interval '3 days',
+          'Europe/Paris', 30, 30,
+          12000, 12000, 2,
+          '{"code":"FLEXIBLE"}'::jsonb
+        )
+        RETURNING id
+      `,
+      );
+
+      const rollbackPayment = firstRow(
+        await rawSql<{ id: string; status: string }[]>`
+        INSERT INTO payments (
+          organization_id, draft_id, customer_user_id, status,
+          amount_minor, currency, tax_status, commission_amount_minor,
+          financial_terms_version, legal_terms_version, terms_acceptance_snapshot,
+          connected_account_id, settlement_merchant_mode, environment
+        )
+        VALUES (
+          ${f.org.id}, ${rollbackDraft.id}, ${f.customerUser.id}, 'PENDING_PROVIDER',
+          12000, 'EUR', 'NOT_APPLICABLE', 1200,
+          'standard-v1', 'standard-v1', '{"accepted":true}'::jsonb,
+          'acct_test_123', 'CONNECTED_ACCOUNT', 'TEST'
+        )
+        RETURNING id, status
+      `,
+      );
+
+      // Tentative éligible (lease expiré) avec reconcile_after futur et lease/token d'origine.
+      const rollbackAttempt = firstRow(
+        await rawSql<
+          {
+            id: string;
+            reconcile_after: Date;
+            reconcile_lease_token: string;
+            reconcile_lease_until: Date;
+            updated_at: Date;
+          }[]
+        >`
+        INSERT INTO payment_attempts (
+          organization_id, payment_id, attempt_number, status,
+          provider_payment_intent_id, provider_idempotency_key, provider_status,
+          reconcile_after, reconcile_lease_token, reconcile_lease_until, updated_at
+        )
+        VALUES (
+          ${f.org.id}, ${rollbackPayment.id}, 1, 'PENDING_PROVIDER',
+          'pi_rollback_123', 'idem_rollback_123', 'processing',
+          now() + interval '2 hours',
+          'eeeeeeee-1111-4222-8333-444444444444'::uuid,
+          now() - interval '10 minutes',
+          now() - interval '15 minutes'
+        )
+        RETURNING id, reconcile_after, reconcile_lease_token, reconcile_lease_until, updated_at
+      `,
+      );
+
+      // Provoque une erreur déterministe sur l'écriture d'audit : actor_user_id
+      // inexistant => violation FK audit_log_actor_user_id_users_id_fk DANS la
+      // transaction, APRÈS l'UPDATE des tentatives => rollback complet.
+      const ghostActorId = '00000000-0000-0000-0000-0000000000ff';
+      await expect(
+        reconcilePaymentSupport(db, {
+          paymentId: rollbackPayment.id,
+          actorUserId: ghostActorId,
+          reason: 'Échec d’audit provoqué pour preuve de rollback',
+        }),
+      ).rejects.toThrow();
+
+      // Après rollback : reconcile_after, lease et token EXACTEMENT dans leur état initial.
+      const afterRollback = firstRow(
+        await rawSql<
+          {
+            reconcile_after: Date;
+            reconcile_lease_token: string;
+            reconcile_lease_until: Date;
+            updated_at: Date;
+          }[]
+        >`
+        SELECT reconcile_after, reconcile_lease_token, reconcile_lease_until, updated_at
+        FROM payment_attempts WHERE id = ${rollbackAttempt.id}
+      `,
+      );
+      expect(afterRollback.reconcile_after.getTime()).toBe(
+        rollbackAttempt.reconcile_after.getTime(),
+      );
+      expect(afterRollback.reconcile_lease_token).toBe(rollbackAttempt.reconcile_lease_token);
+      expect(afterRollback.reconcile_lease_until.getTime()).toBe(
+        rollbackAttempt.reconcile_lease_until.getTime(),
+      );
+      expect(afterRollback.updated_at.getTime()).toBe(rollbackAttempt.updated_at.getTime());
+
+      // Aucun audit résiduel : la tentative n'a jamais été déclarée réconciliée.
+      const rollbackAuditRows = await rawSql<{ id: string }[]>`
+        SELECT id FROM audit_log WHERE target_id = ${rollbackPayment.id} AND action = 'SUPPORT_PAYMENT_RECONCILE_SCHEDULED'
+      `;
+      expect(rollbackAuditRows).toHaveLength(0);
     });
   },
 );

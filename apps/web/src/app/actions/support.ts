@@ -28,17 +28,19 @@ export async function retryNotificationAction(
     });
     revalidatePath('/internal/notifications');
     return { ok: true, data: result };
-  } catch (err: any) {
-    if (err?.message === 'UNAUTHENTICATED') {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Échec de l’action support.';
+    const name = err instanceof Error ? err.name : '';
+    if (message === 'UNAUTHENTICATED') {
       return { ok: false, code: 'UNAUTHENTICATED', message: 'Non authentifié.' };
     }
-    if (err?.name === 'AuthorizationError') {
-      return { ok: false, code: 'SUPPORT_UNAUTHORIZED', message: err.message };
+    if (name === 'AuthorizationError') {
+      return { ok: false, code: 'SUPPORT_UNAUTHORIZED', message };
     }
     return {
       ok: false,
       code: 'SUPPORT_ACTION_INVALID_STATE',
-      message: err?.message ?? 'Échec de l’action support.',
+      message,
     };
   }
 }
@@ -56,17 +58,19 @@ export async function cancelNotificationAction(
     });
     revalidatePath('/internal/notifications');
     return { ok: true, data: result };
-  } catch (err: any) {
-    if (err?.message === 'UNAUTHENTICATED') {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Échec de l’action support.';
+    const name = err instanceof Error ? err.name : '';
+    if (message === 'UNAUTHENTICATED') {
       return { ok: false, code: 'UNAUTHENTICATED', message: 'Non authentifié.' };
     }
-    if (err?.name === 'AuthorizationError') {
-      return { ok: false, code: 'SUPPORT_UNAUTHORIZED', message: err.message };
+    if (name === 'AuthorizationError') {
+      return { ok: false, code: 'SUPPORT_UNAUTHORIZED', message };
     }
     return {
       ok: false,
       code: 'SUPPORT_ACTION_INVALID_STATE',
-      message: err?.message ?? 'Échec de l’action support.',
+      message,
     };
   }
 }
@@ -74,27 +78,41 @@ export async function cancelNotificationAction(
 export async function resendInvitationNotificationAction(
   invitationId: string,
   reason: string,
+  supportRequestId: string,
 ): Promise<ActionResult<{ ok: true; invitationId: string }>> {
   try {
     const { db, user } = await requireSupportPlatformAdmin();
+    // Garde de présence fail-closed côté action (le Core valide en plus le format UUID) :
+    // un renvoi sans requestId d'intention n'atteint jamais le domaine.
+    if (!supportRequestId || supportRequestId.trim().length === 0) {
+      return {
+        ok: false,
+        code: 'SUPPORT_ACTION_INVALID_STATE',
+        message:
+          'supportRequestId est obligatoire pour le renvoi d’une invitation (aucun fallback silencieux).',
+      };
+    }
     const result = await resendInvitationNotificationSupport(db, {
       invitationId,
       actorUserId: user.id,
       reason,
+      supportRequestId,
     });
     revalidatePath('/internal/notifications');
     return { ok: true, data: result };
-  } catch (err: any) {
-    if (err?.message === 'UNAUTHENTICATED') {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Échec de l’action support.';
+    const name = err instanceof Error ? err.name : '';
+    if (message === 'UNAUTHENTICATED') {
       return { ok: false, code: 'UNAUTHENTICATED', message: 'Non authentifié.' };
     }
-    if (err?.name === 'AuthorizationError') {
-      return { ok: false, code: 'SUPPORT_UNAUTHORIZED', message: err.message };
+    if (name === 'AuthorizationError') {
+      return { ok: false, code: 'SUPPORT_UNAUTHORIZED', message };
     }
     return {
       ok: false,
       code: 'SUPPORT_ACTION_INVALID_STATE',
-      message: err?.message ?? 'Échec de l’action support.',
+      message,
     };
   }
 }
@@ -112,17 +130,19 @@ export async function reconcilePaymentSupportAction(
     });
     revalidatePath('/internal/payments');
     return { ok: true, data: result };
-  } catch (err: any) {
-    if (err?.message === 'UNAUTHENTICATED') {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Échec de la réconciliation de paiement.';
+    const name = err instanceof Error ? err.name : '';
+    if (message === 'UNAUTHENTICATED') {
       return { ok: false, code: 'UNAUTHENTICATED', message: 'Non authentifié.' };
     }
-    if (err?.name === 'AuthorizationError') {
-      return { ok: false, code: 'SUPPORT_UNAUTHORIZED', message: err.message };
+    if (name === 'AuthorizationError') {
+      return { ok: false, code: 'SUPPORT_UNAUTHORIZED', message };
     }
     return {
       ok: false,
       code: 'SUPPORT_ACTION_INVALID_STATE',
-      message: err?.message ?? 'Échec de la réconciliation de paiement.',
+      message,
     };
   }
 }
