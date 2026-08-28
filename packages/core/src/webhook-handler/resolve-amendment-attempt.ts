@@ -116,3 +116,44 @@ export async function resolveAmendmentAttempt(
 
   return { kind: 'AMENDMENT', ...row };
 }
+
+/**
+ * Retrouve l'organisation d'une tentative d'amendement uniquement pour
+ * rattacher un webhook rejeté à son journal d'échec.
+ *
+ * Cette fonction ne valide ni ne traite le paiement. Elle est utilisée quand
+ * la résolution normale échoue sur un mismatch d'environnement, afin de
+ * pouvoir persister l'événement FAILED sans faire confiance à l'organisation
+ * fournie dans les metadata du provider.
+ */
+export async function resolveAmendmentOrganizationForFailure(
+  db: DatabaseClient,
+  piData: PaymentIntentEventData,
+): Promise<string | null> {
+  const attemptIdFromMetadata = piData.metadata?.amendment_payment_attempt_id;
+  const predicates = [];
+  if (piData.id.length > 0) {
+    predicates.push(eq(amendmentPaymentAttempts.providerPaymentIntentId, piData.id));
+  }
+  if (attemptIdFromMetadata && attemptIdFromMetadata.length > 0) {
+    predicates.push(eq(amendmentPaymentAttempts.id, attemptIdFromMetadata));
+  }
+  if (predicates.length === 0) return null;
+
+  const rows = await db
+    .select({
+      attemptId: amendmentPaymentAttempts.id,
+      organizationId: amendmentPayments.organizationId,
+    })
+    .from(amendmentPaymentAttempts)
+    .innerJoin(
+      amendmentPayments,
+      eq(amendmentPayments.id, amendmentPaymentAttempts.amendmentPaymentId),
+    )
+    .where(or(...predicates))
+    .limit(2);
+
+  if (rows.length !== 1) return null;
+  if (attemptIdFromMetadata && rows[0]!.attemptId !== attemptIdFromMetadata) return null;
+  return rows[0]!.organizationId;
+}

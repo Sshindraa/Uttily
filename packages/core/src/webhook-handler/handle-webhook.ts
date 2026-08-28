@@ -43,7 +43,7 @@ import type {
 import { WebhookHandlerError, normalizeWebhookError, isIrreconcilable } from './errors';
 import { extractPaymentIntentEventData } from './extract-event';
 import { resolveAttempt } from './resolve-attempt';
-import { ingestEvent, resolveOrgFromConnectedAccount } from './dedupe-event';
+import { ingestEvent, markWebhookFailed, resolveOrgFromConnectedAccount } from './dedupe-event';
 import {
   confirmBooking,
   isDraftTerminalForConversion,
@@ -56,7 +56,10 @@ import {
   handleRequiresAction,
 } from './handle-non-success';
 import { compensateLatePayment } from './compensate-late';
-import { resolveAmendmentAttempt } from './resolve-amendment-attempt';
+import {
+  resolveAmendmentAttempt,
+  resolveAmendmentOrganizationForFailure,
+} from './resolve-amendment-attempt';
 import { handleSupplementPaymentWebhook } from '../booking-amendments/apply-supplement-amendment';
 import {
   scheduleRefundConfirmedNotification,
@@ -242,12 +245,31 @@ export async function handleWebhook(
     // la metadata amendment_payment_attempt_id lorsque C2 n'a pas encore
     // terminé sa Transaction B. Un PaymentIntent AMENDMENT non rattachable ne
     // doit jamais retomber dans le chemin legacy payment/payment_attempts.
-    const amendmentAttempt = await resolveAmendmentAttempt(
-      db,
-      piData,
-      environment,
-      event.accountId,
-    );
+    let amendmentAttempt;
+    try {
+      amendmentAttempt = await resolveAmendmentAttempt(db, piData, environment, event.accountId);
+    } catch (error) {
+      // La résolution d'un amendement vérifie l'environnement avant
+      // l'ingestion. Journaliser explicitement l'échec permet d'acquitter
+      // l'événement sans retraiter un paiement d'un autre environnement.
+      if (
+        error instanceof WebhookHandlerError &&
+        error.code === 'WEBHOOK_ENVIRONMENT_MISMATCH' &&
+        piData.metadata?.payment_type === 'AMENDMENT'
+      ) {
+        const organizationId = await resolveAmendmentOrganizationForFailure(db, piData);
+        const ingestResult = await db.transaction(async (tx) => {
+          return ingestEvent(tx, event, rawBody, environment, organizationId);
+        });
+        if (!ingestResult.isDuplicate) {
+          await db.transaction(async (tx) => {
+            await markWebhookFailed(tx, ingestResult.row.id, error.code);
+          });
+        }
+        return { kind: 'SUCCESS', statusCode: 200 };
+      }
+      throw error;
+    }
 
     if (amendmentAttempt !== null || piData.metadata?.payment_type === 'AMENDMENT') {
       if (amendmentAttempt === null) {
