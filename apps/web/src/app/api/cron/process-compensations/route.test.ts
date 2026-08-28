@@ -635,42 +635,33 @@ describe.skipIf(shouldSkipIntegrationTests())(
       expect(JSON.stringify(body)).not.toContain(refundId);
     });
 
-    // 5. Log structuré — vérifie le format JSON et les métriques
     it('5. logue des événements structurés avec event, durationMs et compteurs', async () => {
       if (!testDb || !rawSql) return;
       const ids = await seedBaseData();
       await seedCompensationData(ids, 'logging');
 
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
       try {
         const response = await GET(makeRequest(CRON_SECRET));
         expect(response.status).toBe(200);
 
         // Log de succès présent.
-        expect(logSpy).toHaveBeenCalledTimes(1);
-        const logCall = JSON.parse(logSpy.mock.calls[0]![0] as string);
-        expect(logCall.event).toBe('cron.process-compensations');
+        expect(infoSpy).toHaveBeenCalledTimes(1);
+        const logCall = JSON.parse(infoSpy.mock.calls[0]![0] as string);
+        expect(logCall.operation).toBe('cron_process_compensations');
+        expect(logCall.outcome).toBe('success');
         expect(logCall.durationMs).toBeGreaterThanOrEqual(0);
-        expect(logCall.environment).toBe('TEST');
-        expect(logCall.claimedCount).toBe(1);
-        expect(logCall.submittedCount).toBe(1);
-        expect(logCall.failedCount).toBe(0);
-        expect(logCall.anomalyCount).toBe(0);
-
-        // Pas de warn d'alerte ni d'erreur.
-        expect(warnSpy).not.toHaveBeenCalled();
-        expect(errorSpy).not.toHaveBeenCalled();
+        expect(logCall.counts?.claimed).toBe(1);
+        expect(logCall.counts?.submitted).toBe(1);
+        expect(logCall.counts?.failed).toBe(0);
+        expect(logCall.counts?.anomalies).toBe(0);
       } finally {
-        logSpy.mockRestore();
-        warnSpy.mockRestore();
-        errorSpy.mockRestore();
+        infoSpy.mockRestore();
       }
     });
 
-    // 6. Log d'alerte — warn quand failedCount > 0
+    // 6. Log d'alerte — outcome degraded quand failedCount > 0
     it('6. logue un warn structuré quand failedCount > 0', async () => {
       if (!testDb || !rawSql) return;
       const ids = await seedBaseData();
@@ -683,39 +674,31 @@ describe.skipIf(shouldSkipIntegrationTests())(
         'invalid_request_error',
       );
 
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
       try {
         const response = await GET(makeRequest(CRON_SECRET));
         expect(response.status).toBe(200);
 
-        // Log de succès présent (le batch s'est terminé, mais avec échecs).
-        expect(logSpy).toHaveBeenCalledTimes(1);
-        const logCall = JSON.parse(logSpy.mock.calls[0]![0] as string);
-        expect(logCall.event).toBe('cron.process-compensations');
-        expect(logCall.failedCount).toBe(1);
-        expect(logCall.submittedCount).toBe(0);
+        // Logs dégradés présents.
+        const cronCalls = infoSpy.mock.calls
+          .map((c) => JSON.parse(c[0] as string))
+          .filter((e) => e.operation === 'cron_process_compensations');
+        expect(cronCalls.length).toBeGreaterThanOrEqual(1);
+        const logCall = cronCalls[0];
+        expect(logCall.operation).toBe('cron_process_compensations');
+        expect(logCall.outcome).toBe('degraded');
+        expect(logCall.counts?.failed).toBe(1);
+        expect(logCall.counts?.submitted).toBe(0);
 
-        // Warn d'alerte présent.
-        const alertWarnCalls = warnSpy.mock.calls.filter((c) => {
-          const parsed = JSON.parse(c[0] as string);
-          return parsed.event === 'cron.process-compensations.alert';
-        });
-        expect(alertWarnCalls.length).toBe(1);
-        const warnCall = JSON.parse(alertWarnCalls[0]![0] as string);
-        expect(warnCall.event).toBe('cron.process-compensations.alert');
-        expect(warnCall.failedCount).toBe(1);
-        expect(Array.isArray(warnCall.codes)).toBe(true);
-        expect(warnCall.durationMs).toBeGreaterThanOrEqual(0);
-
-        // Pas d'erreur technique (le batch a géré l'échec gracieusement).
-        expect(errorSpy).not.toHaveBeenCalled();
+        const alertCall = cronCalls.find((e) => e.errorCode === 'ANOMALY_DETECTED');
+        expect(alertCall).toBeDefined();
+        expect(alertCall?.operation).toBe('cron_process_compensations');
+        expect(alertCall?.outcome).toBe('degraded');
+        expect(alertCall?.errorCode).toBe('ANOMALY_DETECTED');
+        expect(alertCall?.counts?.failed).toBe(1);
       } finally {
-        logSpy.mockRestore();
-        warnSpy.mockRestore();
-        errorSpy.mockRestore();
+        infoSpy.mockRestore();
       }
     });
 
@@ -725,9 +708,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
       const originalProvider = testProvider;
       testProvider = null; // Force getStripeAdapter à lever une erreur.
 
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
       try {
         const response = await GET(makeRequest(CRON_SECRET));
@@ -736,24 +717,18 @@ describe.skipIf(shouldSkipIntegrationTests())(
         expect(body.error).toBe('Internal Server Error');
 
         // Error log présent.
-        expect(errorSpy).toHaveBeenCalledTimes(1);
-        const errorCall = JSON.parse(errorSpy.mock.calls[0]![0] as string);
-        expect(errorCall.event).toBe('cron.process-compensations.error');
+        expect(infoSpy).toHaveBeenCalledTimes(1);
+        const errorCall = JSON.parse(infoSpy.mock.calls[0]![0] as string);
+        expect(errorCall.operation).toBe('cron_process_compensations');
+        expect(errorCall.outcome).toBe('failed');
+        expect(errorCall.errorCode).toBe('INTERNAL_ERROR');
         expect(errorCall.durationMs).toBeGreaterThanOrEqual(0);
-        expect(typeof errorCall.error).toBe('string');
-
-        // Pas de log de succès ni de warn.
-        expect(logSpy).not.toHaveBeenCalled();
-        expect(warnSpy).not.toHaveBeenCalled();
       } finally {
         testProvider = originalProvider;
-        logSpy.mockRestore();
-        warnSpy.mockRestore();
-        errorSpy.mockRestore();
+        infoSpy.mockRestore();
       }
     });
 
-    // 8. STRIPE_ENVIRONMENT invalide → 500 Configuration Error
     it('8. retourne 500 quand STRIPE_ENVIRONMENT est invalide', async () => {
       if (!testDb) return;
       const savedEnv = process.env.STRIPE_ENVIRONMENT;

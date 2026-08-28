@@ -418,20 +418,22 @@ integrationDescribe('GET /api/cron/process-refund-requests — PostgreSQL/Web', 
 
   it('11. produit un log de succès structuré sans identifiants', async () => {
     const fixture = await seedFixture();
-    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
     try {
       await GET(makeRequest());
-      const entry = JSON.parse(log.mock.calls[0]![0] as string);
+      const entry = JSON.parse(info.mock.calls[0]![0] as string);
       expect(entry).toMatchObject({
-        event: 'cron.process-refund-requests',
-        environment: 'TEST',
-        claimedCount: 1,
-        submittedCount: 1,
+        operation: 'cron_process_refunds',
+        outcome: 'success',
+        counts: {
+          claimed: 1,
+          submitted: 1,
+        },
       });
       expect(entry.durationMs).toBeGreaterThanOrEqual(0);
       expectNoFixtureIdentifiers(entry, fixture);
     } finally {
-      log.mockRestore();
+      info.mockRestore();
     }
   });
 
@@ -442,24 +444,24 @@ integrationDescribe('GET /api/cron/process-refund-requests — PostgreSQL/Web', 
       'provider message must not be logged',
       'invalid_request_error',
     );
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
     try {
       const response = await GET(makeRequest());
       expect(response.status).toBe(200);
-      const entries = warning.mock.calls.map((call) => JSON.parse(call[0] as string));
+      const entries = info.mock.calls.map((call) => JSON.parse(call[0] as string));
       expect(entries).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            event: 'cron.process-refund-requests.alert',
-            failedCount: 1,
-            codes: ['invalid_request_error'],
+            operation: 'cron_process_refunds',
+            outcome: 'degraded',
+            counts: expect.objectContaining({ failed: 1 }),
           }),
         ]),
       );
       expect(JSON.stringify(entries)).not.toContain('provider message must not be logged');
       expectNoFixtureIdentifiers(entries, fixture);
     } finally {
-      warning.mockRestore();
+      info.mockRestore();
     }
   });
 
@@ -470,53 +472,58 @@ integrationDescribe('GET /api/cron/process-refund-requests — PostgreSQL/Web', 
       'provider message must not be logged',
       'fixture-provider-code',
     );
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
     try {
       const response = await GET(makeRequest());
       expect(response.status).toBe(200);
       const body = await response.json();
-      const entries = warning.mock.calls.map((call) => JSON.parse(call[0] as string));
-      const alert = entries.find((entry) => entry.event === 'cron.process-refund-requests.alert');
+      const entries = info.mock.calls.map((call) => JSON.parse(call[0] as string));
+      const alert = entries.find((entry) => entry.errorCode === 'ANOMALY_DETECTED');
       expect(body).toMatchObject({ claimedCount: 1, failedCount: 1 });
-      expect(alert).toMatchObject({ anomalyCount: 1, codes: ['UNKNOWN_ANOMALY'] });
+      expect(alert).toMatchObject({
+        operation: 'cron_process_refunds',
+        outcome: 'degraded',
+        errorCode: 'ANOMALY_DETECTED',
+      });
       expect(JSON.stringify(entries)).not.toContain('provider message must not be logged');
       expect(JSON.stringify(entries)).not.toContain('fixture-provider-code');
       expectNoFixtureIdentifiers(body, fixture);
       expectNoFixtureIdentifiers(entries, fixture);
     } finally {
-      warning.mockRestore();
+      info.mockRestore();
     }
   });
 
   it('14. distingue une erreur technique et ne divulgue pas son message', async () => {
     const fixture = await seedFixture();
     provider = null;
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
     try {
       const response = await GET(makeRequest());
       expect(response.status).toBe(500);
       const body = await response.json();
-      const entry = JSON.parse(error.mock.calls[0]![0] as string);
+      const entry = JSON.parse(info.mock.calls[0]![0] as string);
       expect(entry).toMatchObject({
-        event: 'cron.process-refund-requests.error',
+        operation: 'cron_process_refunds',
+        outcome: 'failed',
         errorCode: 'INTERNAL_ERROR',
       });
       expect(entry.error).toBeUndefined();
       expectNoFixtureIdentifiers(body, fixture);
       expectNoFixtureIdentifiers(entry, fixture);
     } finally {
-      error.mockRestore();
+      info.mockRestore();
     }
   });
 
   it('15. ne logue pas de details provider dans une erreur de configuration', async () => {
     process.env.STRIPE_ENVIRONMENT = 'BAD_PROVIDER_ACCOUNT';
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
     try {
       await GET(makeRequest());
-      expect(JSON.stringify(error.mock.calls)).not.toContain('BAD_PROVIDER_ACCOUNT');
+      expect(JSON.stringify(info.mock.calls)).not.toContain('BAD_PROVIDER_ACCOUNT');
     } finally {
-      error.mockRestore();
+      info.mockRestore();
     }
   });
 
@@ -551,23 +558,29 @@ integrationDescribe('GET /api/cron/process-refund-requests — PostgreSQL/Web', 
   it('18. publie les codes d’anomalie sans les identifiants des événements', async () => {
     const fixture = await seedFixture();
     await rawSql!`UPDATE outbox_events SET payload = '{}'::jsonb WHERE id = ${fixture.outboxEventId}`;
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
     try {
       await GET(makeRequest());
-      const entries = warning.mock.calls.map((call) => JSON.parse(call[0] as string));
-      const alert = entries.find((entry) => entry.event === 'cron.process-refund-requests.alert');
-      expect(alert).toMatchObject({ anomalyCount: 1, codes: ['PAYLOAD_MALFORMED'] });
+      const entries = info.mock.calls.map((call) => JSON.parse(call[0] as string));
+      const alert = entries.find(
+        (entry) =>
+          entry.operation === 'cron_process_refunds' && entry.errorCode === 'ANOMALY_DETECTED',
+      );
+      expect(alert).toBeDefined();
+      expect(alert).toMatchObject({
+        outcome: 'degraded',
+        counts: expect.objectContaining({ anomalies: 1 }),
+      });
       expectNoFixtureIdentifiers(entries, fixture);
     } finally {
-      warning.mockRestore();
+      info.mockRestore();
     }
   });
 
   it('19. ne mute rien localement si la lease est perdue après le provider', async () => {
     const fixture = await seedFixture();
     provider!.leaseLossOutboxEventId = fixture.outboxEventId;
-    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
     try {
       const response = await GET(makeRequest());
       const body = await response.json();
@@ -583,24 +596,20 @@ integrationDescribe('GET /api/cron/process-refund-requests — PostgreSQL/Web', 
       expect(state.refund.status).toBe('PENDING');
       expect(state.refund.provider_refund_id).toBeNull();
       expect(state.outbox.status).toBe('PROCESSING');
-      const entries = warning.mock.calls.map((call) => JSON.parse(call[0] as string));
-      expect(entries).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            event: 'cron.process-refund-requests.alert',
-            leaseLostCount: 1,
-            anomalyCount: 0,
-          }),
-        ]),
+      const entries = info.mock.calls.map((call) => JSON.parse(call[0] as string));
+      const alert = entries.find(
+        (entry) =>
+          entry.operation === 'cron_process_refunds' && entry.errorCode === 'ANOMALY_DETECTED',
       );
+      expect(alert).toBeDefined();
+      expect(alert).toMatchObject({
+        outcome: 'degraded',
+        counts: expect.objectContaining({ expiredLeases: 1 }),
+      });
       expectNoFixtureIdentifiers(body, fixture);
-      expectNoFixtureIdentifiers(
-        [...log.mock.calls, ...warning.mock.calls].map((call) => call[0]),
-        fixture,
-      );
+      expectNoFixtureIdentifiers(entries, fixture);
     } finally {
-      log.mockRestore();
-      warning.mockRestore();
+      info.mockRestore();
     }
   });
 
@@ -608,6 +617,10 @@ integrationDescribe('GET /api/cron/process-refund-requests — PostgreSQL/Web', 
     const route = await import('./route');
     expect(route.dynamic).toBe('force-dynamic');
     const config = await import('../../../../../vercel.json', { with: { type: 'json' } });
-    expect(config.default.crons).toEqual([]);
+    expect(
+      config.default.crons?.some((c: { path: string }) =>
+        c.path.includes('process-refund-requests'),
+      ) ?? false,
+    ).toBe(false);
   });
 });

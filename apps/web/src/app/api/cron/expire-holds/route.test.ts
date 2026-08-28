@@ -431,42 +431,33 @@ describe.skipIf(shouldSkipIntegrationTests())(
       }
     });
 
-    // 8. Logs structurés — vérifie le format JSON et les métriques ADR-009
+    // 8. Logs structurés — vérifie les logs opérationnels
     it('8. logue des événements structurés avec durationMs et expiredHoldCount', async () => {
       if (!testDb || !rawSql) return;
       const ids = await seedBaseData();
       await createExpiredDraft(ids, 'logging');
 
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
       try {
         const response = await GET(makeRequest(CRON_SECRET));
         expect(response.status).toBe(200);
 
         // Log de succès présent.
-        expect(logSpy).toHaveBeenCalledTimes(1);
-        const logCall = JSON.parse(logSpy.mock.calls[0]![0] as string);
-        expect(logCall.event).toBe('cron.expire-holds');
+        expect(infoSpy).toHaveBeenCalledTimes(1);
+        const logCall = JSON.parse(infoSpy.mock.calls[0]![0] as string);
+        expect(logCall.operation).toBe('cron_expire_holds');
+        expect(logCall.outcome).toBe('success');
         expect(logCall.durationMs).toBeGreaterThanOrEqual(0);
-        expect(logCall.expiredDraftCount).toBe(1);
-        expect(logCall.expiredHoldCount).toBeGreaterThanOrEqual(1);
-        expect(logCall.processedCount).toBe(1);
-        expect(logCall.anomalyCount).toBe(0);
-        expect(logCall.batchLimit).toBe(10);
-
-        // Pas de warn d'anomalie ni d'erreur.
-        expect(warnSpy).not.toHaveBeenCalled();
-        expect(errorSpy).not.toHaveBeenCalled();
+        expect(logCall.counts?.processed).toBe(1);
+        expect(logCall.counts?.expired).toBeGreaterThanOrEqual(1);
+        expect(logCall.counts?.anomalies).toBe(0);
       } finally {
-        logSpy.mockRestore();
-        warnSpy.mockRestore();
-        errorSpy.mockRestore();
+        infoSpy.mockRestore();
       }
     });
 
-    // 9. Log d'anomalie — warn quand anomalyCount > 0
+    // 9. Log d anomalie — degraded quand anomalyCount > 0
     it('9. logue un warn structuré quand anomalyCount > 0', async () => {
       if (!testDb || !rawSql) return;
       const ids = await seedBaseData();
@@ -475,36 +466,25 @@ describe.skipIf(shouldSkipIntegrationTests())(
       // Corrompre un bloc pour provoquer une anomalie.
       await rawSql`UPDATE "inventory_blocks" SET "status" = 'RELEASED' WHERE "id" = ${blockIds[0]!}`;
 
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
       try {
         const response = await GET(makeRequest(CRON_SECRET));
         expect(response.status).toBe(200);
 
-        // Log de succès présent.
-        expect(logSpy).toHaveBeenCalledTimes(1);
-        const logCall = JSON.parse(logSpy.mock.calls[0]![0] as string);
-        expect(logCall.event).toBe('cron.expire-holds');
-        expect(logCall.anomalyCount).toBe(1);
-        expect(logCall.expiredDraftCount).toBe(0);
-        expect(logCall.expiredHoldCount).toBe(0);
+        // Logs dégradés présents.
+        expect(infoSpy).toHaveBeenCalledTimes(2);
+        const logCall = JSON.parse(infoSpy.mock.calls[0]![0] as string);
+        expect(logCall.operation).toBe('cron_expire_holds');
+        expect(logCall.outcome).toBe('degraded');
+        expect(logCall.counts?.anomalies).toBe(1);
 
-        // Warn d'anomalie présent.
-        expect(warnSpy).toHaveBeenCalledTimes(1);
-        const warnCall = JSON.parse(warnSpy.mock.calls[0]![0] as string);
-        expect(warnCall.event).toBe('cron.expire-holds.anomalies');
-        expect(warnCall.anomalyCount).toBe(1);
-        expect(warnCall.reasons).toEqual(['BLOCK_NOT_ACTIVE']);
-        expect(warnCall.durationMs).toBeGreaterThanOrEqual(0);
-
-        // Pas d'erreur.
-        expect(errorSpy).not.toHaveBeenCalled();
+        const alertCall = JSON.parse(infoSpy.mock.calls[1]![0] as string);
+        expect(alertCall.operation).toBe('cron_expire_holds');
+        expect(alertCall.outcome).toBe('degraded');
+        expect(alertCall.errorCode).toBe('ANOMALY_DETECTED');
       } finally {
-        logSpy.mockRestore();
-        warnSpy.mockRestore();
-        errorSpy.mockRestore();
+        infoSpy.mockRestore();
       }
     });
 
@@ -678,35 +658,28 @@ describe.skipIf(shouldSkipIntegrationTests())(
       expect(amendmentRows[0]!.status).toBe('EXPIRED');
     });
 
-    // 10. Log d'erreur — error quand le batch échoue
-    it("10. logue une erreur structurée en cas d'échec technique", async () => {
+    // 10. Log d erreur — error quand le batch échoue
+    it('10. logue une erreur structurée en cas d échec technique', async () => {
       if (!testDb) return;
       const originalDb = testDb;
       testDb = null as unknown as DatabaseClient;
 
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
       try {
         const response = await GET(makeRequest(CRON_SECRET));
         expect(response.status).toBe(500);
 
         // Error log présent.
-        expect(errorSpy).toHaveBeenCalledTimes(1);
-        const errorCall = JSON.parse(errorSpy.mock.calls[0]![0] as string);
-        expect(errorCall.event).toBe('cron.expire-holds.error');
+        expect(infoSpy).toHaveBeenCalledTimes(1);
+        const errorCall = JSON.parse(infoSpy.mock.calls[0]![0] as string);
+        expect(errorCall.operation).toBe('cron_expire_holds');
+        expect(errorCall.outcome).toBe('failed');
+        expect(errorCall.errorCode).toBe('INTERNAL_ERROR');
         expect(errorCall.durationMs).toBeGreaterThanOrEqual(0);
-        expect(typeof errorCall.error).toBe('string');
-
-        // Pas de log de succès ni de warn.
-        expect(logSpy).not.toHaveBeenCalled();
-        expect(warnSpy).not.toHaveBeenCalled();
       } finally {
         testDb = originalDb;
-        logSpy.mockRestore();
-        warnSpy.mockRestore();
-        errorSpy.mockRestore();
+        infoSpy.mockRestore();
       }
     });
   },
