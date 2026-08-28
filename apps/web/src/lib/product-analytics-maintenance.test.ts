@@ -78,7 +78,7 @@ describe('18-A — Exécution de la maintenance', () => {
 
   it('agrège chaque environnement maintenu, puis purge une seule fois', async () => {
     const now = new Date('2026-08-28T12:00:00.000Z');
-    const result = await runProductAnalyticsMaintenance({} as never, { now });
+    await runProductAnalyticsMaintenance({} as never, { now });
 
     expect(core.aggregateProductAnalyticsDays).toHaveBeenCalledTimes(
       ANALYTICS_MAINTENANCE_ENVIRONMENTS.length,
@@ -86,11 +86,14 @@ describe('18-A — Exécution de la maintenance', () => {
 
     const window = resolveMaintenanceWindow(now);
     for (const environment of ANALYTICS_MAINTENANCE_ENVIRONMENTS) {
-      expect(core.aggregateProductAnalyticsDays).toHaveBeenCalledWith({}, {
-        fromDay: window.fromDay,
-        toDayExclusive: window.toDayExclusive,
-        environment,
-      });
+      expect(core.aggregateProductAnalyticsDays).toHaveBeenCalledWith(
+        {},
+        {
+          fromDay: window.fromDay,
+          toDayExclusive: window.toDayExclusive,
+          environment,
+        },
+      );
     }
 
     expect(core.purgeExpiredProductAnalytics).toHaveBeenCalledTimes(1);

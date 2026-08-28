@@ -1,10 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import postgres from 'postgres';
 import { runMigrations, assertLocalhost, createDatabase } from '@uttily/database';
-import {
-  recordProductAnalyticsEvent,
-  getProductAnalyticsSummary,
-} from '@uttily/core';
+import { recordProductAnalyticsEvent, getProductAnalyticsSummary } from '@uttily/core';
 import {
   runProductAnalyticsMaintenance,
   resolveMaintenanceWindow,

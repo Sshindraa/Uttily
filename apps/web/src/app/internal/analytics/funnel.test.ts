@@ -137,8 +137,8 @@ describe('18-A — Funnel interne : modèle et invariants privacy', () => {
 
     expect(view.environments.map((e) => e.environment)).toEqual(['DEVELOPMENT', 'TEST']);
     expect(FUNNEL_ENVIRONMENTS).not.toContain('PRODUCTION');
-    expect(view.environments[0].summary.searches).toBe(10);
-    expect(view.environments[1].summary.searches).toBe(3);
+    expect(view.environments[0]!.summary.searches).toBe(10);
+    expect(view.environments[1]!.summary.searches).toBe(3);
   });
 
   it('affirme toujours que la collecte PRODUCTION est désactivée', () => {
@@ -184,7 +184,7 @@ describe('18-A — Funnel interne : modèle et invariants privacy', () => {
       expect(serialized.toLowerCase()).not.toContain(forbidden.toLowerCase());
     }
 
-    expect(Object.keys(view.environments[0].summary).sort()).toEqual([
+    expect(Object.keys(view.environments[0]!.summary).sort()).toEqual([
       'bookingAttempts',
       'bookingsConfirmed',
       'searches',

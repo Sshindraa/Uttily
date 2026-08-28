@@ -147,7 +147,8 @@ export default async function InternalAnalyticsPage({
       </div>
 
       <p className={styles.privacyNote}>
-        Cette page n&apos;affiche que des compteurs agrégés par jour UTC : aucune donnée personnelle ni identifiant technique n&apos;est lu ni affiché.
+        Cette page n&apos;affiche que des compteurs agrégés par jour UTC : aucune donnée personnelle
+        ni identifiant technique n&apos;est lu ni affiché.
       </p>
     </div>
   );

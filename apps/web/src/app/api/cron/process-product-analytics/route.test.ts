@@ -28,7 +28,10 @@ function successResult() {
     window: { fromDay: '2026-08-26', toDayExclusive: '2026-08-29' },
     collectionEnvironment: 'DEVELOPMENT' as const,
     productionCollectionEnabled: false as const,
-    aggregatedEnvironments: ['DEVELOPMENT', 'TEST'] as const,
+    aggregatedEnvironments: [
+      'DEVELOPMENT',
+      'TEST',
+    ] as maintenance.MaintenanceAnalyticsEnvironment[],
     aggregationDaysProcessed: 6,
     purge: { rawEventsDeleted: 3, aggregatesDeleted: 1 },
   };
@@ -238,8 +241,8 @@ describe('18-A — cron process-product-analytics : câblage base de données', 
     await GET(requestWith('Bearer secret-valide'));
 
     expect(dbMod.getDb).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(maintenance.runProductAnalyticsMaintenance).mock.calls[0][0]).toBe(
-      vi.mocked(dbMod.getDb).mock.results[0].value,
+    expect(vi.mocked(maintenance.runProductAnalyticsMaintenance).mock.calls[0]?.[0]).toBe(
+      vi.mocked(dbMod.getDb).mock.results[0]?.value,
     );
   });
 });

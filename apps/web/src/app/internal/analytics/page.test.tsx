@@ -69,9 +69,9 @@ describe('18-A — /internal/analytics : accès strictement interne', () => {
   it('refuse l’accès à un utilisateur non authentifié', async () => {
     vi.mocked(auth.getAuthenticatedUser).mockResolvedValue(null as never);
 
-    await expect(
-      InternalAnalyticsPage({ searchParams: Promise.resolve({}) }),
-    ).rejects.toThrow('UNAUTHENTICATED');
+    await expect(InternalAnalyticsPage({ searchParams: Promise.resolve({}) })).rejects.toThrow(
+      'UNAUTHENTICATED',
+    );
   });
 
   it('n’appelle jamais la lecture analytics pour un utilisateur Pro', async () => {
@@ -176,7 +176,7 @@ describe('18-A — /internal/analytics : rendu du funnel', () => {
   it('lit les agrégats sur une fenêtre de 30 jours quand la période est 30', async () => {
     await renderPage({ range: '30' });
 
-    const firstCall = vi.mocked(core.getProductAnalyticsSummary).mock.calls[0];
+    const firstCall = vi.mocked(core.getProductAnalyticsSummary).mock.calls[0]!;
     const options = firstCall[1];
     const from = new Date(`${options.fromDay}T00:00:00.000Z`);
     const to = new Date(`${options.toDayExclusive}T00:00:00.000Z`);
