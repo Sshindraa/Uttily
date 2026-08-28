@@ -132,6 +132,46 @@ function mapRefundStatus(stripeStatus: string): RefundStatus {
 }
 
 /**
+ * Vérifie l'environnement déclaré par Stripe sur une ressource réellement
+ * retournée par l'API. Les préfixes de clés protègent la configuration, mais
+ * seul `livemode` prouve que l'objet provider appartient au même mode.
+ */
+function assertStripeEnvironment(
+  livemode: boolean,
+  environment: StripeEnvironment,
+  resourceType: string,
+): void {
+  const expectedLivemode = environment === 'LIVE';
+  if (livemode !== expectedLivemode) {
+    throw new PaymentProviderError(
+      'PAYMENT_ENVIRONMENT_MISMATCH',
+      `La ressource Stripe ${resourceType} appartient à un autre environnement.`,
+      'environment_mismatch',
+    );
+  }
+}
+
+/**
+ * Certains objets Stripe (notamment Refund dans les typings SDK) n'exposent
+ * pas `livemode`. Lorsqu'il est présent dans la réponse brute, on l'impose;
+ * l'isolement du refund reste en complément garanti par le PaymentIntent et
+ * les filtres d'environnement persistants.
+ */
+function assertStripeEnvironmentWhenProvided(
+  resource: unknown,
+  environment: StripeEnvironment,
+  resourceType: string,
+): void {
+  const livemode =
+    resource !== null && typeof resource === 'object' && 'livemode' in resource
+      ? (resource as { livemode?: unknown }).livemode
+      : undefined;
+  if (typeof livemode === 'boolean') {
+    assertStripeEnvironment(livemode, environment, resourceType);
+  }
+}
+
+/**
  * Mappe le statut de capacité de transfert de Stripe vers notre union fermée.
  * Stripe utilise 'active' | 'inactive' | 'pending'.
  * L'absence de la capability est mappée vers 'UNREQUESTED'.
@@ -681,6 +721,7 @@ export class StripeAdapter implements PaymentProviderAdapter {
       const intent = await this.stripe.paymentIntents.create(createParams, {
         idempotencyKey: params.idempotencyKey,
       });
+      assertStripeEnvironment(intent.livemode, this.config.environment, 'PaymentIntent');
 
       return {
         id: intent.id,
@@ -705,6 +746,7 @@ export class StripeAdapter implements PaymentProviderAdapter {
   async retrievePaymentIntent(id: string): Promise<PaymentIntentResult> {
     try {
       const intent = await this.stripe.paymentIntents.retrieve(id);
+      assertStripeEnvironment(intent.livemode, this.config.environment, 'PaymentIntent');
 
       return {
         id: intent.id,
@@ -741,6 +783,7 @@ export class StripeAdapter implements PaymentProviderAdapter {
       const intent = await this.stripe.paymentIntents.cancel(params.id, undefined, {
         idempotencyKey: params.idempotencyKey,
       });
+      assertStripeEnvironment(intent.livemode, this.config.environment, 'PaymentIntent');
 
       return {
         id: intent.id,
@@ -793,6 +836,7 @@ export class StripeAdapter implements PaymentProviderAdapter {
       const refund = await this.stripe.refunds.create(refundParams, {
         idempotencyKey: params.idempotencyKey,
       });
+      assertStripeEnvironmentWhenProvided(refund, this.config.environment, 'refund');
 
       if (refund.status === null || refund.status === undefined) {
         throw new PaymentProviderError(
@@ -816,6 +860,7 @@ export class StripeAdapter implements PaymentProviderAdapter {
   async retrieveRefund(id: string): Promise<RefundResult> {
     try {
       const refund = await this.stripe.refunds.retrieve(id);
+      assertStripeEnvironmentWhenProvided(refund, this.config.environment, 'refund');
 
       if (refund.status === null || refund.status === undefined) {
         throw new PaymentProviderError(
@@ -850,25 +895,14 @@ export class StripeAdapter implements PaymentProviderAdapter {
       return { valid: false, reason: 'INVALID_SIGNATURE' };
     }
 
+    let event: Stripe.Event;
     try {
-      const event = this.stripe.webhooks.constructEvent(
+      event = this.stripe.webhooks.constructEvent(
         params.rawBody,
         params.signature,
         secret,
         WEBHOOK_TOLERANCE_SECONDS, // Tolérance explicite de 5 minutes (ADR-010 §14)
       );
-
-      const verified: VerifiedWebhookEvent = {
-        id: event.id,
-        type: event.type,
-        created: event.created,
-        apiVersion: event.api_version ?? this.config.apiVersion,
-        objectId: extractObjectId(event),
-        accountId: event.account ?? null,
-        data: normalizeEventData(event),
-      };
-
-      return { valid: true, event: verified };
     } catch (error) {
       if (error instanceof Stripe.errors.StripeSignatureVerificationError) {
         // Distinguer les raisons : timestamp expiré vs signature invalide.
@@ -881,6 +915,20 @@ export class StripeAdapter implements PaymentProviderAdapter {
       // Autre erreur de parsing → payload invalide.
       return { valid: false, reason: 'INVALID_PAYLOAD' };
     }
+
+    assertStripeEnvironment(event.livemode, this.config.environment, 'webhook');
+
+    const verified: VerifiedWebhookEvent = {
+      id: event.id,
+      type: event.type,
+      created: event.created,
+      apiVersion: event.api_version ?? this.config.apiVersion,
+      objectId: extractObjectId(event),
+      accountId: event.account ?? null,
+      data: normalizeEventData(event),
+    };
+
+    return { valid: true, event: verified };
   }
 
   async createConnectedAccount(

@@ -40,6 +40,16 @@ export async function resolveAttempt(
   environment: 'TEST' | 'LIVE',
   accountId: string | null,
 ): Promise<ResolvedAttempt | null> {
+  // Les metadata d'amendement portent explicitement l'environnement. Une
+  // valeur présente ne peut jamais être réinterprétée dans l'autre mode.
+  if (piData.metadata?.environment !== undefined && piData.metadata.environment !== environment) {
+    throw new WebhookHandlerError(
+      'WEBHOOK_ENVIRONMENT_MISMATCH',
+      "L'environnement des metadata du PaymentIntent ne correspond pas au webhook.",
+      { statusCode: 500 },
+    );
+  }
+
   // 1. Lookup par provider_payment_intent_id.
   if (piData.id && piData.id.length > 0) {
     const rows = await db
@@ -52,6 +62,7 @@ export async function resolveAttempt(
         paymentStatus: payments.status,
         paymentOrganizationId: payments.organizationId,
         paymentConnectedAccountId: payments.connectedAccountId,
+        paymentEnvironment: payments.environment,
         draftId: payments.draftId,
         draftStatus: bookingDrafts.status,
       })
@@ -73,6 +84,7 @@ export async function resolveAttempt(
         r.paymentConnectedAccountId,
         accountId,
         environment,
+        r.paymentEnvironment,
       );
       return {
         attemptId: r.attemptId,
@@ -101,6 +113,7 @@ export async function resolveAttempt(
         paymentStatus: payments.status,
         paymentOrganizationId: payments.organizationId,
         paymentConnectedAccountId: payments.connectedAccountId,
+        paymentEnvironment: payments.environment,
         draftId: payments.draftId,
         draftStatus: bookingDrafts.status,
       })
@@ -117,6 +130,7 @@ export async function resolveAttempt(
         r.paymentConnectedAccountId,
         accountId,
         environment,
+        r.paymentEnvironment,
       );
       return {
         attemptId: r.attemptId,
@@ -152,7 +166,16 @@ async function validateConnectedAccountAndEnvironment(
   paymentConnectedAccountId: string,
   accountId: string | null,
   environment: 'TEST' | 'LIVE',
+  paymentEnvironment: 'TEST' | 'LIVE',
 ): Promise<void> {
+  if (paymentEnvironment !== environment) {
+    throw new WebhookHandlerError(
+      'WEBHOOK_ENVIRONMENT_MISMATCH',
+      "L'environnement du paiement ne correspond pas à celui du webhook.",
+      { statusCode: 500 },
+    );
+  }
+
   // Vérifier la cohérence du compte connecté (uniquement si accountId est non null).
   if (accountId !== null && accountId !== paymentConnectedAccountId) {
     throw new WebhookHandlerError(

@@ -24,6 +24,14 @@ export async function resolveAmendmentAttempt(
   environment: 'TEST' | 'LIVE',
   accountId: string | null,
 ): Promise<ResolvedAmendmentAttempt | null> {
+  if (piData.metadata?.environment !== undefined && piData.metadata.environment !== environment) {
+    throw new WebhookHandlerError(
+      'WEBHOOK_ENVIRONMENT_MISMATCH',
+      "L'environnement des metadata du paiement de supplément ne correspond pas au webhook.",
+      { statusCode: 500 },
+    );
+  }
+
   const attemptIdFromMetadata = piData.metadata?.amendment_payment_attempt_id;
   const predicates = [];
   if (piData.id.length > 0) {
@@ -47,6 +55,7 @@ export async function resolveAmendmentAttempt(
       amendmentStatus: bookingAmendments.status,
       providerPaymentIntentId: amendmentPaymentAttempts.providerPaymentIntentId,
       connectedAccountId: amendmentPayments.connectedAccountId,
+      paymentEnvironment: amendmentPayments.environment,
     })
     .from(amendmentPaymentAttempts)
     .innerJoin(
@@ -67,6 +76,14 @@ export async function resolveAmendmentAttempt(
     );
   }
   const row = rows[0]!;
+
+  if (row.paymentEnvironment !== environment) {
+    throw new WebhookHandlerError(
+      'WEBHOOK_ENVIRONMENT_MISMATCH',
+      "L'environnement du paiement de supplément ne correspond pas au webhook.",
+      { statusCode: 500 },
+    );
+  }
 
   if (accountId !== null && accountId !== row.connectedAccountId) {
     throw new WebhookHandlerError(

@@ -193,3 +193,6 @@ export * from './customer-bookings';
 
 // Chantier 16 — Back-office Uttily & Support V1.
 export * from './support';
+
+// Chantier 20-A — Contrôle non destructif de readiness LIVE.
+export * from './live-readiness';

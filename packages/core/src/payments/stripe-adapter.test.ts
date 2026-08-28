@@ -12,6 +12,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 interface MockPaymentIntent {
   id: string;
   object: 'payment_intent';
+  livemode: boolean;
   status: string;
   client_secret: string | null;
   latest_charge: string | null;
@@ -26,6 +27,7 @@ interface MockPaymentIntent {
 interface MockRefund {
   id: string;
   object: 'refund';
+  livemode: boolean;
   status: string | null;
   amount: number;
   currency: string;
@@ -51,6 +53,7 @@ interface MockAccountLink {
 interface MockEvent {
   id: string;
   object: 'event';
+  livemode: boolean;
   type: string;
   created: number;
   api_version: string | null;
@@ -314,6 +317,7 @@ function makeMockPaymentIntent(overrides: Partial<MockPaymentIntent> = {}): Mock
   return {
     id: 'pi_fake_123',
     object: 'payment_intent',
+    livemode: false,
     status: 'requires_payment_method',
     client_secret: 'pi_fake_123_secret_abc',
     latest_charge: null,
@@ -331,6 +335,7 @@ function makeMockRefund(overrides: Partial<MockRefund> = {}): MockRefund {
   return {
     id: 're_fake_123',
     object: 'refund',
+    livemode: false,
     status: 'succeeded',
     amount: 10000,
     currency: 'eur',
@@ -365,6 +370,7 @@ function makeMockEvent(overrides: Partial<MockEvent> = {}): MockEvent {
   return {
     id: 'evt_fake_123',
     object: 'event',
+    livemode: false,
     type: 'payment_intent.succeeded',
     created: Math.floor(Date.now() / 1000),
     api_version: '2026-06-24.dahlia',
@@ -469,6 +475,31 @@ describe('StripeAdapter', () => {
       expect(createParams.on_behalf_of).toBeUndefined();
       expect(createParams.metadata).toEqual(params.metadata);
       expect(options.idempotencyKey).toBe('idem_key_abc123');
+    });
+
+    it('rejette un PaymentIntent dont le livemode ne correspond pas à la config', async () => {
+      const originalLiveEnabled = process.env.PAYMENTS_LIVE_ENABLED;
+      process.env.PAYMENTS_LIVE_ENABLED = 'true';
+
+      try {
+        const liveAdapter = new StripeAdapter({
+          ...BASE_CONFIG,
+          secretKey: 'sk_live_fake_key',
+          environment: 'LIVE',
+        });
+        mockPaymentIntentsCreate.mockResolvedValue(makeMockPaymentIntent({ livemode: false }));
+
+        await expect(liveAdapter.createPaymentIntent(baseCreatePaymentIntentParams())).rejects.toMatchObject({
+          code: 'PAYMENT_ENVIRONMENT_MISMATCH',
+          providerErrorCode: 'environment_mismatch',
+        });
+      } finally {
+        if (originalLiveEnabled === undefined) {
+          delete process.env.PAYMENTS_LIVE_ENABLED;
+        } else {
+          process.env.PAYMENTS_LIVE_ENABLED = originalLiveEnabled;
+        }
+      }
     });
 
     it("omet application_fee_amount lorsqu'il vaut 0", async () => {
@@ -858,6 +889,15 @@ describe('StripeAdapter', () => {
       expect(options.idempotencyKey).toBe('idem_refund_abc');
     });
 
+    it('rejette un refund dont le livemode ne correspond pas à la config', async () => {
+      mockRefundsCreate.mockResolvedValue(makeMockRefund({ livemode: true }));
+
+      await expect(adapter.createRefund(baseCreateRefundParams())).rejects.toMatchObject({
+        code: 'PAYMENT_ENVIRONMENT_MISMATCH',
+        providerErrorCode: 'environment_mismatch',
+      });
+    });
+
     it('envoie la metadata B2-B2A exacte et rejette un UUID/protocole invalide', async () => {
       mockRefundsCreate.mockResolvedValue(makeMockRefund());
       const metadata = {
@@ -992,6 +1032,22 @@ describe('StripeAdapter', () => {
       expect(secret).toBe('whsec_platform_fake');
     });
 
+    it('rejette un webhook signé appartenant à un autre mode Stripe', async () => {
+      mockConstructEvent.mockReturnValue(makeMockEvent({ livemode: true }));
+
+      await expect(
+        adapter.verifyWebhook({
+          rawBody: '{"id":"evt_live"}',
+          signature: 't=123,v1=fake',
+          endpoint: 'platform',
+          environment: 'TEST',
+        }),
+      ).rejects.toMatchObject({
+        code: 'PAYMENT_ENVIRONMENT_MISMATCH',
+        providerErrorCode: 'environment_mismatch',
+      });
+    });
+
     it("utilise le secret connect pour l'endpoint connect", async () => {
       const mockEvent = makeMockEvent();
       mockConstructEvent.mockReturnValue(mockEvent);
@@ -1011,6 +1067,7 @@ describe('StripeAdapter', () => {
       const mockEvent = {
         id: 'evt_123',
         object: 'event' as const,
+        livemode: false,
         type: 'payment_intent.succeeded',
         created: Math.floor(Date.now() / 1000),
         api_version: '2026-06-24.dahlia',
@@ -1137,6 +1194,7 @@ describe('StripeAdapter', () => {
       const mockEvent = {
         id: 'evt_refund_null_element',
         object: 'event' as const,
+        livemode: false,
         type: 'charge.refunded',
         created: Math.floor(Date.now() / 1000),
         api_version: '2026-06-24.dahlia',

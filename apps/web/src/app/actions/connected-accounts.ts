@@ -91,9 +91,14 @@ export async function createAccountSessionAction(organizationId: string) {
     environment,
   } satisfies CreateAccountSessionInput);
 
+  const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  if (typeof publishableKey !== 'string' || publishableKey.trim().length === 0) {
+    throw new Error('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY est requise.');
+  }
+
   return {
     clientSecret: session.clientSecret,
-    publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? 'pk_test_placeholder',
+    publishableKey,
     environment,
   };
 }
