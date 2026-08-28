@@ -16,6 +16,7 @@ export const OPERATIONAL_OPERATIONS = [
   'cron_reconcile_payments',
   'cron_process_refunds',
   'cron_process_compensations',
+  'cron_process_product_analytics',
   'worker_cycle',
   'worker_documents',
   'worker_emails',

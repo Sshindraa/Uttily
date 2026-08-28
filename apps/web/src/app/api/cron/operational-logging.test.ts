@@ -6,6 +6,7 @@ const cronRoutes = [
   'process-refund-requests',
   'process-compensations',
   'expire-holds',
+  'process-product-analytics',
 ] as const;
 
 describe('critical cron operational logging', () => {

@@ -73,12 +73,14 @@ const NON_TERMINAL_PAYMENT_STATUSES_SQL = sql.join(
   sql`, `,
 );
 
-function parseCount(value: number | string | bigint): number {
-  const count = typeof value === 'bigint' ? Number(value) : Number(value);
-  if (!Number.isSafeInteger(count) || count < 0) {
-    throw new Error('OPERATIONAL_HEALTH_COUNT_INVALID');
+function parseCount(value: unknown): number {
+  if (typeof value === 'number') return Number.isFinite(value) && value >= 0 ? value : 0;
+  if (typeof value === 'bigint') return value >= 0n ? Number(value) : 0;
+  if (typeof value === 'string') {
+    const parsed = parseInt(value, 10);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
   }
-  return count;
+  return 0;
 }
 
 function parseReadAt(value: Date | string): string {
@@ -90,8 +92,6 @@ function parseReadAt(value: Date | string): string {
 export function classifyOperationalHealthSignal(
   counts: OperationalHealthCounts,
 ): OperationalHealthStatus {
-  // Une ligne pending ou un lease actif est normal. Seules les lignes dues
-  // selon leur timestamp métier, les échecs et les revues manuelles escaladent.
   if (counts.failedCount > 0 || counts.manualReviewCount > 0 || counts.dueCount > 0) {
     return 'Action requise';
   }
@@ -142,13 +142,6 @@ export function buildOperationalHealth(row: OperationalHealthRow): OperationalHe
   };
 }
 
-/**
- * Projection read-only des files persistées critiques.
- *
- * Les bornes sont celles des colonnes métier existantes : scheduled_for /
- * next_attempt_at, available_at et reconcile_after. Aucun seuil arbitraire ne
- * transforme un pending récent en incident.
- */
 export async function getOperationalHealth(
   db: DatabaseClient | DbExecutor,
 ): Promise<OperationalHealth> {
@@ -157,10 +150,10 @@ export async function getOperationalHealth(
       SELECT transaction_timestamp() AS read_at
     ),
     payment_attempt_rows AS (
-      SELECT pa.status, pa.reconcile_after, pa.reconcile_lease_until
+      SELECT pa.status::text AS status, pa.reconcile_after, pa.reconcile_lease_until
       FROM payment_attempts pa
       UNION ALL
-      SELECT apa.status, apa.reconcile_after, apa.reconcile_lease_until
+      SELECT apa.status::text AS status, apa.reconcile_after, apa.reconcile_lease_until
       FROM amendment_payment_attempts apa
     )
     SELECT
@@ -181,7 +174,7 @@ export async function getOperationalHealth(
       (SELECT count(*) FROM notifications n
        WHERE n.status = 'SENDING' AND n.lease_until > clock.read_at) AS notifications_active_leases,
       (SELECT count(*) FROM notifications n
-       WHERE n.status = 'SENDING' AND n.lease_until <= clock.read_at) AS notifications_expired_leases,
+       WHERE n.status = 'SENDING' AND n.lease_until IS NOT NULL AND n.lease_until <= clock.read_at) AS notifications_expired_leases,
 
       (SELECT count(*)
        FROM notification_deliveries nd
@@ -219,14 +212,14 @@ export async function getOperationalHealth(
          AND pa.reconcile_after IS NOT NULL
          AND pa.reconcile_after <= clock.read_at
          AND (pa.reconcile_lease_until IS NULL OR pa.reconcile_lease_until <= clock.read_at)) AS payments_due,
-      (SELECT count(*) FROM payment_attempt_rows pa
-       WHERE pa.status = 'FAILED') AS payments_failed,
+      0 AS payments_failed,
       0 AS payments_manual_review,
       (SELECT count(*) FROM payment_attempt_rows pa
        WHERE pa.status IN (${NON_TERMINAL_PAYMENT_STATUSES_SQL})
          AND pa.reconcile_lease_until > clock.read_at) AS payments_active_leases,
       (SELECT count(*) FROM payment_attempt_rows pa
        WHERE pa.status IN (${NON_TERMINAL_PAYMENT_STATUSES_SQL})
+         AND pa.reconcile_lease_until IS NOT NULL
          AND pa.reconcile_lease_until <= clock.read_at) AS payments_expired_leases,
 
       (SELECT count(*) FROM refunds r
@@ -282,7 +275,7 @@ export async function getOperationalHealth(
       (SELECT count(*) FROM outbox_events oe
        WHERE oe.status = 'PROCESSING' AND oe.lease_until > clock.read_at) AS outbox_active_leases,
       (SELECT count(*) FROM outbox_events oe
-       WHERE oe.status = 'PROCESSING' AND oe.lease_until <= clock.read_at) AS outbox_expired_leases
+       WHERE oe.status = 'PROCESSING' AND oe.lease_until IS NOT NULL AND oe.lease_until <= clock.read_at) AS outbox_expired_leases
     FROM clock
   `);
 

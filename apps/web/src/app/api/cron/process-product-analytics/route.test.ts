@@ -5,12 +5,11 @@ import * as maintenance from '@/lib/product-analytics-maintenance';
 import { GET } from './route';
 
 /**
- * Chantier 18-A — Contrat HTTP du cron /api/cron/process-product-analytics.
+ * Chantier 18-A / 18.1 — Contrat HTTP & Observabilité du cron /api/cron/process-product-analytics.
  *
  * Couvre : authentification fail-closed, invariant PRODUCTION, bornage des
- * erreurs de maintenance et fermeture de la réponse. Les invariants
- * agrégation/purge sur PostgreSQL réel sont couverts par
- * `product-analytics-maintenance.integration.test.ts`.
+ * erreurs de maintenance, fermeture de la réponse, et logging opérationnel
+ * structuré sans fuite de secrets ou d'erreurs brutes.
  */
 
 vi.mock('@/lib/db', () => ({
@@ -46,18 +45,22 @@ function requestWith(authHeader?: string): Request {
   });
 }
 
-describe('18-A — cron process-product-analytics : authentification', () => {
+describe('18-A & 18.1 — cron process-product-analytics : authentification', () => {
+  let infoSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     vi.mocked(maintenance.runProductAnalyticsMaintenance).mockResolvedValue(successResult());
   });
 
   afterEach(() => {
+    infoSpy.mockRestore();
     if (ORIGINAL_CRON_SECRET === undefined) delete process.env.CRON_SECRET;
     else process.env.CRON_SECRET = ORIGINAL_CRON_SECRET;
   });
 
-  it('refuse 401 quand CRON_SECRET est absent (fail-closed)', async () => {
+  it('refuse 401 quand CRON_SECRET est absent (fail-closed) et émet un log UNAUTHORIZED', async () => {
     delete process.env.CRON_SECRET;
 
     const response = await GET(requestWith('Bearer anything'));
@@ -65,6 +68,22 @@ describe('18-A — cron process-product-analytics : authentification', () => {
     expect(response.status).toBe(401);
     expect(await response.json()).toEqual({ error: 'Unauthorized' });
     expect(maintenance.runProductAnalyticsMaintenance).not.toHaveBeenCalled();
+
+    const cronLogs = infoSpy.mock.calls
+      .map((c) => {
+        try {
+          return JSON.parse(c[0] as string);
+        } catch {
+          return null;
+        }
+      })
+      .filter((l) => l && l.operation === 'cron_process_product_analytics');
+    expect(cronLogs).toHaveLength(1);
+    expect(cronLogs[0]).toMatchObject({
+      operation: 'cron_process_product_analytics',
+      outcome: 'failed',
+      errorCode: 'UNAUTHORIZED',
+    });
   });
 
   it('refuse 401 quand CRON_SECRET est vide (fail-closed)', async () => {
@@ -101,13 +120,29 @@ describe('18-A — cron process-product-analytics : authentification', () => {
     expect(response.status).toBe(401);
   });
 
-  it('autorise 200 avec le secret exact', async () => {
+  it('autorise 200 avec le secret exact et émet un log de succès', async () => {
     process.env.CRON_SECRET = 'secret-valide';
 
     const response = await GET(requestWith('Bearer secret-valide'));
 
     expect(response.status).toBe(200);
     expect(maintenance.runProductAnalyticsMaintenance).toHaveBeenCalledTimes(1);
+
+    const cronLogs = infoSpy.mock.calls
+      .map((c) => {
+        try {
+          return JSON.parse(c[0] as string);
+        } catch {
+          return null;
+        }
+      })
+      .filter((l) => l && l.operation === 'cron_process_product_analytics');
+    expect(cronLogs).toHaveLength(1);
+    expect(cronLogs[0]).toMatchObject({
+      operation: 'cron_process_product_analytics',
+      outcome: 'success',
+      counts: { processed: 6 },
+    });
   });
 });
 
@@ -184,13 +219,20 @@ describe('18-A — cron process-product-analytics : invariant PRODUCTION', () =>
   });
 });
 
-describe('18-A — cron process-product-analytics : erreur de maintenance bornée', () => {
+describe('18-A & 18.1 — cron process-product-analytics : erreur de maintenance & étanchéité des secrets', () => {
+  let infoSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
     process.env.CRON_SECRET = 'secret-valide';
   });
 
-  it('renvoie 500 avec un code allow-listé, jamais le message interne', async () => {
+  afterEach(() => {
+    infoSpy.mockRestore();
+  });
+
+  it('renvoie 500 avec un code allow-listé, logue de façon structurée sans fuite', async () => {
     vi.mocked(maintenance.runProductAnalyticsMaintenance).mockRejectedValue(
       new ProductAnalyticsError('ANALYTICS_UNAVAILABLE', 'détail interne à ne pas fuir'),
     );
@@ -201,6 +243,23 @@ describe('18-A — cron process-product-analytics : erreur de maintenance borné
     expect(response.status).toBe(500);
     expect(body).toEqual({ ok: false, error: 'Maintenance Error', code: 'ANALYTICS_UNAVAILABLE' });
     expect(JSON.stringify(body)).not.toContain('détail interne');
+
+    const cronLogs = infoSpy.mock.calls
+      .map((c) => {
+        try {
+          return JSON.parse(c[0] as string);
+        } catch {
+          return null;
+        }
+      })
+      .filter((l) => l && l.operation === 'cron_process_product_analytics');
+    expect(cronLogs).toHaveLength(1);
+    expect(cronLogs[0]).toMatchObject({
+      operation: 'cron_process_product_analytics',
+      outcome: 'failed',
+      errorCode: 'ANALYTICS_UNAVAILABLE',
+    });
+    expect(JSON.stringify(cronLogs[0])).not.toContain('détail interne');
   });
 
   it('normalise un code hors allow-list en MAINTENANCE_FAILED', async () => {
@@ -214,11 +273,28 @@ describe('18-A — cron process-product-analytics : erreur de maintenance borné
     expect(response.status).toBe(500);
     expect(body.code).toBe('MAINTENANCE_FAILED');
     expect(JSON.stringify(body)).not.toContain('DUPLICATE_CONFLICT');
+
+    const cronLogs = infoSpy.mock.calls
+      .map((c) => {
+        try {
+          return JSON.parse(c[0] as string);
+        } catch {
+          return null;
+        }
+      })
+      .filter((l) => l && l.operation === 'cron_process_product_analytics');
+    expect(cronLogs).toHaveLength(1);
+    expect(cronLogs[0]).toMatchObject({
+      operation: 'cron_process_product_analytics',
+      outcome: 'failed',
+      errorCode: 'MAINTENANCE_FAILED',
+    });
   });
 
-  it('borne une erreur technique non typée en 500 générique', async () => {
+  it("prouve qu'une chaîne sensible injectée n'apparaît ni dans les logs ni dans la réponse HTTP", async () => {
+    const sensitiveString = 'postgres://user:SECRET_TOKEN@example.invalid/db';
     vi.mocked(maintenance.runProductAnalyticsMaintenance).mockRejectedValue(
-      new Error('connection string postgresql://user:pass@host/db'),
+      new Error(`Connection failed: ${sensitiveString}`),
     );
 
     const response = await GET(requestWith('Bearer secret-valide'));
@@ -226,7 +302,32 @@ describe('18-A — cron process-product-analytics : erreur de maintenance borné
 
     expect(response.status).toBe(500);
     expect(body).toEqual({ error: 'Internal Server Error' });
-    expect(JSON.stringify(body)).not.toContain('postgresql');
+
+    // Vérification HTTP response
+    const responseSerialized = JSON.stringify(body);
+    expect(responseSerialized).not.toContain(sensitiveString);
+    expect(responseSerialized).not.toContain('SECRET_TOKEN');
+
+    // Vérification structured logs
+    const allLoggedRaw = infoSpy.mock.calls.map((c) => String(c[0])).join(' ');
+    expect(allLoggedRaw).not.toContain(sensitiveString);
+    expect(allLoggedRaw).not.toContain('SECRET_TOKEN');
+
+    const cronLogs = infoSpy.mock.calls
+      .map((c) => {
+        try {
+          return JSON.parse(c[0] as string);
+        } catch {
+          return null;
+        }
+      })
+      .filter((l) => l && l.operation === 'cron_process_product_analytics');
+    expect(cronLogs).toHaveLength(1);
+    expect(cronLogs[0]).toMatchObject({
+      operation: 'cron_process_product_analytics',
+      outcome: 'failed',
+      errorCode: 'INTERNAL_ERROR',
+    });
   });
 });
 
