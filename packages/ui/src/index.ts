@@ -1,7 +1,5 @@
 /**
- * @uttily/ui — Design system Uttily.
- *
- * Vide au Lot 0. Les composants accessibles et mobile-first seront
- * introduits à partir du Lot 1.
+ * Point d'entrée volontairement vide pour le futur package UI.
+ * Les primitives, tokens et composants relèvent du chantier 21-U0.
  */
 export {};
