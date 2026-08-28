@@ -14,6 +14,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed:local": "node scripts/seed-local.mjs",
+    "recovery:restore-drill": "node scripts/restore-drill.mjs",
+    "test:recovery": "vitest run scripts/restore-drill.test.mjs",
     "benchmark:destination": "node scripts/benchmark-destination-resolution.mjs",
     "db:studio": "drizzle-kit studio"
   },

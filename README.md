@@ -56,7 +56,14 @@ pnpm dev:full         # démarrer PostgreSQL, migrer, puis Web + worker fake
 pnpm db:seed          # appliquer la fixture publique locale idempotente
 pnpm benchmark:destination # mesurer le registre local ; ajouter --network pour Photon/IGN
 pnpm test:dev-local   # tester les garde-fous du workflow local
+pnpm recovery:restore-drill # drill restore local TEST éphémère, jamais une base distante
+pnpm test:recovery     # tests ciblés du drill et des artefacts 20-B
 ```
+
+Le restore drill exige explicitement `UTTILY_RECOVERY_DRILL=1`, refuse
+`NODE_ENV=production` et n'accepte qu'une URL PostgreSQL locale. Il crée puis
+supprime uniquement ses bases éphémères générées ; il ne restaure jamais une
+base d'environnement partagé ou réelle.
 
 La boucle normale de développement est `pnpm test` ou `pnpm check:fast`.
 Elle exclut explicitement les intégrations PostgreSQL, les parcours E2E et les

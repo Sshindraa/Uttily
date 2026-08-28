@@ -234,6 +234,24 @@ complet sont validés dans
 | G8B-3D — Go/No-Go LIVE | finance, juridique, RGPD, Stripe LIVE, observabilité et smoke final | G8B-3C, validations externes | Bloqué par décisions finance/juridique/RGPD |
 | G8B-3E — Parcours locaux vélo | conseils structurés, sécurité, modération et actualisation | premiers partenaires, décision responsabilité/modération | Différé après les premiers partenaires |
 
+## Chantier 20-B — Recovery & Disaster Readiness
+
+**Statut : livré sur `chantier/20-b-recovery` depuis `origin/main` au SHA
+`bd0450d05a56ccf7a7c058c7d42ac496894fa4bb` (validation finale dans le rapport
+de commit).**
+
+Le périmètre FAST ajoute un restore drill PostgreSQL local et fail-closed,
+exécutable par `pnpm recovery:restore-drill`, la procédure migrations/rollback,
+le registre des migrations risquées, huit runbooks d'incident et la procédure
+de rotation des secrets. Aucun SQL de production, aucune migration existante,
+aucun secret réel et aucun fournisseur distant n'est modifié. Voir
+[`chantier-20b-recovery.md`](chantier-20b-recovery.md) et
+[`docs/runbooks/`](../runbooks/).
+
+La preuve de restauration Neon/PITR, les RPO/RTO par environnement, les droits
+Vercel/Neon et les contacts d'escalade restent à confirmer par un opérateur
+autorisé.
+
 ### Maintenance CI
 
 Les actions GitHub utilisées ont signalé une dépréciation prochaine du runtime

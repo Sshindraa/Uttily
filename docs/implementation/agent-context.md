@@ -16,6 +16,17 @@ recommandations automatisées et décisions humaines. PostgreSQL et les use case
 restent l'autorité. Aucun modèle d'IA ne peut contourner les autorisations, la
 disponibilité, les snapshots financiers ou l'idempotence.
 
+## Recovery et disaster readiness
+
+Le Chantier 20-B ajoute un drill de restauration PostgreSQL local et fail-closed
+(`pnpm recovery:restore-drill`), ainsi que la procédure migrations/rollback, le
+registre des migrations risquées, huit runbooks d'incident et la rotation des
+secrets. Le drill ne touche ni Neon ni une base d'environnement partagé : il
+exige `UTTILY_RECOVERY_DRILL=1`, refuse `NODE_ENV=production` et utilise deux
+bases locales éphémères générées. Les garanties provider, les droits opérateur
+et les RPO/RTO par environnement restent à confirmer ; voir
+`docs/implementation/chantier-20b-recovery.md`.
+
 ## Ce qui est construit
 
 Le premier produit Uttily permet à un client de rechercher, réserver, payer puis récupérer un équipement auprès d'un loueur professionnel. Le loueur peut administrer son entreprise, ses établissements, son catalogue, ses exemplaires physiques et ses opérations de location.
