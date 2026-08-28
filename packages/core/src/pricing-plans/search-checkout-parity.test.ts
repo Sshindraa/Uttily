@@ -122,9 +122,7 @@ describe('Search & Checkout decision parity for DAY_RANGE and schedule exception
     );
 
     // Checkout lève LOCATION_CLOSED
-    expect(() => computeQuote(ctx)).toThrow(
-      expect.objectContaining({ code: 'LOCATION_CLOSED' }),
-    );
+    expect(() => computeQuote(ctx)).toThrow(expect.objectContaining({ code: 'LOCATION_CLOSED' }));
 
     // Search lève FlexiblePricingError('LOCATION_CLOSED') qui est capturé par processCandidateBatch
     expect(() => computePriceForCandidate(ctx, VARIANT_ID)).toThrow(
@@ -154,9 +152,7 @@ describe('Search & Checkout decision parity for DAY_RANGE and schedule exception
       exceptions,
     );
 
-    expect(() => computeQuote(ctx)).toThrow(
-      expect.objectContaining({ code: 'LOCATION_CLOSED' }),
-    );
+    expect(() => computeQuote(ctx)).toThrow(expect.objectContaining({ code: 'LOCATION_CLOSED' }));
     expect(() => computePriceForCandidate(ctx, VARIANT_ID)).toThrow(
       expect.objectContaining({ code: 'LOCATION_CLOSED' }),
     );

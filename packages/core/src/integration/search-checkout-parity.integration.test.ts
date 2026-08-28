@@ -231,8 +231,8 @@ async function seedParityFixture(suffix = SUFFIX()): Promise<ParityFixtureIds> {
   await sql`UPDATE "products" SET "publication_status" = 'PUBLISHED' WHERE "id" = ${product.id}`;
 
   const variant = await sql`
-    INSERT INTO "product_variants" ("product_id", "name", "is_active", "pricing_mode", "daily_price_amount_minor", "currency")
-    VALUES (${product.id}, 'Standard', true, 'FLEXIBLE', 5000, 'EUR')
+    INSERT INTO "product_variants" ("product_id", "name", "is_active", "daily_price_amount_minor", "currency")
+    VALUES (${product.id}, 'Standard', true, 5000, 'EUR')
     RETURNING "id", "public_id"
   `.then((r) => r[0]!);
 

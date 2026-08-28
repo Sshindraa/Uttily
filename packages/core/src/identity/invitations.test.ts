@@ -354,4 +354,3 @@ describe('invitations tokens & security (Chantier 15.2 / 15.2.1)', () => {
     });
   });
 });
-

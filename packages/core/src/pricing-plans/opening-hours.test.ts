@@ -20,9 +20,7 @@ describe('opening-hours & schedule exceptions validation', () => {
         endAt: new Date('2026-08-28T14:00:00Z'), // 16:00 Paris (UTC+2)
       };
 
-      expect(() =>
-        isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, []),
-      ).not.toThrow();
+      expect(() => isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, [])).not.toThrow();
     });
 
     it('rejette une réservation commençant avant l’ouverture (ex: 08:00 Paris)', () => {
@@ -32,9 +30,9 @@ describe('opening-hours & schedule exceptions validation', () => {
         endAt: new Date('2026-08-28T10:00:00Z'), // 12:00 Paris
       };
 
-      expect(() =>
-        isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, []),
-      ).toThrow(expect.objectContaining({ code: 'OUTSIDE_OPENING_HOURS' }));
+      expect(() => isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, [])).toThrow(
+        expect.objectContaining({ code: 'OUTSIDE_OPENING_HOURS' }),
+      );
     });
 
     it('rejette une réservation un jour sans horaires hebdomadaires (ex: Samedi 29/08)', () => {
@@ -44,9 +42,9 @@ describe('opening-hours & schedule exceptions validation', () => {
         endAt: new Date('2026-08-29T14:00:00Z'), // Samedi 16:00 Paris
       };
 
-      expect(() =>
-        isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, []),
-      ).toThrow(expect.objectContaining({ code: 'LOCATION_CLOSED' }));
+      expect(() => isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, [])).toThrow(
+        expect.objectContaining({ code: 'LOCATION_CLOSED' }),
+      );
     });
   });
 
@@ -73,9 +71,9 @@ describe('opening-hours & schedule exceptions validation', () => {
         endAt: new Date('2026-08-28T14:00:00Z'), // 16:00 Paris
       };
 
-      expect(() =>
-        isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, exceptions),
-      ).toThrow(expect.objectContaining({ code: 'LOCATION_CLOSED' }));
+      expect(() => isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, exceptions)).toThrow(
+        expect.objectContaining({ code: 'LOCATION_CLOSED' }),
+      );
     });
 
     it('applique un OPEN_INTERVAL restreint qui remplace les horaires normaux (11h-15h : 10h refusé, 12h accepté)', () => {
@@ -166,9 +164,9 @@ describe('opening-hours & schedule exceptions validation', () => {
         endAt: new Date('2026-08-26T15:00:00Z'), // Mercredi 17:00 Paris
       };
 
-      expect(() =>
-        isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, exceptions),
-      ).toThrow(expect.objectContaining({ code: 'LOCATION_CLOSED' }));
+      expect(() => isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, exceptions)).toThrow(
+        expect.objectContaining({ code: 'LOCATION_CLOSED' }),
+      );
     });
   });
 
@@ -195,9 +193,9 @@ describe('opening-hours & schedule exceptions validation', () => {
         endDateExclusive: '2026-08-28',
       };
 
-      expect(() =>
-        isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, exceptions),
-      ).toThrow(expect.objectContaining({ code: 'LOCATION_CLOSED' }));
+      expect(() => isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, exceptions)).toThrow(
+        expect.objectContaining({ code: 'LOCATION_CLOSED' }),
+      );
     });
 
     it('rejette avec LOCATION_CLOSED si le dernier jour inclus est fermé par exception', () => {
@@ -222,9 +220,9 @@ describe('opening-hours & schedule exceptions validation', () => {
         endDateExclusive: '2026-08-28',
       };
 
-      expect(() =>
-        isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, exceptions),
-      ).toThrow(expect.objectContaining({ code: 'LOCATION_CLOSED' }));
+      expect(() => isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, exceptions)).toThrow(
+        expect.objectContaining({ code: 'LOCATION_CLOSED' }),
+      );
     });
 
     it('accepte une location DAY_RANGE si tous les jours sont ouverts', () => {
@@ -234,9 +232,7 @@ describe('opening-hours & schedule exceptions validation', () => {
         endDateExclusive: '2026-08-28',
       };
 
-      expect(() =>
-        isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, []),
-      ).not.toThrow();
+      expect(() => isWithinOpeningHours(intent, 'Europe/Paris', weeklyHours, [])).not.toThrow();
     });
   });
 
@@ -405,4 +401,3 @@ describe('opening-hours & schedule exceptions validation', () => {
     });
   });
 });
-

@@ -24,12 +24,7 @@ export type BookingStatus = (typeof BOOKING_STATUSES)[number];
  * Types d'événements de fulfillment dérivés de l'enum `fulfillment_event_type`
  * PostgreSQL via `fulfillmentEventType.enumValues`.
  */
-export const FULFILLMENT_EVENT_TYPES = [
-  'PREPARED',
-  'PICKED_UP',
-  'RETURNED',
-  'CLOSED',
-] as const;
+export const FULFILLMENT_EVENT_TYPES = ['PREPARED', 'PICKED_UP', 'RETURNED', 'CLOSED'] as const;
 
 export type FulfillmentEventType = (typeof FULFILLMENT_EVENT_TYPES)[number];
 

@@ -1,12 +1,7 @@
 import { and, eq, gte, lte, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import type { DatabaseClient } from '@uttily/database';
-import {
-  bookings,
-  notifications,
-  organizationInvitations,
-  organizations,
-} from '@uttily/database';
+import { bookings, notifications, organizationInvitations, organizations } from '@uttily/database';
 import { renderNotificationRecord } from './load-notification-data';
 import {
   NotificationSendError,

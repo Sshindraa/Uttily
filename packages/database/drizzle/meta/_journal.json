@@ -302,6 +302,41 @@
       "when": 1786800000005,
       "tag": "0043_create_booking_cancellations",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1786800000006,
+      "tag": "0044_create_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1786800000007,
+      "tag": "0045_notification_delivery_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1786800000008,
+      "tag": "0046_location_details_and_schedule_exceptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1786800000009,
+      "tag": "0047_composite_fk_location_schedule_exceptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1786800000010,
+      "tag": "0048_add_invitation_notification_template",
+      "breakpoints": true
     }
   ]
 }

@@ -54,13 +54,7 @@ export default async function InvitationsPage(props: {
         <p>Saisissez le token reçu par email.</p>
         <form action={accept}>
           <label htmlFor="token">Token d\u2019invitation</label>
-          <input
-            id="token"
-            name="token"
-            type="text"
-            defaultValue={prefilledToken}
-            required
-          />
+          <input id="token" name="token" type="text" defaultValue={prefilledToken} required />
           <button type="submit">Accepter</button>
         </form>
       </section>

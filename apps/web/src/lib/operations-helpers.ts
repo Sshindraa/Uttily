@@ -1,11 +1,5 @@
 export type BookingStatus =
-  | 'CONFIRMED'
-  | 'READY_FOR_PICKUP'
-  | 'ACTIVE'
-  | 'RETURNED'
-  | 'CLOSED'
-  | 'CANCELLED'
-  | 'REFUNDED';
+  'CONFIRMED' | 'READY_FOR_PICKUP' | 'ACTIVE' | 'RETURNED' | 'CLOSED' | 'CANCELLED' | 'REFUNDED';
 
 export const BOOKING_STATUSES: readonly BookingStatus[] = [
   'CONFIRMED',

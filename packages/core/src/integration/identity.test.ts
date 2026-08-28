@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import {
   setupIntegrationTestDb,
   shouldSkipIntegrationTests,
@@ -24,15 +24,27 @@ import {
   acceptInvitation,
   provisionUserFromOidc,
   DuplicateInvitationError,
+  verifySignedInvitationToken,
+  hashToken,
   type AuthenticatedUser,
 } from '../index';
+import { renderNotificationRecord } from '../notifications/load-notification-data';
 
 const isCi = process.env.CI === '1' || process.env.CI === 'true';
+const TEST_INVITATION_SECRET = 'test-invitation-secret-identity-integration-at-least-32-bytes-long';
+const TEST_PUBLIC_APP_URL = 'http://localhost:3000';
 
 let ctx: IntegrationTestContext | null = null;
 let db: ReturnType<typeof createDatabase> | null = null;
+let previousInvitationSecret: string | undefined;
+let previousPublicAppUrl: string | undefined;
 
 beforeAll(async () => {
+  previousInvitationSecret = process.env.INVITATION_SECRET;
+  previousPublicAppUrl = process.env.PUBLIC_APP_URL;
+  process.env.INVITATION_SECRET = TEST_INVITATION_SECRET;
+  process.env.PUBLIC_APP_URL = TEST_PUBLIC_APP_URL;
+
   ctx = await setupIntegrationTestDb('identity');
   if (ctx) {
     db = createDatabase(ctx.databaseUrl);
@@ -44,6 +56,18 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  if (previousInvitationSecret !== undefined) {
+    process.env.INVITATION_SECRET = previousInvitationSecret;
+  } else {
+    delete process.env.INVITATION_SECRET;
+  }
+
+  if (previousPublicAppUrl !== undefined) {
+    process.env.PUBLIC_APP_URL = previousPublicAppUrl;
+  } else {
+    delete process.env.PUBLIC_APP_URL;
+  }
+
   // Ferme le pool de connexions Drizzle avant de dropper la base,
   // sinon PostgreSQL refuse le DROP DATABASE (connexions actives).
   if (db) {
@@ -62,6 +86,7 @@ beforeEach(async () => {
   // Nettoie les tables entre les tests (ordre inverse des dépendances).
   // audit_log est append-only (trigger bloquant UPDATE/DELETE) : non nettoyée.
   const {
+    notifications,
     organizationInvitations,
     locationOpeningHours,
     locations,
@@ -69,6 +94,7 @@ beforeEach(async () => {
     organizations,
     users,
   } = await import('@uttily/database');
+  await db.delete(notifications);
   await db.delete(organizationInvitations);
   await db.delete(locationOpeningHours);
   await db.delete(locations);
@@ -185,7 +211,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Identity integration — multi-te
     expect(await countActiveOwners(db, organization.id)).toBe(1);
   });
 
-  it('invitation : crée, accepte et active la membership', async () => {
+  it('invitation : crée, persiste en base, génère notification sans secret brut, extrait via render et active la membership', async () => {
     if (!ctx || !db) return;
     const owner = await createUser(db, 'inviter@example.com');
     const { organization } = await createOrganizationForUser(db, owner, {
@@ -202,9 +228,65 @@ describe.skipIf(shouldSkipIntegrationTests())('Identity integration — multi-te
         ttlSeconds: 3600,
       },
     );
-    expect(invitation.token).toMatch(/^[0-9a-f]{64}$/);
 
-    // L'invité s'authentifie via Clerk → provisioning.
+    // 1. Validation cryptographique du token retourné
+    const verified = verifySignedInvitationToken(invitation.token, {
+      organizationId: organization.id,
+      email: 'invitee@example.com',
+    });
+    expect(verified.valid).toBe(true);
+    expect(verified.invitationId).toBe(invitation.id);
+
+    // 2. Vérification de l'invitation en base PostgreSQL
+    const { organizationInvitations, notifications } = await import('@uttily/database');
+    const [invitationRow] = await db
+      .select()
+      .from(organizationInvitations)
+      .where(eq(organizationInvitations.id, invitation.id))
+      .limit(1);
+    expect(invitationRow).toBeDefined();
+    expect(invitationRow!.status).toBe('PENDING');
+    expect(invitationRow!.tokenHash).toBe(hashToken(invitation.token));
+    expect(invitationRow!.email).toBe('invitee@example.com');
+    expect(invitationRow!.role).toBe('STAFF');
+
+    // 3. Vérification de la notification outbox transactionnelle (sans bearer ni token brut)
+    const [notificationRow] = await db
+      .select()
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.template, 'ORGANIZATION_INVITATION'),
+          eq(notifications.recipient, 'invitee@example.com'),
+        ),
+      )
+      .limit(1);
+    expect(notificationRow).toBeDefined();
+    expect(notificationRow!.status).toBe('PENDING');
+    const metadataStr = JSON.stringify(notificationRow!.metadata);
+    expect(metadataStr).not.toContain(invitation.token);
+    expect(metadataStr).not.toContain('bearer');
+    expect(notificationRow!.metadata).toMatchObject({
+      invitationId: invitation.id,
+    });
+
+    // 4. Rendu de la notification via renderNotificationRecord & extraction du token
+    const rendered = await renderNotificationRecord(db, notificationRow!);
+    expect(rendered.subject).toContain('Invite Org');
+    expect(rendered.html).toContain('/invitations?token=');
+    const match = /token=([^"&\s]+)/.exec(rendered.html);
+    expect(match).toBeTruthy();
+    const extractedToken = decodeURIComponent(match![1]!);
+    expect(extractedToken).toBe(invitation.token);
+
+    const verifiedExtracted = verifySignedInvitationToken(extractedToken, {
+      organizationId: organization.id,
+      email: 'invitee@example.com',
+    });
+    expect(verifiedExtracted.valid).toBe(true);
+    expect(verifiedExtracted.invitationId).toBe(invitation.id);
+
+    // 5. Provisioning de l'invité et acceptation de l'invitation avec le token extrait
     const invitee = await provisionUserFromOidc(db, {
       oidcSubject: 'clerk-invitee',
       oidcProvider: 'clerk',
@@ -212,13 +294,20 @@ describe.skipIf(shouldSkipIntegrationTests())('Identity integration — multi-te
       emailVerified: true,
     });
 
-    const result = await acceptInvitation(db, invitee, invitation.token);
+    const result = await acceptInvitation(db, invitee, extractedToken);
     expect(result.organizationId).toBe(organization.id);
     expect(result.role).toBe('STAFF');
 
     const membership = await getMembership(db, organization.id, invitee.id);
     expect(membership?.role).toBe('STAFF');
     expect(membership?.status).toBe('ACTIVE');
+
+    const [updatedInvitation] = await db
+      .select()
+      .from(organizationInvitations)
+      .where(eq(organizationInvitations.id, invitation.id))
+      .limit(1);
+    expect(updatedInvitation?.status).toBe('ACCEPTED');
   });
 
   it("invitation : refuse si l'email ne correspond pas", async () => {
