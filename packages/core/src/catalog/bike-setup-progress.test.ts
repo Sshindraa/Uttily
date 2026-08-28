@@ -38,6 +38,7 @@ describe('BikeSetupProgress Read Model (Core Unit Tests)', () => {
       skuSuffix: 'M',
       isActive: true,
       attributes: { size: 'M' },
+      currency: 'EUR',
     },
     photos: {
       count: 0,

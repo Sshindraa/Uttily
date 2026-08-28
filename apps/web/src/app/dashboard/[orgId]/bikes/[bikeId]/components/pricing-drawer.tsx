@@ -6,6 +6,7 @@ import {
   saveDailyPricingPlanDraftAction,
   activateDailyPricingPlanAction,
 } from '@/app/actions/pricing';
+import { formatMoneyAmount } from '@/lib/status-presentation';
 import styles from './components.module.css';
 
 interface PricingDrawerProps {
@@ -13,6 +14,7 @@ interface PricingDrawerProps {
   productId: string;
   variantId: string;
   currentPriceEuros: number | null;
+  currency: string;
   currentTiers?: Array<{ thresholdDays: number; discountPercent: number }> | undefined;
 }
 
@@ -21,6 +23,7 @@ export function PricingDrawer({
   productId,
   variantId,
   currentPriceEuros,
+  currency,
   currentTiers = [],
 }: PricingDrawerProps): React.ReactElement {
   const router = useRouter();
@@ -56,8 +59,11 @@ export function PricingDrawer({
       saveFormData.set('productId', productId);
       saveFormData.set('variantId', variantId);
       saveFormData.set('dailyPriceEuros', dailyPrice);
-      saveFormData.set('currency', 'EUR');
-      saveFormData.set('internalLabel', `Tarif ${dailyPrice} €/j`);
+      saveFormData.set('currency', currency);
+      saveFormData.set(
+        'internalLabel',
+        `Tarif ${formatMoneyAmount(Math.round(parsedDailyPrice * 100), currency)}/j`,
+      );
       if (p3 > 0) saveFormData.set('tier3DiscountPercent', String(p3));
       if (p7 > 0) saveFormData.set('tier7DiscountPercent', String(p7));
       if (p14 > 0) saveFormData.set('tier14DiscountPercent', String(p14));
@@ -143,7 +149,7 @@ export function PricingDrawer({
 
               <div className={styles.formGroup}>
                 <label htmlFor="daily-price" className={styles.formLabel}>
-                  Prix de base à la journée (€ TTC) :
+                  Prix de base à la journée (TTC, {currency}) :
                 </label>
                 <input
                   id="daily-price"
@@ -177,7 +183,7 @@ export function PricingDrawer({
                     marginTop: '4px',
                   }}
                 >
-                  {parsedDailyPrice.toFixed(2)} €{' '}
+                  {formatMoneyAmount(Math.round(parsedDailyPrice * 100), currency)}{' '}
                   <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>
                     / jour
                   </span>

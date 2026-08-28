@@ -1,4 +1,5 @@
 import type { UnifiedBike } from '@uttily/core';
+import { formatMoneyAmount } from '@/lib/status-presentation';
 import { PricingDrawer } from './pricing-drawer';
 import styles from './components.module.css';
 
@@ -7,6 +8,7 @@ interface PricingCardProps {
   productId: string;
   variantId: string;
   pricing: UnifiedBike['pricing'];
+  currency: string;
 }
 
 export function BikePricingCard({
@@ -14,9 +16,11 @@ export function BikePricingCard({
   productId,
   variantId,
   pricing,
+  currency,
 }: PricingCardProps): React.ReactElement {
   const activePlan = pricing.activePlan;
   const priceEuros = activePlan ? activePlan.priceAmountMinor / 100 : null;
+  const displayCurrency = activePlan?.currency ?? currency;
 
   return (
     <section className={styles.card} aria-labelledby="pricing-title">
@@ -29,6 +33,7 @@ export function BikePricingCard({
           productId={productId}
           variantId={variantId}
           currentPriceEuros={priceEuros}
+          currency={displayCurrency}
           currentTiers={activePlan?.discountTiers}
         />
       </div>
@@ -36,7 +41,9 @@ export function BikePricingCard({
       {pricing.isPriced && activePlan ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div className={styles.pricingDisplay}>
-            <span className={styles.pricingBig}>{priceEuros?.toFixed(2)} €</span>
+            <span className={styles.pricingBig}>
+              {formatMoneyAmount(activePlan.priceAmountMinor, displayCurrency)}
+            </span>
             <span className={styles.pricingUnit}>/ jour (TTC)</span>
           </div>
 
@@ -53,15 +60,11 @@ export function BikePricingCard({
                 Remises longue durée actives :
               </div>
               <div className={styles.tiersList}>
-                {activePlan.discountTiers.map((tier) => {
-                  const discountedPerDay = (priceEuros ?? 0) * (1 - tier.discountPercent / 100);
-                  return (
-                    <span key={tier.thresholdDays} className={styles.tierBadge}>
-                      Dès <strong>{tier.thresholdDays} jours</strong> : -{tier.discountPercent} % (
-                      {discountedPerDay.toFixed(2)} €/j)
-                    </span>
-                  );
-                })}
+                {activePlan.discountTiers.map((tier) => (
+                  <span key={tier.thresholdDays} className={styles.tierBadge}>
+                    Dès <strong>{tier.thresholdDays} jours</strong> : -{tier.discountPercent} %
+                  </span>
+                ))}
               </div>
             </div>
           ) : (

@@ -75,6 +75,7 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
                     skuSuffix: 'M',
                     isActive: true,
                     attributes: { color: 'noir' },
+                    currency: 'EUR',
                   },
                 ]),
               };
@@ -187,6 +188,7 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
     // 1. Identité
     expect(bike.product.name).toBe('Canyon Roadlite');
     expect(bike.variant.name).toBe('Taille M');
+    expect(bike.variant.currency).toBe('EUR');
 
     // 2. Photos
     expect(bike.photos.count).toBe(3);

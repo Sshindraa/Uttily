@@ -57,6 +57,7 @@ export interface UnifiedBike {
     skuSuffix: string | null;
     isActive: boolean;
     attributes: Record<string, unknown> | null;
+    currency: string;
   };
   photos: {
     count: number;
@@ -174,6 +175,7 @@ export async function getUnifiedBike(
       skuSuffix: productVariants.skuSuffix,
       isActive: productVariants.isActive,
       attributes: productVariants.attributes,
+      currency: productVariants.currency,
     })
     .from(productVariants)
     .where(and(eq(productVariants.productId, productId), isNull(productVariants.deletedAt)))
@@ -297,6 +299,7 @@ export async function getUnifiedBike(
       skuSuffix: targetVariant.skuSuffix,
       isActive: targetVariant.isActive,
       attributes: (targetVariant.attributes as Record<string, unknown>) ?? null,
+      currency: targetVariant.currency,
     },
     photos: {
       count: uniqueChecksumCount,

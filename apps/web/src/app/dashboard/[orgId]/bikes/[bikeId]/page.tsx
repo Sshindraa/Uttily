@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getUnifiedBike, listCategories, listLocations } from '@uttily/core';
 import { requireCatalogViewerOf } from '@/lib/catalog-auth';
+import { formatMoneyAmount } from '@/lib/status-presentation';
 import { BikeIdentityCard } from './components/identity-card';
 import { BikePhotosCard } from './components/photos-card';
 import { BikePricingCard } from './components/pricing-card';
@@ -52,7 +53,7 @@ export default async function UnifiedBikePage({
               <span className={styles.categoryTag}>{bike.product.categoryName}</span>
               <span>•</span>
               <span>
-                Variante : <strong>{bike.variant.name}</strong>
+                Taille : <strong>{bike.variant.name}</strong>
               </span>
             </div>
             <h1 id="bike-heading" className={styles.bikeTitle}>
@@ -106,7 +107,10 @@ export default async function UnifiedBikePage({
             </span>
             <span>
               {bike.pricing.isPriced && bike.pricing.activePlan
-                ? `${(bike.pricing.activePlan.priceAmountMinor / 100).toFixed(2)} € / jour`
+                ? `${formatMoneyAmount(
+                    bike.pricing.activePlan.priceAmountMinor,
+                    bike.pricing.activePlan.currency,
+                  )} / jour`
                 : 'Tarif non configuré'}
             </span>
           </div>
@@ -168,6 +172,7 @@ export default async function UnifiedBikePage({
           productId={bike.product.id}
           variantId={bike.variant.id}
           pricing={bike.pricing}
+          currency={bike.variant.currency}
         />
 
         <BikeInventoryCard

@@ -136,7 +136,7 @@ export function InventoryActions({
         <table className={styles.itemsTable}>
           <thead>
             <tr>
-              <th>SKU / Identifiant</th>
+              <th>Référence vélo</th>
               <th>N° Série</th>
               <th>Statut</th>
               <th>Action</th>
@@ -216,7 +216,7 @@ export function InventoryActions({
           }}
         >
           <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b' }}>
-            Aucun exemplaire physique enregistré. Cliquez sur « Ajouter un vélo » pour renseigner
+            Aucun vélo enregistré. Cliquez sur « Ajouter un vélo » pour renseigner
             vos premiers vélos en boutique.
           </p>
         </div>
@@ -244,7 +244,7 @@ export function InventoryActions({
             >
               <div className={styles.formGroup}>
                 <label htmlFor="bike-sku" className={styles.formLabel}>
-                  Identifiant interne (ex: CAN-001) :
+                  Référence vélo (ex: CAN-001) :
                 </label>
                 <input
                   id="bike-sku"

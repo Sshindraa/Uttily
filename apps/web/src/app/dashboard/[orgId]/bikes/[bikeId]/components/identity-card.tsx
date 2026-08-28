@@ -83,10 +83,10 @@ export function BikeIdentityCard({
               textTransform: 'uppercase',
             }}
           >
-            Variante / Taille
+            Taille
           </span>
           <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>
-            📐 {variant.name} {variant.skuSuffix ? `(${variant.skuSuffix})` : ''}
+            📐 {variant.name}
           </div>
         </div>
       </div>
