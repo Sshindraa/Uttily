@@ -1,22 +1,18 @@
-import { notFound } from 'next/navigation';
-import { getInventoryDetails } from '@uttily/core';
-import { requireCatalogManagerOf } from '@/lib/catalog-auth';
-import { EditInventoryForm } from './edit-inventory-form';
+import { redirect } from 'next/navigation';
 
-export default async function EditInventoryItemPage({
+/**
+ * Route historique d'édition d'exemplaire (Chantier 3).
+ *
+ * Chantier 17.1-A — fermeture de l'arbre Inventaire : la flotte unitaire vit
+ * désormais dans la surface canonique **Flotte**. Il n'existe aucune route
+ * canonique par exemplaire (`/fleet/[itemId]`) ; plutôt que de créer une
+ * nouvelle interface Pro, cette route redirige vers la Flotte.
+ */
+export default async function LegacyInventoryEditRedirect({
   params,
 }: {
   params: Promise<{ orgId: string; itemId: string }>;
-}): Promise<React.ReactElement> {
-  const { orgId, itemId } = await params;
-  const { db, organizationId } = await requireCatalogManagerOf(orgId);
-  const details = await getInventoryDetails(db, organizationId, itemId);
-  if (details === null) notFound();
-
-  return (
-    <main>
-      <h1>Éditer l'exemplaire — {details.item.internalSku}</h1>
-      <EditInventoryForm orgId={organizationId} item={details.item} />
-    </main>
-  );
+}): Promise<never> {
+  const { orgId } = await params;
+  redirect(`/dashboard/${orgId}/fleet`);
 }
