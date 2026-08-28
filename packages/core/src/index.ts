@@ -187,3 +187,6 @@ export * from './notifications';
 
 // Chantier 14 — Espace Locataire & Post-réservation.
 export * from './customer-bookings';
+
+// Chantier 16 — Back-office Uttily & Support V1.
+export * from './support';
