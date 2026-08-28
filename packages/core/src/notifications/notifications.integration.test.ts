@@ -41,15 +41,7 @@ describe.skipIf(isSkipped)(
 
     beforeEach(async () => {
       if (rawSql) {
-        await rawSql`DELETE FROM notifications`;
-        await rawSql`DELETE FROM booking_cancellations`;
-        await rawSql`DELETE FROM booking_lines`;
-        await rawSql`DELETE FROM booking_items`;
-        await rawSql`DELETE FROM bookings`;
-        await rawSql`DELETE FROM refunds`;
-        await rawSql`DELETE FROM payment_attempts`;
-        await rawSql`DELETE FROM payments`;
-        await rawSql`DELETE FROM booking_drafts`;
+        await rawSql`TRUNCATE TABLE notifications, booking_cancellations, booking_lines, booking_items, bookings, refunds, payment_attempts, payments, booking_drafts CASCADE`;
       }
     });
 
@@ -316,6 +308,13 @@ describe.skipIf(isSkipped)(
         now: new Date('2026-09-01T10:00:00Z'),
       });
 
+      // Marquer les notifications de confirmation déjà envoyées
+      await rawSql`
+      UPDATE notifications
+      SET status = 'SENT'
+      WHERE booking_id = ${fixture.booking.id} AND template IN ('BOOKING_CONFIRMED_CUSTOMER', 'BOOKING_CONFIRMED_MERCHANT')
+    `;
+
       // Booking passé en ACTIVE avant l'envoi du pickup reminder -> statut inattendu pour un pickup reminder
       await rawSql`
       UPDATE bookings
@@ -405,7 +404,7 @@ describe.skipIf(isSkipped)(
       UPDATE notifications
       SET status = 'SENDING',
           lease_token = 'token_worker_2',
-          lease_until = '2026-09-01 10:01:11+00'
+          lease_until = '2026-09-01 10:00:11+00'
       WHERE id = ${notif.id}
     `;
 

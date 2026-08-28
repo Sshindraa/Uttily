@@ -112,6 +112,7 @@ describe('Support Server Actions (Apps/Web)', () => {
       vi.spyOn(core, 'resendInvitationNotificationSupport').mockResolvedValueOnce({
         ok: true,
         invitationId: 'inv-1',
+        notificationId: 'notif-1',
       });
 
       const res = await resendInvitationNotificationAction('inv-1', 'Invitation non reçue');
@@ -131,6 +132,7 @@ describe('Support Server Actions (Apps/Web)', () => {
       vi.spyOn(core, 'reconcilePaymentSupport').mockResolvedValueOnce({
         id: 'pay-1',
         status: 'PROCESSING',
+        reconciledCount: 1,
       });
 
       const res = await reconcilePaymentSupportAction('pay-1', 'Blocage webhook');

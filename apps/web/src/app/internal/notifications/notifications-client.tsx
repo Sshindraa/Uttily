@@ -7,15 +7,25 @@ import styles from './notifications-support.module.css';
 export function NotificationActionButtons({
   notificationId,
   status,
+  failureCode,
+  requiresManualReview,
 }: {
   notificationId: string;
   status: string;
+  failureCode?: string | null;
+  requiresManualReview?: boolean;
 }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
+  const isUncertainExpired = failureCode === 'PROVIDER_RESULT_UNCERTAIN_WINDOW_EXPIRED';
+  const isRetryAllowed = status === 'FAILED' && !isUncertainExpired;
+
   const handleRetry = async () => {
-    const reason = window.prompt('Motif support pour relancer la notification (audit) :');
+    const promptText = requiresManualReview
+      ? 'Motif support obligatoire pour relancer cette notification avec revue requise (audit) :'
+      : 'Motif support obligatoire pour relancer la notification (audit) :';
+    const reason = window.prompt(promptText);
     if (!reason || !reason.trim()) return;
 
     setLoading(true);
@@ -55,8 +65,24 @@ export function NotificationActionButtons({
   };
 
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-      {status === 'FAILED' && (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+      {isUncertainExpired && (
+        <span
+          style={{
+            fontSize: '0.75rem',
+            padding: '0.2rem 0.4rem',
+            background: 'rgba(239, 68, 68, 0.15)',
+            color: '#f87171',
+            borderRadius: '4px',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+          }}
+          title="Le délai de 24h est dépassé après tentative incertaine. Relance interdite pour éviter tout risque de double envoi."
+        >
+          🚫 Doublon interdit (délai expiré)
+        </span>
+      )}
+
+      {isRetryAllowed && (
         <button
           type="button"
           className={styles.actionBtn}
@@ -78,7 +104,11 @@ export function NotificationActionButtons({
         </button>
       )}
 
-      {msg && <span style={{ fontSize: '0.75rem', color: msg.startsWith('✅') ? '#4ade80' : '#f87171' }}>{msg}</span>}
+      {msg && (
+        <span style={{ fontSize: '0.75rem', color: msg.startsWith('✅') ? '#4ade80' : '#f87171' }}>
+          {msg}
+        </span>
+      )}
     </div>
   );
 }

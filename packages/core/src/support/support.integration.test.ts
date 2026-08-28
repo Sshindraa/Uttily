@@ -14,6 +14,7 @@ import { listAuditLogsSupport } from './audit-support';
 import { retryNotificationSupport } from './actions/retry-notification';
 import { cancelNotificationSupport } from './actions/cancel-notification';
 import { resendInvitationNotificationSupport } from './actions/resend-invitation-notification';
+import { reconcilePaymentSupport } from './actions/reconcile-payment';
 
 const isSkipped = shouldSkipIntegrationTests();
 
@@ -325,11 +326,11 @@ describe.skipIf(isSkipped)(
       expect(bookingDetails.timeline.length).toBeGreaterThanOrEqual(2);
     });
 
-    it('relance une notification en échec et consigne l\u2019action dans le journal d\u2019audit', async () => {
+    it('relance une notification en échec (FAILED) et réinitialise son cycle avec trace d’audit complète', async () => {
       if (!db || !rawSql) throw new Error('DB non initialisée');
       const f = await createFullFixture();
 
-      // 1. Relance de la notification
+      // 1. Relance de la notification FAILED
       const result = await retryNotificationSupport(db, {
         notificationId: f.failedNotif.id,
         actorUserId: f.adminUser.id,
@@ -337,15 +338,26 @@ describe.skipIf(isSkipped)(
       });
       expect(result.ok).toBe(true);
 
-      // 2. Vérifier que la notification est revenue en PENDING sans failure_code
-      const updatedNotif = firstRow(await rawSql<{ status: string; failure_code: string | null; requires_manual_review: boolean }[]>`
-        SELECT status, failure_code, requires_manual_review FROM notifications WHERE id = ${f.failedNotif.id}
+      // 2. Vérifier la réinitialisation explicite du cycle
+      const updatedNotif = firstRow(await rawSql<{
+        status: string;
+        failure_code: string | null;
+        failed_at: Date | null;
+        requires_manual_review: boolean;
+        provider_first_attempt_started_at: Date | null;
+        attempt_count: number;
+      }[]>`
+        SELECT status, failure_code, failed_at, requires_manual_review, provider_first_attempt_started_at, attempt_count
+        FROM notifications WHERE id = ${f.failedNotif.id}
       `);
       expect(updatedNotif.status).toBe('PENDING');
       expect(updatedNotif.failure_code).toBeNull();
+      expect(updatedNotif.failed_at).toBeNull();
       expect(updatedNotif.requires_manual_review).toBe(false);
+      expect(updatedNotif.provider_first_attempt_started_at).toBeNull();
+      expect(updatedNotif.attempt_count).toBe(0);
 
-      // 3. Vérifier la trace dans audit_log
+      // 3. Vérifier la trace dans audit_log avec les anciennes valeurs
       const auditEntry = firstRow(await rawSql<{ action: string; target_type: string; target_id: string; actor_user_id: string; metadata: any }[]>`
         SELECT action, target_type, target_id, actor_user_id, metadata FROM audit_log WHERE target_id = ${f.failedNotif.id}
       `);
@@ -353,11 +365,65 @@ describe.skipIf(isSkipped)(
       expect(auditEntry.target_type).toBe('notification');
       expect(auditEntry.actor_user_id).toBe(f.adminUser.id);
       expect(auditEntry.metadata.reason).toBe('Client nous a contacté par téléphone');
+      expect(auditEntry.metadata.previousStatus).toBe('FAILED');
+      expect(auditEntry.metadata.previousFailureCode).toBe('PROVIDER_RATE_LIMIT');
+      expect(auditEntry.metadata.previousAttemptCount).toBe(3);
 
       // 4. Consultation via listAuditLogsSupport
       const auditList = await listAuditLogsSupport(db, { targetId: f.failedNotif.id });
       expect(auditList).toHaveLength(1);
       expect(auditList[0]?.actorEmail).toBe(f.adminUser.email);
+    });
+
+    it('refuse catégoriquement de relancer une notification si PROVIDER_RESULT_UNCERTAIN_WINDOW_EXPIRED (anti-doublon)', async () => {
+      if (!db || !rawSql) throw new Error('DB non initialisée');
+      const f = await createFullFixture();
+
+      const uncertainNotif = firstRow(await rawSql<{ id: string }[]>`
+        INSERT INTO notifications (
+          organization_id, booking_id, channel, template, recipient,
+          status, failure_code, requires_manual_review, attempt_count, idempotency_key
+        )
+        VALUES (
+          ${f.org.id}, ${f.booking.id}, 'EMAIL', 'BOOKING_CONFIRMED_CUSTOMER',
+          ${f.customerUser.email}, 'FAILED', 'PROVIDER_RESULT_UNCERTAIN_WINDOW_EXPIRED', true, 2,
+          'booking_confirmed_customer_uncertain:123'
+        )
+        RETURNING id
+      `);
+
+      await expect(
+        retryNotificationSupport(db, {
+          notificationId: uncertainNotif.id,
+          actorUserId: f.adminUser.id,
+          reason: 'Tentative de forçage',
+        }),
+      ).rejects.toThrow('Relance interdite : la fenêtre d’incertitude du provider est expirée');
+    });
+
+    it('refuse de relancer une notification avec statut non-FAILED (SENT, PENDING, CANCELLED)', async () => {
+      if (!db || !rawSql) throw new Error('DB non initialisée');
+      const f = await createFullFixture();
+
+      const sentNotif = firstRow(await rawSql<{ id: string }[]>`
+        INSERT INTO notifications (
+          organization_id, booking_id, channel, template, recipient,
+          status, attempt_count, idempotency_key, sent_at
+        )
+        VALUES (
+          ${f.org.id}, ${f.booking.id}, 'EMAIL', 'BOOKING_CONFIRMED_CUSTOMER',
+          ${f.customerUser.email}, 'SENT', 1, 'booking_confirmed_customer:sent_123', now()
+        )
+        RETURNING id
+      `);
+
+      await expect(
+        retryNotificationSupport(db, {
+          notificationId: sentNotif.id,
+          actorUserId: f.adminUser.id,
+          reason: 'Client demande renvoi',
+        }),
+      ).rejects.toThrow('Seules les notifications en statut FAILED peuvent être relancées');
     });
 
     it('annule une notification en attente et consigne l\u2019action dans l\u2019audit', async () => {
@@ -382,7 +448,7 @@ describe.skipIf(isSkipped)(
       expect(auditEntry.action).toBe('SUPPORT_NOTIFICATION_CANCEL');
     });
 
-    it('renvoie une notification d\u2019invitation d\u2019équipe sans exposer de secret', async () => {
+    it('renvoie une notification d\u2019invitation en préservant l\u2019historique et en assurant l\u2019idempotence', async () => {
       if (!db || !rawSql) throw new Error('DB non initialisée');
       const f = await createFullFixture();
 
@@ -392,25 +458,165 @@ describe.skipIf(isSkipped)(
         RETURNING id
       `);
 
-      const result = await resendInvitationNotificationSupport(db, {
+      // Notification initiale historique déjà envoyée (SENT)
+      const initialNotif = firstRow(await rawSql<{ id: string; status: string }[]>`
+        INSERT INTO notifications (
+          organization_id, channel, template, recipient, status, idempotency_key, sent_at
+        )
+        VALUES (
+          ${f.org.id}, 'EMAIL', 'ORGANIZATION_INVITATION', 'nouveau-membre@location-velos.fr',
+          'SENT', ${`invitation:${invitation.id}`}, now()
+        )
+        RETURNING id, status
+      `);
+
+      // 1. Premier renvoi avec supportRequestId
+      const resend1 = await resendInvitationNotificationSupport(db, {
         invitationId: invitation.id,
         actorUserId: f.adminUser.id,
         reason: 'Loueur a redemandé l’invitation',
+        supportRequestId: 'req-abc-1',
       });
-      expect(result.ok).toBe(true);
+      expect(resend1.ok).toBe(true);
+      expect(resend1.notificationId).not.toBe(initialNotif.id);
 
-      const notif = firstRow(await rawSql<{ id: string; template: string; recipient: string; status: string }[]>`
-        SELECT id, template, recipient, status FROM notifications WHERE idempotency_key = ${`invitation:${invitation.id}`}
+      // Vérifier que la notification historique initiale est TOUJOURS SENT et inchangée
+      const historyNotif = firstRow(await rawSql<{ status: string }[]>`
+        SELECT status FROM notifications WHERE id = ${initialNotif.id}
       `);
-      expect(notif.template).toBe('ORGANIZATION_INVITATION');
-      expect(notif.recipient).toBe('nouveau-membre@location-velos.fr');
-      expect(notif.status).toBe('PENDING');
+      expect(historyNotif.status).toBe('SENT');
 
-      // Vérifier que la liste des notifications ne contient aucun token secret
+      // Vérifier que la NOUVELLE notification est créée en PENDING
+      const newNotif = firstRow(await rawSql<{ id: string; template: string; recipient: string; status: string; idempotency_key: string }[]>`
+        SELECT id, template, recipient, status, idempotency_key FROM notifications WHERE id = ${resend1.notificationId}
+      `);
+      expect(newNotif.template).toBe('ORGANIZATION_INVITATION');
+      expect(newNotif.recipient).toBe('nouveau-membre@location-velos.fr');
+      expect(newNotif.status).toBe('PENDING');
+      expect(newNotif.idempotency_key).toBe(`invitation_resend:${invitation.id}:req-abc-1`);
+
+      // 2. Deuxième appel avec le MÊME supportRequestId => Doit retourner la même notification sans créer de doublon
+      const resend2 = await resendInvitationNotificationSupport(db, {
+        invitationId: invitation.id,
+        actorUserId: f.adminUser.id,
+        reason: 'Deuxième clic rapide',
+        supportRequestId: 'req-abc-1',
+      });
+      expect(resend2.notificationId).toBe(resend1.notificationId);
+
+      const totalNotifsForInvitation = await rawSql<{ count: string }[]>`
+        SELECT COUNT(*) as count FROM notifications WHERE recipient = 'nouveau-membre@location-velos.fr'
+      `;
+      expect(Number(totalNotifsForInvitation[0]?.count)).toBe(2); // L'original SENT + la 1ère nouvelle PENDING
+
+      // 3. Appel avec un AUTRE supportRequestId => Crée une deuxième notification distincte
+      const resend3 = await resendInvitationNotificationSupport(db, {
+        invitationId: invitation.id,
+        actorUserId: f.adminUser.id,
+        reason: 'Nouvelle demande explicite le lendemain',
+        supportRequestId: 'req-abc-2',
+      });
+      expect(resend3.notificationId).not.toBe(resend1.notificationId);
+
+      // Vérifier qu'aucun token ou hash secret n'est exposé dans la liste support
       const notifList = await listNotificationsSupport(db, { recipient: 'nouveau-membre' });
-      expect(notifList).toHaveLength(1);
-      expect((notifList[0] as any).token).toBeUndefined();
-      expect((notifList[0] as any).tokenHash).toBeUndefined();
+      expect(notifList.length).toBeGreaterThanOrEqual(2);
+      for (const n of notifList) {
+        expect((n as any).token).toBeUndefined();
+        expect((n as any).tokenHash).toBeUndefined();
+      }
+    });
+
+    it('exécute reconcilePaymentSupport de manière atomique et truthful avec PostgreSQL', async () => {
+      if (!db || !rawSql) throw new Error('DB non initialisée');
+      const f = await createFullFixture();
+
+      // Créer un draft et un paiement avec une tentative en attente de réponse provider (PENDING_PROVIDER)
+      const stuckDraft = firstRow(await rawSql<{ id: string }[]>`
+        INSERT INTO booking_drafts (
+          organization_id, location_id, customer_user_id, status, pricing_snapshot_version,
+          customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
+          timezone, prep_buffer_minutes, cleanup_buffer_minutes,
+          subtotal_amount_minor, total_amount_minor, billable_unit_count,
+          cancellation_policy_snapshot
+        )
+        VALUES (
+          ${f.org.id}, ${f.location.id}, ${f.customerUser.id}, 'CONVERTED', 'legacy-daily-v1',
+          now() + interval '1 day', now() + interval '3 days', now() + interval '1 day', now() + interval '3 days',
+          'Europe/Paris', 30, 30,
+          12000, 12000, 2,
+          '{"code":"FLEXIBLE"}'::jsonb
+        )
+        RETURNING id
+      `);
+
+      const stuckPayment = firstRow(await rawSql<{ id: string; status: string }[]>`
+        INSERT INTO payments (
+          organization_id, draft_id, customer_user_id, status,
+          amount_minor, currency, tax_status, commission_amount_minor,
+          financial_terms_version, legal_terms_version, terms_acceptance_snapshot,
+          connected_account_id, settlement_merchant_mode, environment
+        )
+        VALUES (
+          ${f.org.id}, ${stuckDraft.id}, ${f.customerUser.id}, 'PENDING_PROVIDER',
+          12000, 'EUR', 'NOT_APPLICABLE', 1200,
+          'standard-v1', 'standard-v1', '{"accepted":true}'::jsonb,
+          'acct_test_123', 'CONNECTED_ACCOUNT', 'TEST'
+        )
+        RETURNING id, status
+      `);
+
+      const attempt = firstRow(await rawSql<{ id: string }[]>`
+        INSERT INTO payment_attempts (
+          organization_id, payment_id, attempt_number, status,
+          provider_payment_intent_id, provider_idempotency_key, provider_status,
+          reconcile_after
+        )
+        VALUES (
+          ${f.org.id}, ${stuckPayment.id}, 1, 'PENDING_PROVIDER',
+          'pi_stuck_123', 'idem_stuck_123', 'processing',
+          now() + interval '1 hour'
+        )
+        RETURNING id
+      `);
+
+      // 1. Réconciliation réussie sur tentative éligible
+      const reconcileResult = await reconcilePaymentSupport(db, {
+        paymentId: stuckPayment.id,
+        actorUserId: f.adminUser.id,
+        reason: 'Client en attente, forçage réconciliation immédiate',
+      });
+      expect(reconcileResult.status).toBe('PENDING_PROVIDER');
+      expect(reconcileResult.reconciledCount).toBe(1);
+
+      // Vérifier que la tentative est immédiatement due pour le worker
+      const updatedAttempt = firstRow(await rawSql<{ reconcile_after: Date }[]>`
+        SELECT reconcile_after FROM payment_attempts WHERE id = ${attempt.id}
+      `);
+      expect(updatedAttempt.reconcile_after.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
+
+      // Vérifier l'audit créé
+      const auditLogRows = await rawSql<{ action: string; target_id: string; metadata: any }[]>`
+        SELECT action, target_id, metadata FROM audit_log WHERE target_id = ${stuckPayment.id}
+      `;
+      expect(auditLogRows).toHaveLength(1);
+      expect(auditLogRows[0]?.action).toBe('SUPPORT_PAYMENT_RECONCILE_SCHEDULED');
+      expect(auditLogRows[0]?.metadata.reconciledCount).toBe(1);
+
+      // 2. Tentative de réconciliation sur paiement n'ayant aucune tentative éligible (ex: déjà SUCCEEDED)
+      await expect(
+        reconcilePaymentSupport(db, {
+          paymentId: f.payment.id, // f.payment.id n'a qu'une tentative SUCCEEDED
+          actorUserId: f.adminUser.id,
+          reason: 'Demande sans tentative en cours',
+        }),
+      ).rejects.toThrow('Aucune tentative de paiement non-terminale éligible');
+
+      // Vérifier qu'aucun faux audit n'a été inséré pour le paiement déjà SUCCEEDED
+      const falseAuditRows = await rawSql<{ id: string }[]>`
+        SELECT id FROM audit_log WHERE target_id = ${f.payment.id} AND action = 'SUPPORT_PAYMENT_RECONCILE_SCHEDULED'
+      `;
+      expect(falseAuditRows).toHaveLength(0);
     });
   },
 );

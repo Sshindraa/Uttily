@@ -138,9 +138,21 @@ export default async function NotificationsSupportPage({
                   <td className={styles.td}>{n.attemptCount}</td>
                   <td className={styles.td} style={{ color: n.failureCode ? '#f87171' : '#64748b' }}>
                     {n.failureCode ?? '—'}
+                    {n.requiresManualReview && (
+                      <div style={{ marginTop: '0.2rem' }}>
+                        <span className={styles.statusError} style={{ fontSize: '0.7rem' }}>
+                          ⚠️ Revue requise
+                        </span>
+                      </div>
+                    )}
                   </td>
                   <td className={styles.td}>
-                    <NotificationActionButtons notificationId={n.id} status={n.status} />
+                    <NotificationActionButtons
+                      notificationId={n.id}
+                      status={n.status}
+                      failureCode={n.failureCode}
+                      requiresManualReview={n.requiresManualReview}
+                    />
                   </td>
                 </tr>
               ))

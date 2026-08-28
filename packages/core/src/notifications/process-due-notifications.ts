@@ -1,4 +1,4 @@
-import { and, eq, gte, lte, or, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import type { DatabaseClient } from '@uttily/database';
 import { bookings, notifications, organizationInvitations, organizations } from '@uttily/database';
@@ -65,17 +65,10 @@ export async function processDueNotifications(
         leaseToken,
         leaseUntil,
         attemptCount: sql`${notifications.attemptCount} + 1`,
-        providerFirstAttemptStartedAt: sql`COALESCE(${notifications.providerFirstAttemptStartedAt}, ${now})`,
+        providerFirstAttemptStartedAt: sql`COALESCE(${notifications.providerFirstAttemptStartedAt}, ${now.toISOString()}::timestamptz)`,
         updatedAt: sql`now()`,
       })
-      .where(
-        and(
-          sql`${notifications.id} IN (${sql.join(
-            ids.map((id) => sql`${id}::uuid`),
-            sql`, `,
-          )})`,
-        ),
-      );
+      .where(inArray(notifications.id, ids));
 
     return rows;
   });
