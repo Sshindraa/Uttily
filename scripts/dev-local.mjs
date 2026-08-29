@@ -8,7 +8,6 @@ export const LOCAL_DATABASE_URL = 'postgresql://uttily:uttily@127.0.0.1:5432/utt
 // Valeur de signature dev/test uniquement : non secrète et interdite en staging/production.
 export const LOCAL_DEV_PUBLIC_SEARCH_CURSOR_SECRET = 'uttily-local-dev-public-search-cursor-v1';
 export const LOCAL_PUBLIC_APP_URL = 'http://localhost:3000';
-export const LOCAL_PLATFORM_COMMISSION_RATE_BPS = '1000';
 
 const LOCAL_DATABASE_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
 const DATABASE_VARIABLES = ['DATABASE_URL', 'DATABASE_DIRECT_URL'];
@@ -129,8 +128,13 @@ export function createLocalEnvironment(baseEnvironment = process.env) {
     }
   }
 
+  const sanitizedBaseEnvironment = { ...baseEnvironment };
+  // Ne pas laisser fuiter l'ancien taux même lorsqu'il est présent dans le
+  // shell appelant : le registre serveur est désormais l'unique autorité.
+  delete sanitizedBaseEnvironment.PLATFORM_COMMISSION_RATE_BPS;
+
   const childEnvironment = {
-    ...baseEnvironment,
+    ...sanitizedBaseEnvironment,
     NODE_ENV: 'development',
     UTTILY_LOCAL_DEV: '1',
     DATABASE_URL: LOCAL_DATABASE_URL,
@@ -140,7 +144,6 @@ export function createLocalEnvironment(baseEnvironment = process.env) {
     STRIPE_SECRET_KEY: baseEnvironment.STRIPE_SECRET_KEY ?? '',
     NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: baseEnvironment.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? '',
     PUBLIC_APP_URL: LOCAL_PUBLIC_APP_URL,
-    PLATFORM_COMMISSION_RATE_BPS: LOCAL_PLATFORM_COMMISSION_RATE_BPS,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: baseEnvironment.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     CLERK_SECRET_KEY: baseEnvironment.CLERK_SECRET_KEY,
     PUBLIC_SEARCH_CURSOR_SECRET: LOCAL_DEV_PUBLIC_SEARCH_CURSOR_SECRET,

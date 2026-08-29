@@ -16,9 +16,9 @@ utilisés.
 - **Neon** : projet `Uttily-dev`, branche `staging`, région Frankfurt, 38
   migrations présentes ; l'application et le worker utilisent l'endpoint pooled.
 - **Paiement** : `STRIPE_ENVIRONMENT=TEST`, `PAYMENTS_LIVE_ENABLED=false`,
-  `PLATFORM_COMMISSION_RATE_BPS=1000` (10 %), `PUBLIC_APP_URL` égal au domaine
-  staging. Les valeurs sont configurées côté serveur et ne possèdent pas de
-  défaut silencieux en production.
+  `PUBLIC_APP_URL` égal au domaine staging. Depuis `22-B0`, les nouveaux
+  paiements utilisent la règle serveur fermée `split-13-7-v1`; aucune variable
+  d'environnement ne porte de taux.
 - **Clerk** : instance development/test, utilisateur pilote
   `uttily-staging-e2e+clerk_test@example.com`, authentifié par le flux Clerk
   réel. Dans Uttily, il est `OWNER` et `ACTIVE` dans `Uttily Demo Rental` ; les
@@ -42,7 +42,7 @@ checkout Stripe TEST → webhook signé → confirmation → worker → R2 → R
 | Contrôle | Preuve | Résultat |
 | --- | --- | --- |
 | Hold et paiement | draft `80c53b96-7c5f-44d8-9771-246f180dc77e`, paiement `115b6d81-ddcc-49ad-8b7b-1d79de4aaf5d` | `CONVERTED`, `SUCCEEDED` |
-| Commission | snapshot serveur | `850` centimes sur `8500` centimes, règle `1000 bps` |
+| Commission | snapshot serveur historique | `850` centimes sur `8500` centimes, règle legacy `1000 bps` ; cette preuve reste historique et n'est pas migrée rétroactivement |
 | Stripe | événement `payment_intent.succeeded` reçu | webhook `PROCESSED` |
 | Réservation | booking `7000b6b0-181a-4c10-8549-22ca95f05d29` | `CONFIRMED` |
 | Outbox | événement `e92c167e-a364-47ed-ac64-d56d3a49847a` | `PROCESSED`, 4 effets `COMPLETED` |

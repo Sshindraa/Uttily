@@ -96,6 +96,11 @@ export interface SnapshotBooking {
   readonly subtotalAmountMinor: number;
   readonly mandatoryFeesAmountMinor: number;
   readonly totalAmountMinor: number;
+  /** Champs publics de split marketplace, présents uniquement pour les nouveaux bookings. */
+  readonly marketplaceFeeBaseAmountMinor?: number;
+  readonly customerServiceFeeAmountMinor?: number;
+  readonly customerTotalAmountMinor?: number;
+  readonly marketplaceFeeRuleVersion?: string;
   readonly taxStatus: string;
   readonly taxAmountMinor: number | null;
   readonly taxRateBps: number | null;

@@ -1,4 +1,5 @@
 import { FinancialTermsError } from './errors';
+import { parseMarketplaceFeeSnapshot } from '../marketplace-fees';
 import type {
   CommissionRuleSnapshot,
   FinancialTermsConfig,
@@ -33,7 +34,7 @@ function isIso8601(value: string): boolean {
  * Fonction pure : aucune dépendance base de données, aucun appel Stripe, aucun
  * effet de bord. Les montants sont des entiers en unités mineures avec devise
  * EUR. Le brouillon Lot 4 n'est jamais muté — le résolveur ne lit que
- * `draftTotalAmountMinor` et `draftCurrency`.
+ * `draftTotalAmountMinor`, `draftCurrency` et son snapshot split éventuel.
  *
  * Règles de validation (dans l'ordre) :
  *  1. Devise du brouillon doit être 'EUR'.
@@ -41,8 +42,9 @@ function isIso8601(value: string): boolean {
  *  3. La configuration fiscale doit être présente (jamais de substitution par 0).
  *  4. Le statut fiscal ne doit pas être UNDETERMINED.
  *  5. Cohérence du montant et du taux de taxe selon le statut.
- *  6. La configuration de commission doit être présente.
- *  7. Le montant de commission doit être un safe integer >= 0, <= total.
+ *  6. Pour le legacy, la configuration de commission doit être présente ; un
+ *     split utilise exclusivement son snapshot persistant.
+ *  7. Le montant de commission legacy doit être un safe integer >= 0, <= total.
  *  8. La configuration du compte connecté doit être présente.
  *  9. Le compte connecté doit accepter les charges (chargesEnabled).
  * 10. La capacité de transfert doit être ACTIVE.
@@ -51,7 +53,8 @@ function isIso8601(value: string): boolean {
  * 13. on_behalf_of_account_id, s'il est non null, doit être une chaîne non vide.
  * 14. La version des termes juridiques doit être une chaîne non vide.
  * 15. La preuve d'acceptation doit correspondre à la version courante et être valide.
- * 16. Le total du snapshot est égal au total immuable du brouillon (par construction).
+ * 16. Pour le split, le total du snapshot est le total client ; pour le legacy,
+ *     il est égal au total immuable du brouillon.
  * 17. La version du snapshot est 'v1'.
  *
  * @throws FinancialTermsError(VALIDATION) pour les erreurs de validation.
@@ -143,26 +146,56 @@ export function resolveFinancialTerms(
     taxRateBps = config.tax.rateBps;
   }
 
-  // 6. La configuration de commission doit être présente.
-  if (config.commission === null) {
-    throw new FinancialTermsError(
-      'FINANCIAL_TERMS_UNRESOLVED',
-      "Configuration de commission manquante pour l'organisation",
-    );
-  }
-
-  // 7. Le montant de commission doit être un safe integer >= 0, <= total.
-  if (!Number.isSafeInteger(config.commission.amountMinor) || config.commission.amountMinor < 0) {
-    throw new FinancialTermsError(
-      'VALIDATION',
-      `montant de commission invalide (reçu : ${config.commission.amountMinor})`,
-    );
-  }
-  if (config.commission.amountMinor > input.draftTotalAmountMinor) {
-    throw new FinancialTermsError(
-      'VALIDATION',
-      `commission supérieure au total (commission : ${config.commission.amountMinor}, total : ${input.draftTotalAmountMinor})`,
-    );
+  // 6-7. Un draft split apporte son snapshot économique déjà calculé côté
+  // serveur. La config courante ne peut ni le remplacer ni le recalculer.
+  // Sans snapshot, conserver strictement le chemin legacy.
+  let marketplaceFeeSnapshot;
+  let commissionAmountMinor: number;
+  let commissionRuleSnapshot: CommissionRuleSnapshot;
+  if (input.draftMarketplaceFeeSnapshot !== undefined) {
+    try {
+      marketplaceFeeSnapshot = parseMarketplaceFeeSnapshot(input.draftMarketplaceFeeSnapshot);
+    } catch (error) {
+      throw new FinancialTermsError(
+        'VALIDATION',
+        `Snapshot marketplace invalide : ${error instanceof Error ? error.message : 'erreur inconnue'}`,
+      );
+    }
+    if (marketplaceFeeSnapshot.marketplaceFeeBaseAmountMinor !== input.draftTotalAmountMinor) {
+      throw new FinancialTermsError(
+        'VALIDATION',
+        'La base marketplace ne correspond pas au total marchand immuable du brouillon.',
+      );
+    }
+    commissionAmountMinor = marketplaceFeeSnapshot.merchantFeeAmountMinor;
+    commissionRuleSnapshot = {
+      version: marketplaceFeeSnapshot.ruleVersion,
+      basis: 'merchant_fee_compatibility_projection',
+    };
+  } else {
+    if (config.commission === null) {
+      throw new FinancialTermsError(
+        'FINANCIAL_TERMS_UNRESOLVED',
+        "Configuration de commission manquante pour l'organisation",
+      );
+    }
+    if (!Number.isSafeInteger(config.commission.amountMinor) || config.commission.amountMinor < 0) {
+      throw new FinancialTermsError(
+        'VALIDATION',
+        `montant de commission invalide (reçu : ${config.commission.amountMinor})`,
+      );
+    }
+    if (config.commission.amountMinor > input.draftTotalAmountMinor) {
+      throw new FinancialTermsError(
+        'VALIDATION',
+        `commission supérieure au total (commission : ${config.commission.amountMinor}, total : ${input.draftTotalAmountMinor})`,
+      );
+    }
+    commissionAmountMinor = config.commission.amountMinor;
+    commissionRuleSnapshot = {
+      version: config.commission.version,
+      basis: config.commission.basis,
+    };
   }
 
   // 8. La configuration du compte connecté doit être présente.
@@ -237,23 +270,21 @@ export function resolveFinancialTerms(
     invoiceIssuer: config.tax.invoiceIssuer,
   };
 
-  const commissionRuleSnapshot: CommissionRuleSnapshot = {
-    version: config.commission.version,
-    basis: config.commission.basis,
-  };
-
-  // 16. Le total du snapshot est égal au total immuable du brouillon (par construction).
+  // 16. Le total split est le total client ; le total legacy est celui du
+  // brouillon (par construction).
   // 17. La version du snapshot est 'v1'.
   return {
     version: SNAPSHOT_VERSION,
     currency: 'EUR',
-    totalAmountMinor: input.draftTotalAmountMinor,
+    totalAmountMinor:
+      marketplaceFeeSnapshot?.customerTotalAmountMinor ?? input.draftTotalAmountMinor,
     taxStatus: config.tax.status,
     taxAmountMinor,
     taxRateBps,
     taxRuleSnapshot,
-    commissionAmountMinor: config.commission.amountMinor,
+    commissionAmountMinor,
     commissionRuleSnapshot,
+    ...(marketplaceFeeSnapshot ? { marketplaceFeeSnapshot } : {}),
     connectedAccountId: config.connectedAccount.accountId,
     chargeModel: 'DESTINATION',
     settlementMerchantMode: config.connectedAccount.settlementMerchantMode,

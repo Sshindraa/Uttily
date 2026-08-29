@@ -77,12 +77,6 @@ export const REQUIRED_LIVE_VARIABLES: readonly LiveVariableRule[] = [
     description: 'Attestation rate limiting edge configuré',
     mustEqual: 'true',
   },
-  {
-    name: 'PLATFORM_COMMISSION_RATE_BPS',
-    description: 'Commission plateforme (points de base, > 0)',
-    mustBePositiveInt: true,
-  },
-
   // --- Base de données ---
   {
     name: 'DATABASE_URL',

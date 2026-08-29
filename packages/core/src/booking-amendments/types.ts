@@ -7,6 +7,7 @@
  */
 
 import type { amendmentType } from '@uttily/database';
+import type { MarketplaceFeeSnapshot } from '../marketplace-fees';
 
 /**
  * Ligne effective d'une réservation.
@@ -67,6 +68,7 @@ export interface AmendmentSummary {
 export interface FinancialSnapshot {
   readonly totalAmountMinor: number;
   readonly currency: string;
+  readonly marketplaceFeeSnapshot?: MarketplaceFeeSnapshot;
 }
 
 /**
@@ -114,6 +116,7 @@ export interface EffectiveBooking {
   readonly effectiveBlockedEndAt: Date;
   readonly effectiveTotalAmountMinor: number;
   readonly effectiveCurrency: string;
+  readonly effectiveMarketplaceFeeSnapshot?: MarketplaceFeeSnapshot;
   readonly financials: EffectiveFinancials;
   readonly lines: readonly EffectiveLine[];
   readonly allocations: readonly EffectiveAllocation[];

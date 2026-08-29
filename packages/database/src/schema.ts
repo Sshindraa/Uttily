@@ -763,6 +763,10 @@ export const bookingDrafts = pgTable(
       .notNull()
       .default(0),
     totalAmountMinor: bigint('total_amount_minor', { mode: 'number' }).notNull(),
+    // Chantier 22-B0 — projection client du snapshot marketplace. Nullable
+    // pour préserver les brouillons legacy sans rétro-inventer une règle.
+    customerTotalAmountMinor: bigint('customer_total_amount_minor', { mode: 'number' }),
+    marketplaceFeeSnapshot: jsonb('marketplace_fee_snapshot'),
     taxStatus: taxStatus('tax_status').notNull().default('UNDETERMINED'),
     taxAmountMinor: bigint('tax_amount_minor', { mode: 'number' }),
     taxRateBps: integer('tax_rate_bps'),
@@ -791,6 +795,10 @@ export const bookingDrafts = pgTable(
     check('booking_drafts_subtotal_nonneg', sql`${t.subtotalAmountMinor} >= 0`),
     check('booking_drafts_mandatory_fees_nonneg', sql`${t.mandatoryFeesAmountMinor} >= 0`),
     check('booking_drafts_total_max_safe', sql`${t.totalAmountMinor} <= 9007199254740991`),
+    check(
+      'booking_drafts_customer_total_max_safe',
+      sql`${t.customerTotalAmountMinor} IS NULL OR ${t.customerTotalAmountMinor} <= 9007199254740991`,
+    ),
     check(
       'booking_drafts_tax_undetermined_null',
       sql`${t.taxStatus} <> 'UNDETERMINED' OR ${t.taxAmountMinor} IS NULL`,
@@ -1129,6 +1137,9 @@ export const payments = pgTable(
     taxRuleSnapshot: jsonb('tax_rule_snapshot'),
     commissionAmountMinor: bigint('commission_amount_minor', { mode: 'number' }).notNull(),
     commissionRuleSnapshot: jsonb('commission_rule_snapshot'),
+    // Chantier 22-B0 — source canonique des montants marketplace pour les
+    // paiements split. `commissionAmountMinor` reste une projection legacy.
+    marketplaceFeeSnapshot: jsonb('marketplace_fee_snapshot'),
     financialTermsVersion: text('financial_terms_version').notNull(),
     legalTermsVersion: text('legal_terms_version').notNull(),
     termsAcceptanceSnapshot: jsonb('terms_acceptance_snapshot').notNull(),
@@ -1149,6 +1160,10 @@ export const payments = pgTable(
     check('payments_currency_eur', sql`${t.currency} = 'EUR'`),
     check('payments_amount_nonneg', sql`${t.amountMinor} >= 0`),
     check('payments_amount_max_safe', sql`${t.amountMinor} <= 9007199254740991`),
+    check(
+      'payments_marketplace_snapshot_object',
+      sql`${t.marketplaceFeeSnapshot} IS NULL OR jsonb_typeof(${t.marketplaceFeeSnapshot}) = 'object'`,
+    ),
     check('payments_commission_nonneg', sql`${t.commissionAmountMinor} >= 0`),
     check('payments_commission_max_safe', sql`${t.commissionAmountMinor} <= 9007199254740991`),
     check('payments_commission_lte_amount', sql`${t.commissionAmountMinor} <= ${t.amountMinor}`),
@@ -1306,6 +1321,10 @@ export const bookings = pgTable(
     commissionAmountMinor: bigint('commission_amount_minor', { mode: 'number' }).notNull(),
     commissionRuleSnapshot: jsonb('commission_rule_snapshot'),
     totalAmountMinor: bigint('total_amount_minor', { mode: 'number' }).notNull(),
+    // Chantier 22-B0 — `totalAmountMinor` conserve la base marchande legacy;
+    // ce champ porte le total réellement payé par le client pour split.
+    customerTotalAmountMinor: bigint('customer_total_amount_minor', { mode: 'number' }),
+    marketplaceFeeSnapshot: jsonb('marketplace_fee_snapshot'),
     billableUnit: text('billable_unit').notNull().default('DAY'),
     billableUnitCount: integer('billable_unit_count').notNull().default(1),
     cancellationPolicySnapshot: jsonb('cancellation_policy_snapshot').notNull(),
@@ -1326,6 +1345,10 @@ export const bookings = pgTable(
     check('bookings_customer_period_valid', sql`${t.customerEndAt} > ${t.customerStartAt}`),
     check('bookings_total_nonneg', sql`${t.totalAmountMinor} >= 0`),
     check('bookings_total_max_safe', sql`${t.totalAmountMinor} <= 9007199254740991`),
+    check(
+      'bookings_customer_total_max_safe',
+      sql`${t.customerTotalAmountMinor} IS NULL OR ${t.customerTotalAmountMinor} <= 9007199254740991`,
+    ),
     check('bookings_subtotal_nonneg', sql`${t.subtotalAmountMinor} >= 0`),
     check('bookings_mandatory_fees_nonneg', sql`${t.mandatoryFeesAmountMinor} >= 0`),
     check('bookings_tax_not_undetermined', sql`${t.taxStatus} <> 'UNDETERMINED'`),
@@ -2922,6 +2945,8 @@ export const amendmentPayments = pgTable(
     onBehalfOfAccountId: text('on_behalf_of_account_id'),
     chargeModel: chargeModel('charge_model').notNull(),
     settlementMerchantMode: settlementMerchantMode('settlement_merchant_mode').notNull(),
+    // Snapshot de l'écart final-state utilisé par un paiement d'amendement.
+    marketplaceFeeDeltaSnapshot: jsonb('marketplace_fee_delta_snapshot'),
     processingStartedAt: timestamp('processing_started_at', { withTimezone: true }),
     processingDeadlineAt: timestamp('processing_deadline_at', { withTimezone: true }),
     status: amendmentPaymentStatus('status').notNull().default('PENDING_PROVIDER'),
@@ -2935,6 +2960,10 @@ export const amendmentPayments = pgTable(
     check('amendment_payments_currency_eur', sql`${t.currency} = 'EUR'`),
     check('amendment_payments_amount_positive', sql`${t.amountMinor} > 0`),
     check('amendment_payments_amount_max_safe', sql`${t.amountMinor} <= 9007199254740991`),
+    check(
+      'amendment_payments_marketplace_delta_snapshot_object',
+      sql`${t.marketplaceFeeDeltaSnapshot} IS NULL OR jsonb_typeof(${t.marketplaceFeeDeltaSnapshot}) = 'object'`,
+    ),
     check(
       'amendment_payments_succeeded_has_timestamp',
       sql`${t.status} <> 'SUCCEEDED' OR ${t.succeededAt} IS NOT NULL`,
@@ -3140,6 +3169,9 @@ export const bookingCancellations = pgTable(
     commissionRefundedMinor: bigint('commission_refunded_minor', { mode: 'number' }).notNull(),
     finalCommissionMinor: bigint('final_commission_minor', { mode: 'number' }).notNull(),
     finalMerchantRevenueMinor: bigint('final_merchant_revenue_minor', { mode: 'number' }).notNull(),
+    // Conservé nullable : les annulations split restent fail-closed tant que
+    // Finance/Legal n'ont pas arrêté le traitement de chaque composant.
+    marketplaceFeeSnapshot: jsonb('marketplace_fee_snapshot'),
     currency: text('currency').notNull().default('EUR'),
     explanationCode: text('explanation_code').notNull(),
     inventoryReleased: boolean('inventory_released').notNull().default(true),

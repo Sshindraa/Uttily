@@ -68,6 +68,12 @@ export interface SearchPublicOffersInput {
  */
 export interface PublicPriceSummary {
   currency: 'EUR';
+  /** Base marchande avant frais marketplace (subtotal + frais obligatoires). */
+  marketplaceFeeBaseAmountMinor: number;
+  customerServiceFeeAmountMinor: number;
+  customerTotalAmountMinor: number;
+  marketplaceFeeRuleVersion: string;
+  /** Alias de compatibilité de la surface publique : désormais all-in client. */
   totalAmountMinor: number;
   planType: 'HOURLY' | 'FIXED_DURATION' | 'DAILY';
   publicLabel: string;
@@ -219,6 +225,8 @@ export interface PublicOfferDetails {
   city: string;
   postalCode: string | null;
   countryCode: string;
+  /** Prix journalier indicatif all-in, lorsque le catalogue expose un tarif. */
+  price?: PublicPriceSummary;
   variants: PublicOfferVariant[];
   photos: PublicOfferPhoto[];
   openingHours: PublicOfferOpeningHour[];

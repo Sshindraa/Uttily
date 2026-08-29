@@ -42,7 +42,7 @@ export async function initiatePaymentAction(input: {
     .select({
       organizationId: bookingDrafts.organizationId,
       customerUserId: bookingDrafts.customerUserId,
-      totalAmountMinor: bookingDrafts.totalAmountMinor,
+      marketplaceFeeSnapshot: bookingDrafts.marketplaceFeeSnapshot,
     })
     .from(bookingDrafts)
     .where(eq(bookingDrafts.id, input.draftId))
@@ -96,7 +96,7 @@ export async function initiatePaymentAction(input: {
     };
   }
 
-  const financialTermsConfig = loadFinancialTermsConfig(draft.totalAmountMinor);
+  const financialTermsConfig = loadFinancialTermsConfig();
   financialTermsConfig.connectedAccount = {
     accountId: account.providerAccountId,
     chargesEnabled: account.chargesEnabled,

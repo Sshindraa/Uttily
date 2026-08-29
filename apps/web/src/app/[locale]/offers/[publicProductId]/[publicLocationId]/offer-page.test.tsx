@@ -58,6 +58,20 @@ describe('PublicOfferPage & OfferBookingForm — SSR et Idempotence', () => {
     city: 'Annecy',
     postalCode: '74000',
     countryCode: 'FR',
+    price: {
+      currency: 'EUR',
+      marketplaceFeeBaseAmountMinor: 7000,
+      customerServiceFeeAmountMinor: 490,
+      customerTotalAmountMinor: 7490,
+      marketplaceFeeRuleVersion: 'split-13-7-v1',
+      totalAmountMinor: 7490,
+      planType: 'DAILY',
+      publicLabel: 'À partir de',
+      requestedDurationMinutes: null,
+      billedDurationMinutes: null,
+      billedDays: 1,
+      discountPercent: null,
+    },
     variants: [
       {
         publicVariantId: publicVariant1Id,
@@ -95,6 +109,7 @@ describe('PublicOfferPage & OfferBookingForm — SSR et Idempotence', () => {
 
     expect(html).toContain('Kayak Gonflable 2 Places');
     expect(html).toContain('Loueur Pro Annecy');
+    expect(html).toContain('74,90');
     expect(html).toContain('Base Nautique Annecy');
     expect(html).toContain('12 Avenue du Lac');
     expect(html).toContain('74000 Annecy, FR');

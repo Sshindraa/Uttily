@@ -100,16 +100,24 @@ Le critère de succès principal est :
 
 ## Modèle économique
 
-Uttily adopte un modèle **100 % transactionnel à la commission** (*take rate*), couplé à un logiciel de gestion (**Uttily OS**) mis à disposition **gratuitement** des loueurs professionnels partenaires pour capter leur inventaire physique sans friction d'onboarding ni risque lié à la saisonnalité.
+Uttily adopte un modèle transactionnel marketplace, couplé à un logiciel de gestion
+(**Uttily OS**) mis à disposition **gratuitement** des loueurs professionnels
+partenaires pour capter leur inventaire physique sans friction d'onboarding ni
+risque lié à la saisonnalité.
 
 | Flux | Rémunération indicative | Modalité |
 | --- | ---: | --- |
-| Commission Marketplace | 10 à 15 % par transaction | Prélevée automatiquement via Stripe Connect (`application_fee_amount`) sur chaque réservation confirmée |
+| Frais plateforme loueur | 13 % de la base marketplace | Part loueur du modèle `split-13-7-v1`, prélevée via l'application fee Stripe |
+| Frais de service client | 7 % de la base marketplace | Part client affichée séparément et incluse dans le total payé |
 | Logiciel opérationnel (Uttily OS) | 0 € / mois (Gratuit) | Gestion d'inventaire, exemplaires physiques, retraits/retours, états des lieux et disponibilité |
 
 Revenus potentiels complémentaires : frais de service client, options de protection/assurance, livraison, mise en avant locale, marque blanche, affiliation et outils analytiques.
 
-La commission, les frais de paiement, les remboursements, les litiges et la responsabilité financière devront être validés avec Stripe, un avocat spécialisé et un expert-comptable avant la commercialisation (Lot 5, ADR-010).
+Le modèle 13/7 est un choix produit documenté dans ADR-029 ; la base fiscale,
+la date d'effet, les frais de paiement, les remboursements, les litiges et la
+responsabilité financière devront être validés avec Stripe, un avocat
+spécialisé et un expert-comptable avant la commercialisation (FIN-002 reste
+`BLOCKED`).
 
 ## Indicateurs
 
@@ -120,7 +128,7 @@ La commission, les frais de paiement, les remboursements, les litiges et la resp
 - taux de résultats disponibles ;
 - conversion recherche → réservation ;
 - volume d'affaires brut (GMV), locations et panier moyen ;
-- revenu net de commission Uttily ;
+- frais plateforme loueur et application fee marketplace ;
 - annulations, remboursements et litiges.
 
 ### Performance & Écosystème Loueurs

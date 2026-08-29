@@ -28,6 +28,9 @@ export * from './availability/index';
 // Lot 4 — Prix et calcul des jours civils.
 export * from './pricing/index';
 
+// Chantier 22-B0 — moteur serveur fermé des frais marketplace.
+export * from './marketplace-fees/index';
+
 // Lot 4 — Idempotence persistée.
 export * from './idempotency/index';
 

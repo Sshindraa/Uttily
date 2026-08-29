@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { eq } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
+import { parseMarketplaceFeeSnapshot } from '@uttily/core';
 import {
   bookingDrafts,
   bookingDraftLines,
@@ -32,7 +33,11 @@ export default async function CheckoutPage({
       id: bookingDrafts.id,
       organizationId: bookingDrafts.organizationId,
       customerUserId: bookingDrafts.customerUserId,
+      subtotalAmountMinor: bookingDrafts.subtotalAmountMinor,
+      mandatoryFeesAmountMinor: bookingDrafts.mandatoryFeesAmountMinor,
       totalAmountMinor: bookingDrafts.totalAmountMinor,
+      customerTotalAmountMinor: bookingDrafts.customerTotalAmountMinor,
+      marketplaceFeeSnapshot: bookingDrafts.marketplaceFeeSnapshot,
       currency: bookingDrafts.currency,
       status: bookingDrafts.status,
       expiresAt: bookingDrafts.expiresAt,
@@ -72,6 +77,17 @@ export default async function CheckoutPage({
   }
 
   const publicAppUrl = getPublicAppUrl();
+  const marketplaceFeeSnapshot = d.marketplaceFeeSnapshot
+    ? parseMarketplaceFeeSnapshot(d.marketplaceFeeSnapshot)
+    : null;
+  const customerTotalAmountMinor =
+    marketplaceFeeSnapshot?.customerTotalAmountMinor ??
+    d.customerTotalAmountMinor ??
+    d.totalAmountMinor;
+  const marketplaceFeeBaseAmountMinor =
+    marketplaceFeeSnapshot?.marketplaceFeeBaseAmountMinor ??
+    d.subtotalAmountMinor + d.mandatoryFeesAmountMinor;
+  const customerServiceFeeAmountMinor = marketplaceFeeSnapshot?.customerServiceFeeAmountMinor ?? 0;
 
   // Lire les lignes du brouillon avec les libellés réels des vélos et variantes
   const lines = await db
@@ -106,7 +122,10 @@ export default async function CheckoutPage({
         <CheckoutClient
           draftId={draftId}
           returnUrl={`${publicAppUrl}/checkout/${draftId}`}
-          totalAmountMinor={d.totalAmountMinor}
+          baseAmountMinor={marketplaceFeeBaseAmountMinor}
+          customerServiceFeeAmountMinor={customerServiceFeeAmountMinor}
+          customerTotalAmountMinor={customerTotalAmountMinor}
+          hasMarketplaceFeeSnapshot={marketplaceFeeSnapshot !== null}
           currency={d.currency}
           lines={formattedLines}
           renterName={renterName}

@@ -400,6 +400,7 @@ export async function executeCompensationBatch(
           case 'REFUND_REASON_MISMATCH':
           case 'PAYMENT_NOT_SUCCEEDED':
           case 'REFUND_FLAGS_INVALID':
+          case 'SPLIT_REFUND_UNRESOLVED':
           case 'PROVIDER_REFUND_FAILED':
           case 'PROVIDER_REFUND_ID_CONFLICT':
           case 'PROVIDER_RESULT_INVALID': {

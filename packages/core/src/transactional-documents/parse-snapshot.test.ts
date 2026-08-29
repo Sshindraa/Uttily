@@ -185,6 +185,27 @@ describe('parseDocumentRenderSnapshotV1', () => {
     expect(result.items).toHaveLength(1);
   });
 
+  it('snapshot split expose la base, le frais client et le total payé', () => {
+    const s = baseSnapshot();
+    s.booking = {
+      ...s.booking,
+      subtotalAmountMinor: 7000,
+      totalAmountMinor: 7000,
+      marketplaceFeeBaseAmountMinor: 7000,
+      customerServiceFeeAmountMinor: 490,
+      customerTotalAmountMinor: 7490,
+      marketplaceFeeRuleVersion: 'split-13-7-v1',
+    };
+    s.payment = { ...s.payment, amountMinor: 7490 };
+    s.lines[0] = { ...s.lines[0]!, unitPriceAmountMinor: 3500, lineTotalAmountMinor: 7000 };
+
+    const result = parseDocumentRenderSnapshotV1(s);
+    expect(result.booking.marketplaceFeeBaseAmountMinor).toBe(7000);
+    expect(result.booking.customerServiceFeeAmountMinor).toBe(490);
+    expect(result.booking.customerTotalAmountMinor).toBe(7490);
+    expect(result.payment.amountMinor).toBe(7490);
+  });
+
   // racine non-objet
   it('racine null — SNAPSHOT_INVARIANT', () => expectInvariant(null));
   it('racine array — SNAPSHOT_INVARIANT', () => expectInvariant([]));

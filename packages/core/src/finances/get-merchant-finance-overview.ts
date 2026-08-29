@@ -13,6 +13,7 @@ import {
   users,
 } from '@uttily/database';
 import { CatalogError } from '../catalog/errors';
+import { parseMarketplaceFeeSnapshot } from '../marketplace-fees';
 import type {
   MerchantFinanceActivityItem,
   MerchantFinanceFilterOptions,
@@ -34,6 +35,49 @@ function getPayoutStatusLabel(status: string): string {
       return 'Annulé';
     default:
       return 'En attente';
+  }
+}
+
+function getMerchantPaymentProjection(payment: {
+  amountMinor: number;
+  commissionAmountMinor: number;
+  marketplaceFeeSnapshot: unknown;
+}): {
+  merchantBaseAmountMinor: number;
+  merchantFeeAmountMinor: number;
+  customerServiceFeeAmountMinor: number;
+  customerTotalAmountMinor: number;
+  merchantNetAmountMinor: number;
+  platformApplicationFeeAmountMinor: number;
+  marketplaceFeeBaseAmountMinor: number;
+} {
+  if (payment.marketplaceFeeSnapshot === null || payment.marketplaceFeeSnapshot === undefined) {
+    return {
+      merchantBaseAmountMinor: payment.amountMinor,
+      merchantFeeAmountMinor: payment.commissionAmountMinor,
+      customerServiceFeeAmountMinor: 0,
+      customerTotalAmountMinor: payment.amountMinor,
+      merchantNetAmountMinor: payment.amountMinor - payment.commissionAmountMinor,
+      platformApplicationFeeAmountMinor: payment.commissionAmountMinor,
+      marketplaceFeeBaseAmountMinor: payment.amountMinor,
+    };
+  }
+  try {
+    const snapshot = parseMarketplaceFeeSnapshot(payment.marketplaceFeeSnapshot);
+    return {
+      merchantBaseAmountMinor: snapshot.marketplaceFeeBaseAmountMinor,
+      merchantFeeAmountMinor: snapshot.merchantFeeAmountMinor,
+      customerServiceFeeAmountMinor: snapshot.customerServiceFeeAmountMinor,
+      customerTotalAmountMinor: snapshot.customerTotalAmountMinor,
+      merchantNetAmountMinor: snapshot.merchantNetAmountMinor,
+      platformApplicationFeeAmountMinor: snapshot.platformApplicationFeeAmountMinor,
+      marketplaceFeeBaseAmountMinor: snapshot.marketplaceFeeBaseAmountMinor,
+    };
+  } catch (error) {
+    throw new CatalogError(
+      'VALIDATION',
+      `Snapshot financier marketplace invalide : ${error instanceof Error ? error.message : 'erreur inconnue'}`,
+    );
   }
 }
 
@@ -80,6 +124,7 @@ export async function getMerchantFinanceOverview(
       locationName: locations.name,
       productName: products.name,
       variantName: productVariants.name,
+      marketplaceFeeSnapshot: payments.marketplaceFeeSnapshot,
     })
     .from(payments)
     .innerJoin(bookings, eq(bookings.paymentId, payments.id))
@@ -165,11 +210,14 @@ export async function getMerchantFinanceOverview(
   let pendingAmountMinor = 0;
   let platformCommissionMinor = 0;
   let bookingCount = 0;
+  let platformApplicationFeeMinor = 0;
 
   for (const p of uniquePayments) {
     if (p.paymentStatus === 'SUCCEEDED') {
-      succeededGrossAmountMinor += p.amountMinor;
-      platformCommissionMinor += p.commissionAmountMinor;
+      const projection = getMerchantPaymentProjection(p);
+      succeededGrossAmountMinor += projection.merchantBaseAmountMinor;
+      platformCommissionMinor += projection.merchantFeeAmountMinor;
+      platformApplicationFeeMinor += projection.platformApplicationFeeAmountMinor;
       bookingCount++;
     } else if (
       p.paymentStatus === 'PENDING_PROVIDER' ||
@@ -177,7 +225,7 @@ export async function getMerchantFinanceOverview(
       p.paymentStatus === 'REQUIRES_ACTION' ||
       p.paymentStatus === 'PROCESSING'
     ) {
-      pendingAmountMinor += p.amountMinor;
+      pendingAmountMinor += getMerchantPaymentProjection(p).merchantBaseAmountMinor;
     }
   }
 
@@ -230,6 +278,7 @@ export async function getMerchantFinanceOverview(
 
   for (const p of uniquePayments) {
     const isSucceeded = p.paymentStatus === 'SUCCEEDED';
+    const projection = getMerchantPaymentProjection(p);
     const ref = p.bookingId
       ? `#UT-${p.bookingId.slice(0, 6).toUpperCase()}`
       : `#PA-${p.paymentId.slice(0, 6).toUpperCase()}`;
@@ -243,9 +292,15 @@ export async function getMerchantFinanceOverview(
         ? `${p.productName} (${p.variantName ?? 'Standard'})`
         : 'Location équipement',
       customerEmail: p.customerEmail ?? undefined,
-      grossAmountMinor: p.amountMinor,
-      commissionAmountMinor: p.commissionAmountMinor,
-      netAmountMinor: p.amountMinor - p.commissionAmountMinor,
+      grossAmountMinor: projection.merchantBaseAmountMinor,
+      commissionAmountMinor: projection.merchantFeeAmountMinor,
+      netAmountMinor: projection.merchantNetAmountMinor,
+      marketplaceFeeBaseAmountMinor: projection.marketplaceFeeBaseAmountMinor,
+      merchantFeeAmountMinor: projection.merchantFeeAmountMinor,
+      customerServiceFeeAmountMinor: projection.customerServiceFeeAmountMinor,
+      customerTotalAmountMinor: projection.customerTotalAmountMinor,
+      merchantNetAmountMinor: projection.merchantNetAmountMinor,
+      platformApplicationFeeAmountMinor: projection.platformApplicationFeeAmountMinor,
       currency: 'EUR',
       status: p.paymentStatus,
       statusLabel: isSucceeded ? '✓ Paiement confirmé' : '⏳ En attente',
@@ -316,6 +371,7 @@ export async function getMerchantFinanceOverview(
     },
     commissions: {
       platformAmountMinor: platformCommissionMinor,
+      platformApplicationFeeAmountMinor: platformApplicationFeeMinor,
     },
     merchant: {
       netAfterCommissionMinor,

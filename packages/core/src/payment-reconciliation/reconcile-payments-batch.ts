@@ -53,7 +53,11 @@ function rebuildCreateParams(claimed: ClaimedAttempt): CreatePaymentIntentParams
     currency: 'EUR',
     connectedAccountId: claimed.connectedAccountId,
     applicationFeeAmountMinor:
-      claimed.commissionAmountMinor === 0 ? null : claimed.commissionAmountMinor,
+      (claimed.marketplaceFeeSnapshot?.platformApplicationFeeAmountMinor ??
+        claimed.commissionAmountMinor) === 0
+        ? null
+        : (claimed.marketplaceFeeSnapshot?.platformApplicationFeeAmountMinor ??
+          claimed.commissionAmountMinor),
     onBehalfOfAccountId: claimed.onBehalfOfAccountId,
     idempotencyKey: claimed.providerIdempotencyKey,
     metadata: {

@@ -19,7 +19,7 @@ describe('FinancesPage (Revenus & Versements V2 - Chantier 11.1 & 21-U2.3)', () 
   it('utilise resolvePayoutAccountStatus et présente un vocabulaire centré sur les revenus et versements', () => {
     expect(pageSource).toContain('resolvePayoutAccountStatus(readiness)');
     expect(hubSource).toContain('Revenus & Versements');
-    expect(hubSource).toContain('Volume brut réservations');
+    expect(hubSource).toContain('Prix location');
     expect(hubSource).toContain('partenaire de paiement');
     expect(hubSource).not.toContain('Stripe Connect Express');
   });

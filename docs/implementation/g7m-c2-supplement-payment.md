@@ -36,8 +36,8 @@ compensation C4, ni UI.
 
 ## Commission
 
-La commission du supplément est calculée en unités mineures avec arrondi
-half-up positif :
+Pour un supplément legacy, la commission historique est calculée en unités
+mineures avec arrondi half-up positif :
 
 ```text
 round_half_up(supplement * commission_original / total_original)
@@ -48,6 +48,12 @@ les montants originaux depuis `bookings` et le supplément depuis
 `amendment_payments`. Le cas `total_original = 0` est accepté uniquement avec
 une commission originale nulle. Le montant calculé est envoyé dans
 `application_fee_amount` et n'est jamais recalculé depuis le client.
+
+Pour un booking `split-13-7-v1`, ce calcul legacy n'est pas utilisé : le
+supplément conserve un snapshot `FINAL_STATE_DELTA_PER_COMPONENT` sous la règle
+du booking d'origine. L'application fee provider est la somme des deltas
+loueur et service client ; un delta négatif reste bloqué tant que la politique
+refund Finance/Juridique n'est pas signée.
 
 ## Preuve
 

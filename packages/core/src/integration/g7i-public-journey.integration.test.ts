@@ -471,7 +471,7 @@ describe.skipIf(shouldSkipIntegrationTests())('G7I — Lot 7 release validation'
     expect(offer).toBeDefined();
     expect(offer!.isAvailable).toBe(true);
     expect(offer!.price.planType).toBe('DAILY');
-    expect(offer!.price.totalAmountMinor).toBe(10000);
+    expect(offer!.price.totalAmountMinor).toBe(10700);
 
     // Step 2: getPublicOfferDetails
     const detailsResult = await getPublicOfferDetails(

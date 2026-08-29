@@ -1,6 +1,7 @@
 import type { ActionErrorCode } from '@uttily/contracts';
 import type { VariantPricingSnapshot } from '../pricing/types';
 import type { PricingWindowSnapshot } from '../pricing-plans/types';
+import type { MarketplaceFeeSnapshot } from '../marketplace-fees';
 
 /**
  * Ligne d'entrée pour la création d'un brouillon de réservation.
@@ -142,6 +143,11 @@ export interface BookingDraftResponseBody {
   subtotalAmountMinor: number;
   mandatoryFeesAmountMinor: number;
   totalAmountMinor: number;
+  marketplaceFeeBaseAmountMinor: number;
+  customerServiceFeeAmountMinor: number;
+  customerTotalAmountMinor: number;
+  marketplaceFeeRuleVersion: string;
+  marketplaceFeeSnapshot: MarketplaceFeeSnapshot;
   // G7P-B2-C Round 3 (P0-2) — tax/commission are UNDETERMINED/null at draft
   // stage per ADR-010 §6 for both legacy and flexible drafts. They are resolved
   // at payment initiation and copied from `payments` during confirmation.

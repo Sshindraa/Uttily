@@ -73,9 +73,18 @@ Les principes de transparence des prix, de politiques prédéfinies et de fuseau
 
 **Ventilation du brouillon** : Le brouillon conserve et affiche : prix de location, options éventuelles, frais obligatoires éventuels, total client, devise, taxes (lorsque leur décomposition est connue).
 
+**Amendement 22-B0** : pour les nouveaux bookings portant le snapshot
+`split-13-7-v1`, `total_amount_minor` reste la base marchande historique dans
+les tables internes tandis que `customer_total_amount_minor` porte le total
+réellement payé par le client. Les surfaces publiques utilisent le total
+client et détaillent séparément le frais de service. Les bookings legacy ne
+sont pas réinterprétés.
+
 **Règles** :
 
-- `total_amount_minor` est **non nullable** ; il représente le total public affiché au client.
+- `total_amount_minor` est **non nullable** ; pour un enregistrement legacy il
+  représente le total public historique. Pour un split, le total public est
+  `customer_total_amount_minor`, copié depuis le snapshot immuable.
 - Aucun frais obligatoire ne peut être ajouté silencieusement après la création du brouillon.
 - Les montants des lignes sont déjà des prix publics TTC.
 - `tax_status` vaut `UNDETERMINED` au Lot 4 tant que le régime fiscal n'est pas configuré.

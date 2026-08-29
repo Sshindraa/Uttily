@@ -65,7 +65,8 @@ La requête racine est tenant-scoped : `bookings.id = bookingId AND bookings.org
 
 - `effectiveCustomerStartAt` / `effectiveCustomerEndAt` : `bookings.customer_start_at` / `customer_end_at`
 - `effectiveBlockedStartAt` / `effectiveBlockedEndAt` : `bookings.blocked_start_at` / `blocked_end_at`
-- `effectiveTotalAmountMinor` : `bookings.total_amount_minor`
+- `effectiveTotalAmountMinor` : `bookings.customer_total_amount_minor` pour un
+  booking `split-13-7-v1`, sinon `bookings.total_amount_minor` (legacy)
 - `effectiveCurrency` : `bookings.currency`
 - `lines` : `booking_lines` (action `UNCHANGED`, `logicalLineId = booking_line.id`)
 - `allocations` : `booking_items` avec dates de `inventory_blocks` (action `RETAIN`, `logicalLineId = booking_items.booking_line_id`)
@@ -77,7 +78,8 @@ La requête racine est tenant-scoped : `bookings.id = bookingId AND bookings.org
 - Sélection : `max(amendment_number)` puis `max(id)` pour déterminisme
 - `effectiveCustomerStartAt` / `effectiveCustomerEndAt` : `new_customer_start_at` / `new_customer_end_at` du dernier APPLIED
 - `effectiveBlockedStartAt` / `effectiveBlockedEndAt` : `new_blocked_start_at` / `new_blocked_end_at` du dernier APPLIED
-- `effectiveTotalAmountMinor` : `financial_snapshot_after.totalAmountMinor` (JSONB parsé et validé)
+- `effectiveTotalAmountMinor` : `financial_snapshot_after.totalAmountMinor`
+  (JSONB parsé et validé ; total client pour un snapshot split)
 - `effectiveCurrency` : `financial_snapshot_after.currency` (JSONB parsé et validé)
 - `lines` : `booking_amendment_lines` du dernier APPLIED avec `action <> 'REMOVE'`, ordonnées par `logicalLineId` puis `id`
 - `allocations` : `booking_amendment_allocations` du dernier APPLIED avec `status = 'CONVERTED'`, join vers `booking_amendment_lines` pour récupérer `logical_line_id`, ordonnées par `logicalLineId` puis `inventoryItemId` puis `id`

@@ -14,6 +14,7 @@ import { and, eq } from 'drizzle-orm';
 import { organizationPaymentAccounts, type DatabaseTransaction } from '@uttily/database';
 import type { PaymentIntentEventData, ResolvedAttempt } from './types';
 import { WebhookHandlerError } from './errors';
+import { parseMarketplaceFeeSnapshot } from '../marketplace-fees';
 
 /** Type local pour les lignes payment/attempt verrouillées par l'appelant. */
 interface AuthorityRows {
@@ -25,6 +26,7 @@ interface AuthorityRows {
     currency: string;
     connectedAccountId: string;
     commissionAmountMinor: number;
+    marketplaceFeeSnapshot?: unknown;
     onBehalfOfAccountId: string | null;
     status: string;
   };
@@ -240,16 +242,32 @@ export async function validateWebhookAuthority(
     );
   }
 
-  // Commission : recoupement comme dans initiate-payment.ts.
-  // Accepter null OU 0 si payment.commissionAmountMinor === 0, sinon valeur exacte.
-  const expectedFee = payment.commissionAmountMinor === 0 ? null : payment.commissionAmountMinor;
+  // Pour split, application_fee est la somme des deux composants. La colonne
+  // commissionAmountMinor reste uniquement la projection merchant legacy.
+  let expectedFeeAmountMinor = payment.commissionAmountMinor;
+  if (payment.marketplaceFeeSnapshot !== null && payment.marketplaceFeeSnapshot !== undefined) {
+    try {
+      const snapshot = parseMarketplaceFeeSnapshot(payment.marketplaceFeeSnapshot);
+      if (snapshot.customerTotalAmountMinor !== payment.amountMinor) {
+        throw new Error('customerTotalAmountMinor ne correspond pas au montant du payment');
+      }
+      expectedFeeAmountMinor = snapshot.platformApplicationFeeAmountMinor;
+    } catch (error) {
+      throw new WebhookHandlerError(
+        'WEBHOOK_INVARIANT_BROKEN',
+        `Snapshot marketplace invalide : ${error instanceof Error ? error.message : 'erreur inconnue'}`,
+        { statusCode: 500 },
+      );
+    }
+  }
+  const expectedFee = expectedFeeAmountMinor === 0 ? null : expectedFeeAmountMinor;
   if (
     piData.applicationFeeAmount !== expectedFee &&
     !(expectedFee === null && piData.applicationFeeAmount === 0)
   ) {
     throw new WebhookHandlerError(
       'WEBHOOK_INVARIANT_BROKEN',
-      `La commission du PaymentIntent (${piData.applicationFeeAmount}) ne correspond pas au paiement local (${payment.commissionAmountMinor}).`,
+      `L'application fee du PaymentIntent (${piData.applicationFeeAmount}) ne correspond pas au snapshot financier local (${expectedFeeAmountMinor}).`,
       { statusCode: 500 },
     );
   }

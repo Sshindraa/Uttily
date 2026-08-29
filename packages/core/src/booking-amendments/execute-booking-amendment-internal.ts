@@ -50,6 +50,7 @@ import {
   type LocalDateTime,
 } from '../pricing-plans/local-to-utc';
 import { getEffectiveBooking } from './get-effective-booking';
+import { calculateMarketplaceFeeDelta } from '../marketplace-fees';
 import type { EffectiveLine, EffectiveAllocation } from './types';
 import type {
   NeutralAmendmentCommand,
@@ -814,13 +815,31 @@ async function executeBusinessLogic(
     });
   }
 
+  const marketplaceFeeDelta = effectiveBooking.effectiveMarketplaceFeeSnapshot
+    ? calculateMarketplaceFeeDelta({
+        oldBaseAmountMinor:
+          effectiveBooking.effectiveMarketplaceFeeSnapshot.marketplaceFeeBaseAmountMinor,
+        nextBaseAmountMinor: quoteResult.totalAmountMinor,
+        ruleVersion: effectiveBooking.effectiveMarketplaceFeeSnapshot.ruleVersion,
+      })
+    : null;
+  if (expectedClassification === 'REFUND' && marketplaceFeeDelta !== null) {
+    throw new BusinessSignal({
+      kind: 'INVALID_INPUT',
+      message:
+        'SPLIT_REFUND_UNRESOLVED: remboursement split non supporté tant que la politique Finance/Legal n’est pas résolue.',
+    });
+  }
   const financialSnapshotBefore = {
     totalAmountMinor: effectiveBooking.effectiveTotalAmountMinor,
     currency: 'EUR' as const,
+    ...(marketplaceFeeDelta ? { marketplaceFeeSnapshot: marketplaceFeeDelta.old } : {}),
   };
   const financialSnapshotAfter = {
-    totalAmountMinor: quoteResult.totalAmountMinor,
+    totalAmountMinor:
+      marketplaceFeeDelta?.next.customerTotalAmountMinor ?? quoteResult.totalAmountMinor,
     currency: 'EUR' as const,
+    ...(marketplaceFeeDelta ? { marketplaceFeeSnapshot: marketplaceFeeDelta.next } : {}),
   };
 
   const delta = financialSnapshotAfter.totalAmountMinor - financialSnapshotBefore.totalAmountMinor;

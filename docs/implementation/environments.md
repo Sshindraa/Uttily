@@ -159,7 +159,7 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
 | `PUBLIC_APP_URL` | `http://localhost:3000` | URL HTTPS publique du déploiement | Origine absolue sans chemin, query ni fragment ; utilisée pour le retour Stripe. Le serveur refuse une valeur locale ou HTTP en environnement de production. |
 | `STRIPE_ENVIRONMENT` | `TEST` | `TEST` pour staging, `LIVE` uniquement après ADR-010 | Valeur explicite ; aucun défaut silencieux en production. |
 | `PAYMENTS_LIVE_ENABLED` | `false` | `false` tant que les verrous ADR-010 ne sont pas fermés | Le serveur refuse `LIVE` sans `true`. |
-| `PLATFORM_COMMISSION_RATE_BPS` | `1000` | valeur décidée et versionnée par environnement | Configuration serveur obligatoire ; `1000` = 10 %, et même `0` doit être explicite. Une commission LIVE nulle est refusée. |
+| Frais marketplace | `split-13-7-v1` | `split-13-7-v1` après sign-off `FIN-002` | Règle serveur fermée : base `subtotal + mandatory fees`, 13 % loueur + 7 % service client, arrondi `HALF_UP_PER_COMPONENT`. Aucun taux ne vient de l'environnement ou du navigateur. |
 | `CRON_SECRET` | `dev-cron-secret-local` | générée (voir ci-dessous) | Authentification des endpoints Vercel Cron (`expire-holds`, `process-compensations`, `process-refund-requests` et `process-product-analytics`) |
 | `R2_PHOTOS_BUCKET_NAME` | vide en local | bucket R2 privé dédié au staging / à la production | Obligatoire pour les uploads photo ; le serveur refuse l'absence de bucket et ne réutilise `R2_BUCKET_NAME` qu'en repli explicite |
 

@@ -787,6 +787,20 @@ describe('PdfLibDocumentRenderer', () => {
     expect(formatted).toBe('150,00 EUR');
   });
 
+  it('les documents client utilisent le total client du snapshot marketplace', () => {
+    const snapshot = makeValidSnapshot();
+    snapshot.booking.marketplaceFeeBaseAmountMinor = 15000;
+    snapshot.booking.customerServiceFeeAmountMinor = 1050;
+    snapshot.booking.customerTotalAmountMinor = 16050;
+    snapshot.booking.marketplaceFeeRuleVersion = 'split-13-7-v1';
+    snapshot.payment.amountMinor = 16050;
+
+    const vm = buildViewModel('booking-confirmation-technical-v1', snapshot);
+
+    expect(vm.booking.totalAmountMinor).toBe(15000);
+    expect(vm.booking.customerTotalAmountMinor).toBe(16050);
+  });
+
   it('le PDF contient au moins une page avec pied de page', async () => {
     const renderer = new PdfLibDocumentRenderer();
     const snapshot = makeValidSnapshot();

@@ -3,6 +3,11 @@
 ## Statut
 **COMPLÉTÉ ET DURCI** — Conforme à 100% aux spécifications G7M-C4-B, ADR-023 §10.2, §11.2, §11.4 et aux règles architecturales du projet Uttily. C4-S et C4-A sont committés localement dans la pile ; C4-B est implémenté et validé dans le worktree (non commité) ; rien de C2–C4 n'est encore fusionné sur main. C5 reste pending et Core global reste pending CI.
 
+Depuis le split marketplace 22-B0, ce mécanisme reste legacy-only : un booking
+ou un paiement de supplément portant un snapshot split est bloqué avec
+`SPLIT_REFUND_UNRESOLVED` avant toute création ou soumission de refund, jusqu'au
+sign-off Finance/Juridique sur le traitement séparé des composants.
+
 - Use Case interne durci `compensateAmendmentPayment` (non exporté dans le barrel public `@uttily/core`).
 - Éligibilité stricte : refus de toute compensation anticipée avant la `holdDeadline` ou sur amendement `APPLIED`. Horloge unique capturée de manière finite.
 - Rejeu strict du refund et de l'outbox associé via validation fermée `parseRefundRequestedV1Event` (rejet de toute propriété payload supplémentaire, métadonnée racine incompatible, ou aggregateId divergent).

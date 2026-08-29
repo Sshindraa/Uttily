@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 import {
   LOCAL_DATABASE_URL,
   LOCAL_DEV_PUBLIC_SEARCH_CURSOR_SECRET,
-  LOCAL_PLATFORM_COMMISSION_RATE_BPS,
   LOCAL_PUBLIC_APP_URL,
   createDockerEnvironment,
   createDockerInspectionEnvironment,
@@ -119,14 +118,14 @@ test('remplace les origins et le curseur hérités par les valeurs dev/test loca
   assert.equal(environment.ALLOWED_ORIGINS, '');
 });
 
-test('impose une URL de retour et une commission explicites dans le workflow local', () => {
+test('impose une URL de retour et ne réintroduit pas l’ancien taux de commission', () => {
   const environment = createTestLocalEnvironment({
     PUBLIC_APP_URL: 'https://production.example.invalid',
     PLATFORM_COMMISSION_RATE_BPS: '0',
   });
 
   assert.equal(environment.PUBLIC_APP_URL, LOCAL_PUBLIC_APP_URL);
-  assert.equal(environment.PLATFORM_COMMISSION_RATE_BPS, LOCAL_PLATFORM_COMMISSION_RATE_BPS);
+  assert.equal(environment.PLATFORM_COMMISSION_RATE_BPS, undefined);
 });
 
 test('force Stripe TEST et vide les clés absentes dans l’environnement enfant', () => {

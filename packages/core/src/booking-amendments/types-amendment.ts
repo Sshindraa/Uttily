@@ -1,3 +1,5 @@
+import type { MarketplaceFeeSnapshot } from '../marketplace-fees';
+
 export type LineAction = 'ADD' | 'MODIFY' | 'REMOVE' | 'UNCHANGED';
 
 /**
@@ -306,6 +308,12 @@ export interface PreviewBookingAmendmentSuccess {
   readonly currency: 'EUR';
   readonly supplementCommissionAmountMinor: number | null;
   readonly supplementNetAmountMinor: number | null;
+  readonly previousMarketplaceFeeSnapshot?: MarketplaceFeeSnapshot;
+  readonly nextMarketplaceFeeSnapshot?: MarketplaceFeeSnapshot;
+  readonly merchantFeeDeltaAmountMinor?: number;
+  readonly customerServiceFeeDeltaAmountMinor?: number;
+  readonly customerTotalDeltaAmountMinor?: number;
+  readonly platformApplicationFeeDeltaAmountMinor?: number;
   readonly lines: readonly PreviewLineDiffEntry[];
 }
 

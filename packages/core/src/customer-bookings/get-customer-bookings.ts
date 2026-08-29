@@ -106,6 +106,7 @@ export async function listCustomerBookings(
       customerEndAt: bookings.customerEndAt,
       timezone: bookings.timezone,
       totalAmountMinor: bookings.totalAmountMinor,
+      customerTotalAmountMinor: bookings.customerTotalAmountMinor,
       currency: bookings.currency,
       confirmedAt: bookings.confirmedAt,
       locationName: locations.name,
@@ -224,7 +225,7 @@ export async function listCustomerBookings(
         postalCode: row.locationPostalCode,
         city: row.locationCity,
       }),
-      totalAmountMinor: row.totalAmountMinor,
+      totalAmountMinor: row.customerTotalAmountMinor ?? row.totalAmountMinor,
       currency: row.currency,
       confirmedAt: row.confirmedAt,
     };
@@ -275,6 +276,7 @@ export async function getCustomerBooking(
       customerEndAt: bookings.customerEndAt,
       timezone: bookings.timezone,
       totalAmountMinor: bookings.totalAmountMinor,
+      customerTotalAmountMinor: bookings.customerTotalAmountMinor,
       currency: bookings.currency,
       confirmedAt: bookings.confirmedAt,
       cancellationPolicySnapshot: bookings.cancellationPolicySnapshot,
@@ -380,7 +382,7 @@ export async function getCustomerBooking(
       };
     } else {
       payment = {
-        amountPaidMinor: booking.totalAmountMinor,
+        amountPaidMinor: booking.customerTotalAmountMinor ?? booking.totalAmountMinor,
         currency: booking.currency,
         status: 'UNAVAILABLE',
         paidAt: null,
@@ -388,7 +390,7 @@ export async function getCustomerBooking(
     }
   } else {
     payment = {
-      amountPaidMinor: booking.totalAmountMinor,
+      amountPaidMinor: booking.customerTotalAmountMinor ?? booking.totalAmountMinor,
       currency: booking.currency,
       status: 'UNAVAILABLE',
       paidAt: null,
@@ -516,7 +518,7 @@ export async function getCustomerBooking(
     returnInstructions: booking.locationReturnInstructions ?? null,
     locationPhone: booking.locationPublicPhone ?? null,
     locationCoordinates: null,
-    totalAmountMinor: booking.totalAmountMinor,
+    totalAmountMinor: booking.customerTotalAmountMinor ?? booking.totalAmountMinor,
     currency: booking.currency,
     confirmedAt: booking.confirmedAt,
     items,
