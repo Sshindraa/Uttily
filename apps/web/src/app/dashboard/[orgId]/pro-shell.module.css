@@ -2,6 +2,7 @@
   min-height: 100vh;
   background: var(--ut-color-surface-raised);
   color: var(--ut-color-ink);
+  overflow-x: clip;
 }
 
 .sidebar {
