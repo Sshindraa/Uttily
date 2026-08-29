@@ -199,16 +199,16 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run migrations
-        run: pnpm --filter @uttily/database migrate
+        run: pnpm --filter @uttily/database db:migrate
         env:
-          DATABASE_URL: postgres://uttily:uttily@localhost:5432/uttily
+          DATABASE_URL: postgresql://uttily:uttily@localhost:5432/uttily
 
       - name: Build packages
         run: pnpm build
         env:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
           CLERK_SECRET_KEY: sk_test_1234567890abcdef1234567890abcdef
-          DATABASE_URL: postgres://uttily:uttily@localhost:5432/uttily
+          DATABASE_URL: postgresql://uttily:uttily@localhost:5432/uttily
 
       - name: Install Playwright Browsers with OS dependencies
         run: pnpm --filter @uttily/web exec playwright install --with-deps chromium
@@ -218,7 +218,7 @@ jobs:
         env:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
           CLERK_SECRET_KEY: sk_test_1234567890abcdef1234567890abcdef
-          DATABASE_URL: postgres://uttily:uttily@localhost:5432/uttily
+          DATABASE_URL: postgresql://uttily:uttily@localhost:5432/uttily
   verify:
     name: Lint, typecheck, test, build
     if: ${{ always() }}
