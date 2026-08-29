@@ -22,6 +22,7 @@
     "build": "pnpm -r build",
     "benchmark:destination": "pnpm --filter @uttily/database benchmark:destination",
     "db:seed": "UTTILY_LOCAL_DEV=1 NODE_ENV=\"${NODE_ENV:-development}\" pnpm --filter @uttily/database db:seed:local",
+    "db:ensure-browser-e2e-membership": "pnpm --filter @uttily/database db:ensure-browser-e2e-membership",
     "recovery:restore-drill": "pnpm --filter @uttily/database recovery:restore-drill",
     "test:recovery": "pnpm --filter @uttily/database test:recovery && node --test scripts/recovery-artifacts.test.mjs",
     "dev": "pnpm --filter web dev",

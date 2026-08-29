@@ -31,6 +31,7 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@clerk/testing": "^2.2.31",
     "@playwright/test": "^1.62.1",
     "@types/node": "^22.0.0",
     "@types/react": "^19.2.0",
