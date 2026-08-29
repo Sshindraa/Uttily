@@ -154,7 +154,7 @@ async function visitSurface(page: Page, surface: ProSurface, testInfo: TestInfo)
 }
 
 test.describe('Authenticated Pro browser evidence', () => {
-  test.describe.configure({ maxFailures: 1 });
+  test.describe.configure({ mode: 'serial' });
 
   for (const surface of surfaces) {
     test(surface.name, async ({ page }, testInfo) => {
