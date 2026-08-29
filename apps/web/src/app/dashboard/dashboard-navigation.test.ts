@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const LAYOUT_PATH = join(__dirname, '[orgId]', 'layout.tsx');
+const LAYOUT_PATH = join(__dirname, '[orgId]', 'pro-shell.tsx');
 
 describe('Dashboard — Navigation IA Pro définitive', () => {
   const layout = readFileSync(LAYOUT_PATH, 'utf8');
@@ -12,27 +12,27 @@ describe('Dashboard — Navigation IA Pro définitive', () => {
   // -----------------------------------------------------------------------
 
   const expectedNavEntries = [
-    { emoji: '🏠', label: 'Accueil', href: '`/dashboard/${orgId}`' },
-    { emoji: '🚲', label: 'Mes vélos', href: '/bikes' },
-    { emoji: '📋', label: 'Réservations', href: '/bookings' },
-    { emoji: '🔧', label: 'Flotte', href: '/fleet' },
-    { emoji: '📍', label: 'Établissements', href: '/locations' },
-    { emoji: '💰', label: 'Revenus', href: '/finances' },
-    { emoji: '👥', label: 'Équipe', href: '/team' },
-    { emoji: '⚙️', label: 'Paramètres', href: '/settings' },
+    { label: 'Accueil', href: '`/dashboard/${orgId}`' },
+    { label: 'Mes vélos', href: '/bikes' },
+    { label: 'Réservations', href: '/bookings' },
+    { label: 'Flotte', href: '/fleet' },
+    { label: 'Établissements', href: '/locations' },
+    { label: 'Revenus', href: '/finances' },
+    { label: 'Équipe', href: '/team' },
+    { label: 'Paramètres', href: '/settings' },
   ];
 
   it.each(expectedNavEntries)(
-    'contient le lien de navigation "$label" ($emoji) vers $href',
+    'contient le lien de navigation "$label" vers $href',
     ({ label, href }) => {
       expect(layout).toContain(label);
       expect(layout).toContain(href);
     },
   );
 
-  it('a exactement 8 entrées navLink (pas de Catalogue, Inventaire ni Planning top-level)', () => {
-    const navLinkCount = (layout.match(/className=\{styles\.navLink\}/g) ?? []).length;
-    expect(navLinkCount).toBe(8);
+  it('a exactement 8 entrées dans la configuration de navigation', () => {
+    const navItemCount = (layout.match(/label: '/g) ?? []).length;
+    expect(navItemCount).toBe(8);
   });
 
   // -----------------------------------------------------------------------
@@ -40,17 +40,10 @@ describe('Dashboard — Navigation IA Pro définitive', () => {
   // -----------------------------------------------------------------------
 
   it('ne contient pas les anciens onglets top-level Catalogue, Inventaire ou Planning', () => {
-    // On vérifie qu'aucun lien navLink ne pointe vers ces anciens segments.
-    // Les chaînes "/catalog" et "/inventory" dans le layout indiqueraient un onglet résiduel.
-    // Note : on cherche dans les href du layout, pas dans les redirects (qui sont ailleurs).
-    const lines = layout.split('\n');
-    const navLinkLines = lines.filter((l) => l.includes('navLink'));
-    const navHrefs = navLinkLines.join('\n');
-
-    expect(navHrefs).not.toContain('/catalog');
-    expect(navHrefs).not.toContain('/inventory');
-    expect(navHrefs).not.toContain('/planning');
-    expect(navHrefs).not.toContain('/operations');
+    expect(layout).not.toContain("label: 'Catalogue'");
+    expect(layout).not.toContain("label: 'Inventaire'");
+    expect(layout).not.toContain("label: 'Planning'");
+    expect(layout).not.toContain("label: 'Opérations'");
   });
 
   // -----------------------------------------------------------------------
@@ -59,5 +52,6 @@ describe('Dashboard — Navigation IA Pro définitive', () => {
 
   it('le nav porte un aria-label descriptif', () => {
     expect(layout).toContain('aria-label="Navigation principale"');
+    expect(layout).toContain("aria-current={active ? 'page' : undefined}");
   });
 });

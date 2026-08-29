@@ -3,7 +3,8 @@
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./dist",
-    "jsx": "preserve"
+    "jsx": "preserve",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"]
 }

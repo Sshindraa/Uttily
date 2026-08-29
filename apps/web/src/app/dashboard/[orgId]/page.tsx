@@ -12,6 +12,7 @@ import {
 import { requireFulfillmentOperatorOf } from '@/lib/fulfillment-auth';
 import { formatDateTimeInTimeZone } from '@/lib/operations-helpers';
 import Link from 'next/link';
+import { Icon, LinkButton, PageHeader } from '@uttily/ui';
 import { OnboardingReadinessCard } from './onboarding-readiness-card';
 import styles from './dashboard-cockpit.module.css';
 
@@ -100,22 +101,16 @@ export default async function OrganizationDashboardPage({
 
   return (
     <div className={styles.container}>
-      {/* Entête de Salutation & Date */}
-      <div className={styles.heroRow}>
-        <div>
-          <h1 className={styles.greetingTitle}>Bonjour 👋</h1>
-          <p className={styles.dateSubtitle}>
-            Aujourd’hui, <span style={{ textTransform: 'capitalize' }}>{formattedDate}</span> •{' '}
-            {org?.legalName ?? 'Organisation'}
-          </p>
-        </div>
-
-        <div className={styles.quickActions}>
-          <Link href={`/dashboard/${organizationId}/bikes/new`} className={styles.btnNewBike}>
-            + Ajouter un vélo
-          </Link>
-        </div>
-      </div>
+      <PageHeader
+        eyebrow={`Aujourd'hui · ${formattedDate}`}
+        title="Bonjour"
+        description={`Voici l'activité de ${org?.legalName ?? 'votre organisation'} à suivre aujourd'hui.`}
+        actions={
+          <LinkButton href={`/dashboard/${organizationId}/bikes/new`} size="md">
+            Ajouter un vélo <Icon name="arrow-right" size={17} />
+          </LinkButton>
+        }
+      />
 
       {/* Carte d'Onboarding 4 Étapes (si la boutique n'est pas encore 100% active) */}
       {!readiness.isReadyForReservations && (

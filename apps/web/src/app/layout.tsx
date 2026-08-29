@@ -1,5 +1,6 @@
 import { ClerkProvider } from '@clerk/nextjs';
 import type { Metadata } from 'next';
+import '@uttily/ui/tokens.css';
 
 export const metadata: Metadata = {
   title: 'Uttily',
