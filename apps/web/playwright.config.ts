@@ -39,7 +39,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: process.env.CI ? 'pnpm --filter @uttily/web start' : 'pnpm --filter @uttily/web dev',
+    command:
+      'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Y2xlcmsuZXhhbXBsZS5jb20k CLERK_SECRET_KEY=sk_test_1234567890abcdef1234567890abcdef pnpm --filter @uttily/web dev --port 3000',
     url: 'http://127.0.0.1:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
