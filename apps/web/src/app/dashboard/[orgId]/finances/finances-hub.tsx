@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import type { MerchantFinanceOverview, PayoutAccountStatus } from '@uttily/core';
+import type { MerchantFinanceOverview, PayoutAccountStatus, PayoutReadiness } from '@uttily/core';
 import {
   ConnectComponentsProvider,
   ConnectAccountOnboarding,
@@ -14,7 +14,8 @@ import {
   createAccountSessionAction,
   createOnboardingLinkAction,
 } from '@/app/actions/connected-accounts';
-import styles from './finances.module.css';
+import { PageHeader, Card, Badge, Button, LinkButton } from '@uttily/ui';
+import type { BadgeTone } from '@uttily/ui';
 
 const SUPPORTED_COUNTRIES = [
   { code: 'FR', label: 'France (EUR)' },
@@ -24,6 +25,21 @@ const SUPPORTED_COUNTRIES = [
   { code: 'IT', label: 'Italie (EUR)' },
   { code: 'NL', label: 'Pays-Bas (EUR)' },
 ] as const;
+
+function getAccountBadgeTone(readiness: PayoutReadiness): BadgeTone {
+  switch (readiness) {
+    case 'ENABLED':
+      return 'success';
+    case 'ACTION_REQUIRED':
+    case 'RESTRICTED':
+      return 'warning';
+    case 'PENDING_VERIFICATION':
+      return 'info';
+    case 'NOT_STARTED':
+    default:
+      return 'neutral';
+  }
+}
 
 interface FinancesHubProps {
   organizationId: string;
@@ -49,6 +65,19 @@ export function FinancesHub({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper de formatage de devise
+  function formatMoney(minor: number, currency: string = overview.currency): string {
+    const amount = minor / 100;
+    try {
+      return new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: currency.toUpperCase(),
+      }).format(amount);
+    } catch {
+      return `${amount.toFixed(2)} ${currency}`;
+    }
+  }
+
   // Initialisation de Stripe Connect Embedded instance
   const handleStartEmbeddedSession = useCallback(async (): Promise<void> => {
     setError(null);
@@ -68,7 +97,7 @@ export function FinancesHub({
         fetchClientSecret: async () => {
           const freshSession = await createAccountSessionAction(organizationId);
           if (!freshSession.clientSecret) {
-            throw new Error('Impossible de générer le client secret Connect.');
+            throw new Error('Impossible de générer la session.');
           }
           return freshSession.clientSecret;
         },
@@ -83,10 +112,8 @@ export function FinancesHub({
 
       setStripeConnectInstance(instance);
       setIsEmbeddedActive(true);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Erreur lors de l’ouverture de l’espace bancaire.',
-      );
+    } catch {
+      setError('Impossible d’ouvrir l’espace de versement pour le moment. Veuillez réessayer.');
     } finally {
       setIsLoading(false);
     }
@@ -102,10 +129,8 @@ export function FinancesHub({
         origin: window.location.origin,
       });
       window.location.href = result.url;
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Erreur lors du chargement du portail externe.',
-      );
+    } catch {
+      setError('Impossible de charger le portail de versement externe. Veuillez réessayer.');
       setIsLoading(false);
     }
   }
@@ -130,337 +155,339 @@ export function FinancesHub({
     return true;
   });
 
-  function formatEur(minor: number): string {
-    const absVal = Math.abs(minor) / 100;
-    const sign = minor < 0 ? '-' : '';
-    return `${sign}${absVal.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
-  }
-
   return (
-    <div className={styles.container}>
-      {/* En-tête de la page */}
-      <div className={styles.headerRow}>
-        <div>
-          <h1 className={styles.pageTitle}>💰 Revenus &amp; Versements</h1>
-          <p className={styles.pageSubtitle}>
-            Période : <strong>{overview.period.label}</strong> · Suivi en temps réel de vos
-            encaissements, commissions et virements bancaires.
-          </p>
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      <PageHeader
+        eyebrow="Finances"
+        title="Revenus & Versements"
+        description={`Période : ${overview.period.label} · Suivi de vos encaissements, commissions et versements.`}
+        actions={
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <LinkButton
+              href={`/api/dashboard/${organizationId}/finances/export-csv`}
+              variant="secondary"
+            >
+              📥 Exporter CSV
+            </LinkButton>
+            <Button
+              type="button"
+              variant={showBankSettings ? 'secondary' : 'primary'}
+              onClick={() => setShowBankSettings(!showBankSettings)}
+            >
+              {showBankSettings ? 'Masquer config bancaire' : '⚙️ Espace bancaire'}
+            </Button>
+          </div>
+        }
+      />
 
-        <div className={styles.headerActions}>
-          <a
-            href={`/api/dashboard/${organizationId}/finances/export-csv`}
-            download
-            className={styles.btnExportCsv}
+      {/* Bloc Statut Compte Bancaire / Onboarding */}
+      {showBankSettings && (
+        <Card
+          style={{
+            padding: '1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '1.25rem',
+            border: '2px solid var(--ut-color-primary)',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              gap: '1rem',
+              flexWrap: 'wrap',
+            }}
           >
-            📥 Exporter en CSV
-          </a>
-        </div>
-      </div>
-
-      {error && (
-        <div role="alert" className={styles.errorAlert}>
-          {error}
-        </div>
-      )}
-
-      {/* 4 Chiffres Clés Financiers */}
-      <div className={styles.statsGrid}>
-        <div className={`${styles.statCard} ${styles.statCardHighlight}`}>
-          <span className={styles.statLabel}>Revenus après commission Uttily</span>
-          <span className={styles.statNumberPrimary}>
-            {formatEur(overview.merchant.netAfterCommissionMinor)}
-          </span>
-          <span className={styles.statSubText}>
-            Sur {overview.sales.bookingCount} réservation
-            {overview.sales.bookingCount > 1 ? 's' : ''} encaissée
-            {overview.sales.bookingCount > 1 ? 's' : ''}
-          </span>
-        </div>
-
-        <div className={styles.statCard}>
-          <span className={styles.statLabel}>En attente d'encaissement</span>
-          <span className={`${styles.statNumber} ${styles.statAmber}`}>
-            {formatEur(overview.payments.pendingAmountMinor)}
-          </span>
-          <span className={styles.statSubText}>Paiements en cours de confirmation</span>
-        </div>
-
-        <div className={styles.statCard}>
-          <span className={styles.statLabel}>Commission Uttily (Plateforme)</span>
-          <span className={`${styles.statNumber} ${styles.statBlue}`}>
-            {formatEur(overview.commissions.platformAmountMinor)}
-          </span>
-          <span className={styles.statSubText}>Frais de service plateforme</span>
-        </div>
-
-        <div className={styles.statCard}>
-          <span className={styles.statLabel}>Remboursements</span>
-          <span className={`${styles.statNumber} ${styles.statRed}`}>
-            {formatEur(overview.payments.refundedAmountMinor)}
-          </span>
-          <span className={styles.statSubText}>Remboursements clients sur la période</span>
-        </div>
-      </div>
-
-      {/* Section Synthèse Versements Bancaires (Payouts) */}
-      <section className={styles.payoutsSection} aria-labelledby="payouts-section-title">
-        <div className={styles.payoutsHeader}>
-          <div>
-            <h2 id="payouts-section-title" className={styles.payoutsTitle}>
-              <span>🏦</span> Versements sur votre compte bancaire
-            </h2>
-            <span className={styles.payoutsSubtitle}>
-              {status.isReady
-                ? '🟢 Compte de versement bancaire actif et vérifié'
-                : '⚠️ Configuration de votre compte bancaire requise'}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setShowBankSettings(!showBankSettings)}
-            className={styles.btnToggleSettings}
-          >
-            {showBankSettings ? '▲ Masquer les paramètres' : '⚙️ Gérer le compte bancaire'}
-          </button>
-        </div>
-
-        <div className={styles.payoutsMetricsGrid}>
-          <div className={styles.payoutMetric}>
-            <span className={styles.payoutMetricLabel}>Dernier versement reçu :</span>
-            <strong className={styles.payoutMetricValue}>
-              {overview.payouts.lastPayout
-                ? `${formatEur(overview.payouts.lastPayout.amountMinor)} · le ${new Date(overview.payouts.lastPayout.arrivalDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}`
-                : 'Aucun versement récent'}
-            </strong>
-          </div>
-
-          <div className={styles.payoutMetric}>
-            <span className={styles.payoutMetricLabel}>En cours de transfert vers l'IBAN :</span>
-            <strong className={styles.payoutMetricValue}>
-              {formatEur(overview.payouts.inTransitAmountMinor)}
-            </strong>
-          </div>
-
-          <div className={styles.payoutMetric}>
-            <span className={styles.payoutMetricLabel}>Calendrier de versement :</span>
-            <strong className={styles.payoutMetricValue}>
-              {overview.payouts.nextPayoutSchedule}
-            </strong>
-          </div>
-        </div>
-
-        {/* Historique des Versements Reçus */}
-        {overview.payouts.history.length > 0 && (
-          <div className={styles.payoutsHistoryBlock}>
-            <h3 className={styles.payoutsHistoryTitle}>Historique récent des virements</h3>
-            <div className={styles.tableWrapper}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Date d'arrivée</th>
-                    <th>Référence versement</th>
-                    <th>Montant viré</th>
-                    <th>Statut</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {overview.payouts.history.map((p) => (
-                    <tr key={p.id}>
-                      <td className={styles.dateCell}>
-                        {p.arrivalDate
-                          ? new Date(p.arrivalDate).toLocaleDateString('fr-FR', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                            })
-                          : new Date(p.createdAt).toLocaleDateString('fr-FR', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                            })}
-                      </td>
-                      <td className={styles.refBadge}>{p.providerPayoutId}</td>
-                      <td className={styles.netCell}>{formatEur(p.amountMinor)}</td>
-                      <td>
-                        <span
-                          className={`${styles.statusBadge} ${
-                            p.status === 'PAID'
-                              ? styles.badgeSuccess
-                              : p.status === 'IN_TRANSIT'
-                                ? styles.badgeInTransit
-                                : styles.badgePending
-                          }`}
-                        >
-                          {p.statusLabel}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  marginBottom: '0.25rem',
+                }}
+              >
+                <h2
+                  style={{
+                    fontSize: '1.15rem',
+                    fontWeight: 700,
+                    margin: 0,
+                    color: 'var(--ut-color-ink-strong)',
+                  }}
+                >
+                  Compte de versement bancaire
+                </h2>
+                <Badge tone={getAccountBadgeTone(status.readiness)}>{status.label}</Badge>
+              </div>
+              <p style={{ color: 'var(--ut-color-ink-muted)', margin: 0, fontSize: '0.9rem' }}>
+                {status.description}
+              </p>
             </div>
-          </div>
-        )}
 
-        {/* Espace de configuration bancaire Connect */}
-        {showBankSettings && (
-          <div className={styles.bankDrawer}>
-            {!isEmbeddedActive ? (
-              <div className={styles.bankStatusBox}>
-                <p style={{ margin: 0, fontSize: '0.9rem', color: '#475569' }}>
-                  {status.description}
-                </p>
-                {status.readiness === 'NOT_STARTED' && (
-                  <div
-                    style={{ marginTop: '12px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {status.readiness === 'NOT_STARTED' && (
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <select
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    disabled={isLoading}
+                    style={{
+                      padding: '0.45rem 0.6rem',
+                      borderRadius: 'var(--ut-radius-md)',
+                      border: 'var(--ut-border-thin)',
+                      fontSize: '0.85rem',
+                      background: 'var(--ut-color-surface)',
+                    }}
                   >
-                    <select
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      className={styles.selectInput}
-                      disabled={isLoading}
-                    >
-                      {SUPPORTED_COUNTRIES.map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={handleStartEmbeddedSession}
-                      disabled={isLoading}
-                      className={styles.btnPrimary}
-                    >
-                      {isLoading ? 'Initialisation…' : 'Activer mes versements →'}
-                    </button>
-                  </div>
-                )}
-
-                {status.isReady && (
-                  <button
+                    {SUPPORTED_COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
                     type="button"
                     onClick={handleStartEmbeddedSession}
                     disabled={isLoading}
-                    className={styles.btnSecondary}
-                    style={{ marginTop: '12px' }}
+                    variant="primary"
                   >
-                    {isLoading ? 'Chargement…' : 'Accéder à la gestion du compte bancaire'}
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className={styles.embeddedContainer}>
-                <div className={styles.embeddedHeader}>
-                  <div>
-                    <h3
-                      style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#0f172a' }}
-                    >
-                      🔒 Espace Sécurisé Partenaire Bancaire
-                    </h3>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-                      Vos informations bancaires et d'identité sont saisies directement auprès de
-                      notre partenaire agréé.
-                    </p>
-                  </div>
-                  <button
+                    {isLoading ? 'Initialisation…' : 'Activer les versements'}
+                  </Button>
+                </div>
+              )}
+
+              {status.readiness !== 'NOT_STARTED' && (
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <Button
                     type="button"
-                    onClick={() => setIsEmbeddedActive(false)}
-                    className={styles.btnSecondary}
+                    onClick={handleStartEmbeddedSession}
+                    disabled={isLoading}
+                    variant="primary"
                   >
-                    ✕ Fermer
-                  </button>
-                </div>
-
-                <div className={styles.embeddedContentBox}>
-                  {stripeConnectInstance ? (
-                    <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
-                      {status.readiness === 'ENABLED' || status.isReady ? (
-                        <ConnectAccountManagement />
-                      ) : (
-                        <ConnectAccountOnboarding onExit={handleConnectExit} />
-                      )}
-                    </ConnectComponentsProvider>
-                  ) : (
-                    <p>Chargement du composant sécurisé…</p>
-                  )}
-                </div>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginTop: '12px',
-                  }}
-                >
-                  <button
+                    {isLoading ? 'Chargement…' : 'Ouvrir mon espace bancaire'}
+                  </Button>
+                  <Button
                     type="button"
                     onClick={handleHostedFallback}
-                    className={styles.fallbackLinkBtn}
+                    disabled={isLoading}
+                    variant="secondary"
                   >
-                    Ouvrir sur le portail externe de secours ↗
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => window.location.reload()}
-                    className={styles.btnSecondary}
-                  >
-                    🔄 Rafraîchir le statut
-                  </button>
+                    Portail externe ↗
+                  </Button>
                 </div>
+              )}
+            </div>
+          </div>
+
+          {error && (
+            <div
+              style={{
+                background: 'var(--ut-color-danger-soft)',
+                color: 'var(--ut-color-danger)',
+                padding: '0.75rem',
+                borderRadius: 'var(--ut-radius-md)',
+                fontSize: '0.875rem',
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          {/* Interface Stripe Connect Embedded */}
+          {isEmbeddedActive && stripeConnectInstance && (
+            <div
+              style={{
+                borderTop: 'var(--ut-border-thin)',
+                paddingTop: '1.25rem',
+                marginTop: '0.5rem',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '1rem',
+                }}
+              >
+                <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
+                  Espace bancaire sécurisé par notre partenaire de paiement
+                </span>
+                <Button type="button" variant="quiet" size="sm" onClick={handleConnectExit}>
+                  ✕ Fermer l’espace
+                </Button>
               </div>
-            )}
-          </div>
-        )}
-      </section>
 
-      {/* Section Activité & Détail Financier */}
-      <section className={styles.activitySection} aria-labelledby="activity-section-title">
-        <div className={styles.activityHeaderRow}>
-          <div>
-            <h2 id="activity-section-title" className={styles.activityTitle}>
-              📋 Activité &amp; Encaissements
-            </h2>
-            <span className={styles.activitySubtitle}>
-              {filteredActivity.length} mouvement{filteredActivity.length > 1 ? 's' : ''} sur la
-              période
-            </span>
-          </div>
+              <ConnectComponentsProvider connectInstance={stripeConnectInstance}>
+                {status.readiness === 'NOT_STARTED' ||
+                status.readiness === 'PENDING_VERIFICATION' ? (
+                  <ConnectAccountOnboarding onExit={handleConnectExit} />
+                ) : (
+                  <ConnectAccountManagement />
+                )}
+              </ConnectComponentsProvider>
+            </div>
+          )}
+        </Card>
+      )}
 
-          <div className={styles.filterControls}>
-            {/* Recherche */}
+      {/* Cartes KPI Financiers */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: '1rem',
+        }}
+      >
+        <Card
+          style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}
+        >
+          <span
+            style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--ut-color-ink-strong)' }}
+          >
+            {formatMoney(overview.sales.grossAmountMinor)}
+          </span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
+            Volume brut réservations
+          </span>
+        </Card>
+
+        <Card
+          style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}
+        >
+          <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--ut-color-success)' }}>
+            {formatMoney(overview.merchant.netAfterCommissionMinor)}
+          </span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
+            Montant net versé
+          </span>
+        </Card>
+
+        <Card
+          style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}
+        >
+          <span
+            style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--ut-color-ink-muted)' }}
+          >
+            {formatMoney(overview.commissions.platformAmountMinor)}
+          </span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
+            Commissions Uttily
+          </span>
+        </Card>
+
+        <Card
+          style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}
+        >
+          <span
+            style={{
+              fontSize: '1.75rem',
+              fontWeight: 800,
+              color:
+                overview.payments.refundedAmountMinor > 0
+                  ? 'var(--ut-color-danger)'
+                  : 'var(--ut-color-ink-muted)',
+            }}
+          >
+            {formatMoney(overview.payments.refundedAmountMinor)}
+          </span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
+            Remboursements
+          </span>
+        </Card>
+      </div>
+
+      {/* Tableau d'activité financière */}
+      <Card style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '1rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <h2
+            style={{
+              fontSize: '1.15rem',
+              fontWeight: 700,
+              margin: 0,
+              color: 'var(--ut-color-ink-strong)',
+            }}
+          >
+            Historique des opérations ({filteredActivity.length})
+          </h2>
+
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <input
-              type="search"
+              type="text"
+              placeholder="Rechercher par référence, vélo, client..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher (#UT-1042, client, vélo…)"
-              className={styles.searchInput}
+              style={{
+                padding: '0.4rem 0.65rem',
+                borderRadius: 'var(--ut-radius-md)',
+                border: 'var(--ut-border-thin)',
+                fontSize: '0.85rem',
+                width: '240px',
+              }}
             />
-
-            {/* Type */}
-            <div className={styles.typeFilterToggle}>
+            <div style={{ display: 'flex', gap: '0.25rem' }}>
               <button
                 type="button"
-                className={`${styles.typeBtn} ${filterType === 'ALL' ? styles.typeBtnActive : ''}`}
                 onClick={() => setFilterType('ALL')}
+                style={{
+                  padding: '0.4rem 0.65rem',
+                  borderRadius: 'var(--ut-radius-md)',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  border: 'var(--ut-border-thin)',
+                  background:
+                    filterType === 'ALL' ? 'var(--ut-color-ink-strong)' : 'var(--ut-color-surface)',
+                  color: filterType === 'ALL' ? '#ffffff' : 'var(--ut-color-ink)',
+                  cursor: 'pointer',
+                }}
               >
-                Tout
+                Toutes
               </button>
               <button
                 type="button"
-                className={`${styles.typeBtn} ${filterType === 'PAYMENTS' ? styles.typeBtnActive : ''}`}
                 onClick={() => setFilterType('PAYMENTS')}
+                style={{
+                  padding: '0.4rem 0.65rem',
+                  borderRadius: 'var(--ut-radius-md)',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  border: 'var(--ut-border-thin)',
+                  background:
+                    filterType === 'PAYMENTS'
+                      ? 'var(--ut-color-ink-strong)'
+                      : 'var(--ut-color-surface)',
+                  color: filterType === 'PAYMENTS' ? '#ffffff' : 'var(--ut-color-ink)',
+                  cursor: 'pointer',
+                }}
               >
-                Paiements
+                Encaissements
               </button>
               <button
                 type="button"
-                className={`${styles.typeBtn} ${filterType === 'REFUNDS' ? styles.typeBtnActive : ''}`}
                 onClick={() => setFilterType('REFUNDS')}
+                style={{
+                  padding: '0.4rem 0.65rem',
+                  borderRadius: 'var(--ut-radius-md)',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  border: 'var(--ut-border-thin)',
+                  background:
+                    filterType === 'REFUNDS'
+                      ? 'var(--ut-color-ink-strong)'
+                      : 'var(--ut-color-surface)',
+                  color: filterType === 'REFUNDS' ? '#ffffff' : 'var(--ut-color-ink)',
+                  cursor: 'pointer',
+                }}
               >
                 Remboursements
               </button>
@@ -468,100 +495,150 @@ export function FinancesHub({
           </div>
         </div>
 
-        {/* Tableau Financier */}
-        <div className={styles.tableWrapper}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Référence &amp; Produit</th>
-                <th>Client</th>
-                <th>Montant Brut</th>
-                <th>Commission Uttily</th>
-                <th>Revenus Nets</th>
-                <th>Statut Paiement</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredActivity.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className={styles.emptyTable}>
-                    Aucune transaction financière trouvée pour ces critères.
-                  </td>
+        {filteredActivity.length === 0 ? (
+          <p
+            style={{
+              color: 'var(--ut-color-ink-muted)',
+              margin: '1rem 0',
+              fontSize: '0.9rem',
+              textAlign: 'center',
+            }}
+          >
+            Aucune opération financière ne correspond à vos filtres.
+          </p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+              <thead>
+                <tr
+                  style={{
+                    background: 'var(--ut-color-surface-soft)',
+                    borderBottom: 'var(--ut-border-thin)',
+                  }}
+                >
+                  <th
+                    style={{
+                      padding: '0.75rem',
+                      textAlign: 'left',
+                      color: 'var(--ut-color-ink-muted)',
+                    }}
+                  >
+                    Date
+                  </th>
+                  <th
+                    style={{
+                      padding: '0.75rem',
+                      textAlign: 'left',
+                      color: 'var(--ut-color-ink-muted)',
+                    }}
+                  >
+                    Opération
+                  </th>
+                  <th
+                    style={{
+                      padding: '0.75rem',
+                      textAlign: 'left',
+                      color: 'var(--ut-color-ink-muted)',
+                    }}
+                  >
+                    Réservation
+                  </th>
+                  <th
+                    style={{
+                      padding: '0.75rem',
+                      textAlign: 'right',
+                      color: 'var(--ut-color-ink-muted)',
+                    }}
+                  >
+                    Brut
+                  </th>
+                  <th
+                    style={{
+                      padding: '0.75rem',
+                      textAlign: 'right',
+                      color: 'var(--ut-color-ink-muted)',
+                    }}
+                  >
+                    Commission
+                  </th>
+                  <th
+                    style={{
+                      padding: '0.75rem',
+                      textAlign: 'right',
+                      color: 'var(--ut-color-ink-muted)',
+                    }}
+                  >
+                    Net
+                  </th>
                 </tr>
-              ) : (
-                filteredActivity.map((item) => (
-                  <tr key={item.id}>
-                    <td className={styles.dateCell}>
-                      {new Date(item.date).toLocaleDateString('fr-FR', {
-                        day: 'numeric',
-                        month: 'short',
-                      })}
-                      <span className={styles.timeSub}>
-                        {new Date(item.date).toLocaleTimeString('fr-FR', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
+              </thead>
+              <tbody>
+                {filteredActivity.map((item) => (
+                  <tr key={item.id} style={{ borderBottom: 'var(--ut-border-thin)' }}>
+                    <td style={{ padding: '0.75rem', color: 'var(--ut-color-ink-muted)' }}>
+                      {new Intl.DateTimeFormat('fr-FR', {
+                        dateStyle: 'short',
+                        timeStyle: 'short',
+                      }).format(new Date(item.date))}
                     </td>
-
-                    <td className={styles.refCell}>
+                    <td style={{ padding: '0.75rem' }}>
+                      <Badge tone={item.type === 'PAYMENT' ? 'success' : 'danger'}>
+                        {item.type === 'PAYMENT' ? 'Encaissement' : 'Remboursement'}
+                      </Badge>
+                    </td>
+                    <td style={{ padding: '0.75rem' }}>
                       {item.bookingId ? (
                         <Link
                           href={`/dashboard/${organizationId}/bookings/${item.bookingId}`}
-                          className={styles.bookingLink}
+                          style={{
+                            color: 'var(--ut-color-primary)',
+                            fontWeight: 600,
+                            textDecoration: 'none',
+                          }}
                         >
-                          {item.bookingReference} →
+                          {item.bookingReference}
                         </Link>
                       ) : (
-                        <span className={styles.refBadge}>{item.bookingReference}</span>
+                        <span style={{ fontWeight: 600 }}>{item.bookingReference}</span>
                       )}
-                      <span className={styles.productNameSub}>{item.productName}</span>
+                      {item.productName && (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--ut-color-ink-muted)' }}>
+                          {item.productName}
+                        </div>
+                      )}
                     </td>
-
-                    <td className={styles.clientCell}>{item.customerEmail ?? '—'}</td>
-
-                    <td className={styles.amountCell}>{formatEur(item.grossAmountMinor)}</td>
-
-                    <td className={styles.commCell}>
-                      {item.commissionAmountMinor > 0
-                        ? `-${formatEur(item.commissionAmountMinor)}`
-                        : '—'}
+                    <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>
+                      {formatMoney(item.grossAmountMinor, item.currency)}
                     </td>
-
-                    <td className={styles.netCell}>
-                      <strong>{formatEur(item.netAmountMinor)}</strong>
+                    <td
+                      style={{
+                        padding: '0.75rem',
+                        textAlign: 'right',
+                        color: 'var(--ut-color-ink-muted)',
+                      }}
+                    >
+                      {formatMoney(item.commissionAmountMinor, item.currency)}
                     </td>
-
-                    <td>
-                      <span
-                        className={`${styles.statusBadge} ${
-                          item.status === 'SUCCEEDED' ? styles.badgeSuccess : styles.badgePending
-                        }`}
-                      >
-                        {item.statusLabel}
-                      </span>
+                    <td
+                      style={{
+                        padding: '0.75rem',
+                        textAlign: 'right',
+                        fontWeight: 700,
+                        color:
+                          item.netAmountMinor >= 0
+                            ? 'var(--ut-color-success)'
+                            : 'var(--ut-color-danger)',
+                      }}
+                    >
+                      {formatMoney(item.netAmountMinor, item.currency)}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* Note de réassurance */}
-      <aside className={styles.securityNote}>
-        <span style={{ fontSize: '1.25rem' }}>🔒</span>
-        <div>
-          <strong>Infrastructure de paiement sécurisée</strong>
-          <p style={{ margin: '4px 0 0 0' }}>
-            Vos paiements et versements sont traités via notre infrastructure de paiement sécurisée.
-            Le statut et la date de chaque versement sont affichés dès qu'ils sont confirmés par
-            l'établissement bancaire.
-          </p>
-        </div>
-      </aside>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

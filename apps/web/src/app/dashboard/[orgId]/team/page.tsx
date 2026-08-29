@@ -7,6 +7,7 @@ import {
   getMembership,
   requireMembership,
   can,
+  canInviteRole,
   listPendingInvitations,
   type MembershipRole,
 } from '@uttily/core';
@@ -40,6 +41,12 @@ function getRoleTone(role: MembershipRole): BadgeTone {
     case 'STAFF':
       return 'neutral';
   }
+}
+
+const ALL_ROLES: MembershipRole[] = ['ADMIN', 'MANAGER', 'STAFF'];
+
+export function getInvitableRoles(actorRole: MembershipRole): MembershipRole[] {
+  return ALL_ROLES.filter((r) => canInviteRole(actorRole, r));
 }
 
 export default async function TeamPage({
@@ -76,6 +83,8 @@ export default async function TeamPage({
   const canInvite = can(active.role, 'team.invite');
   const canChangeRole = can(active.role, 'team.changeRole');
   const canRemove = can(active.role, 'team.remove');
+
+  const invitableRoles = getInvitableRoles(active.role);
 
   async function inviteMember(formData: FormData) {
     'use server';
@@ -240,7 +249,7 @@ export default async function TeamPage({
 
         {/* Colonne latérale : Invitation & Invitations en attente */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {canInvite && (
+          {canInvite && invitableRoles.length > 0 && (
             <Card
               style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
             >
@@ -305,7 +314,7 @@ export default async function TeamPage({
                   <select
                     id="invite-role"
                     name="role"
-                    defaultValue="STAFF"
+                    defaultValue={invitableRoles[0]}
                     style={{
                       width: '100%',
                       padding: '0.5rem 0.75rem',
@@ -316,10 +325,11 @@ export default async function TeamPage({
                       color: 'var(--ut-color-ink)',
                     }}
                   >
-                    {active.role === 'OWNER' && <option value="OWNER">Propriétaire</option>}
-                    <option value="ADMIN">Administrateur</option>
-                    <option value="MANAGER">Responsable</option>
-                    <option value="STAFF">Équipe</option>
+                    {invitableRoles.map((role) => (
+                      <option key={role} value={role}>
+                        {ROLE_LABELS[role]}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

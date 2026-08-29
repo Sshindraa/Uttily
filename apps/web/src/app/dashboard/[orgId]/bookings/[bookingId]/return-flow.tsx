@@ -7,7 +7,7 @@ import {
   createDamageReportAction,
   returnBookingAction,
 } from '@/app/actions/fulfillment';
-import styles from './booking-detail.module.css';
+import { Button } from '@uttily/ui';
 
 interface ReturnFlowProps {
   orgId: string;
@@ -63,7 +63,7 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
           return;
         }
 
-        // 2. Si un dommage est signalé (Chantier 8D Damage -> Maintenance)
+        // 2. Si un dommage est signalé
         if (hasDamage && damageDescription.trim().length > 0) {
           const damageFormData = new FormData();
           damageFormData.append('bookingId', bookingId);
@@ -107,8 +107,8 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
 
       setIsOpen(false);
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur inattendue.');
+    } catch {
+      setError('Impossible d’enregistrer le retour du vélo pour le moment. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
@@ -116,126 +116,281 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
 
   if (!isOpen) {
     return (
-      <button type="button" onClick={() => setIsOpen(true)} className={styles.secondaryActionBtn}>
+      <Button
+        type="button"
+        onClick={() => setIsOpen(true)}
+        variant="secondary"
+        style={{ minHeight: '44px' }}
+      >
         🔵 Effectuer le retour du vélo →
-      </button>
+      </Button>
     );
   }
 
   return (
-    <div className={styles.flowModal}>
-      <div className={styles.flowHeader}>
-        <h3>🔵 Réception &amp; Retour du vélo</h3>
-        <button
-          type="button"
-          onClick={() => setIsOpen(false)}
-          className={styles.closeBtn}
-          disabled={loading}
-        >
-          ✕
-        </button>
-      </div>
-
-      <form onSubmit={handleSubmit} className={styles.flowForm}>
-        {error && <div className={styles.formError}>{error}</div>}
-
-        <div className={styles.formGroup}>
-          <label htmlFor="return-condition">État général au retour :</label>
-          <select
-            id="return-condition"
-            value={condition}
-            onChange={(e) => {
-              const val = e.target.value as 'GOOD' | 'FAIR' | 'POOR' | 'BROKEN';
-              setCondition(val);
-              if (val === 'BROKEN' || val === 'POOR') {
-                setHasDamage(true);
-                setRequiresMaintenance(true);
-              }
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="return-flow-title"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '1rem',
+        zIndex: 50,
+      }}
+    >
+      <div
+        style={{
+          background: 'var(--ut-color-surface)',
+          borderRadius: 'var(--ut-radius-lg)',
+          boxShadow: 'var(--ut-shadow-lg)',
+          maxWidth: '34rem',
+          width: '100%',
+          padding: '1.5rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.25rem',
+          maxHeight: '90vh',
+          overflowY: 'auto',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3
+            id="return-flow-title"
+            style={{
+              fontSize: '1.15rem',
+              fontWeight: 700,
+              margin: 0,
+              color: 'var(--ut-color-ink-strong)',
             }}
-            disabled={loading}
-            className={styles.selectInput}
           >
-            <option value="GOOD">Très bon état / Conforme</option>
-            <option value="FAIR">Bon état (usure normale)</option>
-            <option value="POOR">À contrôler (bruit / réglage nécessaire)</option>
-            <option value="BROKEN">Endommagé / Cassé</option>
-          </select>
-        </div>
-
-        <div className={styles.formGroup}>
-          <label htmlFor="return-notes">Notes de retour (facultatif) :</label>
-          <input
-            id="return-notes"
-            type="text"
-            placeholder="Ex : Propre, accessoires récupérés"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            disabled={loading}
-            className={styles.textInput}
-          />
-        </div>
-
-        {/* Déclaration de dommage / incident */}
-        <div className={styles.damageBox}>
-          <label className={styles.checkboxLabel}>
-            <input
-              type="checkbox"
-              checked={hasDamage}
-              onChange={(e) => {
-                setHasDamage(e.target.checked);
-                if (e.target.checked && !damageDescription) {
-                  setDamageDescription('Signalé lors du retour locataire.');
-                }
-              }}
-              disabled={loading}
-            />
-            <span>⚠️ Signaler une anomalie ou un dommage constaté</span>
-          </label>
-
-          {hasDamage && (
-            <div className={styles.damageSubForm}>
-              <label htmlFor="damage-desc">Description du problème constaté :</label>
-              <textarea
-                id="damage-desc"
-                rows={2}
-                placeholder="Ex : Rayure profonde sur le cadre côté droit, frein arrière à purger"
-                value={damageDescription}
-                onChange={(e) => setDamageDescription(e.target.value)}
-                disabled={loading}
-                className={styles.textArea}
-                required={hasDamage}
-              />
-
-              <label className={styles.maintenanceCheckboxLabel}>
-                <input
-                  type="checkbox"
-                  checked={requiresMaintenance}
-                  onChange={(e) => setRequiresMaintenance(e.target.checked)}
-                  disabled={loading}
-                />
-                <span>
-                  🔧 <strong>Retirer temporairement ce vélo de la location</strong> (Mise en
-                  maintenance immédiate)
-                </span>
-              </label>
-            </div>
-          )}
-        </div>
-
-        <div className={styles.flowFooter}>
+            🔵 Réception &amp; Retour du vélo
+          </h3>
           <button
             type="button"
             onClick={() => setIsOpen(false)}
             disabled={loading}
-            className={styles.cancelBtn}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              fontSize: '1.25rem',
+              cursor: 'pointer',
+              color: 'var(--ut-color-ink-muted)',
+              padding: '0.25rem',
+            }}
           >
-            Annuler
-          </button>
-          <button type="submit" disabled={loading} className={styles.submitBtn}>
-            {loading ? 'Validation en cours…' : '✓ Terminer le retour'}
+            ✕
           </button>
         </div>
-      </form>
+
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+        >
+          {error && (
+            <div
+              style={{
+                background: 'var(--ut-color-danger-soft)',
+                color: 'var(--ut-color-danger)',
+                padding: '0.75rem',
+                borderRadius: 'var(--ut-radius-md)',
+                fontSize: '0.875rem',
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <label
+              htmlFor="return-condition"
+              style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ut-color-ink)' }}
+            >
+              État du vélo au retour :
+            </label>
+            <select
+              id="return-condition"
+              value={condition}
+              onChange={(e) => {
+                const val = e.target.value as 'GOOD' | 'FAIR' | 'POOR' | 'BROKEN';
+                setCondition(val);
+                if (val === 'BROKEN' || val === 'POOR') {
+                  setHasDamage(true);
+                  setRequiresMaintenance(true);
+                }
+              }}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '0.6rem 0.75rem',
+                borderRadius: 'var(--ut-radius-md)',
+                border: 'var(--ut-border-thin)',
+                fontSize: '0.9rem',
+                background: 'var(--ut-color-surface)',
+                color: 'var(--ut-color-ink)',
+                minHeight: '44px',
+              }}
+            >
+              <option value="GOOD">Très bon état / Conforme</option>
+              <option value="FAIR">Bon état (usure normale)</option>
+              <option value="POOR">À contrôler (bruit / réglage nécessaire)</option>
+              <option value="BROKEN">Endommagé / Cassé</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <label
+              htmlFor="return-notes"
+              style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ut-color-ink)' }}
+            >
+              Notes de retour (facultatif) :
+            </label>
+            <input
+              id="return-notes"
+              type="text"
+              placeholder="Ex : Propre, accessoires récupérés"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '0.6rem 0.75rem',
+                borderRadius: 'var(--ut-radius-md)',
+                border: 'var(--ut-border-thin)',
+                fontSize: '0.9rem',
+                background: 'var(--ut-color-surface)',
+                color: 'var(--ut-color-ink)',
+                minHeight: '44px',
+              }}
+            />
+          </div>
+
+          {/* Déclaration de dommage / incident */}
+          <div
+            style={{
+              background: 'var(--ut-color-surface-soft)',
+              padding: '1rem',
+              borderRadius: 'var(--ut-radius-md)',
+              border: 'var(--ut-border-thin)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+            }}
+          >
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={hasDamage}
+                onChange={(e) => {
+                  setHasDamage(e.target.checked);
+                  if (e.target.checked && !damageDescription) {
+                    setDamageDescription('Signalé lors du retour locataire.');
+                  }
+                }}
+                disabled={loading}
+              />
+              <span>⚠️ Signaler une anomalie ou un dommage constaté</span>
+            </label>
+
+            {hasDamage && (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                  paddingTop: '0.5rem',
+                  borderTop: 'var(--ut-border-thin)',
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                  <label
+                    htmlFor="damage-desc"
+                    style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--ut-color-ink)' }}
+                  >
+                    Description du problème constaté :
+                  </label>
+                  <textarea
+                    id="damage-desc"
+                    rows={2}
+                    placeholder="Ex : Rayure profonde, frein arrière désaligné..."
+                    value={damageDescription}
+                    onChange={(e) => setDamageDescription(e.target.value)}
+                    disabled={loading}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: 'var(--ut-radius-md)',
+                      border: 'var(--ut-border-thin)',
+                      fontSize: '0.875rem',
+                      background: 'var(--ut-color-surface)',
+                      color: 'var(--ut-color-ink)',
+                    }}
+                  />
+                </div>
+
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={requiresMaintenance}
+                    onChange={(e) => setRequiresMaintenance(e.target.checked)}
+                    disabled={loading}
+                  />
+                  <span>Retirer temporairement ce vélo de la location (envoyer en atelier)</span>
+                </label>
+              </div>
+            )}
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem',
+              marginTop: '0.5rem',
+              flexWrap: 'wrap',
+            }}
+          >
+            <Button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              disabled={loading}
+              variant="secondary"
+              style={{ minHeight: '44px' }}
+            >
+              Annuler
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading}
+              variant="primary"
+              style={{ minHeight: '44px' }}
+            >
+              {loading ? 'Validation en cours…' : '✓ Valider le retour'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

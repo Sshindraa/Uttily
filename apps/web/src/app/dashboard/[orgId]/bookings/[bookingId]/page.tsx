@@ -332,7 +332,7 @@ export default async function UnifiedBookingDetailPage({
                 margin: '0.25rem 0 0',
               }}
             >
-              Identité vérifiée lors de la réservation en ligne.
+              Contact utilisé pour cette réservation.
             </p>
           </div>
         </Card>
