@@ -1,20 +1,17 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import type { ReactElement, FormEvent } from 'react';
+import type { ReactElement, FormEvent, CSSProperties } from 'react';
 import Link from 'next/link';
 import { loadStripe, type Stripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { initiatePaymentAction } from '@/app/actions/payments';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
 interface DraftLine {
   variantId: string;
   quantity: number;
   lineTotalAmountMinor: number;
+  title: string;
 }
 
 interface CheckoutClientProps {
@@ -23,14 +20,11 @@ interface CheckoutClientProps {
   totalAmountMinor: number;
   currency: string;
   lines: DraftLine[];
+  renterName: string;
   expiresAt: string | null;
 }
 
 type Phase = 'idle' | 'initiating' | 'elements' | 'success' | 'error';
-
-// ---------------------------------------------------------------------------
-// Stripe.js singleton — chargé une seule fois pour toute la session.
-// ---------------------------------------------------------------------------
 
 let stripePromise: Promise<Stripe | null> | null = null;
 
@@ -46,10 +40,6 @@ function getStripePromise(): Promise<Stripe | null> {
   return stripePromise;
 }
 
-// ---------------------------------------------------------------------------
-// Formatage des montants (unités mineures → affichage EUR).
-// ---------------------------------------------------------------------------
-
 function formatAmount(minor: number, currency: string): string {
   const value = minor / 100;
   try {
@@ -61,10 +51,6 @@ function formatAmount(minor: number, currency: string): string {
     return `${value.toFixed(2)} ${currency}`;
   }
 }
-
-// ---------------------------------------------------------------------------
-// PaymentForm — vit à l'intérieur de <Elements>, utilise useStripe/useElements.
-// ---------------------------------------------------------------------------
 
 interface PaymentFormProps {
   clientSecret: string;
@@ -112,7 +98,8 @@ function PaymentForm({
 
     const submitResult = await elements.submit();
     if (submitResult.error) {
-      const message = submitResult.error.message ?? 'Formulaire de paiement invalide';
+      const message =
+        submitResult.error.message ?? 'Vérifiez les informations de paiement saisies.';
       setError(message);
       onError(message);
       setSubmitting(false);
@@ -129,7 +116,7 @@ function PaymentForm({
     });
 
     if (result.error) {
-      const message = result.error.message ?? 'Erreur de paiement';
+      const message = result.error.message ?? 'Le paiement n’a pas pu aboutir. Veuillez réessayer.';
       setError(message);
       onError(message);
       setSubmitting(false);
@@ -152,9 +139,9 @@ function PaymentForm({
         aria-busy={!paymentElementMounted || !paymentElementReady || submitting}
         aria-label={
           !paymentElementReady || !paymentElementMounted
-            ? 'Formulaire de paiement en cours de chargement'
+            ? 'Chargement du module de paiement'
             : submitting
-              ? 'Traitement en cours'
+              ? 'Paiement en cours...'
               : `Payer ${totalLabel}`
         }
         style={submitButtonStyle}
@@ -162,9 +149,9 @@ function PaymentForm({
         {!stripe
           ? 'Chargement du paiement...'
           : !paymentElementReady || !paymentElementMounted
-            ? 'Préparation du paiement...'
+            ? 'Préparation du paiement…'
             : submitting
-              ? 'Traitement…'
+              ? 'Traitement du paiement…'
               : `Payer ${totalLabel}`}
       </button>
       {(!paymentElementReady || !paymentElementMounted) && stripe && (
@@ -181,26 +168,20 @@ function PaymentForm({
   );
 }
 
-// ---------------------------------------------------------------------------
-// CheckoutClient — orchestre les deux phases (initiation puis confirmation).
-// ---------------------------------------------------------------------------
-
 export function CheckoutClient({
   draftId,
   returnUrl,
   totalAmountMinor,
   currency,
   lines,
+  renterName,
   expiresAt,
 }: CheckoutClientProps): ReactElement {
   const [phase, setPhase] = useState<Phase>('idle');
   const [clientSecret, setClientSecret] = useState<string | null>(null);
-  // stripe : undefined = chargement en cours, null = clé manquante, Stripe = prêt.
   const [stripe, setStripe] = useState<Stripe | null | undefined>(undefined);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [paymentId, setPaymentId] = useState<string | null>(null);
 
-  // Charger Stripe.js uniquement quand on entre en phase 'elements'.
   useEffect(() => {
     if (phase === 'elements' && stripe === undefined) {
       let cancelled = false;
@@ -223,51 +204,54 @@ export function CheckoutClient({
         termsVersion: 'v1',
       });
       if (result.kind === 'SUCCESS' || result.kind === 'REPLAY') {
-        // Le clientSecret est éphémère : conservé uniquement en mémoire,
-        // jamais persisté ni loggé.
         setClientSecret(result.clientSecret);
-        setPaymentId(result.paymentId);
         setPhase('elements');
       } else {
         setErrorMessage(result.message);
         setPhase('error');
       }
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Erreur inattendue');
+      setErrorMessage(err instanceof Error ? err.message : 'Une erreur inattendue est survenue.');
       setPhase('error');
     }
   }, [draftId]);
 
   const totalLabel = formatAmount(totalAmountMinor, currency);
 
-  // --- Rendu selon la phase ---
-
   if (phase === 'success') {
     return (
       <section aria-labelledby="success-heading" style={sectionStyle}>
-        <h2 id="success-heading">Paiement soumis</h2>
-        <p>
-          La confirmation de votre réservation est en cours de traitement. Vous pouvez retrouver
-          toutes vos réservations dans votre espace personnel.
-        </p>
-        {paymentId && (
-          <p style={mutedStyle}>
-            Référence paiement : <code>{paymentId}</code>
-          </p>
-        )}
-        <div style={{ marginTop: '1.5rem' }}>
-          <Link
-            href="/fr/account/bookings"
+        <div style={cardStyle}>
+          <div style={successIconStyle}>✓</div>
+          <h2
+            id="success-heading"
             style={{
-              ...submitButtonStyle,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textDecoration: 'none',
+              fontSize: '1.5rem',
+              fontWeight: 'bold',
+              margin: '0 0 0.5rem 0',
+              color: 'var(--ut-color-ink-strong)',
             }}
           >
-            Accéder à mes locations →
-          </Link>
+            Paiement confirmé !
+          </h2>
+          <p style={{ color: 'var(--ut-color-ink-muted)', margin: 0 }}>
+            Votre réservation chez <strong>{renterName}</strong> est validée. Retrouvez tous les
+            détails et l’itinéraire dans votre espace.
+          </p>
+          <div style={{ marginTop: '1.5rem', width: '100%' }}>
+            <Link
+              href="/fr/account/bookings"
+              style={{
+                ...submitButtonStyle,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textDecoration: 'none',
+              }}
+            >
+              Accéder à mes locations →
+            </Link>
+          </div>
         </div>
       </section>
     );
@@ -276,13 +260,17 @@ export function CheckoutClient({
   if (phase === 'error') {
     return (
       <section aria-labelledby="error-heading" style={sectionStyle}>
-        <h2 id="error-heading">Erreur</h2>
-        <p role="alert" style={errorStyle}>
-          {errorMessage ?? 'Une erreur est survenue.'}
-        </p>
-        <button type="button" onClick={handleInitiate} style={submitButtonStyle}>
-          Réessayer
-        </button>
+        <div style={cardStyle}>
+          <h2 id="error-heading" style={{ color: 'var(--ut-color-danger)', margin: 0 }}>
+            Paiement interrompu
+          </h2>
+          <p role="alert" style={{ color: 'var(--ut-color-ink-muted)', margin: 0 }}>
+            {errorMessage ?? 'Une erreur est survenue lors de l’initialisation de votre paiement.'}
+          </p>
+          <button type="button" onClick={handleInitiate} style={submitButtonStyle}>
+            Réessayer le paiement
+          </button>
+        </div>
       </section>
     );
   }
@@ -293,26 +281,40 @@ export function CheckoutClient({
         Récapitulatif et paiement
       </h2>
 
-      {/* Récapitulatif de la réservation */}
-      <div style={summaryStyle}>
-        <h3>Récapitulatif</h3>
+      <div style={cardStyle}>
+        <h3
+          style={{
+            margin: '0 0 0.75rem 0',
+            fontSize: '1.1rem',
+            color: 'var(--ut-color-ink-strong)',
+          }}
+        >
+          Récapitulatif de votre équipement
+        </h3>
+
         <ul style={listStyle}>
           {lines.map((line) => (
             <li key={line.variantId} style={listItemStyle}>
               <span>
-                Article ({line.variantId.slice(0, 8)}) × {line.quantity}
+                <strong>{line.title}</strong> × {line.quantity}
               </span>
-              <span>{formatAmount(line.lineTotalAmountMinor, currency)}</span>
+              <strong style={{ color: 'var(--ut-color-ink-strong)' }}>
+                {formatAmount(line.lineTotalAmountMinor, currency)}
+              </strong>
             </li>
           ))}
         </ul>
+
         <div style={totalRowStyle}>
-          <span>Total</span>
-          <strong>{totalLabel}</strong>
+          <span>Total à régler</span>
+          <strong style={{ color: 'var(--ut-color-primary)', fontSize: '1.25rem' }}>
+            {totalLabel}
+          </strong>
         </div>
+
         {expiresAt && (
           <p style={mutedStyle}>
-            Brouillon valable jusqu'au{' '}
+            Brouillon valide jusqu’au{' '}
             {new Intl.DateTimeFormat('fr-FR', {
               dateStyle: 'medium',
               timeStyle: 'short',
@@ -321,132 +323,148 @@ export function CheckoutClient({
         )}
       </div>
 
-      {/* Phase 1 : bouton d'initiation du paiement */}
-      {phase === 'idle' && (
-        <button
-          type="button"
-          onClick={handleInitiate}
-          style={submitButtonStyle}
-          aria-label="Initier le paiement"
-        >
-          Payer {totalLabel}
-        </button>
-      )}
+      <div style={cardStyle}>
+        {phase === 'idle' && (
+          <button
+            type="button"
+            onClick={handleInitiate}
+            style={submitButtonStyle}
+            aria-label="Initier le paiement"
+          >
+            Payer {totalLabel}
+          </button>
+        )}
 
-      {phase === 'initiating' && (
-        <p aria-busy="true" role="status">
-          Préparation du paiement…
-        </p>
-      )}
+        {phase === 'initiating' && (
+          <p
+            aria-busy="true"
+            role="status"
+            style={{ textAlign: 'center', margin: 0, color: 'var(--ut-color-ink-muted)' }}
+          >
+            Préparation du paiement…
+          </p>
+        )}
 
-      {/* Phase 2 : Stripe Payment Element */}
-      {phase === 'elements' && (
-        <>
-          {stripe === undefined ? (
-            <p role="status" aria-busy="true">
-              Chargement de Stripe…
-            </p>
-          ) : stripe === null ? (
-            <p role="alert">Clé Stripe manquante — vérifiez NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.</p>
-          ) : clientSecret ? (
-            <Elements
-              stripe={stripe}
-              options={{
-                clientSecret,
-                appearance: { theme: 'stripe' },
-              }}
-            >
-              <PaymentForm
-                clientSecret={clientSecret}
-                returnUrl={returnUrl}
-                totalLabel={totalLabel}
-                onSuccess={() => setPhase('success')}
-                onError={(msg) => {
-                  setErrorMessage(msg);
-                  setPhase('error');
+        {phase === 'elements' && (
+          <>
+            {stripe === undefined ? (
+              <p
+                role="status"
+                aria-busy="true"
+                style={{ textAlign: 'center', color: 'var(--ut-color-ink-muted)' }}
+              >
+                Chargement du module de paiement…
+              </p>
+            ) : stripe === null ? (
+              <p role="alert" style={errorStyle}>
+                Le service de paiement est momentanément indisponible. Veuillez réessayer plus tard.
+              </p>
+            ) : clientSecret ? (
+              <Elements
+                stripe={stripe}
+                options={{
+                  clientSecret,
+                  appearance: { theme: 'stripe' },
                 }}
-              />
-            </Elements>
-          ) : null}
-        </>
-      )}
+              >
+                <PaymentForm
+                  clientSecret={clientSecret}
+                  returnUrl={returnUrl}
+                  totalLabel={totalLabel}
+                  onSuccess={() => setPhase('success')}
+                  onError={(msg) => {
+                    setErrorMessage(msg);
+                    setPhase('error');
+                  }}
+                />
+              </Elements>
+            ) : null}
+          </>
+        )}
+      </div>
     </section>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Styles inline (pas de Tailwind) — mobile-first.
-// ---------------------------------------------------------------------------
-
-const formStyle: React.CSSProperties = {
+const formStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '1rem',
+  gap: '1.25rem',
 };
 
-const sectionStyle: React.CSSProperties = {
+const sectionStyle: CSSProperties = {
   maxWidth: 480,
   margin: '0 auto',
   padding: '1rem',
   display: 'flex',
   flexDirection: 'column',
+  gap: '1.5rem',
+};
+
+const cardStyle: CSSProperties = {
+  padding: '1.5rem',
+  border: 'var(--ut-border-thin)',
+  borderRadius: 'var(--ut-radius-lg)',
+  background: 'var(--ut-color-surface)',
+  boxShadow: 'var(--ut-shadow-sm)',
+  display: 'flex',
+  flexDirection: 'column',
   gap: '1rem',
 };
 
-const summaryStyle: React.CSSProperties = {
-  padding: '1rem',
-  border: '1px solid #e5e7eb',
-  borderRadius: 8,
-  background: '#f9fafb',
-};
-
-const listStyle: React.CSSProperties = {
+const listStyle: CSSProperties = {
   listStyle: 'none',
   padding: 0,
-  margin: '0 0 0.75rem 0',
+  margin: 0,
   display: 'flex',
   flexDirection: 'column',
-  gap: '0.5rem',
+  gap: '0.65rem',
 };
 
-const listItemStyle: React.CSSProperties = {
+const listItemStyle: CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
+  alignItems: 'center',
   fontSize: '0.95rem',
 };
 
-const totalRowStyle: React.CSSProperties = {
+const totalRowStyle: CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
+  alignItems: 'center',
   paddingTop: '0.75rem',
-  borderTop: '1px solid #e5e7eb',
+  borderTop: 'var(--ut-border-thin)',
   fontSize: '1.1rem',
+  fontWeight: 'bold',
 };
 
-const submitButtonStyle: React.CSSProperties = {
+const submitButtonStyle: CSSProperties = {
   width: '100%',
-  padding: '0.875rem 1rem',
+  minHeight: '48px',
+  padding: '0.75rem 1.25rem',
   fontSize: '1rem',
-  fontWeight: 600,
+  fontWeight: 700,
   color: '#fff',
-  background: '#2563eb',
+  background: 'var(--ut-color-accent)',
   border: 'none',
-  borderRadius: 8,
+  borderRadius: 'var(--ut-radius-md)',
   cursor: 'pointer',
+  transition: 'background var(--ut-motion-fast) var(--ut-ease-standard)',
 };
 
-const errorStyle: React.CSSProperties = {
-  color: '#dc2626',
+const errorStyle: CSSProperties = {
+  color: 'var(--ut-color-danger)',
+  fontSize: '0.875rem',
   margin: 0,
 };
 
-const mutedStyle: React.CSSProperties = {
-  color: '#6b7280',
+const mutedStyle: CSSProperties = {
+  color: 'var(--ut-color-ink-muted)',
   fontSize: '0.85rem',
   margin: 0,
 };
 
-const visuallyHiddenStyle: React.CSSProperties = {
+const visuallyHiddenStyle: CSSProperties = {
   position: 'absolute',
   width: 1,
   height: 1,
@@ -456,4 +474,17 @@ const visuallyHiddenStyle: React.CSSProperties = {
   clip: 'rect(0, 0, 0, 0)',
   whiteSpace: 'nowrap',
   border: 0,
+};
+
+const successIconStyle: CSSProperties = {
+  width: 56,
+  height: 56,
+  borderRadius: '50%',
+  background: 'var(--ut-color-success-soft)',
+  color: 'var(--ut-color-success)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontSize: '1.75rem',
+  margin: '0 auto',
 };

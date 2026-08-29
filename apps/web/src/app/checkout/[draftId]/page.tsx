@@ -2,16 +2,19 @@ import { redirect } from 'next/navigation';
 import { eq } from 'drizzle-orm';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
-import { bookingDrafts, bookingDraftLines } from '@uttily/database';
+import {
+  bookingDrafts,
+  bookingDraftLines,
+  productVariants,
+  products,
+  organizations,
+} from '@uttily/database';
 import { CheckoutClient } from './checkout-client';
 import { getPublicAppUrl } from '@/lib/public-app-url';
+import { ClientShell } from '@/components/client-shell';
 
 /**
- * Page de checkout — récapitulatif du brouillon de réservation puis paiement.
- *
- * Côté serveur : authentification, lecture du brouillon et validation que
- * l'utilisateur courant en est le customer. Le clientSecret n'est jamais lu
- * ici — il transite uniquement de la Server Action au composant client.
+ * Page de checkout — récapitulatif du panier de réservation puis paiement sécurisé Stripe.
  */
 export default async function CheckoutPage({
   params,
@@ -33,53 +36,83 @@ export default async function CheckoutPage({
       currency: bookingDrafts.currency,
       status: bookingDrafts.status,
       expiresAt: bookingDrafts.expiresAt,
+      orgLegalName: organizations.legalName,
+      orgPublicDisplayName: organizations.publicDisplayName,
     })
     .from(bookingDrafts)
+    .leftJoin(organizations, eq(bookingDrafts.organizationId, organizations.id))
     .where(eq(bookingDrafts.id, draftId))
     .limit(1);
 
   if (draft.length === 0) {
     return (
-      <main>
-        <h1>Brouillon introuvable</h1>
-        <p>Ce brouillon de réservation n'existe pas ou a expiré.</p>
-      </main>
+      <ClientShell>
+        <main style={{ maxWidth: 640, margin: '4rem auto', padding: '1rem', textAlign: 'center' }}>
+          <h1>Réservation introuvable ou expirée</h1>
+          <p style={{ color: 'var(--ut-color-ink-muted)' }}>
+            Ce panier de réservation n’est plus valide. Veuillez relancer une recherche.
+          </p>
+        </main>
+      </ClientShell>
     );
   }
 
   const d = draft[0]!;
   if (d.customerUserId !== user.id) {
     return (
-      <main>
-        <h1>Accès refusé</h1>
-        <p>Ce brouillon ne vous appartient pas.</p>
-      </main>
+      <ClientShell>
+        <main style={{ maxWidth: 640, margin: '4rem auto', padding: '1rem', textAlign: 'center' }}>
+          <h1>Accès refusé</h1>
+          <p style={{ color: 'var(--ut-color-ink-muted)' }}>
+            Cette réservation appartient à un autre compte utilisateur.
+          </p>
+        </main>
+      </ClientShell>
     );
   }
 
   const publicAppUrl = getPublicAppUrl();
 
-  // Lire les lignes du brouillon pour le récapitulatif.
+  // Lire les lignes du brouillon avec les libellés réels des vélos et variantes
   const lines = await db
     .select({
       variantId: bookingDraftLines.variantId,
       quantity: bookingDraftLines.quantity,
       lineTotalAmountMinor: bookingDraftLines.lineTotalAmountMinor,
+      productName: products.name,
+      variantName: productVariants.name,
     })
     .from(bookingDraftLines)
+    .leftJoin(productVariants, eq(bookingDraftLines.variantId, productVariants.id))
+    .leftJoin(products, eq(productVariants.productId, products.id))
     .where(eq(bookingDraftLines.draftId, draftId));
 
+  const formattedLines = lines.map((l) => ({
+    variantId: l.variantId,
+    quantity: l.quantity,
+    lineTotalAmountMinor: l.lineTotalAmountMinor,
+    title: l.productName
+      ? l.variantName
+        ? `${l.productName} (${l.variantName})`
+        : l.productName
+      : 'Équipement loué',
+  }));
+
+  const renterName = d.orgPublicDisplayName || d.orgLegalName || 'Loueur partenaire';
+
   return (
-    <main>
-      <h1>Paiement</h1>
-      <CheckoutClient
-        draftId={draftId}
-        returnUrl={`${publicAppUrl}/checkout/${draftId}`}
-        totalAmountMinor={d.totalAmountMinor}
-        currency={d.currency}
-        lines={lines}
-        expiresAt={d.expiresAt ? d.expiresAt.toISOString() : null}
-      />
-    </main>
+    <ClientShell>
+      <main style={{ maxWidth: 540, margin: '2rem auto', padding: '1rem' }}>
+        <CheckoutClient
+          draftId={draftId}
+          returnUrl={`${publicAppUrl}/checkout/${draftId}`}
+          totalAmountMinor={d.totalAmountMinor}
+          currency={d.currency}
+          lines={formattedLines}
+          renterName={renterName}
+          expiresAt={d.expiresAt ? d.expiresAt.toISOString() : null}
+        />
+      </main>
+    </ClientShell>
   );
 }

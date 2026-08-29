@@ -29,9 +29,6 @@ export interface BookingFormFingerprintParams {
   endAt?: string;
 }
 
-/**
- * Calcule une empreinte déterministe des champs métier du formulaire de réservation.
- */
 export function computeBookingFormFingerprint(params: BookingFormFingerprintParams): string {
   return [
     params.publicProductId.trim(),
@@ -45,10 +42,6 @@ export function computeBookingFormFingerprint(params: BookingFormFingerprintPara
   ].join('|');
 }
 
-/**
- * Retourne la clé d'idempotence existante si le payload métier n'a pas changé,
- * ou génère une nouvelle clé UUID si le payload a été modifié.
- */
 export function getOrCreateIdempotencyKey(
   currentRecord: { fingerprint: string; idempotencyKey: string } | null,
   newFingerprint: string,
@@ -199,7 +192,7 @@ export function OfferBookingForm({
   return (
     <form className={styles.bookingCard} onSubmit={handleBooking} noValidate>
       <h2 className={styles.bookingCardTitle}>
-        {fr ? 'Configurer la réservation' : 'Book this item'}
+        {fr ? 'Réserver cet équipement' : 'Book this item'}
       </h2>
 
       {errorMessage ? (
@@ -210,9 +203,7 @@ export function OfferBookingForm({
 
       {offer.variants.length > 1 ? (
         <fieldset className={styles.formGroup}>
-          <legend className={styles.label}>
-            {fr ? 'Option d’équipement' : 'Equipment option'}
-          </legend>
+          <legend className={styles.label}>{fr ? 'Option / Taille' : 'Option / Size'}</legend>
           <div className={styles.variantGroup}>
             {offer.variants.map((variant) => {
               const isSelected = variant.publicVariantId === selectedVariantId;
@@ -221,17 +212,15 @@ export function OfferBookingForm({
                   key={variant.publicVariantId}
                   className={`${styles.variantOption} ${isSelected ? styles.variantOptionSelected : ''}`}
                 >
-                  <div>
-                    <input
-                      type="radio"
-                      name="variantId"
-                      value={variant.publicVariantId}
-                      checked={isSelected}
-                      onChange={() => setSelectedVariantId(variant.publicVariantId)}
-                      className={styles.radioInput}
-                    />
-                    <span>{variant.name}</span>
-                  </div>
+                  <input
+                    type="radio"
+                    name="variantId"
+                    value={variant.publicVariantId}
+                    checked={isSelected}
+                    onChange={() => setSelectedVariantId(variant.publicVariantId)}
+                    className={styles.radioInput}
+                  />
+                  <span>{variant.name}</span>
                 </label>
               );
             })}
@@ -239,7 +228,9 @@ export function OfferBookingForm({
         </fieldset>
       ) : (
         <div className={styles.formGroup}>
-          <span className={styles.label}>{fr ? 'Équipement' : 'Equipment'}</span>
+          <span className={styles.label}>
+            {fr ? 'Équipement sélectionné' : 'Selected equipment'}
+          </span>
           <p style={{ margin: 0, color: 'var(--ink)', fontWeight: 600 }}>
             {offer.variants[0]?.name || offer.productName}
           </p>
@@ -283,7 +274,7 @@ export function OfferBookingForm({
           <div className={styles.inputRow}>
             <div>
               <label htmlFor="booking-start-date" className={styles.label}>
-                {fr ? 'Du (inclus)' : 'Start date'}
+                {fr ? 'Date de début (inclus)' : 'Start date (included)'}
               </label>
               <input
                 id="booking-start-date"
@@ -296,7 +287,7 @@ export function OfferBookingForm({
             </div>
             <div>
               <label htmlFor="booking-end-date" className={styles.label}>
-                {fr ? 'Au (exclus)' : 'End date'}
+                {fr ? 'Date de fin (exclus)' : 'End date (excluded)'}
               </label>
               <input
                 id="booking-end-date"
@@ -314,7 +305,7 @@ export function OfferBookingForm({
           <div className={styles.inputRow}>
             <div>
               <label htmlFor="booking-start-time" className={styles.label}>
-                {fr ? 'Début' : 'Start time'}
+                {fr ? 'Date et heure de début' : 'Start date & time'}
               </label>
               <input
                 id="booking-start-time"
@@ -327,7 +318,7 @@ export function OfferBookingForm({
             </div>
             <div>
               <label htmlFor="booking-end-time" className={styles.label}>
-                {fr ? 'Fin' : 'End time'}
+                {fr ? 'Date et heure de fin' : 'End date & time'}
               </label>
               <input
                 id="booking-end-time"
@@ -343,13 +334,19 @@ export function OfferBookingForm({
       )}
 
       <button type="submit" className={styles.submitButton} disabled={isPending}>
-        {isPending ? (fr ? 'Réservation en cours...' : 'Booking...') : fr ? 'Réserver' : 'Book now'}
+        {isPending
+          ? fr
+            ? 'Préparation de votre réservation...'
+            : 'Preparing booking...'
+          : fr
+            ? 'Réserver'
+            : 'Book now'}
       </button>
 
       <p className={styles.guaranteeNote}>
         {fr
-          ? 'Le montant contractuel exact calculé pour votre créneau sera affiché et confirmé au checkout avant paiement. Le créneau et l’équipement physique sont bloqués instantanément par un hold temporaire de 10 minutes.'
-          : 'The exact contractual amount for your booking period will be calculated and confirmed at checkout prior to payment. The time slot and equipment are reserved immediately with a 10-minute temporary hold.'}
+          ? 'Le montant contractuel exact calculé pour votre période sera affiché et confirmé au récapitulatif avant paiement. L’équipement vous est réservé pendant 10 minutes pour finaliser votre commande en toute sérénité.'
+          : 'The exact contractual amount calculated for your period will be confirmed at checkout prior to payment. The equipment is held for 10 minutes to allow you to complete your order with peace of mind.'}
       </p>
     </form>
   );
