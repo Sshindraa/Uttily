@@ -465,6 +465,17 @@ function makeDeps(): WebhookHandlerDeps & { adapter: FakeStripeAdapter } {
   return { db, provider: adapter, adapter };
 }
 
+function applicationFeeForCustomerTotal(amount: number): number {
+  const estimatedBase = Math.round((amount * 100) / 107);
+  for (let base = Math.max(0, estimatedBase - 3); base <= estimatedBase + 3; base++) {
+    const customerFee = Math.round((base * 7) / 100);
+    if (base + customerFee === amount) {
+      return Math.round((base * 13) / 100) + customerFee;
+    }
+  }
+  return 400;
+}
+
 function makeWebhookPayload(
   type: string,
   piId: string,
@@ -480,7 +491,8 @@ function makeWebhookPayload(
   } = {},
 ): string {
   const destination = overrides.destination ?? 'acct_test_123';
-  const applicationFeeAmount = overrides.applicationFeeAmount ?? 400;
+  const applicationFeeAmount =
+    overrides.applicationFeeAmount ?? applicationFeeForCustomerTotal(amount);
   const onBehalfOf = overrides.onBehalfOf ?? null;
   return JSON.stringify({
     id: overrides.eventId ?? `evt_${Math.random().toString(36).slice(2, 12)}`,

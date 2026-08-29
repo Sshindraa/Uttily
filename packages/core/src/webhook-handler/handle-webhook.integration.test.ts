@@ -260,6 +260,17 @@ function makeInitDeps(): InitiatePaymentDependencies {
   };
 }
 
+function applicationFeeForCustomerTotal(amount: number): number {
+  const estimatedBase = Math.round((amount * 100) / 107);
+  for (let base = Math.max(0, estimatedBase - 3); base <= estimatedBase + 3; base++) {
+    const customerFee = Math.round((base * 7) / 100);
+    if (base + customerFee === amount) {
+      return Math.round((base * 13) / 100) + customerFee;
+    }
+  }
+  return 400;
+}
+
 /**
  * Construit un payload webhook Stripe pour payment_intent.succeeded.
  */
@@ -278,7 +289,8 @@ function makeWebhookPayload(
   } = {},
 ): string {
   const destination = overrides.destination ?? 'acct_test_123';
-  const applicationFeeAmount = overrides.applicationFeeAmount ?? 400;
+  const applicationFeeAmount =
+    overrides.applicationFeeAmount ?? applicationFeeForCustomerTotal(amount);
   const onBehalfOf = overrides.onBehalfOf ?? null;
   return JSON.stringify({
     id: overrides.eventId ?? `evt_${Math.random().toString(36).slice(2, 12)}`,
@@ -2063,12 +2075,19 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
       )
     `;
 
-    const body = makeWebhookPayload('payment_intent.succeeded', piId, amount, {
-      payment_id: newPaymentId,
-      draft_id: draftId,
-      organization_id: ids.orgId,
-      protocol_version: 'v1',
-    });
+    const body = makeWebhookPayload(
+      'payment_intent.succeeded',
+      piId,
+      amount,
+      {
+        payment_id: newPaymentId,
+        draft_id: draftId,
+        organization_id: ids.orgId,
+        protocol_version: 'v1',
+      },
+      'succeeded',
+      { applicationFeeAmount: 500 },
+    );
     const input = makeWebhookInput(body, deps.adapter);
 
     const result = await handleWebhook(deps, input);

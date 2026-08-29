@@ -1,17 +1,13 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import postgres from 'postgres';
 import { createDatabase, runMigrations, assertLocalhost } from '@uttily/database';
 import type { DatabaseClient } from '@uttily/database';
-import { createBookingDraftWithHold, initiatePayment } from '@uttily/core';
+import { createBookingDraftWithHold } from '@uttily/core';
 import type {
   CreateBookingDraftResult,
   CreateBookingDraftSuccess,
   LegacyCreateBookingDraftInput,
-  InitiatePaymentInput,
-  InitiatePaymentDependencies,
-  FinancialTermsConfig,
-  TermsAcceptanceProof,
   PaymentProviderAdapter,
   PaymentIntentResult,
   PaymentIntentStatus,
@@ -394,57 +390,6 @@ function expectSuccess(
   if (result.kind !== 'SUCCESS') throw new Error('Résultat SUCCESS attendu.');
 }
 
-function makeFinancialTermsConfig(connectedAccountId = 'acct_test_123'): FinancialTermsConfig {
-  return {
-    tax: {
-      version: 'v1',
-      status: 'NOT_APPLICABLE',
-      amountMinor: null,
-      rateBps: null,
-      invoiceIssuer: 'Uttily',
-    },
-    commission: {
-      version: 'v1',
-      basis: 'percentage',
-      amountMinor: 260,
-    },
-    connectedAccount: {
-      accountId: connectedAccountId,
-      chargesEnabled: true,
-      transfersCapabilityStatus: 'ACTIVE',
-      settlementMerchantMode: 'PLATFORM',
-      onBehalfOfAccountId: null,
-    },
-    legalTermsVersion: 'v1',
-  };
-}
-
-function makeTermsAcceptance(userId: string): TermsAcceptanceProof {
-  return {
-    termsVersion: 'v1',
-    userId,
-    acceptedAt: new Date().toISOString(),
-  };
-}
-
-function makeInitiateInput(
-  ids: BaseIds,
-  draftId: string,
-  keySuffix: string,
-  overrides: Partial<InitiatePaymentInput> = {},
-): InitiatePaymentInput {
-  return {
-    draftId,
-    idempotencyKey: 'init-' + keySuffix,
-    organizationId: ids.orgId,
-    customerUserId: ids.userId,
-    environment: 'TEST',
-    financialTermsConfig: makeFinancialTermsConfig(),
-    termsAcceptance: makeTermsAcceptance(ids.userId),
-    ...overrides,
-  };
-}
-
 async function createHeldDraft(ids: BaseIds, keySuffix: string): Promise<string> {
   if (!testDb) throw new Error('testDb not initialized');
   const result = await createBookingDraftWithHold(
@@ -458,8 +403,8 @@ async function createHeldDraft(ids: BaseIds, keySuffix: string): Promise<string>
 }
 
 /**
- * Crée un paiement SUCCEEDED + refund PENDING + outbox PAYMENT_COMPENSATION_REQUESTED
- * en utilisant le flux réel (initiatePayment + seed direct).
+ * Crée une fixture de paiement legacy sans snapshot split, puis son refund
+ * PENDING et l'outbox PAYMENT_COMPENSATION_REQUESTED.
  */
 async function seedCompensationData(
   ids: BaseIds,
@@ -489,39 +434,53 @@ async function seedCompensationData(
     )
   `;
 
-  // Crée le brouillon HELD.
+  // Crée le brouillon HELD (les blocs sont conservés pour une fixture métier complète).
   const draftId = await createHeldDraft(ids, keySuffix);
 
-  // Initie le paiement.
-  const initDeps: InitiatePaymentDependencies = {
-    db: testDb,
-    provider: testProvider,
-  };
-  const initResult = await initiatePayment(initDeps, makeInitiateInput(ids, draftId, keySuffix));
-  expect(initResult.kind).toBe('SUCCESS');
-  if (initResult.kind !== 'SUCCESS') throw new Error('initiatePayment failed');
-  const providerPaymentIntentId = initResult.providerPaymentIntentId;
+  const amountMinor = 10000;
+  const paymentId = randomUUID();
+  const attemptId = randomUUID();
+  const providerIntent = await (testProvider as TestStripeProvider).createPaymentIntent({
+    amountMinor,
+    currency: 'EUR',
+    connectedAccountId: 'acct_test_123',
+    applicationFeeAmountMinor: 500,
+    onBehalfOfAccountId: null,
+    idempotencyKey: `legacy-compensation-${keySuffix}`,
+    metadata: {
+      payment_id: paymentId,
+      payment_attempt_id: attemptId,
+      draft_id: draftId,
+      organization_id: ids.orgId,
+      protocol_version: 'v1',
+    },
+  });
 
-  // Récupérer les IDs et le montant réel du paiement (P1-4 : le refund est
-  // recoupé contre le total du paiement — le seed doit être cohérent).
-  const paymentRow =
-    await rawSql`SELECT id, amount_minor FROM payments WHERE draft_id = ${draftId}`;
-  const paymentId = paymentRow[0]!.id;
-  const paymentAmountMinor = Number(paymentRow[0]!.amount_minor);
-  const attemptRow = await rawSql`SELECT id FROM payment_attempts WHERE payment_id = ${paymentId}`;
-  const attemptId = attemptRow[0]!.id;
-
-  // Ce scénario couvre le worker de remboursement historique : le paiement
-  // legacy n'a pas de snapshot split, politique actuellement bloquée.
   await rawSql`
-    UPDATE "payments"
-    SET "marketplace_fee_snapshot" = NULL
-    WHERE "id" = ${paymentId}
+    INSERT INTO "payments" (
+      "id", "organization_id", "draft_id", "customer_user_id", "status",
+      "amount_minor", "currency", "tax_status", "commission_amount_minor",
+      "commission_rule_snapshot", "financial_terms_version", "legal_terms_version",
+      "terms_acceptance_snapshot", "connected_account_id", "charge_model",
+      "settlement_merchant_mode", "environment", "succeeded_at"
+    ) VALUES (
+      ${paymentId}, ${ids.orgId}, ${draftId}, ${ids.userId}, 'SUCCEEDED',
+      ${amountMinor}, 'EUR', 'NOT_APPLICABLE', 500,
+      ${rawSql.json({ version: 'v1', basis: 'percentage', amountMinor: 500 })}, 'v1', 'v1',
+      ${rawSql.json({ version: 'v1', user_id: ids.userId, accepted_at: new Date().toISOString() })},
+      'acct_test_123', 'DESTINATION', 'PLATFORM', 'TEST'::payment_environment, now()
+    )
   `;
-
-  // Marquer le paiement et l'attempt comme SUCCEEDED.
-  await rawSql`UPDATE "payments" SET "status" = 'SUCCEEDED', "succeeded_at" = now() WHERE "id" = ${paymentId}`;
-  await rawSql`UPDATE "payment_attempts" SET "status" = 'SUCCEEDED', "provider_status" = 'succeeded' WHERE "id" = ${attemptId}`;
+  await rawSql`
+    INSERT INTO "payment_attempts" (
+      "id", "organization_id", "payment_id", "attempt_number", "status",
+      "provider_payment_intent_id", "provider_idempotency_key", "provider_status"
+    ) VALUES (
+      ${attemptId}, ${ids.orgId}, ${paymentId}, 1, 'SUCCEEDED',
+      ${providerIntent.id}, ${'legacy-compensation-attempt-' + keySuffix}, 'succeeded'
+    )
+  `;
+  const providerPaymentIntentId = providerIntent.id;
 
   // Simuler le statut succeeded dans le provider.
   (testProvider as TestStripeProvider).simulateStatus(providerPaymentIntentId, 'succeeded');
@@ -537,7 +496,7 @@ async function seedCompensationData(
       "requested_at"
     ) VALUES (
       ${ids.orgId}, ${paymentId}, 'LATE_PAYMENT_NO_BOOKING', 'PENDING',
-      ${paymentAmountMinor}, 'EUR',
+        ${amountMinor}, 'EUR',
       ${refundIdempotencyKey},
       true, true,
       now()
@@ -555,7 +514,7 @@ async function seedCompensationData(
       ${rawSql.json({
         paymentId,
         refundIdempotencyKey,
-        amountMinor: paymentAmountMinor,
+        amountMinor,
         currency: 'EUR',
         reason: 'LATE_PAYMENT_NO_BOOKING',
       })},
