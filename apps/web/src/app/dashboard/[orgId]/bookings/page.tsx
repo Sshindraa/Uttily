@@ -7,7 +7,24 @@ import {
   QUICK_FILTERS,
   parseStatusFilter,
 } from '@/lib/operations-helpers';
-import styles from './bookings.module.css';
+import { PageHeader, Card, Badge, LinkButton } from '@uttily/ui';
+import type { BadgeTone } from '@uttily/ui';
+
+function getBookingBadgeTone(status: BookingStatus): BadgeTone {
+  switch (status) {
+    case 'CONFIRMED':
+    case 'READY_FOR_PICKUP':
+      return 'info';
+    case 'ACTIVE':
+      return 'success';
+    case 'RETURNED':
+      return 'neutral';
+    case 'CANCELLED':
+      return 'danger';
+    default:
+      return 'neutral';
+  }
+}
 
 export default async function BookingsListPage({
   params,
@@ -33,159 +50,212 @@ export default async function BookingsListPage({
     filterError === null ? await listOperationalBookings(db, organizationId, listOptions) : [];
 
   return (
-    <div className={styles.container}>
-      <div className={styles.headerRow}>
-        <div>
-          <h1 className={styles.pageTitle}>📅 Mes Réservations</h1>
-          <p className={styles.pageSubtitle}>
-            Gestion des départs, retours et suivi des réservations locataires.
-          </p>
-        </div>
-      </div>
-
-      {/* Onglets de vue : Liste / Planning (IA Pro — le planning vit dans Réservations) */}
-      <nav aria-label="Vue des réservations" className={styles.tabsNav}>
-        <div className={styles.tabsList}>
-          <Link
-            href={`/dashboard/${organizationId}/bookings`}
-            className={`${styles.tabBtn} ${styles.tabBtnActive}`}
-            aria-current="page"
-          >
-            Liste
-          </Link>
-          <Link href={`/dashboard/${organizationId}/bookings/planning`} className={styles.tabBtn}>
-            📅 Planning
-          </Link>
-        </div>
-      </nav>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      <PageHeader
+        eyebrow="Opérations"
+        title="Réservations"
+        description="Gestion des départs, retours et suivi des réservations locataires."
+        actions={
+          <LinkButton href={`/dashboard/${organizationId}/bookings/planning`} variant="secondary">
+            📅 Vue planning
+          </LinkButton>
+        }
+      />
 
       {/* Onglets de filtrage rapide */}
-      <nav aria-label="Filtres de réservation" className={styles.tabsNav}>
-        <div className={styles.tabsList}>
-          <Link
-            href={`/dashboard/${organizationId}/bookings`}
-            className={`${styles.tabBtn} ${!sp.status ? styles.tabBtnActive : ''}`}
-          >
-            Toutes ({bookings.length})
-          </Link>
-          {QUICK_FILTERS.map((qf) => {
-            const isMatch =
-              sp.status === (Array.isArray(qf.statuses) ? qf.statuses[0] : qf.statuses);
-            const href = `/dashboard/${organizationId}/bookings?status=${Array.isArray(qf.statuses) ? qf.statuses.join(',') : qf.statuses}`;
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <Link
+          href={`/dashboard/${organizationId}/bookings`}
+          style={{
+            padding: '0.45rem 0.9rem',
+            borderRadius: 'var(--ut-radius-md)',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            textDecoration: 'none',
+            background: !sp.status ? 'var(--ut-color-ink-strong)' : 'var(--ut-color-surface-soft)',
+            color: !sp.status ? '#ffffff' : 'var(--ut-color-ink)',
+            border: 'var(--ut-border-thin)',
+          }}
+        >
+          Toutes ({bookings.length})
+        </Link>
+        {QUICK_FILTERS.map((qf) => {
+          const isMatch = sp.status === (Array.isArray(qf.statuses) ? qf.statuses[0] : qf.statuses);
+          const href = `/dashboard/${organizationId}/bookings?status=${Array.isArray(qf.statuses) ? qf.statuses.join(',') : qf.statuses}`;
 
-            return (
-              <Link
-                key={qf.key}
-                href={href}
-                className={`${styles.tabBtn} ${isMatch ? styles.tabBtnActive : ''}`}
-              >
-                {qf.label}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+          return (
+            <Link
+              key={qf.key}
+              href={href}
+              style={{
+                padding: '0.45rem 0.9rem',
+                borderRadius: 'var(--ut-radius-md)',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                textDecoration: 'none',
+                background: isMatch ? 'var(--ut-color-ink-strong)' : 'var(--ut-color-surface-soft)',
+                color: isMatch ? '#ffffff' : 'var(--ut-color-ink)',
+                border: 'var(--ut-border-thin)',
+              }}
+            >
+              {qf.label}
+            </Link>
+          );
+        })}
+      </div>
 
       {filterError && (
-        <div role="alert" className={styles.errorAlert}>
+        <Card
+          style={{
+            background: 'var(--ut-color-danger-soft)',
+            color: 'var(--ut-color-danger)',
+            padding: '1rem',
+          }}
+        >
           {filterError}
-        </div>
+        </Card>
       )}
 
       {bookings.length === 0 ? (
-        <div className={styles.emptyState}>
-          <span style={{ fontSize: '2.5rem' }}>📅</span>
-          <h3>Aucune réservation trouvée</h3>
-          <p>Les nouvelles réservations clients apparaîtront automatiquement ici en temps réel.</p>
-        </div>
+        <Card
+          style={{
+            textAlign: 'center',
+            padding: '3.5rem 1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1rem',
+          }}
+        >
+          <div style={{ fontSize: '3rem' }}>📅</div>
+          <h2
+            style={{
+              fontSize: '1.25rem',
+              fontWeight: 700,
+              margin: 0,
+              color: 'var(--ut-color-ink-strong)',
+            }}
+          >
+            Aucune réservation trouvée
+          </h2>
+          <p style={{ color: 'var(--ut-color-ink-muted)', margin: 0, maxWidth: '28rem' }}>
+            Les nouvelles réservations clients apparaîtront automatiquement ici lors de leur
+            confirmation.
+          </p>
+        </Card>
       ) : (
-        <div className={styles.bookingsGrid}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+            gap: '1.5rem',
+          }}
+        >
           {bookings.map((booking) => {
             const isPickupPending =
               booking.status === 'CONFIRMED' || booking.status === 'READY_FOR_PICKUP';
             const isReturnPending = booking.status === 'ACTIVE';
+            const detailHref = `/dashboard/${organizationId}/bookings/${booking.id}`;
+            const badgeTone = getBookingBadgeTone(booking.status);
 
             return (
-              <article key={booking.id} className={styles.bookingCard}>
-                <div className={styles.cardHeader}>
-                  <div className={styles.idAndStatus}>
-                    <span className={styles.bookingIdBadge}>
-                      #{booking.id.slice(0, 8).toUpperCase()}
-                    </span>
-                    <span
-                      className={`${styles.statusBadge} ${
-                        booking.status === 'CONFIRMED' || booking.status === 'READY_FOR_PICKUP'
-                          ? styles.statusConfirmed
-                          : booking.status === 'ACTIVE'
-                            ? styles.statusInUse
-                            : booking.status === 'RETURNED'
-                              ? styles.statusReturned
-                              : styles.statusCancelled
-                      }`}
-                    >
-                      {bookingStatusLabel(booking.status)}
-                    </span>
+              <Card
+                key={booking.id}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: '1.25rem',
+                  padding: '1.5rem',
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: '0.5rem',
+                    }}
+                  >
+                    <div>
+                      <h2
+                        style={{
+                          fontSize: '1.1rem',
+                          fontWeight: 700,
+                          margin: '0 0 0.25rem 0',
+                          color: 'var(--ut-color-ink-strong)',
+                        }}
+                      >
+                        Réservation · {booking.bookingItemCount} vélo
+                        {booking.bookingItemCount > 1 ? 's' : ''}
+                      </h2>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
+                        📍 {booking.locationName}
+                      </span>
+                    </div>
+                    <Badge tone={badgeTone}>{bookingStatusLabel(booking.status)}</Badge>
                   </div>
 
-                  <div className={styles.dateChip}>📍 {booking.locationName}</div>
-                </div>
-
-                <div className={styles.cardBody}>
-                  <div className={styles.timeRow}>
-                    <div className={styles.timeBlock}>
-                      <span className={styles.timeLabel}>Départ :</span>
-                      <strong>
+                  <div
+                    style={{
+                      background: 'var(--ut-color-surface-soft)',
+                      padding: '0.85rem',
+                      borderRadius: 'var(--ut-radius-md)',
+                      fontSize: '0.85rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.35rem',
+                      border: 'var(--ut-border-thin)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--ut-color-ink-muted)' }}>Départ :</span>
+                      <strong style={{ color: 'var(--ut-color-ink-strong)' }}>
                         {formatDateTimeInTimeZone(
                           booking.customerStartAt,
                           booking.locationTimeZone,
                         )}
                       </strong>
                     </div>
-                    <span style={{ color: '#94a3b8' }}>→</span>
-                    <div className={styles.timeBlock}>
-                      <span className={styles.timeLabel}>Retour :</span>
-                      <strong>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--ut-color-ink-muted)' }}>Retour :</span>
+                      <strong style={{ color: 'var(--ut-color-ink-strong)' }}>
                         {formatDateTimeInTimeZone(booking.customerEndAt, booking.locationTimeZone)}
                       </strong>
                     </div>
                   </div>
-
-                  <div className={styles.itemsBlock}>
-                    <span className={styles.itemsLabel}>
-                      Équipements : {booking.bookingItemCount} vélo(s) alloué(s)
-                    </span>
-                  </div>
                 </div>
 
-                <div className={styles.cardFooter}>
-                  {isPickupPending && (
-                    <Link
-                      href={`/dashboard/${organizationId}/bookings/${booking.id}`}
-                      className={styles.ctaPrimary}
-                    >
-                      Préparer le départ →
-                    </Link>
-                  )}
-
-                  {isReturnPending && (
-                    <Link
-                      href={`/dashboard/${organizationId}/bookings/${booking.id}`}
-                      className={styles.ctaSecondary}
-                    >
-                      Effectuer le retour →
-                    </Link>
-                  )}
-
-                  {!isPickupPending && !isReturnPending && (
-                    <Link
-                      href={`/dashboard/${organizationId}/bookings/${booking.id}`}
-                      className={styles.ctaNeutral}
-                    >
-                      Voir le dossier →
-                    </Link>
-                  )}
+                <div
+                  style={{
+                    paddingTop: '0.75rem',
+                    borderTop: 'var(--ut-border-thin)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Link
+                    href={detailHref}
+                    style={{
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      color: 'var(--ut-color-primary)',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                    }}
+                  >
+                    {isPickupPending
+                      ? 'Préparer le départ →'
+                      : isReturnPending
+                        ? 'Effectuer le retour →'
+                        : 'Consulter le dossier →'}
+                  </Link>
                 </div>
-              </article>
+              </Card>
             );
           })}
         </div>
