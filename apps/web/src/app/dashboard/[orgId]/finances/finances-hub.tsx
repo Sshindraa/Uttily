@@ -315,7 +315,13 @@ export function FinancesHub({
                 <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
                   Espace bancaire sécurisé par notre partenaire de paiement
                 </span>
-                <Button type="button" variant="quiet" size="sm" onClick={handleConnectExit}>
+                <Button
+                  type="button"
+                  variant="quiet"
+                  size="sm"
+                  aria-label="Fermer l’espace de versement"
+                  onClick={handleConnectExit}
+                >
                   ✕ Fermer l’espace
                 </Button>
               </div>
@@ -424,6 +430,7 @@ export function FinancesHub({
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <input
               type="text"
+              aria-label="Rechercher par référence, vélo, client"
               placeholder="Rechercher par référence, vélo, client..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -438,6 +445,7 @@ export function FinancesHub({
             <div style={{ display: 'flex', gap: '0.25rem' }}>
               <button
                 type="button"
+                aria-pressed={filterType === 'ALL'}
                 onClick={() => setFilterType('ALL')}
                 style={{
                   padding: '0.4rem 0.65rem',
@@ -455,6 +463,7 @@ export function FinancesHub({
               </button>
               <button
                 type="button"
+                aria-pressed={filterType === 'PAYMENTS'}
                 onClick={() => setFilterType('PAYMENTS')}
                 style={{
                   padding: '0.4rem 0.65rem',
@@ -474,6 +483,7 @@ export function FinancesHub({
               </button>
               <button
                 type="button"
+                aria-pressed={filterType === 'REFUNDS'}
                 onClick={() => setFilterType('REFUNDS')}
                 style={{
                   padding: '0.4rem 0.65rem',

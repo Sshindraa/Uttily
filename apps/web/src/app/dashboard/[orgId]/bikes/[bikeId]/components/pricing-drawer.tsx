@@ -115,14 +115,23 @@ export function PricingDrawer({
 
       {isOpen && (
         <div className={styles.drawerOverlay} onClick={() => !isLoading && setIsOpen(false)}>
-          <div className={styles.drawerContent} onClick={(e) => e.stopPropagation()}>
+          <div
+            className={styles.drawerContent}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pricing-drawer-title"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className={styles.drawerHeader}>
-              <h3 className={styles.drawerTitle}>🏷️ Définir la tarification</h3>
+              <h3 id="pricing-drawer-title" className={styles.drawerTitle}>
+                🏷️ Définir la tarification
+              </h3>
               <button
                 type="button"
                 onClick={() => !isLoading && setIsOpen(false)}
                 className={styles.closeBtn}
                 disabled={isLoading}
+                aria-label="Fermer"
               >
                 ✕
               </button>

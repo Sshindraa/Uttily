@@ -225,14 +225,23 @@ export function InventoryActions({
       {/* Drawer / Modal d'ajout */}
       {isAddOpen && (
         <div className={styles.drawerOverlay} onClick={() => !isLoading && setIsAddOpen(false)}>
-          <div className={styles.drawerContent} onClick={(e) => e.stopPropagation()}>
+          <div
+            className={styles.drawerContent}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-bike-drawer-title"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className={styles.drawerHeader}>
-              <h3 className={styles.drawerTitle}>🚲 Ajouter un vélo à la flotte</h3>
+              <h3 id="add-bike-drawer-title" className={styles.drawerTitle}>
+                🚲 Ajouter un vélo à la flotte
+              </h3>
               <button
                 type="button"
                 onClick={() => !isLoading && setIsAddOpen(false)}
                 className={styles.closeBtn}
                 disabled={isLoading}
+                aria-label="Fermer"
               >
                 ✕
               </button>

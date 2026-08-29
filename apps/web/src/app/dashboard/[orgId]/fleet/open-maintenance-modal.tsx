@@ -74,15 +74,21 @@ export function OpenMaintenanceModal({
   }
 
   return (
-    <div className={styles.modalOverlay}>
+    <div
+      className={styles.modalOverlay}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="open-maintenance-title"
+    >
       <div className={styles.modalContent}>
         <div className={styles.modalHeader}>
-          <h3>🔧 Mettre un vélo en maintenance</h3>
+          <h3 id="open-maintenance-title">🔧 Mettre un vélo en maintenance</h3>
           <button
             type="button"
             onClick={() => setIsOpen(false)}
             className={styles.closeBtn}
             disabled={loading}
+            aria-label="Fermer"
           >
             ✕
           </button>
@@ -97,7 +103,7 @@ export function OpenMaintenanceModal({
           {error && <div className={styles.formError}>{error}</div>}
 
           <div className={styles.formGroup}>
-            <label htmlFor="select-item">Choisir le vélo physique :</label>
+            <label htmlFor="select-item">Choisir le vélo :</label>
             <select
               id="select-item"
               value={selectedItemId}
