@@ -5,7 +5,7 @@ import { join } from 'node:path';
 const PAGE_PATH = join(__dirname, 'page.tsx');
 const HUB_PATH = join(__dirname, 'finances-hub.tsx');
 
-describe('FinancesPage (Revenus & Versements V2 - Chantier 11.1 Hardening)', () => {
+describe('FinancesPage (Revenus & Versements V2 - Chantier 11.1 & 21-U2.3)', () => {
   const pageSource = readFileSync(PAGE_PATH, 'utf8');
   const hubSource = readFileSync(HUB_PATH, 'utf8');
 
@@ -18,9 +18,9 @@ describe('FinancesPage (Revenus & Versements V2 - Chantier 11.1 Hardening)', () 
 
   it('utilise resolvePayoutAccountStatus et présente un vocabulaire centré sur les revenus et versements', () => {
     expect(pageSource).toContain('resolvePayoutAccountStatus(readiness)');
-    expect(hubSource).toContain('Revenus &amp; Versements');
-    expect(hubSource).toContain('Revenus après commission Uttily');
-    expect(hubSource).toContain('Infrastructure de paiement sécurisée');
+    expect(hubSource).toContain('Revenus & Versements');
+    expect(hubSource).toContain('Volume brut réservations');
+    expect(hubSource).toContain('partenaire de paiement');
     expect(hubSource).not.toContain('Stripe Connect Express');
   });
 

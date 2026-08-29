@@ -6,20 +6,21 @@ import {
   type UnifiedBikeStatusSummary,
 } from '@uttily/core';
 import { requireCatalogViewerOf } from '@/lib/catalog-auth';
-import styles from './bikes-list.module.css';
+import { PageHeader, Card, Badge, LinkButton, Icon } from '@uttily/ui';
+import type { BadgeTone } from '@uttily/ui';
 
-function renderStatusBadge(status: UnifiedBikeStatusSummary): React.ReactElement {
+function getStatusBadgeProps(status: UnifiedBikeStatusSummary): { tone: BadgeTone; label: string } {
   switch (status) {
     case 'ONLINE_AVAILABLE':
-      return <span className={styles.statusBadgeBookable}>🟢 En ligne · Disponible</span>;
+      return { tone: 'success', label: 'En ligne · Disponible' };
     case 'ONLINE_UNAVAILABLE':
-      return <span className={styles.statusBadgeUnavailable}>🔴 En ligne · Indisponible</span>;
+      return { tone: 'warning', label: 'En ligne · Indisponible' };
     case 'READY_TO_PUBLISH':
-      return <span className={styles.statusBadgeReady}>🔵 Prêt à publier</span>;
+      return { tone: 'info', label: 'Prêt à publier' };
     case 'INCOMPLETE':
-      return <span className={styles.statusBadgeIncomplete}>⚪ Configuration incomplète</span>;
+      return { tone: 'neutral', label: 'Configuration incomplète' };
     case 'ARCHIVED':
-      return <span className={styles.statusBadgeArchived}>⚫ Archivé</span>;
+      return { tone: 'neutral', label: 'Archivé' };
   }
 }
 
@@ -38,44 +39,60 @@ export default async function BikesListPage({
   const totalActiveFleet = bikes.reduce((acc, b) => acc + b.activeInventoryCount, 0);
 
   return (
-    <div className={styles.container}>
-      <div className={styles.headerRow}>
-        <div className={styles.titleArea}>
-          <h1 className={styles.pageTitle}>🚲 Mes Vélos</h1>
-          <p className={styles.pageSubtitle}>
-            {bikes.length} modèle(s) au catalogue • {totalActiveFleet} vélo(s) en service
-          </p>
-        </div>
-
-        {canManage && (
-          <Link href={`/dashboard/${organizationId}/bikes/new`} className={styles.addBikeBtn}>
-            <span>+</span> Ajouter un vélo
-          </Link>
-        )}
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      <PageHeader
+        eyebrow="Flotte & Références"
+        title="Mes vélos"
+        description={`${bikes.length} référence(s) vélo · ${totalActiveFleet} vélo(s) en service`}
+        actions={
+          canManage ? (
+            <LinkButton href={`/dashboard/${organizationId}/bikes/new`} variant="primary">
+              Ajouter un vélo
+            </LinkButton>
+          ) : undefined
+        }
+      />
 
       {bikes.length === 0 ? (
-        <section className={styles.emptyState} aria-labelledby="empty-bikes-heading">
-          <div style={{ fontSize: '2.5rem' }}>🚲</div>
-          <h2 id="empty-bikes-heading" style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a' }}>
+        <Card
+          style={{
+            textAlign: 'center',
+            padding: '3.5rem 1.5rem',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1rem',
+          }}
+        >
+          <div style={{ fontSize: '3rem' }}>🚲</div>
+          <h2
+            style={{
+              fontSize: '1.25rem',
+              fontWeight: 700,
+              margin: 0,
+              color: 'var(--ut-color-ink-strong)',
+            }}
+          >
             Aucun vélo pour le moment
           </h2>
-          <p style={{ margin: 0, color: '#64748b', fontSize: '0.95rem', maxWidth: '400px' }}>
-            Ajoutez votre premier modèle pour définir ses photos, son tarif journalier et vos
-            exemplaires disponibles.
+          <p style={{ color: 'var(--ut-color-ink-muted)', margin: 0, maxWidth: '28rem' }}>
+            Ajoutez votre premier vélo pour définir ses photos, son tarif journalier et vos vélos
+            disponibles.
           </p>
           {canManage && (
-            <Link
-              href={`/dashboard/${organizationId}/bikes/new`}
-              className={styles.addBikeBtn}
-              style={{ marginTop: '8px' }}
-            >
+            <LinkButton href={`/dashboard/${organizationId}/bikes/new`} variant="primary">
               Ajouter mon premier vélo →
-            </Link>
+            </LinkButton>
           )}
-        </section>
+        </Card>
       ) : (
-        <div className={styles.bikesGrid}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+            gap: '1.5rem',
+          }}
+        >
           {bikes.map((bike) => {
             const isReadyOrOnline =
               bike.statusSummary === 'ONLINE_AVAILABLE' ||
@@ -86,56 +103,140 @@ export default async function BikesListPage({
               ? `/dashboard/${organizationId}/bikes/${bike.id}`
               : `/dashboard/${organizationId}/bikes/${bike.id}/setup`;
 
+            const badgeProps = getStatusBadgeProps(bike.statusSummary);
+
             return (
-              <article
+              <Card
                 key={bike.id}
-                className={styles.bikeCard}
-                aria-labelledby={`bike-title-${bike.id}`}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  gap: '1.25rem',
+                  padding: '1.5rem',
+                }}
               >
-                <div className={styles.cardTop}>
-                  <div className={styles.cardHeader}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: '0.5rem',
+                    }}
+                  >
                     <div>
-                      <h2 id={`bike-title-${bike.id}`} className={styles.bikeName}>
+                      <h2
+                        style={{
+                          fontSize: '1.2rem',
+                          fontWeight: 700,
+                          margin: '0 0 0.25rem 0',
+                          color: 'var(--ut-color-ink-strong)',
+                        }}
+                      >
                         {bike.name}
                       </h2>
-                      <div className={styles.bikeMeta}>
-                        {bike.categoryName} • {bike.variantName}
-                      </div>
-                    </div>
-                    {renderStatusBadge(bike.statusSummary)}
-                  </div>
-
-                  <div className={styles.cardSummary}>
-                    <div className={styles.summaryRow}>
-                      <span className={styles.summaryKey}>Photos (3 vues)</span>
-                      <span className={styles.summaryVal}>
-                        {bike.hasRequiredPhotos ? '✓' : '○'} {bike.photoCount}/3 validées
+                      <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
+                        {bike.categoryName} · Taille : <strong>{bike.variantName}</strong>
                       </span>
                     </div>
+                    <Badge tone={badgeProps.tone}>{badgeProps.label}</Badge>
+                  </div>
 
-                    <div className={styles.summaryRow}>
-                      <span className={styles.summaryKey}>Prix / jour</span>
-                      <span className={styles.summaryVal}>
+                  <div
+                    style={{
+                      background: 'var(--ut-color-surface-soft)',
+                      padding: '0.85rem',
+                      borderRadius: 'var(--ut-radius-md)',
+                      fontSize: '0.85rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.4rem',
+                      border: 'var(--ut-border-thin)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <span style={{ color: 'var(--ut-color-ink-muted)' }}>Photos (3 vues) :</span>
+                      <strong
+                        style={{
+                          color: bike.hasRequiredPhotos
+                            ? 'var(--ut-color-success)'
+                            : 'var(--ut-color-warning)',
+                        }}
+                      >
+                        {bike.hasRequiredPhotos ? '✓' : '○'} {bike.photoCount}/3 validées
+                      </strong>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <span style={{ color: 'var(--ut-color-ink-muted)' }}>Tarif / jour :</span>
+                      <strong style={{ color: 'var(--ut-color-ink-strong)' }}>
                         {bike.priceAmountMinor !== null
                           ? `${(bike.priceAmountMinor / 100).toFixed(2)} €`
                           : '○ Non configuré'}
-                      </span>
+                      </strong>
                     </div>
 
-                    <div className={styles.summaryRow}>
-                      <span className={styles.summaryKey}>Flotte disponible</span>
-                      <span className={styles.summaryVal}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <span style={{ color: 'var(--ut-color-ink-muted)' }}>Vélos en flotte :</span>
+                      <strong
+                        style={{
+                          color:
+                            bike.activeInventoryCount >= 1
+                              ? 'var(--ut-color-success)'
+                              : 'var(--ut-color-ink-muted)',
+                        }}
+                      >
                         {bike.activeInventoryCount >= 1 ? '✓' : '○'} {bike.activeInventoryCount}{' '}
                         vélo(s)
-                      </span>
+                      </strong>
                     </div>
                   </div>
                 </div>
 
-                <Link href={targetHref} className={styles.cardActionLink}>
-                  {isReadyOrOnline ? 'Gérer le vélo →' : 'Continuer la configuration →'}
-                </Link>
-              </article>
+                <div
+                  style={{
+                    paddingTop: '0.75rem',
+                    borderTop: 'var(--ut-border-thin)',
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                  }}
+                >
+                  <Link
+                    href={targetHref}
+                    style={{
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      color: 'var(--ut-color-primary)',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                    }}
+                  >
+                    {isReadyOrOnline ? 'Gérer le vélo' : 'Continuer la configuration'}{' '}
+                    <Icon name="arrow-right" size={16} />
+                  </Link>
+                </div>
+              </Card>
             );
           })}
         </div>

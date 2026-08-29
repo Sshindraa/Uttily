@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 const PAGE_PATH = join(__dirname, 'page.tsx');
 
-describe('BookingsListPage (Chantier 7A & 7C)', () => {
+describe('BookingsListPage (Chantier 7A, 7C & 21-U2.2)', () => {
   const pageSource = readFileSync(PAGE_PATH, 'utf8');
 
   it('exige une autorisation fulfillment pour afficher les réservations', () => {
@@ -13,7 +13,7 @@ describe('BookingsListPage (Chantier 7A & 7C)', () => {
   });
 
   it('utilise un vocabulaire centré sur les Réservations et les départs/retours', () => {
-    expect(pageSource).toContain('Mes Réservations');
+    expect(pageSource).toContain('title="Réservations"');
     expect(pageSource).toContain('Préparer le départ →');
     expect(pageSource).toContain('Effectuer le retour →');
   });

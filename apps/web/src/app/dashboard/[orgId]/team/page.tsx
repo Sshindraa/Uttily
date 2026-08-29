@@ -7,17 +7,20 @@ import {
   getMembership,
   requireMembership,
   can,
+  canInviteRole,
   listPendingInvitations,
   type MembershipRole,
 } from '@uttily/core';
 import { createInvitationAction, revokeInvitationAction } from '@/app/actions/invitations';
 import { changeMemberRoleAction, removeMemberAction } from '@/app/actions/team';
+import { PageHeader, Card, Badge, Button } from '@uttily/ui';
+import type { BadgeTone } from '@uttily/ui';
 
 const ROLE_LABELS: Record<MembershipRole, string> = {
   OWNER: 'Propriétaire',
   ADMIN: 'Administrateur',
   MANAGER: 'Responsable',
-  STAFF: 'Membre',
+  STAFF: 'Équipe',
 };
 
 const ROLE_DESCRIPTIONS: Record<MembershipRole, string> = {
@@ -26,6 +29,25 @@ const ROLE_DESCRIPTIONS: Record<MembershipRole, string> = {
   MANAGER: 'Gestion des opérations, de la flotte et des magasins.',
   STAFF: 'Gestion des réservations, départs et retours.',
 };
+
+function getRoleTone(role: MembershipRole): BadgeTone {
+  switch (role) {
+    case 'OWNER':
+      return 'info';
+    case 'ADMIN':
+      return 'success';
+    case 'MANAGER':
+      return 'warning';
+    case 'STAFF':
+      return 'neutral';
+  }
+}
+
+const ALL_ROLES: MembershipRole[] = ['ADMIN', 'MANAGER', 'STAFF'];
+
+export function getInvitableRoles(actorRole: MembershipRole): MembershipRole[] {
+  return ALL_ROLES.filter((r) => canInviteRole(actorRole, r));
+}
 
 export default async function TeamPage({
   params,
@@ -40,7 +62,6 @@ export default async function TeamPage({
   const membership = await getMembership(db, orgId, user.id);
   const active = requireMembership(membership, ['OWNER', 'ADMIN', 'MANAGER', 'STAFF']);
 
-  // Charger les membres avec les adresses email réelles depuis la table users
   const memberRows = await db
     .select({
       userId: organizationMemberships.userId,
@@ -57,12 +78,13 @@ export default async function TeamPage({
       ),
     );
 
-  // Charger les invitations en attente
   const pendingInvitations = await listPendingInvitations(db, orgId);
 
   const canInvite = can(active.role, 'team.invite');
   const canChangeRole = can(active.role, 'team.changeRole');
   const canRemove = can(active.role, 'team.remove');
+
+  const invitableRoles = getInvitableRoles(active.role);
 
   async function inviteMember(formData: FormData) {
     'use server';
@@ -95,79 +117,127 @@ export default async function TeamPage({
   }
 
   return (
-    <div style={containerStyle}>
-      <header style={headerStyle}>
-        <div>
-          <h1 style={titleStyle}>Équipe</h1>
-          <p style={subtitleStyle}>
-            Gérez les collaborateurs de votre organisation et leurs niveaux d’accès.
-          </p>
-        </div>
-      </header>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      <PageHeader
+        eyebrow="Organisation"
+        title="Équipe"
+        description="Gérez les collaborateurs de votre organisation et leurs niveaux d’accès."
+      />
 
-      <div style={gridStyle}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: '1.5rem',
+          alignItems: 'start',
+        }}
+      >
         {/* Colonne liste des membres */}
-        <section aria-labelledby="members-heading" style={cardStyle}>
-          <h2 id="members-heading" style={cardTitleStyle}>
+        <Card
+          style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}
+        >
+          <h2
+            style={{
+              fontSize: '1.15rem',
+              fontWeight: 700,
+              margin: 0,
+              color: 'var(--ut-color-ink-strong)',
+            }}
+          >
             Membres actifs ({memberRows.length})
           </h2>
 
-          <div style={membersListStyle}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {memberRows.map((m) => {
               const isCurrentUser = m.userId === user.id;
               const isTargetOwner = m.role === 'OWNER';
               const isTargetAdmin = m.role === 'ADMIN';
-
-              // ADMIN ne peut pas retirer un OWNER ou un autre ADMIN
               const canRemoveTarget =
                 canRemove &&
                 !isCurrentUser &&
                 (active.role === 'OWNER' || (!isTargetOwner && !isTargetAdmin));
 
               return (
-                <div key={m.userId} style={memberRowStyle}>
-                  <div style={memberInfoStyle}>
-                    <div style={memberHeaderRowStyle}>
-                      <strong style={memberEmailStyle}>{m.email}</strong>
-                      {isCurrentUser && <span style={selfBadgeStyle}>Vous</span>}
+                <div
+                  key={m.userId}
+                  style={{
+                    background: 'var(--ut-color-surface-soft)',
+                    borderRadius: 'var(--ut-radius-md)',
+                    padding: '1rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                    border: 'var(--ut-border-thin)',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: '0.5rem',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <strong style={{ fontSize: '0.95rem', color: 'var(--ut-color-ink-strong)' }}>
+                        {m.email}
+                      </strong>
+                      {isCurrentUser && <Badge tone="info">Vous</Badge>}
                     </div>
-                    <div style={roleBadgeRowStyle}>
-                      <span style={getRoleBadgeStyle(m.role)}>{ROLE_LABELS[m.role]}</span>
-                      <span style={roleDescStyle}>{ROLE_DESCRIPTIONS[m.role]}</span>
-                    </div>
+                    <Badge tone={getRoleTone(m.role)}>{ROLE_LABELS[m.role]}</Badge>
                   </div>
 
-                  <div style={memberActionsStyle}>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--ut-color-ink-muted)' }}>
+                    {ROLE_DESCRIPTIONS[m.role]}
+                  </p>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      gap: '0.5rem',
+                      flexWrap: 'wrap',
+                      paddingTop: '0.5rem',
+                      borderTop: 'var(--ut-border-thin)',
+                    }}
+                  >
                     {canChangeRole && !isCurrentUser && (
-                      <form action={updateMemberRole} style={inlineFormStyle}>
+                      <form
+                        action={updateMemberRole}
+                        style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}
+                      >
                         <input type="hidden" name="targetUserId" value={m.userId} />
                         <select
                           name="newRole"
                           defaultValue={m.role}
                           aria-label={`Changer le rôle de ${m.email}`}
-                          style={selectStyle}
+                          style={{
+                            padding: '0.35rem 0.6rem',
+                            borderRadius: 'var(--ut-radius-md)',
+                            border: 'var(--ut-border-thin)',
+                            fontSize: '0.85rem',
+                            background: 'var(--ut-color-surface)',
+                            color: 'var(--ut-color-ink)',
+                          }}
                         >
                           <option value="OWNER">Propriétaire</option>
                           <option value="ADMIN">Administrateur</option>
                           <option value="MANAGER">Responsable</option>
-                          <option value="STAFF">Membre</option>
+                          <option value="STAFF">Équipe</option>
                         </select>
-                        <button type="submit" style={secondaryButtonStyle}>
+                        <Button type="submit" variant="secondary" size="sm">
                           Modifier
-                        </button>
+                        </Button>
                       </form>
                     )}
 
                     {canRemoveTarget && (
-                      <form action={deleteMember} style={inlineFormStyle}>
+                      <form action={deleteMember} style={{ display: 'inline' }}>
                         <input type="hidden" name="targetUserId" value={m.userId} />
-                        <button
-                          type="submit"
-                          style={dangerButtonStyle}
-                          aria-label={`Retirer ${m.email}`}
-                        >
+                        <Button type="submit" variant="danger" size="sm">
                           Retirer
-                        </button>
+                        </Button>
                       </form>
                     )}
                   </div>
@@ -175,378 +245,174 @@ export default async function TeamPage({
               );
             })}
           </div>
-        </section>
+        </Card>
 
-        {/* Colonne latérale : Invitations & Formulaire d'invitation */}
-        <aside style={sidebarStyle}>
-          {canInvite && (
-            <section aria-labelledby="invite-heading" style={cardStyle}>
-              <h2 id="invite-heading" style={cardTitleStyle}>
+        {/* Colonne latérale : Invitation & Invitations en attente */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {canInvite && invitableRoles.length > 0 && (
+            <Card
+              style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
+            >
+              <h2
+                style={{
+                  fontSize: '1.15rem',
+                  fontWeight: 700,
+                  margin: 0,
+                  color: 'var(--ut-color-ink-strong)',
+                }}
+              >
                 Inviter un collaborateur
               </h2>
-              <form action={inviteMember} style={formStyle}>
-                <div style={formGroupStyle}>
-                  <label htmlFor="email" style={labelStyle}>
+              <form
+                action={inviteMember}
+                style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
+              >
+                <div>
+                  <label
+                    htmlFor="invite-email"
+                    style={{
+                      display: 'block',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      marginBottom: '0.25rem',
+                      color: 'var(--ut-color-ink)',
+                    }}
+                  >
                     Adresse email
                   </label>
                   <input
-                    id="email"
-                    name="email"
+                    id="invite-email"
                     type="email"
+                    name="email"
                     required
                     placeholder="collaborateur@exemple.com"
-                    style={inputStyle}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: 'var(--ut-radius-md)',
+                      border: 'var(--ut-border-thin)',
+                      fontSize: '0.9rem',
+                      background: 'var(--ut-color-surface)',
+                      color: 'var(--ut-color-ink)',
+                    }}
                   />
                 </div>
 
-                <div style={formGroupStyle}>
-                  <label htmlFor="role" style={labelStyle}>
-                    Rôle attribué
+                <div>
+                  <label
+                    htmlFor="invite-role"
+                    style={{
+                      display: 'block',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      marginBottom: '0.25rem',
+                      color: 'var(--ut-color-ink)',
+                    }}
+                  >
+                    Rôle
                   </label>
-                  <select id="role" name="role" defaultValue="STAFF" style={inputStyle}>
-                    {active.role === 'OWNER' && <option value="ADMIN">Administrateur</option>}
-                    <option value="MANAGER">Responsable</option>
-                    <option value="STAFF">Membre</option>
+                  <select
+                    id="invite-role"
+                    name="role"
+                    defaultValue={invitableRoles[0]}
+                    style={{
+                      width: '100%',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: 'var(--ut-radius-md)',
+                      border: 'var(--ut-border-thin)',
+                      fontSize: '0.9rem',
+                      background: 'var(--ut-color-surface)',
+                      color: 'var(--ut-color-ink)',
+                    }}
+                  >
+                    {invitableRoles.map((role) => (
+                      <option key={role} value={role}>
+                        {ROLE_LABELS[role]}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
-                <button type="submit" style={primaryButtonStyle}>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  style={{ marginTop: '0.5rem', width: '100%' }}
+                >
                   Envoyer l’invitation
-                </button>
+                </Button>
               </form>
-            </section>
+            </Card>
           )}
 
-          {/* Invitations en attente */}
-          <section aria-labelledby="pending-heading" style={cardStyle}>
-            <h2 id="pending-heading" style={cardTitleStyle}>
+          <Card
+            style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
+          >
+            <h2
+              style={{
+                fontSize: '1.15rem',
+                fontWeight: 700,
+                margin: 0,
+                color: 'var(--ut-color-ink-strong)',
+              }}
+            >
               Invitations en attente ({pendingInvitations.length})
             </h2>
 
             {pendingInvitations.length === 0 ? (
-              <p style={emptyTextStyle}>Aucune invitation en cours.</p>
+              <p style={{ color: 'var(--ut-color-ink-muted)', margin: 0, fontSize: '0.85rem' }}>
+                Aucune invitation en attente.
+              </p>
             ) : (
-              <div style={invitationsListStyle}>
-                {pendingInvitations.map((inv) => {
-                  const daysLeft = Math.max(
-                    0,
-                    Math.ceil(
-                      (new Date(inv.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-                    ),
-                  );
-
-                  return (
-                    <div key={inv.id} style={invitationRowStyle}>
-                      <div>
-                        <strong style={invEmailStyle}>{inv.email}</strong>
-                        <div style={invMetaStyle}>
-                          <span style={getRoleBadgeStyle(inv.role)}>{ROLE_LABELS[inv.role]}</span>
-                          <span style={invExpiryStyle}>
-                            {daysLeft > 0
-                              ? `Expire dans ${daysLeft} jour${daysLeft > 1 ? 's' : ''}`
-                              : 'Expire bientôt'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {canInvite && (
-                        <form action={revokeInvitation}>
-                          <input type="hidden" name="invitationId" value={inv.id} />
-                          <button type="submit" style={revokeBtnStyle}>
-                            Révoquer
-                          </button>
-                        </form>
-                      )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {pendingInvitations.map((inv) => (
+                  <div
+                    key={inv.id}
+                    style={{
+                      background: 'var(--ut-color-surface-soft)',
+                      padding: '0.85rem',
+                      borderRadius: 'var(--ut-radius-md)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      border: 'var(--ut-border-thin)',
+                    }}
+                  >
+                    <div>
+                      <strong
+                        style={{
+                          fontSize: '0.9rem',
+                          color: 'var(--ut-color-ink-strong)',
+                          display: 'block',
+                        }}
+                      >
+                        {inv.email}
+                      </strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--ut-color-ink-muted)' }}>
+                        Rôle : {ROLE_LABELS[inv.role]}
+                      </span>
                     </div>
-                  );
-                })}
+
+                    {canInvite && (
+                      <form action={revokeInvitation} style={{ display: 'inline' }}>
+                        <input type="hidden" name="invitationId" value={inv.id} />
+                        <Button
+                          type="submit"
+                          variant="quiet"
+                          size="sm"
+                          style={{ color: 'var(--ut-color-danger)' }}
+                        >
+                          Révoquer
+                        </Button>
+                      </form>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
-          </section>
-        </aside>
+          </Card>
+        </div>
       </div>
     </div>
   );
 }
-
-function getRoleBadgeStyle(role: MembershipRole): React.CSSProperties {
-  switch (role) {
-    case 'OWNER':
-      return {
-        display: 'inline-block',
-        padding: '0.2rem 0.5rem',
-        borderRadius: '9999px',
-        fontSize: '0.75rem',
-        fontWeight: 600,
-        backgroundColor: '#e0e7ff',
-        color: '#3730a3',
-      };
-    case 'ADMIN':
-      return {
-        display: 'inline-block',
-        padding: '0.2rem 0.5rem',
-        borderRadius: '9999px',
-        fontSize: '0.75rem',
-        fontWeight: 600,
-        backgroundColor: '#fef3c7',
-        color: '#92400e',
-      };
-    case 'MANAGER':
-      return {
-        display: 'inline-block',
-        padding: '0.2rem 0.5rem',
-        borderRadius: '9999px',
-        fontSize: '0.75rem',
-        fontWeight: 600,
-        backgroundColor: '#e0f2fe',
-        color: '#0369a1',
-      };
-    case 'STAFF':
-    default:
-      return {
-        display: 'inline-block',
-        padding: '0.2rem 0.5rem',
-        borderRadius: '9999px',
-        fontSize: '0.75rem',
-        fontWeight: 600,
-        backgroundColor: '#f1f5f9',
-        color: '#475569',
-      };
-  }
-}
-
-const containerStyle: React.CSSProperties = {
-  maxWidth: '1200px',
-  margin: '0 auto',
-  padding: '1.5rem',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1.5rem',
-};
-
-const headerStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'flex-start',
-};
-
-const titleStyle: React.CSSProperties = {
-  fontSize: '1.75rem',
-  fontWeight: 700,
-  color: '#0f172a',
-  margin: 0,
-};
-
-const subtitleStyle: React.CSSProperties = {
-  fontSize: '0.95rem',
-  color: '#64748b',
-  margin: '0.25rem 0 0',
-};
-
-const gridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '1fr 380px',
-  gap: '1.5rem',
-  alignItems: 'start',
-};
-
-const sidebarStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1.5rem',
-};
-
-const cardStyle: React.CSSProperties = {
-  backgroundColor: '#ffffff',
-  borderRadius: '12px',
-  border: '1px solid #e2e8f0',
-  padding: '1.5rem',
-  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
-};
-
-const cardTitleStyle: React.CSSProperties = {
-  fontSize: '1.1rem',
-  fontWeight: 600,
-  color: '#0f172a',
-  margin: '0 0 1.25rem',
-};
-
-const membersListStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1rem',
-};
-
-const memberRowStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '1rem',
-  borderRadius: '8px',
-  backgroundColor: '#f8fafc',
-  border: '1px solid #f1f5f9',
-};
-
-const memberInfoStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.35rem',
-};
-
-const memberHeaderRowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.5rem',
-};
-
-const memberEmailStyle: React.CSSProperties = {
-  fontSize: '0.95rem',
-  color: '#0f172a',
-};
-
-const selfBadgeStyle: React.CSSProperties = {
-  fontSize: '0.75rem',
-  padding: '0.1rem 0.4rem',
-  borderRadius: '4px',
-  backgroundColor: '#e2e8f0',
-  color: '#475569',
-  fontWeight: 500,
-};
-
-const roleBadgeRowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.5rem',
-};
-
-const roleDescStyle: React.CSSProperties = {
-  fontSize: '0.8rem',
-  color: '#64748b',
-};
-
-const memberActionsStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.5rem',
-};
-
-const inlineFormStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.4rem',
-};
-
-const formStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1rem',
-};
-
-const formGroupStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.35rem',
-};
-
-const labelStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
-  fontWeight: 600,
-  color: '#334155',
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: '0.5rem 0.75rem',
-  borderRadius: '6px',
-  border: '1px solid #cbd5e1',
-  fontSize: '0.9rem',
-};
-
-const selectStyle: React.CSSProperties = {
-  padding: '0.4rem 0.6rem',
-  borderRadius: '6px',
-  border: '1px solid #cbd5e1',
-  fontSize: '0.85rem',
-  backgroundColor: '#ffffff',
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: '0.6rem 1rem',
-  backgroundColor: '#2563eb',
-  color: '#ffffff',
-  border: 'none',
-  borderRadius: '6px',
-  fontSize: '0.9rem',
-  fontWeight: 600,
-  cursor: 'pointer',
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  padding: '0.4rem 0.6rem',
-  backgroundColor: '#ffffff',
-  color: '#334155',
-  border: '1px solid #cbd5e1',
-  borderRadius: '6px',
-  fontSize: '0.85rem',
-  fontWeight: 500,
-  cursor: 'pointer',
-};
-
-const dangerButtonStyle: React.CSSProperties = {
-  padding: '0.4rem 0.6rem',
-  backgroundColor: '#fee2e2',
-  color: '#991b1b',
-  border: '1px solid #fecaca',
-  borderRadius: '6px',
-  fontSize: '0.85rem',
-  fontWeight: 500,
-  cursor: 'pointer',
-};
-
-const emptyTextStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
-  color: '#64748b',
-  margin: 0,
-};
-
-const invitationsListStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.75rem',
-};
-
-const invitationRowStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '0.75rem',
-  borderRadius: '6px',
-  backgroundColor: '#f8fafc',
-  border: '1px solid #f1f5f9',
-};
-
-const invEmailStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
-  color: '#0f172a',
-};
-
-const invMetaStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.4rem',
-  marginTop: '0.25rem',
-};
-
-const invExpiryStyle: React.CSSProperties = {
-  fontSize: '0.75rem',
-  color: '#64748b',
-};
-
-const revokeBtnStyle: React.CSSProperties = {
-  padding: '0.3rem 0.5rem',
-  backgroundColor: 'transparent',
-  color: '#dc2626',
-  border: 'none',
-  fontSize: '0.8rem',
-  fontWeight: 500,
-  cursor: 'pointer',
-};
