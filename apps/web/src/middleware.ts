@@ -4,6 +4,8 @@ const isPublicRoute = createRouteMatcher([
   '/',
   '/fr/search(.*)',
   '/en/search(.*)',
+  '/fr/offers(.*)',
+  '/en/offers(.*)',
   '/api/public/search(.*)',
   // Les webhooks sont authentifiés par la signature Stripe dans leur route.
   // Ils doivent rester accessibles sans session Clerk pour que Stripe puisse

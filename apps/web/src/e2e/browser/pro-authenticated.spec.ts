@@ -100,7 +100,9 @@ async function expectNoGlobalHorizontalOverflow(page: Page): Promise<void> {
 async function findOrganizationId(page: Page): Promise<string> {
   await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('heading', { name: 'Tableau de bord' })).toBeVisible();
-  const organizationLink = page.getByRole('link', { name: /test-org-dev/i });
+  const organizationRow = page.getByRole('listitem').filter({ hasText: 'test-org-dev' });
+  const organizationLink = organizationRow.getByRole('link');
+  await expect(organizationRow).toBeVisible();
   await expect(organizationLink).toBeVisible();
   const href = await organizationLink.getAttribute('href');
   const match = href?.match(/^\/dashboard\/([0-9a-f-]+)$/i);
