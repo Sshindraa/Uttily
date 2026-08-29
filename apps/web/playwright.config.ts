@@ -39,9 +39,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: process.env.CI
-      ? 'pnpm --filter @uttily/web start'
-      : 'pnpm --filter @uttily/web dev',
+    command: process.env.CI ? 'pnpm --filter @uttily/web start' : 'pnpm --filter @uttily/web dev',
     port: 3000,
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
