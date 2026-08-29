@@ -4,6 +4,8 @@ build/
 .next/
 out/
 coverage/
+test-results/
+playwright-report/
 pnpm-lock.yaml
 drizzle/
 docs/

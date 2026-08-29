@@ -162,16 +162,43 @@ jobs:
       - name: Build
         run: pnpm build
 
+  browser:
+    name: Browser acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @uttily/web exec playwright install chromium --with-deps
+
+      - name: Run Playwright tests
+        run: pnpm --filter @uttily/web test:browser
+
   verify:
     name: Lint, typecheck, test, build
     if: ${{ always() }}
-    needs: [quality, tests, build]
+    needs: [quality, tests, build, browser]
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
       - name: Fail if a required job failed or was cancelled
-        if: ${{ needs.quality.result != 'success' || needs.tests.result != 'success' || needs.build.result != 'success' }}
+        if: ${{ needs.quality.result != 'success' || needs.tests.result != 'success' || needs.build.result != 'success' || needs.browser.result != 'success' }}
         run: |
           echo "Quality: ${{ needs.quality.result }}"
           echo "Tests: ${{ needs.tests.result }}"
