@@ -52,10 +52,11 @@ export default async function PublicSearchPage({
   return (
     <main className={styles.page} lang={locale}>
       <header className={styles.header}>
-        <Link href="/" className={styles.brand}>
+        <Link href="/" className={styles.brand} aria-label="Uttily, accueil">
           Uttily
         </Link>
-        <nav aria-label={fr ? 'Langue' : 'Language'}>
+        <nav aria-label={fr ? 'Navigation et langue' : 'Navigation and language'}>
+          <Link href="/fr/account/bookings">{fr ? 'Mes locations' : 'My bookings'}</Link>
           <Link href={`/${otherLocale}/search`} hrefLang={otherLocale}>
             {fr ? 'English' : 'Français'}
           </Link>
@@ -65,7 +66,7 @@ export default async function PublicSearchPage({
 
       <section className={styles.hero}>
         <p className={styles.eyebrow}>
-          {fr ? 'Location locale, stock réel' : 'Local rental, real stock'}
+          {fr ? 'Location locale · Stock réel' : 'Local rental · Verified stock'}
         </p>
         <h1>
           {fr
@@ -74,8 +75,8 @@ export default async function PublicSearchPage({
         </h1>
         <p>
           {fr
-            ? 'Les disponibilités et le prix sont calculés pour votre période. La réservation finale reste protégée par un hold transactionnel.'
-            : 'Availability and price are calculated for your period. Final booking remains protected by a transactional hold.'}
+            ? 'Les disponibilités et les tarifs sont calculés pour votre période. Votre équipement est bloqué lors de votre réservation.'
+            : 'Availability and pricing are calculated for your dates. Your equipment is held upon booking.'}
         </p>
       </section>
 

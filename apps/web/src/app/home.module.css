@@ -1,7 +1,10 @@
 .page {
   margin: 0 auto;
   max-width: 76rem;
-  padding: var(--ut-space-16) var(--ut-space-6) 0;
+  padding: var(--ut-space-16) var(--ut-space-6) var(--ut-space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ut-space-16);
 }
 
 .hero {
@@ -9,7 +12,7 @@
   display: grid;
   gap: clamp(var(--ut-space-8), 7vw, var(--ut-space-16));
   grid-template-columns: minmax(0, 1.08fr) minmax(20rem, 0.92fr);
-  min-height: min(48rem, calc(100vh - 8rem));
+  min-height: min(42rem, calc(100vh - 10rem));
 }
 
 .heroCopy {
@@ -32,7 +35,7 @@
   letter-spacing: -0.055em;
   line-height: 0.99;
   margin: 0;
-  max-width: 11ch;
+  max-width: 12ch;
 }
 
 .heroText {
@@ -110,9 +113,66 @@
   font-weight: var(--ut-weight-semibold);
 }
 
+.howItWorks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ut-space-8);
+}
+
+.sectionHeader {
+  text-align: center;
+}
+
+.sectionHeader h2 {
+  color: var(--ut-color-ink-strong);
+  font-size: var(--ut-text-2xl);
+  font-weight: var(--ut-weight-bold);
+  letter-spacing: -0.03em;
+  margin: var(--ut-space-2) 0 0;
+}
+
+.stepsGrid {
+  display: grid;
+  gap: var(--ut-space-6);
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.stepCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ut-space-3);
+}
+
+.stepNumber {
+  align-items: center;
+  background: var(--ut-color-primary);
+  border-radius: var(--ut-radius-pill);
+  color: white;
+  display: inline-flex;
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-bold);
+  height: 2rem;
+  justify-content: center;
+  width: 2rem;
+}
+
+.stepCard h3 {
+  color: var(--ut-color-ink-strong);
+  font-size: var(--ut-text-lg);
+  font-weight: var(--ut-weight-semibold);
+  margin: 0;
+}
+
+.stepCard p {
+  color: var(--ut-color-ink-muted);
+  font-size: var(--ut-text-sm);
+  line-height: var(--ut-leading-relaxed);
+  margin: 0;
+}
+
 .valueGrid {
   display: grid;
-  gap: var(--ut-space-4);
+  gap: var(--ut-space-6);
   grid-template-columns: repeat(3, 1fr);
 }
 
@@ -124,6 +184,8 @@
 
 .valueGrid p {
   color: var(--ut-color-ink-muted);
+  font-size: var(--ut-text-sm);
+  line-height: var(--ut-leading-relaxed);
   margin: 0;
 }
 
@@ -152,21 +214,23 @@
 @media (max-width: 48rem) {
   .page {
     padding-inline: var(--ut-space-4);
+    gap: var(--ut-space-12);
   }
 
   .hero {
     grid-template-columns: 1fr;
-    padding-block: var(--ut-space-8);
+    padding-block: var(--ut-space-4);
   }
 
   .hero h1 {
-    font-size: clamp(2.7rem, 13vw, 4.5rem);
+    font-size: clamp(2.5rem, 11vw, 4rem);
   }
 
   .heroText {
     font-size: var(--ut-text-md);
   }
 
+  .stepsGrid,
   .valueGrid {
     grid-template-columns: 1fr;
   }
