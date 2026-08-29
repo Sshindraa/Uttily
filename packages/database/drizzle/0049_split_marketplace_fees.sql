@@ -197,7 +197,7 @@ BEGIN
   END IF;
 END $$;
 
-CREATE OR REPLACE FUNCTION validate_marketplace_fee_snapshot_immutability()
+CREATE OR REPLACE FUNCTION validate_split_marketplace_fee_snapshot_immutability()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -219,14 +219,14 @@ $$;
 DROP TRIGGER IF EXISTS booking_drafts_marketplace_fee_snapshot_immutable ON booking_drafts;
 CREATE TRIGGER booking_drafts_marketplace_fee_snapshot_immutable
   BEFORE UPDATE ON booking_drafts
-  FOR EACH ROW EXECUTE FUNCTION validate_marketplace_fee_snapshot_immutability();
+  FOR EACH ROW EXECUTE FUNCTION validate_split_marketplace_fee_snapshot_immutability();
 
 DROP TRIGGER IF EXISTS payments_marketplace_fee_snapshot_immutable ON payments;
 CREATE TRIGGER payments_marketplace_fee_snapshot_immutable
   BEFORE UPDATE ON payments
-  FOR EACH ROW EXECUTE FUNCTION validate_marketplace_fee_snapshot_immutability();
+  FOR EACH ROW EXECUTE FUNCTION validate_split_marketplace_fee_snapshot_immutability();
 
 DROP TRIGGER IF EXISTS bookings_marketplace_fee_snapshot_immutable ON bookings;
 CREATE TRIGGER bookings_marketplace_fee_snapshot_immutable
   BEFORE UPDATE ON bookings
-  FOR EACH ROW EXECUTE FUNCTION validate_marketplace_fee_snapshot_immutability();
+  FOR EACH ROW EXECUTE FUNCTION validate_split_marketplace_fee_snapshot_immutability();
