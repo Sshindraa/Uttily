@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : 2,
   reporter: 'list',
   use: {
-    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://127.0.0.1:3000',
+    baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
   },
   projects: [
@@ -40,10 +40,10 @@ export default defineConfig({
   ],
   webServer: {
     command: process.env.CI
-      ? 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Y2xlcmsuZXhhbXBsZS5jb20k CLERK_SECRET_KEY=sk_test_1234567890abcdef1234567890abcdef pnpm --filter @uttily/web exec next start -H 127.0.0.1 -p 3000'
-      : 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Y2xlcmsuZXhhbXBsZS5jb20k CLERK_SECRET_KEY=sk_test_1234567890abcdef1234567890abcdef pnpm --filter @uttily/web exec next dev -H 127.0.0.1 -p 3000',
-    url: 'http://127.0.0.1:3000',
-    reuseExistingServer: true,
+      ? 'pnpm --filter @uttily/web start'
+      : 'pnpm --filter @uttily/web dev',
+    port: 3000,
+    reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },
 });
