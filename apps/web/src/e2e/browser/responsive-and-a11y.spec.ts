@@ -73,7 +73,7 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
     await page.keyboard.press('ArrowDown');
     await expect(destinationInput).toHaveAttribute('aria-expanded', 'true');
     await page.keyboard.press('Enter');
-    await expect(destinationInput).toHaveValue('Lyon');
+    await expect(destinationInput).toHaveValue('Lyon · FR');
     await expect(destinationInput).toHaveAttribute('aria-expanded', 'false');
 
     await intentSelect.focus();
