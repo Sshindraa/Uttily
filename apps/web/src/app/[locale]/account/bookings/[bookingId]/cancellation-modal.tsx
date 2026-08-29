@@ -7,6 +7,7 @@ import {
   cancelMyBookingAction,
 } from '@/app/actions/customer-bookings';
 import type { CancellationPreviewResult } from '@uttily/core';
+import { Dialog, Button } from '@uttily/ui';
 
 interface CustomerCancellationModalProps {
   bookingId: string;
@@ -87,7 +88,6 @@ export function CustomerCancellationModal({
     } else {
       if (res.error === 'PREVIEW_STALE') {
         setErrorMessage('Les conditions ont évolué. Vos montants ont été actualisés.');
-        // Recalcule la nouvelle preview immédiatement
         const refreshRes = await previewMyBookingCancellationAction(bookingId);
         if (refreshRes.ok) {
           setPreview(refreshRes.data);
@@ -100,284 +100,162 @@ export function CustomerCancellationModal({
 
   return (
     <>
-      <button type="button" onClick={handleOpen} style={cancelTriggerButtonStyle}>
+      <Button
+        type="button"
+        variant="quiet"
+        onClick={handleOpen}
+        style={{
+          color: 'var(--ut-color-danger)',
+          borderColor: 'var(--ut-color-danger-soft)',
+          border: '1px solid currentColor',
+        }}
+      >
         Annuler ma réservation
-      </button>
+      </Button>
 
-      {isOpen && (
-        <div
-          style={overlayStyle}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="cancellation-title"
-        >
-          <div style={modalStyle}>
-            {successResult ? (
-              <div style={successContainerStyle}>
-                <div style={successIconStyle}>✓</div>
-                <h2 id="cancellation-title" style={modalTitleStyle}>
-                  Réservation annulée
-                </h2>
-                <p style={successDescStyle}>
-                  {successResult.refundAmountMinor > 0
-                    ? `${formatAmount(successResult.refundAmountMinor, successResult.currency)} de remboursement ont été demandés.`
-                    : 'Votre réservation a bien été annulée.'}
-                </p>
-                <button type="button" onClick={handleClose} style={primaryBtnStyle}>
-                  Retour à ma réservation
-                </button>
+      <Dialog open={isOpen} title="Annulation de réservation" onClose={handleClose}>
+        {successResult ? (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+              gap: '1rem',
+              padding: '1rem 0',
+            }}
+          >
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                background: 'var(--ut-color-success-soft)',
+                color: 'var(--ut-color-success)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.5rem',
+              }}
+            >
+              ✓
+            </div>
+            <p style={{ color: 'var(--ut-color-ink-strong)', fontSize: '1rem', margin: 0 }}>
+              {successResult.refundAmountMinor > 0
+                ? `Un remboursement de ${formatAmount(successResult.refundAmountMinor, successResult.currency)} a été demandé et sera crédité sur votre compte.`
+                : 'Votre réservation a bien été annulée.'}
+            </p>
+            <Button type="button" onClick={handleClose} variant="primary" style={{ width: '100%' }}>
+              Retour à ma réservation
+            </Button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {isLoadingPreview && (
+              <div
+                style={{
+                  padding: '1.5rem 0',
+                  textAlign: 'center',
+                  color: 'var(--ut-color-ink-muted)',
+                }}
+              >
+                Calcul de vos conditions de remboursement en temps réel...
               </div>
-            ) : (
-              <>
-                <h2 id="cancellation-title" style={modalTitleStyle}>
-                  Annuler votre réservation ?
-                </h2>
+            )}
 
-                {isLoadingPreview && (
-                  <div style={loadingStateStyle}>
-                    <p style={loadingTextStyle}>Calcul de vos conditions de remboursement...</p>
+            {errorMessage && (
+              <div
+                role="alert"
+                style={{
+                  background: 'var(--ut-color-danger-soft)',
+                  color: 'var(--ut-color-danger)',
+                  padding: '0.75rem',
+                  borderRadius: 'var(--ut-radius-md)',
+                  fontSize: '0.875rem',
+                }}
+              >
+                {errorMessage}
+              </div>
+            )}
+
+            {preview && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div
+                  style={{
+                    background: 'var(--ut-color-surface-soft)',
+                    borderRadius: 'var(--ut-radius-md)',
+                    padding: '1rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.5rem',
+                    border: 'var(--ut-border-thin)',
+                  }}
+                >
+                  <div
+                    style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}
+                  >
+                    <span>Montant réglé</span>
+                    <strong>{formatAmount(preview.paidAmountMinor, preview.currency)}</strong>
                   </div>
-                )}
-
-                {errorMessage && (
-                  <div style={errorBannerStyle}>
-                    <p style={errorTextStyle}>{errorMessage}</p>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontSize: '0.9rem',
+                      color: 'var(--ut-color-success)',
+                    }}
+                  >
+                    <span>Remboursement prévu</span>
+                    <strong>{formatAmount(preview.refundAmountMinor, preview.currency)}</strong>
                   </div>
-                )}
-
-                {preview && (
-                  <div style={previewContentStyle}>
-                    <div style={breakdownContainerStyle}>
-                      <div style={breakdownRowStyle}>
-                        <span>Montant payé</span>
-                        <span style={boldValueStyle}>
-                          {formatAmount(preview.paidAmountMinor, preview.currency)}
-                        </span>
-                      </div>
-                      <div style={breakdownRowStyle}>
-                        <span>Remboursement prévu</span>
-                        <span style={refundValueStyle}>
-                          {formatAmount(preview.refundAmountMinor, preview.currency)}
-                        </span>
-                      </div>
-                      <div style={breakdownRowStyle}>
-                        <span>Montant non remboursé</span>
-                        <span style={retainedValueStyle}>
-                          {formatAmount(preview.retainedAmountMinor, preview.currency)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <p style={policyExplanationStyle}>
-                      Selon les conditions d’annulation acceptées lors de votre réservation.
-                    </p>
-
-                    <div style={actionsRowStyle}>
-                      <button
-                        type="button"
-                        onClick={handleClose}
-                        disabled={isSubmitting}
-                        style={secondaryBtnStyle}
-                      >
-                        Conserver ma réservation
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleConfirmCancellation}
-                        disabled={isSubmitting}
-                        style={dangerBtnStyle}
-                      >
-                        {isSubmitting ? 'Annulation...' : 'Confirmer l’annulation'}
-                      </button>
-                    </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontSize: '0.9rem',
+                      color: 'var(--ut-color-ink-muted)',
+                    }}
+                  >
+                    <span>Frais retenus</span>
+                    <span>{formatAmount(preview.retainedAmountMinor, preview.currency)}</span>
                   </div>
-                )}
-              </>
+                </div>
+
+                <p style={{ fontSize: '0.8rem', color: 'var(--ut-color-ink-muted)', margin: 0 }}>
+                  Calculé conformément à la politique d’annulation acceptée lors de votre
+                  réservation.
+                </p>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    gap: '0.75rem',
+                    marginTop: '0.5rem',
+                  }}
+                >
+                  <Button
+                    type="button"
+                    onClick={handleClose}
+                    disabled={isSubmitting}
+                    variant="secondary"
+                  >
+                    Conserver ma réservation
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleConfirmCancellation}
+                    disabled={isSubmitting}
+                    variant="danger"
+                  >
+                    {isSubmitting ? 'Annulation…' : 'Confirmer l’annulation'}
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </Dialog>
     </>
   );
 }
-
-const cancelTriggerButtonStyle: React.CSSProperties = {
-  backgroundColor: '#ffffff',
-  color: '#dc2626',
-  border: '1px solid #fecaca',
-  borderRadius: '8px',
-  padding: '0.65rem 1.15rem',
-  fontSize: '0.9rem',
-  fontWeight: 600,
-  cursor: 'pointer',
-  transition: 'background-color 0.15s ease',
-};
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(15, 23, 42, 0.65)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 100,
-  padding: '1rem',
-};
-
-const modalStyle: React.CSSProperties = {
-  backgroundColor: '#ffffff',
-  borderRadius: '16px',
-  width: '100%',
-  maxWidth: '460px',
-  padding: '1.75rem',
-  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-};
-
-const modalTitleStyle: React.CSSProperties = {
-  fontSize: '1.25rem',
-  fontWeight: 700,
-  color: '#0f172a',
-  margin: '0 0 1rem 0',
-};
-
-const loadingStateStyle: React.CSSProperties = {
-  padding: '2rem 0',
-  textAlign: 'center',
-};
-
-const loadingTextStyle: React.CSSProperties = {
-  color: '#64748b',
-  fontSize: '0.95rem',
-  margin: 0,
-};
-
-const errorBannerStyle: React.CSSProperties = {
-  backgroundColor: '#fef2f2',
-  border: '1px solid #fecaca',
-  borderRadius: '8px',
-  padding: '0.75rem 1rem',
-  marginBottom: '1rem',
-};
-
-const errorTextStyle: React.CSSProperties = {
-  color: '#b91c1c',
-  fontSize: '0.85rem',
-  margin: 0,
-};
-
-const previewContentStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1rem',
-};
-
-const breakdownContainerStyle: React.CSSProperties = {
-  backgroundColor: '#f8fafc',
-  border: '1px solid #e2e8f0',
-  borderRadius: '10px',
-  padding: '1rem',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.65rem',
-};
-
-const breakdownRowStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  fontSize: '0.925rem',
-  color: '#334155',
-};
-
-const boldValueStyle: React.CSSProperties = {
-  fontWeight: 700,
-  color: '#0f172a',
-};
-
-const refundValueStyle: React.CSSProperties = {
-  fontWeight: 700,
-  color: '#16a34a',
-};
-
-const retainedValueStyle: React.CSSProperties = {
-  fontWeight: 600,
-  color: '#64748b',
-};
-
-const policyExplanationStyle: React.CSSProperties = {
-  fontSize: '0.825rem',
-  color: '#64748b',
-  margin: 0,
-};
-
-const actionsRowStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'flex-end',
-  gap: '0.75rem',
-  marginTop: '0.5rem',
-};
-
-const secondaryBtnStyle: React.CSSProperties = {
-  backgroundColor: '#f1f5f9',
-  color: '#334155',
-  border: 'none',
-  borderRadius: '8px',
-  padding: '0.65rem 1rem',
-  fontSize: '0.9rem',
-  fontWeight: 600,
-  cursor: 'pointer',
-};
-
-const dangerBtnStyle: React.CSSProperties = {
-  backgroundColor: '#dc2626',
-  color: '#ffffff',
-  border: 'none',
-  borderRadius: '8px',
-  padding: '0.65rem 1.15rem',
-  fontSize: '0.9rem',
-  fontWeight: 600,
-  cursor: 'pointer',
-};
-
-const primaryBtnStyle: React.CSSProperties = {
-  backgroundColor: '#0284c7',
-  color: '#ffffff',
-  border: 'none',
-  borderRadius: '8px',
-  padding: '0.75rem 1.5rem',
-  fontSize: '0.95rem',
-  fontWeight: 600,
-  cursor: 'pointer',
-  width: '100%',
-};
-
-const successContainerStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  textAlign: 'center',
-  gap: '0.75rem',
-  padding: '1rem 0',
-};
-
-const successIconStyle: React.CSSProperties = {
-  width: '48px',
-  height: '48px',
-  borderRadius: '50%',
-  backgroundColor: '#ecfdf5',
-  color: '#059669',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontSize: '1.5rem',
-  fontWeight: 700,
-};
-
-const successDescStyle: React.CSSProperties = {
-  color: '#475569',
-  fontSize: '0.95rem',
-  margin: '0 0 1rem 0',
-};

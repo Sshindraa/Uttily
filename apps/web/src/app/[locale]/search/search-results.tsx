@@ -189,12 +189,12 @@ export function SearchResults({
           <div className={styles.mapHeading}>
             <div>
               <p className={styles.eyebrow}>{fr ? 'Explorer la zone' : 'Explore the area'}</p>
-              <h2 id="search-map-heading">{fr ? 'Carte de recherche' : 'Search map'}</h2>
+              <h2 id="search-map-heading">{fr ? 'Carte des loueurs' : 'Renter map'}</h2>
             </div>
             <p>
               {fr
-                ? 'La carte est informative. La liste reste disponible sans carte ni JavaScript.'
-                : 'The map is informational. The list remains available without the map or JavaScript.'}
+                ? 'La carte est interactive et permet d’explorer les points de retrait disponibles.'
+                : 'The map is interactive and lets you explore available pickup locations.'}
             </p>
           </div>
           <MapErrorBoundary locale={locale} key={destination.publicId}>
@@ -215,21 +215,23 @@ export function SearchResults({
         <>
           <div className={styles.resultsHeading}>
             <div>
-              <p className={styles.eyebrow}>{fr ? 'Disponibles maintenant' : 'Available now'}</p>
+              <p className={styles.eyebrow}>
+                {fr ? 'Disponibilités en temps réel' : 'Real-time availability'}
+              </p>
               <h2 id="search-results-heading">
                 {result.items.length === 0
                   ? fr
                     ? 'Aucun résultat exact'
                     : 'No exact results'
                   : fr
-                    ? `${result.items.length} offre${result.items.length > 1 ? 's' : ''}`
-                    : `${result.items.length} offer${result.items.length > 1 ? 's' : ''}`}
+                    ? `${result.items.length} offre${result.items.length > 1 ? 's' : ''} disponible${result.items.length > 1 ? 's' : ''}`
+                    : `${result.items.length} available offer${result.items.length > 1 ? 's' : ''}`}
               </h2>
             </div>
             <p>
               {fr
-                ? "Disponibilité informative — l'exemplaire est alloué au hold."
-                : 'Informative availability — the item is allocated when held.'}
+                ? "Disponibilité garantie — l'exemplaire est réservé dès la validation de votre réservation."
+                : 'Guaranteed availability — equipment is reserved upon booking confirmation.'}
             </p>
           </div>
 
@@ -246,8 +248,8 @@ export function SearchResults({
             ) : (
               <p className={styles.emptySection}>
                 {fr
-                  ? 'Aucune offre exacte pour ces critères.'
-                  : 'No exact offer for these criteria.'}
+                  ? 'Aucune offre exacte pour ces critères. Consultez les alternatives ci-dessous.'
+                  : 'No exact offer for these criteria. Check the alternatives below.'}
               </p>
             )}
           </section>
@@ -296,7 +298,7 @@ export function SearchResults({
               href={`/${locale}/search?${withCursor(activeSearchParams, result.nextCursor)}`}
               rel="next"
             >
-              {fr ? 'Voir la suite' : 'See more'}
+              {fr ? 'Voir plus d’offres' : 'See more offers'}
             </a>
           ) : null}
         </>
@@ -319,17 +321,17 @@ function renderCard(
   return (
     <article key={`${item.publicProductId}:${item.publicLocationId}`} className={styles.card}>
       <div className={styles.cardTopline}>
-        <span>{formatDistance(item.distanceMeters, locale)}</span>
-        <span className={styles.available}>{fr ? 'Disponible' : 'Available'}</span>
+        <span>📍 {formatDistance(item.distanceMeters, locale)}</span>
+        <span className={styles.available}>✓ {fr ? 'Disponible' : 'Available'}</span>
       </div>
       <h4>
         <Link href={offerUrl} className={styles.offerLink}>
           {item.productName}
         </Link>
       </h4>
-      <p className={styles.renter}>{item.organizationPublicDisplayName}</p>
+      <p className={styles.renter}>Loueur : {item.organizationPublicDisplayName}</p>
       <p>
-        {item.locationName}
+        <strong>{item.locationName}</strong>
         <br />
         {item.addressLine1}
         {item.addressLine2 ? (
@@ -342,10 +344,13 @@ function renderCard(
         {[item.postalCode, item.city].filter(Boolean).join(' ')} · {item.countryCode}
       </p>
       <div className={styles.price}>
-        <strong>{formatMoney(item.price.totalAmountMinor, item.price.currency, locale)}</strong>
+        <div>
+          <strong>{formatMoney(item.price.totalAmountMinor, item.price.currency, locale)}</strong>
+          <span> · total</span>
+        </div>
         <span>{item.price.publicLabel}</span>
       </div>
-      <div style={{ marginTop: '0.85rem' }}>
+      <div style={{ marginTop: '1rem' }}>
         <Link href={offerUrl} className={styles.bookButton}>
           {fr ? 'Voir l’offre et réserver' : 'View offer & book'}
         </Link>

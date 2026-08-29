@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { getCustomerBooking, type CustomerBookingStatus } from '@uttily/core';
+import { Card, Badge, PageHeader } from '@uttily/ui';
+import type { BadgeTone } from '@uttily/ui';
 import { CustomerCancellationModal } from './cancellation-modal';
 
 export const dynamic = 'force-dynamic';
@@ -36,83 +38,65 @@ function getStatusBanner(
   status: CustomerBookingStatus,
   refundAmountMinor?: number,
   currency: string = 'EUR',
-): { title: string; desc: string; bg: string; color: string; border: string } {
+): { title: string; desc: string; tone: BadgeTone } {
   switch (status) {
     case 'CONFIRMED':
       return {
-        title: '✓ Votre location est confirmée',
-        desc: 'Le loueur a réservé votre vélo. Présentez-vous à l’heure convenue pour le retrait.',
-        bg: '#ecfdf5',
-        color: '#065f46',
-        border: '#a7f3d0',
+        title: 'Votre location est confirmée',
+        desc: 'Le loueur a réservé votre équipement. Présentez-vous au point de retrait à l’heure convenue.',
+        tone: 'success',
       };
     case 'READY_FOR_PICKUP':
       return {
-        title: '✓ Votre vélo est prêt à être retiré',
-        desc: 'Votre équipement a été préparé et vérifié par l’atelier.',
-        bg: '#ecfdf5',
-        color: '#047857',
-        border: '#6ee7b7',
+        title: 'Votre équipement est prêt au magasin',
+        desc: 'Votre vélo a été vérifié et préparé par l’atelier.',
+        tone: 'success',
       };
     case 'ACTIVE':
       return {
-        title: '🚲 Location en cours',
+        title: 'Location en cours',
         desc: 'Profitez de votre trajet ! Pensez à restituer l’équipement avant l’heure limite de retour.',
-        bg: '#eff6ff',
-        color: '#1d4ed8',
-        border: '#bfdbfe',
+        tone: 'info',
       };
     case 'COMPLETED':
       return {
-        title: '✓ Location terminée',
-        desc: 'L’équipement a été restitué. Merci d’avoir loué avec Uttily !',
-        bg: '#f8fafc',
-        color: '#334155',
-        border: '#cbd5e1',
+        title: 'Location terminée',
+        desc: 'L’équipement a été restitué avec succès. Merci d’avoir loué avec Uttily !',
+        tone: 'neutral',
       };
     case 'CANCELLED_REFUND_PENDING':
       return {
-        title: '↩ Réservation annulée — Remboursement en cours',
+        title: 'Réservation annulée — Remboursement en cours',
         desc: refundAmountMinor
-          ? `Un remboursement de ${formatAmount(refundAmountMinor, currency)} a été demandé et sera crédité sur votre moyen de paiement.`
+          ? `Un remboursement de ${formatAmount(refundAmountMinor, currency)} a été demandé et sera crédité sur votre compte.`
           : 'Votre réservation est annulée.',
-        bg: '#fffbeb',
-        color: '#92400e',
-        border: '#fde68a',
+        tone: 'warning',
       };
     case 'CANCELLED_REFUNDED':
       return {
-        title: '✓ Réservation annulée et remboursée',
+        title: 'Réservation annulée et remboursée',
         desc: refundAmountMinor
-          ? `${formatAmount(refundAmountMinor, currency)} ont été remboursés sur votre compte.`
+          ? `${formatAmount(refundAmountMinor, currency)} ont été remboursés sur votre moyen de paiement.`
           : 'Réservation annulée.',
-        bg: '#f8fafc',
-        color: '#334155',
-        border: '#e2e8f0',
+        tone: 'neutral',
       };
     case 'CANCELLED_NO_REFUND':
       return {
-        title: '✕ Réservation annulée',
+        title: 'Réservation annulée',
         desc: 'Cette réservation a été annulée conformément aux conditions acceptées.',
-        bg: '#f8fafc',
-        color: '#64748b',
-        border: '#e2e8f0',
+        tone: 'neutral',
       };
     case 'CANCELLED_ACTION_REQUIRED':
       return {
-        title: '⚠️ Réservation annulée — Action requise',
-        desc: 'Le traitement du remboursement nécessite une action. Notre équipe prend contact avec vous.',
-        bg: '#fef2f2',
-        color: '#991b1b',
-        border: '#fecaca',
+        title: 'Réservation annulée — Action requise',
+        desc: 'Le traitement de votre dossier nécessite une intervention. Notre équipe vous contacte.',
+        tone: 'danger',
       };
     default:
       return {
-        title: '✓ Votre location est confirmée',
+        title: 'Votre location est confirmée',
         desc: 'Présentez-vous à l’accueil du magasin.',
-        bg: '#ecfdf5',
-        color: '#065f46',
-        border: '#a7f3d0',
+        tone: 'success',
       };
   }
 }
@@ -145,138 +129,305 @@ export default async function CustomerBookingDetailPage({
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`;
 
   return (
-    <div style={containerStyle}>
-      <Link href={`/${locale}/account/bookings`} style={backLinkStyle}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <Link
+        href={`/${locale}/account/bookings`}
+        style={{
+          color: 'var(--ut-color-primary)',
+          fontWeight: 600,
+          textDecoration: 'none',
+          fontSize: '0.95rem',
+        }}
+      >
         ← Mes locations
       </Link>
 
-      <header style={headerStyle}>
-        <div>
-          {booking.categoryName && <span style={categoryBadgeStyle}>{booking.categoryName}</span>}
-          <h1 style={titleStyle}>{booking.productName}</h1>
-          <p style={orgSubtitleStyle}>Loueur : {booking.organizationName}</p>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow={booking.categoryName ?? 'Location'}
+        title={booking.productName}
+        description={`Loueur : ${booking.organizationName}`}
+      />
 
-      {/* Bannière de statut dynamique */}
-      <div
+      {/* Bannière de statut */}
+      <Card
         style={{
-          ...bannerContainerStyle,
-          backgroundColor: banner.bg,
-          borderColor: banner.border,
-          color: banner.color,
+          background:
+            banner.tone === 'success'
+              ? 'var(--ut-color-success-soft)'
+              : banner.tone === 'info'
+                ? 'var(--ut-color-primary-soft)'
+                : banner.tone === 'warning'
+                  ? 'var(--ut-color-warning-soft)'
+                  : banner.tone === 'danger'
+                    ? 'var(--ut-color-danger-soft)'
+                    : 'var(--ut-color-surface-soft)',
+          borderColor: 'transparent',
         }}
       >
-        <h2 style={bannerTitleStyle}>{banner.title}</h2>
-        <p style={bannerDescStyle}>{banner.desc}</p>
-      </div>
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}
+        >
+          <Badge tone={banner.tone}>{banner.title}</Badge>
+        </div>
+        <p style={{ margin: 0, color: 'var(--ut-color-ink)', fontSize: '0.95rem' }}>
+          {banner.desc}
+        </p>
+      </Card>
 
-      <div style={gridStyle}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: '1.5rem',
+          alignItems: 'start',
+        }}
+      >
         {/* Colonne principale */}
-        <div style={mainColumnStyle}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Carte Retrait & Retour */}
-          <section aria-labelledby="schedule-heading" style={cardStyle}>
-            <h2 id="schedule-heading" style={cardTitleStyle}>
+          <Card style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <h2
+              style={{
+                fontSize: '1.1rem',
+                fontWeight: 700,
+                margin: 0,
+                color: 'var(--ut-color-ink-strong)',
+              }}
+            >
               📅 Dates et lieu de location
             </h2>
 
-            <div style={scheduleGridStyle}>
-              <div style={scheduleBlockStyle}>
-                <span style={scheduleLabelStyle}>Retrait</span>
-                <strong style={scheduleTimeStyle}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'var(--ut-color-surface-soft)',
+                borderRadius: 'var(--ut-radius-md)',
+                padding: '1rem',
+                border: 'var(--ut-border-thin)',
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    color: 'var(--ut-color-ink-muted)',
+                  }}
+                >
+                  Retrait
+                </span>
+                <strong style={{ fontSize: '0.95rem', color: 'var(--ut-color-ink-strong)' }}>
                   {formatFullDateTime(booking.startAt, booking.timeZone)}
                 </strong>
               </div>
-              <div style={scheduleDividerStyle}>→</div>
-              <div style={scheduleBlockStyle}>
-                <span style={scheduleLabelStyle}>Retour</span>
-                <strong style={scheduleTimeStyle}>
+              <span style={{ color: 'var(--ut-color-ink-subtle)', fontSize: '1.25rem' }}>→</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    color: 'var(--ut-color-ink-muted)',
+                  }}
+                >
+                  Retour
+                </span>
+                <strong style={{ fontSize: '0.95rem', color: 'var(--ut-color-ink-strong)' }}>
                   {formatFullDateTime(booking.endAt, booking.timeZone)}
                 </strong>
               </div>
             </div>
 
-            <div style={locationBoxStyle}>
-              <div style={locationHeaderStyle}>
-                <span style={locationIconStyle}>📍</span>
-                <div>
-                  <strong style={locationNameStyle}>{booking.locationName}</strong>
-                  <p style={locationAddressStyle}>{booking.locationAddress}</p>
-                </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div>
+                <strong style={{ color: 'var(--ut-color-ink-strong)', fontSize: '1rem' }}>
+                  📍 {booking.locationName}
+                </strong>
+                <p
+                  style={{
+                    color: 'var(--ut-color-ink-muted)',
+                    fontSize: '0.9rem',
+                    margin: '0.2rem 0 0',
+                  }}
+                >
+                  {booking.locationAddress}
+                </p>
               </div>
 
-              <div style={locationActionsStyle}>
-                <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={mapsButtonStyle}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem',
+                }}
+              >
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: 'var(--ut-color-primary)',
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    textDecoration: 'none',
+                  }}
+                >
                   Ouvrir l’itinéraire Google Maps ↗
                 </a>
                 {booking.locationPhone && (
-                  <span style={phoneStyle}>📞 {booking.locationPhone}</span>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--ut-color-ink-muted)' }}>
+                    📞 {booking.locationPhone}
+                  </span>
                 )}
               </div>
             </div>
-          </section>
+          </Card>
 
-          {/* Carte Consignes de retrait & retour */}
-          <section aria-labelledby="instructions-heading" style={cardStyle}>
-            <h2 id="instructions-heading" style={cardTitleStyle}>
-              ℹ️ Consignes & Déroulement
+          {/* Carte Consignes & Déroulement */}
+          <Card style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <h2
+              style={{
+                fontSize: '1.1rem',
+                fontWeight: 700,
+                margin: 0,
+                color: 'var(--ut-color-ink-strong)',
+              }}
+            >
+              ℹ️ Consignes &amp; Déroulement
             </h2>
-            <ul style={instructionsListStyle}>
-              <li style={instructionItemStyle}>
-                <strong>Pièce d’identité :</strong> Présentez une carte d’identité ou un passeport
-                valide au moment du retrait.
+            <ul
+              style={{
+                margin: 0,
+                paddingLeft: '1.25rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+                color: 'var(--ut-color-ink)',
+                fontSize: '0.9rem',
+                lineHeight: 1.5,
+              }}
+            >
+              <li>
+                <strong>Pièce d’identité :</strong> Présentez une pièce d’identité valide au moment
+                du retrait.
               </li>
-              <li style={instructionItemStyle}>
-                <strong>Accueil magasin :</strong> Présentez-vous directement à l’accueil de
-                l’établissement en indiquant votre nom.
+              <li>
+                <strong>Accueil magasin :</strong> Présentez-vous directement à l’accueil en
+                indiquant votre nom.
               </li>
               {(booking.pickupInstructions ?? booking.locationInstructions) && (
-                <li style={instructionItemStyle}>
+                <li>
                   <strong>Consignes de retrait :</strong>{' '}
                   {booking.pickupInstructions ?? booking.locationInstructions}
                 </li>
               )}
               {booking.returnInstructions && (
-                <li style={instructionItemStyle}>
+                <li>
                   <strong>Consignes de retour :</strong> {booking.returnInstructions}
                 </li>
               )}
             </ul>
-          </section>
+          </Card>
 
-          {/* Carte Équipements */}
-          <section aria-labelledby="items-heading" style={cardStyle}>
-            <h2 id="items-heading" style={cardTitleStyle}>
+          {/* Carte Équipement réservé */}
+          <Card style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <h2
+              style={{
+                fontSize: '1.1rem',
+                fontWeight: 700,
+                margin: 0,
+                color: 'var(--ut-color-ink-strong)',
+              }}
+            >
               🚲 Équipement réservé
             </h2>
-            <div style={itemsListStyle}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {booking.items.map((item, idx) => (
-                <div key={idx} style={itemRowStyle}>
+                <div
+                  key={idx}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    background: 'var(--ut-color-surface-soft)',
+                    padding: '0.75rem 1rem',
+                    borderRadius: 'var(--ut-radius-md)',
+                  }}
+                >
                   <div>
-                    <strong style={itemNameStyle}>{item.productName}</strong>
+                    <strong style={{ color: 'var(--ut-color-ink-strong)', fontSize: '0.95rem' }}>
+                      {item.productName}
+                    </strong>
                     {item.variantName && (
-                      <span style={variantNameStyle}> · {item.variantName}</span>
+                      <span style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.85rem' }}>
+                        {' '}
+                        · {item.variantName}
+                      </span>
                     )}
-                    {item.size && <span style={sizeBadgeStyle}>Taille {item.size}</span>}
+                    {item.size && (
+                      <span
+                        style={{
+                          marginLeft: '0.5rem',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          background: 'var(--ut-color-border)',
+                          padding: '0.15rem 0.4rem',
+                          borderRadius: 'var(--ut-radius-sm)',
+                        }}
+                      >
+                        Taille {item.size}
+                      </span>
+                    )}
                   </div>
-                  <span style={itemQtyStyle}>× {item.quantity}</span>
+                  <strong style={{ color: 'var(--ut-color-ink-strong)', fontSize: '0.9rem' }}>
+                    × {item.quantity}
+                  </strong>
                 </div>
               ))}
             </div>
-          </section>
+          </Card>
 
-          {/* Documents contractuels */}
+          {/* Vos documents */}
           {booking.documents.length > 0 && (
-            <section aria-labelledby="docs-heading" style={cardStyle}>
-              <h2 id="docs-heading" style={cardTitleStyle}>
+            <Card style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <h2
+                style={{
+                  fontSize: '1.1rem',
+                  fontWeight: 700,
+                  margin: 0,
+                  color: 'var(--ut-color-ink-strong)',
+                }}
+              >
                 📄 Vos documents
               </h2>
-              <div style={docsListStyle}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {booking.documents.map((doc) => (
-                  <div key={doc.id} style={docRowStyle}>
+                  <div
+                    key={doc.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '0.5rem 0',
+                      borderBottom: 'var(--ut-border-thin)',
+                    }}
+                  >
                     <div>
-                      <strong style={docTitleStyle}>{doc.title}</strong>
-                      <span style={docDateStyle}>
+                      <strong
+                        style={{
+                          fontSize: '0.9rem',
+                          color: 'var(--ut-color-ink-strong)',
+                          display: 'block',
+                        }}
+                      >
+                        {doc.title}
+                      </strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--ut-color-ink-muted)' }}>
                         Émis le {new Intl.DateTimeFormat('fr-FR').format(new Date(doc.createdAt))}
                       </span>
                     </div>
@@ -284,72 +435,98 @@ export default async function CustomerBookingDetailPage({
                       href={`/api/account/bookings/${booking.id}/documents/${doc.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={docDownloadLinkStyle}
+                      style={{
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        color: 'var(--ut-color-primary)',
+                        textDecoration: 'none',
+                      }}
                     >
                       Télécharger PDF ↗
                     </a>
                   </div>
                 ))}
               </div>
-            </section>
+            </Card>
           )}
         </div>
 
         {/* Colonne latérale */}
-        <aside style={sideColumnStyle}>
-          {/* Carte Paiement */}
-          <section aria-labelledby="payment-heading" style={cardStyle}>
-            <h2 id="payment-heading" style={cardTitleStyle}>
+        <aside style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Votre paiement */}
+          <Card style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <h2
+              style={{
+                fontSize: '1.1rem',
+                fontWeight: 700,
+                margin: 0,
+                color: 'var(--ut-color-ink-strong)',
+              }}
+            >
               💳 Votre paiement
             </h2>
             {booking.payment ? (
-              <>
-                <div style={paymentAmountRowStyle}>
-                  <span style={paymentLabelStyle}>Montant total</span>
-                  <strong style={paymentAmountStyle}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                >
+                  <span style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.95rem' }}>
+                    Montant total
+                  </span>
+                  <strong style={{ fontSize: '1.35rem', color: 'var(--ut-color-ink-strong)' }}>
                     {formatAmount(booking.payment.amountPaidMinor, booking.payment.currency)}
                   </strong>
                 </div>
-                <div style={paymentStatusRowStyle}>
-                  {booking.payment.status === 'PAID' && (
-                    <span style={paymentStatusPaidBadgeStyle}>✓ Payé en ligne</span>
-                  )}
-                  {booking.payment.status === 'PENDING' && (
-                    <span style={paymentStatusPendingBadgeStyle}>⏳ Paiement en cours</span>
-                  )}
-                  {booking.payment.status === 'FAILED' && (
-                    <span style={paymentStatusFailedBadgeStyle}>⚠️ Paiement à régulariser</span>
-                  )}
-                  {booking.payment.status === 'UNAVAILABLE' && (
-                    <span style={paymentStatusMutedBadgeStyle}>Paiement non confirmé</span>
-                  )}
+                <div>
+                  <Badge tone={booking.payment.status === 'PAID' ? 'success' : 'warning'}>
+                    {booking.payment.status === 'PAID'
+                      ? '✓ Payé en ligne'
+                      : booking.payment.status === 'PENDING'
+                        ? '⏳ Paiement en cours'
+                        : '⚠️ Paiement à régulariser'}
+                  </Badge>
                   {booking.payment.paidAt && booking.payment.status === 'PAID' && (
-                    <span style={paymentDateStyle}>
+                    <span
+                      style={{
+                        fontSize: '0.8rem',
+                        color: 'var(--ut-color-ink-muted)',
+                        marginLeft: '0.5rem',
+                      }}
+                    >
                       le {new Intl.DateTimeFormat('fr-FR').format(new Date(booking.payment.paidAt))}
                     </span>
                   )}
                 </div>
-              </>
+              </div>
             ) : (
-              <p style={noCancelNoticeStyle}>Informations de paiement non disponibles.</p>
+              <p style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.85rem', margin: 0 }}>
+                Informations de paiement non disponibles.
+              </p>
             )}
-          </section>
+          </Card>
 
-          {/* Carte Gestion / Annulation */}
-          <section aria-labelledby="manage-heading" style={cardStyle}>
-            <h2 id="manage-heading" style={cardTitleStyle}>
+          {/* Gestion / Annulation */}
+          <Card style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <h2
+              style={{
+                fontSize: '1.1rem',
+                fontWeight: 700,
+                margin: 0,
+                color: 'var(--ut-color-ink-strong)',
+              }}
+            >
               ⚙️ Gestion de la réservation
             </h2>
             {booking.cancellation.allowed ? (
-              <div style={cancellationActionBoxStyle}>
-                <p style={cancellationNoticeStyle}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <p style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.85rem', margin: 0 }}>
                   Vous pouvez annuler votre réservation selon les conditions convenues.
                 </p>
                 <CustomerCancellationModal bookingId={booking.id} />
               </div>
             ) : booking.cancellationRecord ? (
-              <div style={cancelledDetailsStyle}>
-                <p style={cancelledTextStyle}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <p style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.85rem', margin: 0 }}>
                   Réservation annulée le{' '}
                   {new Intl.DateTimeFormat('fr-FR').format(
                     new Date(booking.cancellationRecord.cancelledAt),
@@ -357,7 +534,7 @@ export default async function CustomerBookingDetailPage({
                   .
                 </p>
                 {booking.cancellationRecord.refundAmountMinor > 0 && (
-                  <p style={refundTextStyle}>
+                  <p style={{ color: 'var(--ut-color-ink-strong)', fontSize: '0.9rem', margin: 0 }}>
                     Remboursement :{' '}
                     <strong>
                       {formatAmount(booking.cancellationRecord.refundAmountMinor, booking.currency)}
@@ -366,399 +543,38 @@ export default async function CustomerBookingDetailPage({
                 )}
               </div>
             ) : (
-              <p style={noCancelNoticeStyle}>
+              <p style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.85rem', margin: 0 }}>
                 Cette réservation n’est plus modifiable ou annulable en ligne.
               </p>
             )}
 
-            <div style={helpBoxStyle}>
-              <span style={helpTitleStyle}>Besoin d’aide ?</span>
-              <p style={helpTextStyle}>
+            <div
+              style={{
+                borderTop: 'var(--ut-border-thin)',
+                paddingTop: '0.75rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.25rem',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  color: 'var(--ut-color-ink-strong)',
+                }}
+              >
+                Besoin d’aide ?
+              </span>
+              <p style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.8rem', margin: 0 }}>
                 {booking.locationPhone
                   ? `Pour toute question relative à votre équipement, contactez directement l’établissement au ${booking.locationPhone}.`
                   : 'Pour toute question relative à votre équipement, contactez directement l’établissement.'}
               </p>
             </div>
-          </section>
+          </Card>
         </aside>
       </div>
     </div>
   );
 }
-
-const containerStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1.5rem',
-};
-
-const backLinkStyle: React.CSSProperties = {
-  textDecoration: 'none',
-  color: '#0284c7',
-  fontSize: '0.95rem',
-  fontWeight: 600,
-  alignSelf: 'flex-start',
-};
-
-const headerStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'flex-start',
-};
-
-const categoryBadgeStyle: React.CSSProperties = {
-  fontSize: '0.8rem',
-  fontWeight: 600,
-  textTransform: 'uppercase',
-  letterSpacing: '0.05em',
-  color: '#0284c7',
-  display: 'block',
-  marginBottom: '0.25rem',
-};
-
-const titleStyle: React.CSSProperties = {
-  fontSize: '1.75rem',
-  fontWeight: 800,
-  letterSpacing: '-0.03em',
-  color: '#0f172a',
-  margin: '0 0 0.25rem 0',
-};
-
-const orgSubtitleStyle: React.CSSProperties = {
-  fontSize: '0.95rem',
-  color: '#64748b',
-  margin: 0,
-};
-
-const bannerContainerStyle: React.CSSProperties = {
-  borderRadius: '12px',
-  borderWidth: '1px',
-  borderStyle: 'solid',
-  padding: '1.25rem 1.5rem',
-};
-
-const bannerTitleStyle: React.CSSProperties = {
-  fontSize: '1.1rem',
-  fontWeight: 700,
-  margin: '0 0 0.25rem 0',
-};
-
-const bannerDescStyle: React.CSSProperties = {
-  fontSize: '0.9rem',
-  margin: 0,
-  opacity: 0.9,
-};
-
-const gridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-  gap: '1.5rem',
-  alignItems: 'start',
-};
-
-const mainColumnStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1.5rem',
-};
-
-const sideColumnStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1.5rem',
-};
-
-const cardStyle: React.CSSProperties = {
-  backgroundColor: '#ffffff',
-  borderRadius: '14px',
-  border: '1px solid #e2e8f0',
-  padding: '1.5rem',
-  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.03)',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1rem',
-};
-
-const cardTitleStyle: React.CSSProperties = {
-  fontSize: '1.1rem',
-  fontWeight: 700,
-  color: '#0f172a',
-  margin: 0,
-};
-
-const scheduleGridStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  backgroundColor: '#f8fafc',
-  borderRadius: '10px',
-  padding: '1rem',
-  border: '1px solid #e2e8f0',
-};
-
-const scheduleBlockStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.25rem',
-};
-
-const scheduleLabelStyle: React.CSSProperties = {
-  fontSize: '0.75rem',
-  fontWeight: 600,
-  textTransform: 'uppercase',
-  color: '#64748b',
-  letterSpacing: '0.05em',
-};
-
-const scheduleTimeStyle: React.CSSProperties = {
-  fontSize: '0.95rem',
-  fontWeight: 700,
-  color: '#0f172a',
-};
-
-const scheduleDividerStyle: React.CSSProperties = {
-  fontSize: '1.25rem',
-  color: '#94a3b8',
-};
-
-const locationBoxStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.75rem',
-  paddingTop: '0.5rem',
-};
-
-const locationHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'flex-start',
-  gap: '0.5rem',
-};
-
-const locationIconStyle: React.CSSProperties = {
-  fontSize: '1.2rem',
-};
-
-const locationNameStyle: React.CSSProperties = {
-  fontSize: '1rem',
-  color: '#0f172a',
-  display: 'block',
-};
-
-const locationAddressStyle: React.CSSProperties = {
-  fontSize: '0.9rem',
-  color: '#64748b',
-  margin: '0.15rem 0 0 0',
-};
-
-const locationActionsStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  flexWrap: 'wrap',
-  gap: '0.75rem',
-};
-
-const mapsButtonStyle: React.CSSProperties = {
-  fontSize: '0.875rem',
-  fontWeight: 600,
-  color: '#0284c7',
-  textDecoration: 'none',
-};
-
-const phoneStyle: React.CSSProperties = {
-  fontSize: '0.875rem',
-  color: '#475569',
-  fontWeight: 500,
-};
-
-const instructionsListStyle: React.CSSProperties = {
-  margin: 0,
-  paddingLeft: '1.25rem',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.5rem',
-};
-
-const instructionItemStyle: React.CSSProperties = {
-  fontSize: '0.9rem',
-  color: '#334155',
-  lineHeight: 1.4,
-};
-
-const itemsListStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.75rem',
-};
-
-const itemRowStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  backgroundColor: '#f8fafc',
-  padding: '0.75rem 1rem',
-  borderRadius: '8px',
-};
-
-const itemNameStyle: React.CSSProperties = {
-  fontSize: '0.95rem',
-  color: '#0f172a',
-};
-
-const variantNameStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
-  color: '#64748b',
-};
-
-const sizeBadgeStyle: React.CSSProperties = {
-  fontSize: '0.75rem',
-  fontWeight: 600,
-  backgroundColor: '#e2e8f0',
-  color: '#334155',
-  padding: '0.15rem 0.4rem',
-  borderRadius: '4px',
-  marginLeft: '0.5rem',
-};
-
-const itemQtyStyle: React.CSSProperties = {
-  fontSize: '0.9rem',
-  fontWeight: 700,
-  color: '#0f172a',
-};
-
-const docsListStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.75rem',
-};
-
-const docRowStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '0.75rem 0',
-  borderBottom: '1px solid #f1f5f9',
-};
-
-const docTitleStyle: React.CSSProperties = {
-  fontSize: '0.9rem',
-  color: '#0f172a',
-  display: 'block',
-};
-
-const docDateStyle: React.CSSProperties = {
-  fontSize: '0.8rem',
-  color: '#64748b',
-};
-
-const docDownloadLinkStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
-  fontWeight: 600,
-  color: '#0284c7',
-  textDecoration: 'none',
-};
-
-const paymentAmountRowStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-};
-
-const paymentLabelStyle: React.CSSProperties = {
-  fontSize: '0.95rem',
-  color: '#475569',
-};
-
-const paymentAmountStyle: React.CSSProperties = {
-  fontSize: '1.35rem',
-  fontWeight: 800,
-  color: '#0f172a',
-};
-
-const paymentStatusRowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.5rem',
-  fontSize: '0.85rem',
-};
-
-const paymentStatusPaidBadgeStyle: React.CSSProperties = {
-  color: '#059669',
-  fontWeight: 600,
-};
-
-const paymentStatusPendingBadgeStyle: React.CSSProperties = {
-  color: '#d97706',
-  fontWeight: 600,
-};
-
-const paymentStatusFailedBadgeStyle: React.CSSProperties = {
-  color: '#dc2626',
-  fontWeight: 600,
-};
-
-const paymentStatusMutedBadgeStyle: React.CSSProperties = {
-  color: '#64748b',
-  fontWeight: 500,
-};
-
-const paymentDateStyle: React.CSSProperties = {
-  color: '#64748b',
-};
-
-const cancellationActionBoxStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.75rem',
-  alignItems: 'flex-start',
-};
-
-const cancellationNoticeStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
-  color: '#64748b',
-  margin: 0,
-};
-
-const cancelledDetailsStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.25rem',
-};
-
-const cancelledTextStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
-  color: '#64748b',
-  margin: 0,
-};
-
-const refundTextStyle: React.CSSProperties = {
-  fontSize: '0.9rem',
-  color: '#0f172a',
-  margin: 0,
-};
-
-const noCancelNoticeStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
-  color: '#64748b',
-  margin: 0,
-};
-
-const helpBoxStyle: React.CSSProperties = {
-  borderTop: '1px solid #f1f5f9',
-  paddingTop: '0.75rem',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.25rem',
-};
-
-const helpTitleStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
-  fontWeight: 600,
-  color: '#334155',
-};
-
-const helpTextStyle: React.CSSProperties = {
-  fontSize: '0.8rem',
-  color: '#64748b',
-  margin: 0,
-};
