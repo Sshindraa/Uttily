@@ -162,7 +162,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
         const rows = await sql`
         SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at
       `;
-        expect(rows).toHaveLength(48);
+        expect(rows).toHaveLength(49);
 
         const { readFileSync } = await import('node:fs');
         const { dirname, join } = await import('node:path');
