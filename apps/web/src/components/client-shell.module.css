@@ -95,6 +95,7 @@
   .navLink:first-child {
     font-size: 0;
     gap: 0;
+    min-width: 44px;
     padding-inline: var(--ut-space-2);
   }
 
@@ -105,6 +106,16 @@
 }
 
 @media (max-width: 26rem) {
+  .headerInner {
+    flex-wrap: wrap;
+    row-gap: var(--ut-space-2);
+  }
+
+  .nav {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+
   .navLink:nth-child(2) {
     font-size: 0;
     padding-inline: var(--ut-space-2);

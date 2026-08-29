@@ -174,6 +174,7 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
             type="button"
             onClick={() => setIsOpen(false)}
             disabled={loading}
+            aria-label="Fermer"
             style={{
               background: 'transparent',
               border: 'none',

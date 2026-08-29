@@ -111,14 +111,20 @@ export function ResolveMaintenanceModal({
           ✓ Terminer la réparation &amp; Remettre en service →
         </button>
       ) : (
-        <div className={styles.modalCard}>
+        <div
+          className={styles.modalCard}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="resolve-maintenance-title"
+        >
           <div className={styles.modalHeader}>
-            <h3>🟢 Remise en service · {internalSku}</h3>
+            <h3 id="resolve-maintenance-title">🟢 Remise en service · {internalSku}</h3>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
               className={styles.closeBtn}
               disabled={loading}
+              aria-label="Fermer"
             >
               ✕
             </button>

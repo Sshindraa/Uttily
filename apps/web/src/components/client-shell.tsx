@@ -14,7 +14,7 @@ export function ClientShell({ children }: { children: ReactNode }): React.JSX.El
             <span>Uttily</span>
           </Link>
           <nav aria-label="Navigation client" className={styles.nav}>
-            <Link href="/fr/search" className={styles.navLink}>
+            <Link href="/fr/search" className={styles.navLink} aria-label="Trouver un équipement">
               <Icon name="search" size={18} />
               Trouver un équipement
             </Link>

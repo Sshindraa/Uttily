@@ -162,20 +162,96 @@ jobs:
       - name: Build
         run: pnpm build
 
+  browser:
+    name: Browser acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_TEST_PUBLISHABLE_KEY }}
+      CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_TEST_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_TEST_SECRET_KEY }}
+      E2E_CLERK_USER_EMAIL: ${{ vars.E2E_CLERK_USER_EMAIL || secrets.E2E_CLERK_USER_EMAIL }}
+      PUBLIC_SEARCH_CURSOR_SECRET: uttily-ci-public-search-cursor-v1
+      UTTILY_BROWSER_E2E: '1'
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: uttily
+          POSTGRES_PASSWORD: uttily
+          POSTGRES_DB: uttily
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U uttily -d uttily"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Clerk TEST browser credentials
+        run: |
+          node <<'NODE'
+          const publishable = process.env.CLERK_PUBLISHABLE_KEY ?? '';
+          const secret = process.env.CLERK_SECRET_KEY ?? '';
+          const email = process.env.E2E_CLERK_USER_EMAIL ?? '';
+          const validPublishable = /^pk_test_[A-Za-z0-9_-]{16,}$/.test(publishable);
+          const validSecret = /^sk_test_[A-Za-z0-9_-]{16,}$/.test(secret);
+          const validEmail = /^[^\s@+]+\+clerk_test@[^\s@]+$/i.test(email.trim());
+          if (!validPublishable || !validSecret || !validEmail) {
+            console.error('Clerk TEST browser credentials are not configured.');
+            process.exit(1);
+          }
+          NODE
+
+      - name: Run migrations
+        run: pnpm --filter @uttily/database db:migrate
+        env:
+          DATABASE_URL: postgresql://uttily:uttily@localhost:5432/uttily
+
+      - name: Seed deterministic public demo
+        run: pnpm db:seed
+        env:
+          DATABASE_URL: postgresql://uttily:uttily@localhost:5432/uttily
+
+      - name: Install Playwright Browsers with OS dependencies
+        run: pnpm --filter @uttily/web exec playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        run: pnpm --filter @uttily/web test:browser
+        env:
+          DATABASE_URL: postgresql://uttily:uttily@localhost:5432/uttily
   verify:
     name: Lint, typecheck, test, build
     if: ${{ always() }}
-    needs: [quality, tests, build]
+    needs: [quality, tests, build, browser]
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
       - name: Fail if a required job failed or was cancelled
-        if: ${{ needs.quality.result != 'success' || needs.tests.result != 'success' || needs.build.result != 'success' }}
+        if: ${{ needs.quality.result != 'success' || needs.tests.result != 'success' || needs.build.result != 'success' || needs.browser.result != 'success' }}
         run: |
           echo "Quality: ${{ needs.quality.result }}"
           echo "Tests: ${{ needs.tests.result }}"
           echo "Build: ${{ needs.build.result }}"
+          echo "Browser: ${{ needs.browser.result }}"
           exit 1
 
       - name: Verification passed

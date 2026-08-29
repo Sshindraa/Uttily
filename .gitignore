@@ -12,6 +12,9 @@ out/
 
 # Tests / coverage
 coverage/
+test-results/
+playwright-report/
+apps/web/playwright/.clerk/
 
 # Environment
 .env

@@ -189,14 +189,23 @@ export function IdentityDrawer({
 
       {isOpen && (
         <div className={styles.drawerOverlay} onClick={() => !isLoading && setIsOpen(false)}>
-          <div className={styles.drawerContent} onClick={(e) => e.stopPropagation()}>
+          <div
+            className={styles.drawerContent}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="identity-drawer-title"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className={styles.drawerHeader}>
-              <h3 className={styles.drawerTitle}>📝 Modifier l’identité du vélo</h3>
+              <h3 id="identity-drawer-title" className={styles.drawerTitle}>
+                📝 Modifier l’identité du vélo
+              </h3>
               <button
                 type="button"
                 onClick={() => !isLoading && setIsOpen(false)}
                 className={styles.closeBtn}
                 disabled={isLoading}
+                aria-label="Fermer"
               >
                 ✕
               </button>

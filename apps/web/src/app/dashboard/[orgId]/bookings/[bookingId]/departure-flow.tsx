@@ -141,6 +141,7 @@ export function DepartureFlow({ orgId, bookingId, items }: DepartureFlowProps): 
             type="button"
             onClick={() => setIsOpen(false)}
             disabled={loading}
+            aria-label="Fermer"
             style={{
               background: 'transparent',
               border: 'none',

@@ -110,15 +110,23 @@ export function CancellationFlow({ orgId, bookingId }: CancellationFlowProps): R
       </button>
 
       {isOpen && (
-        <div className={styles.modalOverlay} role="dialog" aria-modal="true">
+        <div
+          className={styles.modalOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cancellation-modal-title"
+        >
           <div className={styles.modalContent}>
             <div className={styles.modalHeader}>
-              <h2 className={styles.modalTitle}>⚠️ Annuler la réservation</h2>
+              <h2 id="cancellation-modal-title" className={styles.modalTitle}>
+                ⚠️ Annuler la réservation
+              </h2>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
                 className={styles.modalCloseBtn}
                 disabled={isSubmitting}
+                aria-label="Fermer"
               >
                 ✕
               </button>
