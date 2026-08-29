@@ -48,7 +48,7 @@ setup(
     // The dashboard now crosses the real organization membership guard.
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: 'Tableau de bord' })).toBeVisible();
-    await expect(page.getByText('test-org-dev', { exact: true })).toBeVisible();
+    await expect(page.getByRole('listitem').filter({ hasText: 'test-org-dev' })).toBeVisible();
 
     mkdirSync(dirname(authFile), { recursive: true });
     await page.context().storageState({ path: authFile });
