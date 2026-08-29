@@ -91,10 +91,31 @@ const surfaces: ProSurface[] = [
 ];
 
 async function expectNoGlobalHorizontalOverflow(page: Page): Promise<void> {
-  const overflow = await page.evaluate(() => ({
-    scrollWidth: document.documentElement.scrollWidth,
-    clientWidth: document.documentElement.clientWidth,
-  }));
+  const overflow = await page.evaluate(() => {
+    const clientWidth = document.documentElement.clientWidth;
+    const offenders = Array.from(document.querySelectorAll<HTMLElement>('*'))
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          tag: element.tagName.toLowerCase(),
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+        };
+      })
+      .filter(({ left, right }) => left < -1 || right > clientWidth + 1)
+      .sort((a, b) => b.right - a.right)
+      .slice(0, 8);
+    return {
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth,
+      offenders,
+    };
+  });
+  if (overflow.scrollWidth > overflow.clientWidth + 2) {
+    console.log(`Horizontal overflow diagnostics: ${JSON.stringify(overflow)}`);
+  }
   expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 2);
 }
 
@@ -105,6 +126,7 @@ async function findOrganizationId(page: Page): Promise<string> {
     const email = process.env.E2E_CLERK_USER_EMAIL;
     if (!email) throw new Error('Clerk TEST browser credentials are not configured.');
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await clerk.signOut({ page });
     await clerk.signIn({ page, emailAddress: email });
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
   }
