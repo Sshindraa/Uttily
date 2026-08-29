@@ -1,4 +1,5 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { clerk } from '@clerk/testing/playwright';
 
 type ProSurface = {
   name: string;
@@ -99,7 +100,15 @@ async function expectNoGlobalHorizontalOverflow(page: Page): Promise<void> {
 
 async function findOrganizationId(page: Page): Promise<string> {
   await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-  await expect(page.getByRole('heading', { name: 'Tableau de bord' })).toBeVisible();
+  const dashboardHeading = page.getByRole('heading', { name: 'Tableau de bord' });
+  if (!(await dashboardHeading.isVisible().catch(() => false))) {
+    const email = process.env.E2E_CLERK_USER_EMAIL;
+    if (!email) throw new Error('Clerk TEST browser credentials are not configured.');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await clerk.signIn({ page, emailAddress: email });
+    await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
+  }
+  await expect(dashboardHeading).toBeVisible();
   const organizationRow = page.getByRole('listitem').filter({ hasText: 'test-org-dev' });
   const organizationLink = organizationRow.getByRole('link');
   await expect(organizationRow).toBeVisible();
@@ -137,7 +146,7 @@ async function visitSurface(page: Page, surface: ProSurface, testInfo: TestInfo)
   page.on('response', (response) => {
     if ([401, 403, 500].includes(response.status())) unexpectedStatuses.push(response.status());
   });
-  page.on('pageerror', () => pageErrors.push('pageerror'));
+  page.on('pageerror', (error) => pageErrors.push(error.stack ?? error.message));
 
   const organizationId = await findOrganizationId(page);
   await page.goto(surface.path(organizationId), { waitUntil: 'domcontentloaded' });
