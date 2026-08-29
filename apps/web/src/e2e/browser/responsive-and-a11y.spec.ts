@@ -1,9 +1,11 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Real Browser Responsive & Accessibility Matrix', () => {
-  test('Landing page loads, has semantic H1, accessible nav and zero global overflow', async ({ page }) => {
+  test('Landing page loads, has semantic H1, accessible nav and zero global overflow', async ({
+    page,
+  }) => {
     await page.goto('/');
-    
+
     // 1. Semantic H1 heading
     const h1 = page.locator('h1');
     await expect(h1).toBeVisible();
@@ -31,7 +33,9 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
     expect(isOverflowing).toBe(false);
   });
 
-  test('Search page has accessible controls, zero global overflow, and supports keyboard navigation', async ({ page }) => {
+  test('Search page has accessible controls, zero global overflow, and supports keyboard navigation', async ({
+    page,
+  }) => {
     await page.goto('/fr/search');
 
     // 1. Zero global horizontal overflow
@@ -53,7 +57,7 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
     // 3. Real keyboard interactions
     await destinationInput.focus();
     await page.keyboard.type('Annecy');
-    
+
     // Check activeElement is indeed the destination input
     const isFocused = await page.evaluate(() => {
       return document.activeElement === document.querySelector('#destinationQuery');
@@ -68,7 +72,7 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
 
   test('Keyboard navigation through header nav', async ({ page }) => {
     await page.goto('/');
-    
+
     // Focus brand link then tab through navigation
     const brandLink = page.getByRole('link', { name: 'Uttily, accueil' });
     await brandLink.focus();
@@ -78,7 +82,9 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
     expect(activeText).toBeTruthy();
   });
 
-  test('Dialog accessibility: Photo coach modal opens, has dialog semantics, and closes via ESC and close button', async ({ page }) => {
+  test('Dialog accessibility: Photo coach modal opens, has dialog semantics, and closes via ESC and close button', async ({
+    page,
+  }) => {
     await page.goto('/photo-coach-demo');
 
     // Zero global overflow
@@ -88,7 +94,10 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
     expect(isOverflowing).toBe(false);
 
     // Find and click the first photo slot button to open dialog
-    const slotButton = page.locator('button').filter({ hasText: /Photo principale|Profil complet/i }).first();
+    const slotButton = page
+      .locator('button')
+      .filter({ hasText: /Photo principale|Profil complet/i })
+      .first();
     if (await slotButton.isVisible()) {
       await slotButton.click();
 
