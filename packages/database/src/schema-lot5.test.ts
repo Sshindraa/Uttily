@@ -2585,6 +2585,27 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
     }
   });
 
+  it('autorise une mise à jour non financière sur payments sans customer_total_amount_minor', async () => {
+    if (!testUrl) return;
+    const sql = postgres(testUrl, { max: 1 });
+    try {
+      const ids = await seedBaseData(sql);
+      const { draftId } = await seedHeldDraftWithLine(sql, ids);
+      const payment = await insertPayment(sql, ids, draftId, validPaymentPayload()).then(
+        (r) => r[0]!,
+      );
+
+      await sql`UPDATE "payments" SET "status" = 'FAILED' WHERE "id" = ${payment.id}`;
+
+      const updated = await sql`SELECT "status" FROM "payments" WHERE "id" = ${payment.id}`.then(
+        (r) => r[0]!,
+      );
+      expect(updated.status).toBe('FAILED');
+    } finally {
+      await sql.end();
+    }
+  });
+
   // -------------------------------------------------------------------------
   // 24. Valid webhook insert
   // -------------------------------------------------------------------------

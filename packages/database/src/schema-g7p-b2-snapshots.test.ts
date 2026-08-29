@@ -1238,6 +1238,12 @@ describe.skipIf(shouldSkipIntegrationTests())('G7P-B2-A — Pricing snapshot fou
         sql`UPDATE "bookings" SET "cancellation_policy_snapshot" = '"corrupted"'::jsonb WHERE "id" = ${bookingId}`,
       ).rejects.toThrow(/immutable/);
 
+      // UPDATE du snapshot marketplace ajouté par la migration 0049 → rejeté
+      // par le trigger dédié, tout en conservant l'immutabilité après son ajout.
+      await expect(
+        sql`UPDATE "bookings" SET "marketplace_fee_snapshot" = '{}'::jsonb WHERE "id" = ${bookingId}`,
+      ).rejects.toThrow(/marketplace fee snapshot is immutable/);
+
       // UPDATE du status sur booking → autorisé (fulfillment transitions)
       await sql`UPDATE "bookings" SET "status" = 'READY_FOR_PICKUP' WHERE "id" = ${bookingId}`;
       const booking = await sql`SELECT "status" FROM "bookings" WHERE "id" = ${bookingId}`.then(

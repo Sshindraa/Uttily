@@ -201,11 +201,14 @@ CREATE OR REPLACE FUNCTION validate_marketplace_fee_snapshot_immutability()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
+DECLARE
+  new_row jsonb := to_jsonb(NEW);
+  old_row jsonb := to_jsonb(OLD);
 BEGIN
   IF TG_OP = 'UPDATE' AND (
-    NEW.marketplace_fee_snapshot IS DISTINCT FROM OLD.marketplace_fee_snapshot
+    new_row -> 'marketplace_fee_snapshot' IS DISTINCT FROM old_row -> 'marketplace_fee_snapshot'
     OR (TG_TABLE_NAME IN ('booking_drafts', 'bookings') AND
-        NEW.customer_total_amount_minor IS DISTINCT FROM OLD.customer_total_amount_minor)
+        new_row -> 'customer_total_amount_minor' IS DISTINCT FROM old_row -> 'customer_total_amount_minor')
   ) THEN
     RAISE EXCEPTION 'marketplace fee snapshot is immutable once persisted';
   END IF;
