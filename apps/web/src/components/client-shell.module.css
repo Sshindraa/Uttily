@@ -95,6 +95,7 @@
   .navLink:first-child {
     font-size: 0;
     gap: 0;
+    min-width: 44px;
     padding-inline: var(--ut-space-2);
   }
 

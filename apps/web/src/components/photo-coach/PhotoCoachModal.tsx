@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactElement, useState, useEffect } from 'react';
+import { type ReactElement, useState, useEffect, useRef } from 'react';
 import { BIKE_PHOTO_SLOTS, type PhotoSlotType } from '@uttily/contracts';
 import type { ProductPhotoSummary } from '@uttily/core';
 import { uploadProductPhotoAction } from '@/app/actions/product-photos';
@@ -41,14 +41,66 @@ export function PhotoCoachModal({
   const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
+      if (!openerRef.current) {
+        openerRef.current =
+          document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      }
       setError(null);
       setCapturedBlob(null);
       setStep(isExpertMode ? 'CAMERA' : 'INTRO');
     }
   }, [isOpen, isExpertMode]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const focusableSelector =
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
+    const focusInitialControl = window.requestAnimationFrame(() => closeButtonRef.current?.focus());
+
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+
+      const focusable = Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [],
+      ).filter((element) => element.offsetParent !== null);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusable[0]!;
+      const last = focusable[focusable.length - 1]!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.cancelAnimationFrame(focusInitialControl);
+      document.removeEventListener('keydown', handleKeyDown);
+      const opener = openerRef.current;
+      if (opener?.isConnected) window.requestAnimationFrame(() => opener.focus());
+      openerRef.current = null;
+    };
+  }, [isOpen, onClose]);
 
   const handleToggleExpertMode = (checked: boolean) => {
     setIsExpertMode(checked);
@@ -112,6 +164,7 @@ export function PhotoCoachModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="photo-coach-title"
+      ref={dialogRef}
     >
       <div className={styles.modal}>
         <div className={styles.header}>
@@ -136,6 +189,7 @@ export function PhotoCoachModal({
               className={styles.closeBtn}
               onClick={onClose}
               aria-label="Fermer le Photo Coach"
+              ref={closeButtonRef}
             >
               ✕
             </button>

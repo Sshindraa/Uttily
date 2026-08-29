@@ -203,14 +203,17 @@ jobs:
         env:
           DATABASE_URL: postgresql://uttily:uttily@localhost:5432/uttily
 
+      - name: Seed deterministic public demo
+        run: pnpm db:seed
+        env:
+          DATABASE_URL: postgresql://uttily:uttily@localhost:5432/uttily
+
       - name: Install Playwright Browsers with OS dependencies
         run: pnpm --filter @uttily/web exec playwright install --with-deps chromium
 
       - name: Run Playwright tests
         run: pnpm --filter @uttily/web test:browser
         env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2xlcmsuZXhhbXBsZS5jb20k
-          CLERK_SECRET_KEY: sk_test_1234567890abcdef1234567890abcdef
           DATABASE_URL: postgresql://uttily:uttily@localhost:5432/uttily
   verify:
     name: Lint, typecheck, test, build

@@ -1,5 +1,12 @@
 import { defineConfig } from '@playwright/test';
 
+const testPort = process.env.PLAYWRIGHT_TEST_PORT ?? '3000';
+if (!/^\d{1,5}$/.test(testPort) || Number(testPort) < 1 || Number(testPort) > 65535) {
+  throw new Error('PLAYWRIGHT_TEST_PORT must be a valid TCP port.');
+}
+
+const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL ?? `http://localhost:${testPort}`;
+
 export default defineConfig({
   testDir: './src/e2e/browser',
   fullyParallel: false,
@@ -8,7 +15,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : 2,
   reporter: 'list',
   use: {
-    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://127.0.0.1:3000',
+    baseURL,
     trace: 'on-first-retry',
   },
   projects: [
@@ -39,9 +46,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command:
-      'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Y2xlcmsuZXhhbXBsZS5jb20k CLERK_SECRET_KEY=sk_test_1234567890abcdef1234567890abcdef pnpm --filter @uttily/web dev --port 3000',
-    url: 'http://127.0.0.1:3000',
+    command: `pnpm --filter @uttily/web exec next dev --hostname 0.0.0.0 --port ${testPort}`,
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },

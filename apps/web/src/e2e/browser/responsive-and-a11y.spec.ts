@@ -1,127 +1,197 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Locator, type Page, type TestInfo } from '@playwright/test';
+
+async function expectConfiguredViewport(page: Page, testInfo: TestInfo): Promise<void> {
+  const configuredViewport = testInfo.project.use.viewport;
+  expect(configuredViewport).toBeDefined();
+  expect(page.viewportSize()).toEqual(configuredViewport);
+}
+
+async function expectNoGlobalHorizontalOverflow(page: Page): Promise<void> {
+  const overflow = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+  }));
+  expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 2);
+}
+
+async function expectReasonableTouchTarget(locator: Locator, label: string): Promise<void> {
+  const box = await locator.boundingBox();
+  expect(box, `${label} doit être mesurable dans le viewport`).not.toBeNull();
+  if (!box) return;
+
+  expect(box.width, `${label} : largeur réelle`).toBeGreaterThanOrEqual(40);
+  expect(box.height, `${label} : hauteur réelle`).toBeGreaterThanOrEqual(40);
+}
 
 test.describe('Real Browser Responsive & Accessibility Matrix', () => {
-  test('Landing page loads, has semantic H1, accessible nav and zero global overflow', async ({
+  test('Landing loads with semantic navigation, usable controls, and no global overflow', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    await expectConfiguredViewport(page, testInfo);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-    // 1. Semantic H1 heading
-    const h1 = page.locator('h1');
-    await expect(h1).toBeVisible();
-    await expect(h1).toContainText('Le bon équipement, au bon endroit.');
+    await expect(
+      page.getByRole('heading', { name: 'Le bon équipement, au bon endroit.' }),
+    ).toBeVisible();
 
-    // 2. Accessible Client Navigation
     const nav = page.getByRole('navigation', { name: 'Navigation client' });
     await expect(nav).toBeVisible();
 
-    // 3. Search link in header is accessible
     const searchLink = nav.getByRole('link', { name: 'Trouver un équipement' });
     await expect(searchLink).toBeVisible();
+    await expectReasonableTouchTarget(searchLink, 'Lien de recherche Client');
 
-    // 4. Real touch target measurement (minimum 40px height for mobile ergonomics)
-    const box = await searchLink.boundingBox();
-    expect(box).not.toBeNull();
-    if (box) {
-      expect(box.height).toBeGreaterThanOrEqual(40);
-    }
+    const signInLink = nav.getByRole('link', { name: 'Se connecter' });
+    await expect(signInLink).toBeVisible();
+    await expectReasonableTouchTarget(signInLink, 'Lien de connexion');
 
-    // 5. Zero global horizontal overflow in the real viewport DOM
-    const isOverflowing = await page.evaluate(() => {
-      return document.documentElement.scrollWidth > document.documentElement.clientWidth + 2;
-    });
-    expect(isOverflowing).toBe(false);
+    await expectNoGlobalHorizontalOverflow(page);
   });
 
-  test('Search page has accessible controls, zero global overflow, and supports keyboard navigation', async ({
+  test('Search form works with keyboard and opens the deterministic public offer', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    await expectConfiguredViewport(page, testInfo);
     await page.goto('/fr/search', { waitUntil: 'domcontentloaded' });
+    await expectNoGlobalHorizontalOverflow(page);
 
-    // 1. Zero global horizontal overflow
-    const isOverflowing = await page.evaluate(() => {
-      return document.documentElement.scrollWidth > document.documentElement.clientWidth + 2;
-    });
-    expect(isOverflowing).toBe(false);
-
-    // 2. Accessible form controls
-    const destinationInput = page.locator('#destinationQuery');
-    await expect(destinationInput).toBeVisible();
-
+    const destinationInput = page.getByRole('combobox', { name: 'Destination' });
     const intentSelect = page.getByLabel('Type de durée');
+    const categorySelect = page.getByLabel('Catégorie');
+    const submitButton = page.getByRole('button', { name: 'Voir les équipements' });
+
+    await expect(destinationInput).toBeVisible();
     await expect(intentSelect).toBeVisible();
+    await expect(categorySelect).toBeVisible();
+    await expect(submitButton).toBeVisible();
+    await expectReasonableTouchTarget(submitButton, 'CTA de recherche');
 
-    const submitBtn = page.getByRole('button', {
-      name: 'Voir les équipements',
-    });
-    await expect(submitBtn).toBeVisible();
-
-    // 3. Real keyboard interactions
     await destinationInput.focus();
-    await page.keyboard.type('Annecy');
+    await expect(destinationInput).toBeFocused();
+    await destinationInput.pressSequentially('Lyon');
+    await expect(page.getByRole('option').first()).toBeVisible();
+    await page.keyboard.press('ArrowDown');
+    await expect(destinationInput).toHaveAttribute('aria-expanded', 'true');
+    await page.keyboard.press('Enter');
+    await expect(destinationInput).toHaveValue('Lyon');
+    await expect(destinationInput).toHaveAttribute('aria-expanded', 'false');
 
-    // Check activeElement is indeed the destination input
-    const isFocused = await page.evaluate(() => {
-      return document.activeElement === document.querySelector('#destinationQuery');
-    });
-    expect(isFocused).toBe(true);
+    await intentSelect.focus();
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByLabel('Début')).toBeVisible();
+    await expect(page.getByLabel('Fin')).toBeVisible();
+    await page.keyboard.press('ArrowUp');
+    await expect(page.getByLabel('Premier jour')).toBeVisible();
+    await expect(page.getByLabel('Restitution')).toBeVisible();
 
-    // Tab to next interactive control
-    await page.keyboard.press('Tab');
-    const activeElementTag = await page.evaluate(() => document.activeElement?.tagName);
-    expect(['INPUT', 'SELECT', 'BUTTON']).toContain(activeElementTag);
+    await page.getByLabel('Premier jour').fill('2030-06-10');
+    await page.getByLabel('Restitution').fill('2030-06-11');
+    await submitButton.focus();
+    await expect(submitButton).toBeFocused();
+    await page.keyboard.press('Space');
+
+    await expect(page).toHaveURL(/\/fr\/search\?/);
+    await expect(page.getByRole('heading', { name: /offre.*disponible/i })).toBeVisible();
+
+    const offerCta = page.getByRole('link', { name: 'Voir l’offre et réserver' }).first();
+    await expect(offerCta).toBeVisible();
+    await expectReasonableTouchTarget(offerCta, 'CTA de réservation de l’offre');
+    await offerCta.click();
+
+    await expect(page).toHaveURL(/\/fr\/offers\/[^/]+\/[^/]+/);
+    await expect(page.getByRole('heading', { name: 'Kayak de démonstration' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Réserver cet équipement' })).toBeVisible();
+    await expectNoGlobalHorizontalOverflow(page);
+
+    const startDate = page.getByLabel('Date de début (inclus)');
+    const endDate = page.getByLabel('Date de fin (exclus)');
+    await expect(startDate).toBeVisible();
+    await expect(endDate).toBeVisible();
+    await startDate.fill('2030-06-10');
+    await endDate.fill('2030-06-11');
+
+    const hourlyButton = page.getByRole('button', { name: 'Par heure' });
+    await hourlyButton.focus();
+    await page.keyboard.press('Enter');
+    const startTime = page.getByLabel('Date et heure de début');
+    const endTime = page.getByLabel('Date et heure de fin');
+    await expect(startTime).toBeVisible();
+    await expect(endTime).toBeVisible();
+    await startTime.fill('2030-06-10T10:00');
+    await endTime.fill('2030-06-10T11:00');
+
+    const reserveButton = page.getByRole('button', { name: 'Réserver' });
+    await expect(reserveButton).toBeVisible();
+    await expectReasonableTouchTarget(reserveButton, 'CTA réserver');
+    await reserveButton.focus();
+    await page.keyboard.press('Space');
+
+    // The browser must stop at the real auth boundary; it must not fake a checkout or payment.
+    await expect(page).toHaveURL(/\/sign-in\?redirect_url=/);
   });
 
-  test('Keyboard navigation through header nav', async ({ page }) => {
+  test('Client navigation supports Tab, Shift+Tab, and Enter', async ({ page }, testInfo) => {
+    await expectConfiguredViewport(page, testInfo);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
-    // Focus brand link then tab through navigation
     const brandLink = page.getByRole('link', { name: 'Uttily, accueil' });
-    await brandLink.focus();
+    const searchLink = page
+      .getByRole('navigation', { name: 'Navigation client' })
+      .getByRole('link', { name: 'Trouver un équipement' });
 
+    await brandLink.focus();
+    await expect(brandLink).toBeFocused();
     await page.keyboard.press('Tab');
-    const activeText = await page.evaluate(() => document.activeElement?.textContent?.trim());
-    expect(activeText).toBeTruthy();
+    await expect(searchLink).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(brandLink).toBeFocused();
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/fr\/search$/);
   });
 
-  test('Dialog accessibility: Photo coach modal opens, has dialog semantics, and closes via ESC and close button', async ({
+  test('Photo Coach dialog has semantics, focus management, keyboard close, and no overflow', async ({
     page,
-  }) => {
+  }, testInfo) => {
+    await expectConfiguredViewport(page, testInfo);
     await page.goto('/photo-coach-demo', { waitUntil: 'domcontentloaded' });
+    await expectNoGlobalHorizontalOverflow(page);
 
-    // Zero global overflow
-    const isOverflowing = await page.evaluate(() => {
-      return document.documentElement.scrollWidth > document.documentElement.clientWidth + 2;
-    });
-    expect(isOverflowing).toBe(false);
+    const openButton = page.getByRole('button', { name: /Commencer par la vue profil/ });
+    await expect(openButton).toBeVisible();
+    await expectReasonableTouchTarget(openButton, 'CTA Photo Coach');
+    await openButton.focus();
+    await page.keyboard.press('Space');
 
-    // Find and click the first photo slot button to open dialog
-    const slotButton = page
-      .locator('button')
-      .filter({ hasText: /Photo principale|Profil complet/i })
-      .first();
-    if (await slotButton.isVisible()) {
-      await slotButton.click();
+    const dialog = page.getByRole('dialog', { name: /Photo Coach Uttily.*Profil Hero/ });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveAttribute('aria-modal', 'true');
 
-      // Verify modal dialog is visible with role="dialog"
-      const dialog = page.getByRole('dialog');
-      await expect(dialog).toBeVisible();
+    const closeButton = dialog.getByRole('button', { name: 'Fermer le Photo Coach' });
+    await expect(closeButton).toBeVisible();
+    await expectReasonableTouchTarget(closeButton, 'Fermeture Photo Coach');
+    await expect(closeButton).toBeFocused();
 
-      // Test closing with ESC key
-      await page.keyboard.press('Escape');
-      await expect(dialog).not.toBeVisible();
+    await page.keyboard.press('Tab');
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          document.querySelector('[role="dialog"]')?.contains(document.activeElement),
+        ),
+      )
+      .toBe(true);
+    await page.keyboard.press('Shift+Tab');
+    await expect(closeButton).toBeFocused();
 
-      // Reopen and test close button
-      await slotButton.click();
-      await expect(dialog).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toBeVisible();
+    await expect(openButton).toBeFocused();
 
-      const closeButton = dialog.getByRole('button', {
-        name: /fermer|close|annuler/i,
-      });
-      if (await closeButton.isVisible()) {
-        await closeButton.click();
-        await expect(dialog).not.toBeVisible();
-      }
-    }
+    await page.keyboard.press('Space');
+    await expect(dialog).toBeVisible();
+    await expect(closeButton).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(dialog).not.toBeVisible();
+    await expect(openButton).toBeFocused();
   });
 });
