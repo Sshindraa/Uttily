@@ -198,8 +198,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Playwright Chromium with deps
-        run: pnpm --filter @uttily/web exec playwright install chromium --with-deps
+      - name: Build web
+        run: pnpm --filter @uttily/web build
+
+      - name: Install Playwright Browsers with OS dependencies
+        run: npx playwright install --with-deps chromium
 
       - name: Run Playwright tests
         run: pnpm --filter @uttily/web test:browser

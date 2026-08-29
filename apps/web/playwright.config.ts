@@ -39,10 +39,11 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command:
-      'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_dummy CLERK_SECRET_KEY=sk_test_dummy pnpm --filter @uttily/web dev',
+    command: process.env.CI
+      ? 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Y2xlcmsuZXhhbXBsZS5jb20k CLERK_SECRET_KEY=sk_test_1234567890abcdef1234567890abcdef pnpm --filter @uttily/web start'
+      : 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_Y2xlcmsuZXhhbXBsZS5jb20k CLERK_SECRET_KEY=sk_test_1234567890abcdef1234567890abcdef pnpm --filter @uttily/web dev',
     url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
     timeout: 120000,
   },
 });
