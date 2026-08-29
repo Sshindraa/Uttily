@@ -4,7 +4,7 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
   test('Landing page loads, has semantic H1, accessible nav and zero global overflow', async ({
     page,
   }) => {
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     // 1. Semantic H1 heading
     const h1 = page.locator('h1');
@@ -36,7 +36,7 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
   test('Search page has accessible controls, zero global overflow, and supports keyboard navigation', async ({
     page,
   }) => {
-    await page.goto('/fr/search');
+    await page.goto('/fr/search', { waitUntil: 'domcontentloaded' });
 
     // 1. Zero global horizontal overflow
     const isOverflowing = await page.evaluate(() => {
@@ -51,7 +51,9 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
     const intentSelect = page.getByLabel('Type de durée');
     await expect(intentSelect).toBeVisible();
 
-    const submitBtn = page.getByRole('button', { name: 'Voir les équipements' });
+    const submitBtn = page.getByRole('button', {
+      name: 'Voir les équipements',
+    });
     await expect(submitBtn).toBeVisible();
 
     // 3. Real keyboard interactions
@@ -71,7 +73,7 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
   });
 
   test('Keyboard navigation through header nav', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     // Focus brand link then tab through navigation
     const brandLink = page.getByRole('link', { name: 'Uttily, accueil' });
@@ -85,7 +87,7 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
   test('Dialog accessibility: Photo coach modal opens, has dialog semantics, and closes via ESC and close button', async ({
     page,
   }) => {
-    await page.goto('/photo-coach-demo');
+    await page.goto('/photo-coach-demo', { waitUntil: 'domcontentloaded' });
 
     // Zero global overflow
     const isOverflowing = await page.evaluate(() => {
@@ -113,7 +115,9 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
       await slotButton.click();
       await expect(dialog).toBeVisible();
 
-      const closeButton = dialog.getByRole('button', { name: /fermer|close|annuler/i });
+      const closeButton = dialog.getByRole('button', {
+        name: /fermer|close|annuler/i,
+      });
       if (await closeButton.isVisible()) {
         await closeButton.click();
         await expect(dialog).not.toBeVisible();
