@@ -202,7 +202,7 @@ jobs:
         run: pnpm build
 
       - name: Install Playwright Browsers with OS dependencies
-        run: npx playwright install --with-deps chromium
+        run: pnpm --filter @uttily/web exec playwright install --with-deps chromium
 
       - name: Run Playwright tests
         run: pnpm --filter @uttily/web test:browser
