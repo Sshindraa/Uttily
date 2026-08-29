@@ -139,7 +139,7 @@ function PaymentForm({
         aria-busy={!paymentElementMounted || !paymentElementReady || submitting}
         aria-label={
           !paymentElementReady || !paymentElementMounted
-            ? 'Chargement du module de paiement sécurisé'
+            ? 'Chargement du module de paiement'
             : submitting
               ? 'Paiement en cours...'
               : `Payer ${totalLabel}`
@@ -149,14 +149,14 @@ function PaymentForm({
         {!stripe
           ? 'Chargement du paiement...'
           : !paymentElementReady || !paymentElementMounted
-            ? 'Préparation du paiement sécurisé...'
+            ? 'Préparation du paiement…'
             : submitting
               ? 'Traitement du paiement…'
               : `Payer ${totalLabel}`}
       </button>
       {(!paymentElementReady || !paymentElementMounted) && stripe && (
         <p role="status" aria-live="polite" style={mutedStyle}>
-          Préparation du formulaire de paiement sécurisé…
+          Préparation du formulaire de paiement…
         </p>
       )}
       {error && (
@@ -314,7 +314,7 @@ export function CheckoutClient({
 
         {expiresAt && (
           <p style={mutedStyle}>
-            Tarif et disponibilité garantis jusqu’au{' '}
+            Brouillon valide jusqu’au{' '}
             {new Intl.DateTimeFormat('fr-FR', {
               dateStyle: 'medium',
               timeStyle: 'short',
@@ -341,7 +341,7 @@ export function CheckoutClient({
             role="status"
             style={{ textAlign: 'center', margin: 0, color: 'var(--ut-color-ink-muted)' }}
           >
-            Préparation du paiement sécurisé…
+            Préparation du paiement…
           </p>
         )}
 

@@ -345,8 +345,8 @@ export function OfferBookingForm({
 
       <p className={styles.guaranteeNote}>
         {fr
-          ? 'Le montant contractuel exact calculé pour votre période sera affiché et confirmé au checkout avant paiement. L’équipement vous est réservé pendant 10 minutes pour finaliser votre réservation en toute sérénité.'
-          : 'The exact contractual amount calculated for your period will be confirmed at checkout prior to payment. The equipment is reserved for you for 10 minutes so you can complete your booking with peace of mind.'}
+          ? 'Le montant contractuel exact calculé pour votre période sera affiché et confirmé au récapitulatif avant paiement. L’équipement vous est réservé pendant 10 minutes pour finaliser votre commande en toute sérénité.'
+          : 'The exact contractual amount calculated for your period will be confirmed at checkout prior to payment. The equipment is held for 10 minutes to allow you to complete your order with peace of mind.'}
       </p>
     </form>
   );

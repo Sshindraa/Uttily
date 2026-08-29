@@ -215,9 +215,7 @@ export function SearchResults({
         <>
           <div className={styles.resultsHeading}>
             <div>
-              <p className={styles.eyebrow}>
-                {fr ? 'Disponibilités en temps réel' : 'Real-time availability'}
-              </p>
+              <p className={styles.eyebrow}>{fr ? 'Disponibilités' : 'Availability'}</p>
               <h2 id="search-results-heading">
                 {result.items.length === 0
                   ? fr
@@ -230,8 +228,8 @@ export function SearchResults({
             </div>
             <p>
               {fr
-                ? "Disponibilité garantie — l'exemplaire est réservé dès la validation de votre réservation."
-                : 'Guaranteed availability — equipment is reserved upon booking confirmation.'}
+                ? "Disponibilité actualisée — l'exemplaire est alloué lors de la confirmation de votre réservation."
+                : 'Updated availability — equipment is allocated upon booking confirmation.'}
             </p>
           </div>
 

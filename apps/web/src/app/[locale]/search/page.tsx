@@ -75,8 +75,8 @@ export default async function PublicSearchPage({
         </h1>
         <p>
           {fr
-            ? 'Les disponibilités et les tarifs sont calculés en temps réel pour votre période. Votre équipement est garanti dès votre réservation.'
-            : 'Availability and pricing are calculated in real time for your dates. Your equipment is guaranteed upon booking.'}
+            ? 'Les disponibilités et les tarifs sont calculés pour votre période. Votre équipement est bloqué lors de votre réservation.'
+            : 'Availability and pricing are calculated for your dates. Your equipment is held upon booking.'}
         </p>
       </section>
 

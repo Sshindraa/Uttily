@@ -142,7 +142,7 @@ export function CustomerCancellationModal({
             </div>
             <p style={{ color: 'var(--ut-color-ink-strong)', fontSize: '1rem', margin: 0 }}>
               {successResult.refundAmountMinor > 0
-                ? `Un remboursement de ${formatAmount(successResult.refundAmountMinor, successResult.currency)} a été demandé et sera crédité sur votre compte.`
+                ? `Votre réservation a bien été annulée. Une demande de remboursement de ${formatAmount(successResult.refundAmountMinor, successResult.currency)} a été transmise pour traitement selon les conditions applicables.`
                 : 'Votre réservation a bien été annulée.'}
             </p>
             <Button type="button" onClick={handleClose} variant="primary" style={{ width: '100%' }}>
@@ -159,7 +159,7 @@ export function CustomerCancellationModal({
                   color: 'var(--ut-color-ink-muted)',
                 }}
               >
-                Calcul de vos conditions de remboursement en temps réel...
+                Calcul des conditions de remboursement...
               </div>
             )}
 
@@ -222,8 +222,7 @@ export function CustomerCancellationModal({
                 </div>
 
                 <p style={{ fontSize: '0.8rem', color: 'var(--ut-color-ink-muted)', margin: 0 }}>
-                  Calculé conformément à la politique d’annulation acceptée lors de votre
-                  réservation.
+                  Calculé conformément à la politique d’annulation applicable à cette réservation.
                 </p>
 
                 <div

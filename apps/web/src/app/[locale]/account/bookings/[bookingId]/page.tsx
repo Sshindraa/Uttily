@@ -43,13 +43,13 @@ function getStatusBanner(
     case 'CONFIRMED':
       return {
         title: 'Votre location est confirmée',
-        desc: 'Le loueur a réservé votre équipement. Présentez-vous au point de retrait à l’heure convenue.',
+        desc: 'Le loueur a préparé votre dossier. Présentez-vous au point de retrait à l’heure convenue.',
         tone: 'success',
       };
     case 'READY_FOR_PICKUP':
       return {
         title: 'Votre équipement est prêt au magasin',
-        desc: 'Votre vélo a été vérifié et préparé par l’atelier.',
+        desc: 'Votre équipement a été préparé par le loueur.',
         tone: 'success',
       };
     case 'ACTIVE':
@@ -61,14 +61,14 @@ function getStatusBanner(
     case 'COMPLETED':
       return {
         title: 'Location terminée',
-        desc: 'L’équipement a été restitué avec succès. Merci d’avoir loué avec Uttily !',
+        desc: 'L’équipement a été restitué. Merci d’avoir loué avec Uttily !',
         tone: 'neutral',
       };
     case 'CANCELLED_REFUND_PENDING':
       return {
-        title: 'Réservation annulée — Remboursement en cours',
+        title: 'Réservation annulée — Remboursement en cours de traitement',
         desc: refundAmountMinor
-          ? `Un remboursement de ${formatAmount(refundAmountMinor, currency)} a été demandé et sera crédité sur votre compte.`
+          ? `Une demande de remboursement de ${formatAmount(refundAmountMinor, currency)} a été transmise et est en cours de traitement.`
           : 'Votre réservation est annulée.',
         tone: 'warning',
       };
@@ -76,14 +76,14 @@ function getStatusBanner(
       return {
         title: 'Réservation annulée et remboursée',
         desc: refundAmountMinor
-          ? `${formatAmount(refundAmountMinor, currency)} ont été remboursés sur votre moyen de paiement.`
+          ? `Un remboursement de ${formatAmount(refundAmountMinor, currency)} a été émis sur votre moyen de paiement.`
           : 'Réservation annulée.',
         tone: 'neutral',
       };
     case 'CANCELLED_NO_REFUND':
       return {
         title: 'Réservation annulée',
-        desc: 'Cette réservation a été annulée conformément aux conditions acceptées.',
+        desc: 'Cette réservation a été annulée conformément aux conditions applicables.',
         tone: 'neutral',
       };
     case 'CANCELLED_ACTION_REQUIRED':
@@ -535,7 +535,7 @@ export default async function CustomerBookingDetailPage({
                 </p>
                 {booking.cancellationRecord.refundAmountMinor > 0 && (
                   <p style={{ color: 'var(--ut-color-ink-strong)', fontSize: '0.9rem', margin: 0 }}>
-                    Remboursement :{' '}
+                    Remboursement demandé :{' '}
                     <strong>
                       {formatAmount(booking.cancellationRecord.refundAmountMinor, booking.currency)}
                     </strong>

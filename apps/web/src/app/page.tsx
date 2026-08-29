@@ -12,8 +12,8 @@ export default function HomePage(): React.ReactElement {
             <p className={styles.eyebrow}>Location locale · Matériel professionnel</p>
             <h1 id="home-heading">Le bon équipement, au bon endroit.</h1>
             <p className={styles.heroText}>
-              Trouvez et réservez du matériel de qualité auprès de loueurs professionnels certifiés.
-              Des disponibilités garanties en temps réel et des prix transparents.
+              Trouvez et réservez du matériel auprès de loueurs professionnels partenaires. Des
+              disponibilités actualisées pour vos dates et des tarifs transparents.
             </p>
             <div className={styles.heroActions}>
               <LinkButton href="/fr/search" size="lg">
@@ -80,7 +80,7 @@ export default function HomePage(): React.ReactElement {
               <div className={styles.stepNumber}>2</div>
               <h3>Réservez en ligne</h3>
               <p>
-                Votre équipement est immédiatement réservé et bloqué. Le paiement sécurisé confirme
+                Votre équipement est bloqué lors de votre commande. Le règlement en ligne confirme
                 votre créneau.
               </p>
             </Card>
@@ -100,10 +100,8 @@ export default function HomePage(): React.ReactElement {
             <span className={styles.valueIcon}>
               <Icon name="check" size={19} />
             </span>
-            <h2>Disponibilité réelle garantie</h2>
-            <p>
-              Chaque réservation est adossée à un exemplaire physique vérifié. Pas de surbooking.
-            </p>
+            <h2>Disponibilité confirmée</h2>
+            <p>Le matériel sélectionné est alloué à votre réservation pour la période choisie.</p>
           </Card>
           <Card>
             <span className={styles.valueIcon}>
@@ -119,10 +117,9 @@ export default function HomePage(): React.ReactElement {
             <span className={styles.valueIcon}>
               <Icon name="calendar" size={19} />
             </span>
-            <h2>Transparence totale</h2>
+            <h2>Tarifs clairs et détaillés</h2>
             <p>
-              Tarifs nets, politique d’annulation claire et récapitulatif détaillé avant tout
-              paiement.
+              Tarifs nets, conditions d’annulation et récapitulatif présentés avant tout règlement.
             </p>
           </Card>
         </section>
