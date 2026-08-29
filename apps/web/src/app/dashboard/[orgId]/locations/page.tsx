@@ -1,11 +1,11 @@
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
-import { listLocations } from '@uttily/core';
+import { getMembership, requireMembership, listLocations, LOCATION_MANAGERS } from '@uttily/core';
 import { PageHeader, Card, Badge, LinkButton, Icon } from '@uttily/ui';
 
-export default async function LocationsPage({
+export default async function LocationsListPage({
   params,
 }: {
   params: Promise<{ orgId: string }>;
@@ -15,12 +15,10 @@ export default async function LocationsPage({
   if (!user) redirect('/sign-in');
 
   const db = getDb();
-  let locationsList;
-  try {
-    locationsList = await listLocations(db, orgId);
-  } catch {
-    notFound();
-  }
+  const membership = await getMembership(db, orgId, user.id);
+  const active = requireMembership(membership, ['OWNER', 'ADMIN', 'MANAGER', 'STAFF']);
+  const locationsList = await listLocations(db, orgId);
+  const canManage = LOCATION_MANAGERS.includes(active.role);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -29,9 +27,11 @@ export default async function LocationsPage({
         title="Établissements"
         description="Gérez vos points de retrait, horaires d'ouverture, consignes de départ et zones de desserte."
         actions={
-          <LinkButton href={`/dashboard/${orgId}/locations/new`} variant="primary">
-            Ajouter un établissement
-          </LinkButton>
+          canManage ? (
+            <LinkButton href={`/dashboard/${orgId}/locations/new`} variant="primary">
+              Ajouter un établissement
+            </LinkButton>
+          ) : undefined
         }
       />
 
@@ -58,12 +58,15 @@ export default async function LocationsPage({
             Aucun établissement enregistré
           </h2>
           <p style={{ color: 'var(--ut-color-ink-muted)', margin: 0, maxWidth: '28rem' }}>
-            Créez votre premier point de retrait pour permettre aux clients de réserver vos
-            équipements.
+            {canManage
+              ? 'Créez votre premier point de retrait pour permettre aux clients de réserver vos équipements.'
+              : 'Aucun point de retrait n’a encore été configuré pour cette organisation.'}
           </p>
-          <LinkButton href={`/dashboard/${orgId}/locations/new`} variant="primary">
-            Créer mon premier établissement
-          </LinkButton>
+          {canManage && (
+            <LinkButton href={`/dashboard/${orgId}/locations/new`} variant="primary">
+              Créer mon premier établissement
+            </LinkButton>
+          )}
         </Card>
       ) : (
         <div
@@ -153,29 +156,31 @@ export default async function LocationsPage({
                 </div>
               </div>
 
-              <div
-                style={{
-                  paddingTop: '0.75rem',
-                  borderTop: 'var(--ut-border-thin)',
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                }}
-              >
-                <Link
-                  href={`/dashboard/${orgId}/locations/${loc.id}`}
+              {canManage && (
+                <div
                   style={{
-                    fontSize: '0.9rem',
-                    fontWeight: 600,
-                    color: 'var(--ut-color-primary)',
-                    textDecoration: 'none',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.35rem',
+                    paddingTop: '0.75rem',
+                    borderTop: 'var(--ut-border-thin)',
+                    display: 'flex',
+                    justifyContent: 'flex-end',
                   }}
                 >
-                  Gérer l’établissement <Icon name="arrow-right" size={16} />
-                </Link>
-              </div>
+                  <Link
+                    href={`/dashboard/${orgId}/locations/${loc.id}`}
+                    style={{
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      color: 'var(--ut-color-primary)',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                    }}
+                  >
+                    Gérer l’établissement <Icon name="arrow-right" size={16} />
+                  </Link>
+                </div>
+              )}
             </Card>
           ))}
         </div>
