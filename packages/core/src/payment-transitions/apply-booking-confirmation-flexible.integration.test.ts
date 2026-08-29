@@ -409,7 +409,7 @@ function makeFinancialTermsConfig(connectedAccountId = 'acct_test_123'): Financi
     commission: {
       version: 'v1',
       basis: 'percentage',
-      amountMinor: 500,
+      amountMinor: 260,
     },
     connectedAccount: {
       accountId: connectedAccountId,
@@ -480,7 +480,7 @@ function makeWebhookPayload(
   } = {},
 ): string {
   const destination = overrides.destination ?? 'acct_test_123';
-  const applicationFeeAmount = overrides.applicationFeeAmount ?? 500;
+  const applicationFeeAmount = overrides.applicationFeeAmount ?? 400;
   const onBehalfOf = overrides.onBehalfOf ?? null;
   return JSON.stringify({
     id: overrides.eventId ?? `evt_${Math.random().toString(36).slice(2, 12)}`,
@@ -1747,7 +1747,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
       `.then((r) => r[0]!);
       expect(payment.tax_status).toBe('NOT_APPLICABLE');
       expect(Number(payment.tax_amount_minor)).toBe(0);
-      expect(Number(payment.commission_amount_minor)).toBe(500);
+      expect(Number(payment.commission_amount_minor)).toBe(260);
       expect(payment.financial_terms_version).not.toBeNull();
     });
 
@@ -1779,7 +1779,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
         FROM payments WHERE id = ${paymentId}
       `.then((r) => r[0]!);
       expect(payment.tax_status).toBe('NOT_APPLICABLE');
-      expect(Number(payment.commission_amount_minor)).toBe(500);
+      expect(Number(payment.commission_amount_minor)).toBe(260);
 
       // The booking copies from payment, NOT from draft
       const booking = await rawSql`
@@ -1825,7 +1825,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
         commission: {
           version: 'v1',
           basis: 'percentage',
-          amountMinor: 500,
+          amountMinor: 260,
         },
         connectedAccount: {
           accountId: 'acct_test_123',
@@ -1861,7 +1861,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
       expect(booking.tax_status).toBe('APPLIED');
       expect(Number(booking.tax_amount_minor)).toBe(200);
       expect(booking.tax_rate_bps).toBe(1000);
-      expect(Number(booking.commission_amount_minor)).toBe(500);
+      expect(Number(booking.commission_amount_minor)).toBe(260);
     });
 
     // 27. Rental price of booking remains exact copy of draft

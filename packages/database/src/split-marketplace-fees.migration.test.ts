@@ -142,9 +142,7 @@ describe.skipIf(shouldSkip)('migration 0049 — preuve PostgreSQL ciblée', () =
         AND p.proname = 'enforce_booking_financial_immutability'
     `;
     expect(historicalGuard).toHaveLength(1);
-    expect(historicalGuard[0]!.function_def).toContain(
-      'bookings: financial snapshot is immutable',
-    );
+    expect(historicalGuard[0]!.function_def).toContain('bookings: financial snapshot is immutable');
 
     const historicalTrigger = await sql`
       SELECT pg_get_triggerdef(t.oid) AS trigger_def

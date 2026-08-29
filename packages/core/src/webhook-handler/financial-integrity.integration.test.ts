@@ -183,7 +183,7 @@ function makeFinancialTermsConfig(accId: string): FinancialTermsConfig {
     commission: {
       version: 'v1',
       basis: 'percentage',
-      amountMinor: 500,
+      amountMinor: 260,
     },
     connectedAccount: {
       accountId: accId,
@@ -272,7 +272,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
                 protocol_version: 'v1',
               },
               transfer_data: { destination: connectedAccountId },
-              application_fee_amount: 500,
+              application_fee_amount: 400,
               on_behalf_of: null,
             },
           },
@@ -357,7 +357,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
                 protocol_version: 'v1',
               },
               transfer_data: { destination: connectedAccountId },
-              application_fee_amount: 500,
+              application_fee_amount: 400,
               on_behalf_of: null,
             },
           },

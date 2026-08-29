@@ -220,7 +220,7 @@ function makeFinancialTermsConfig(connectedAccountId = 'acct_test_123'): Financi
     commission: {
       version: 'v1',
       basis: 'percentage',
-      amountMinor: 500,
+      amountMinor: 260,
     },
     connectedAccount: {
       accountId: connectedAccountId,
@@ -994,6 +994,14 @@ describe.skipIf(shouldSkipIntegrationTests())(
         'late',
         { adapter },
       );
+
+      // Ce scénario couvre le remboursement historique : le paiement legacy
+      // n'a pas de snapshot split et utilise le montant d'application du PI.
+      await rawSql`
+        UPDATE "payments"
+        SET "marketplace_fee_snapshot" = NULL, "commission_amount_minor" = 400
+        WHERE "id" = ${paymentId}
+      `;
 
       // Expirer le draft (le rendre terminal).
       await rawSql`UPDATE "booking_drafts" SET "expires_at" = now() - interval '1 minute' WHERE "id" = ${draftId}`;

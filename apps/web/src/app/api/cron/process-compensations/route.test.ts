@@ -406,7 +406,7 @@ function makeFinancialTermsConfig(connectedAccountId = 'acct_test_123'): Financi
     commission: {
       version: 'v1',
       basis: 'percentage',
-      amountMinor: 500,
+      amountMinor: 260,
     },
     connectedAccount: {
       accountId: connectedAccountId,
@@ -510,6 +510,14 @@ async function seedCompensationData(
   const paymentAmountMinor = Number(paymentRow[0]!.amount_minor);
   const attemptRow = await rawSql`SELECT id FROM payment_attempts WHERE payment_id = ${paymentId}`;
   const attemptId = attemptRow[0]!.id;
+
+  // Ce scénario couvre le worker de remboursement historique : le paiement
+  // legacy n'a pas de snapshot split, politique actuellement bloquée.
+  await rawSql`
+    UPDATE "payments"
+    SET "marketplace_fee_snapshot" = NULL
+    WHERE "id" = ${paymentId}
+  `;
 
   // Marquer le paiement et l'attempt comme SUCCEEDED.
   await rawSql`UPDATE "payments" SET "status" = 'SUCCEEDED', "succeeded_at" = now() WHERE "id" = ${paymentId}`;

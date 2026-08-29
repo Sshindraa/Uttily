@@ -308,7 +308,7 @@ function makeFinancialTermsConfig(connectedAccountId = 'acct_test_123'): Financi
     commission: {
       version: 'v1',
       basis: 'percentage',
-      amountMinor: 500,
+      amountMinor: 260,
     },
     connectedAccount: {
       accountId: connectedAccountId,
@@ -379,7 +379,7 @@ function makeWebhookPayload(
   } = {},
 ): string {
   const destination = overrides.destination ?? 'acct_test_123';
-  const applicationFeeAmount = overrides.applicationFeeAmount ?? 500;
+  const applicationFeeAmount = overrides.applicationFeeAmount ?? 400;
   const onBehalfOf = overrides.onBehalfOf ?? null;
   return JSON.stringify({
     id: overrides.eventId ?? `evt_${Math.random().toString(36).slice(2, 12)}`,
