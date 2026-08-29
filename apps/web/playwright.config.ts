@@ -5,7 +5,7 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
-  workers: 2,
+  workers: process.env.CI ? 1 : 2,
   reporter: 'list',
   use: {
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000',
@@ -42,7 +42,7 @@ export default defineConfig({
     command:
       'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_dummy CLERK_SECRET_KEY=sk_test_dummy pnpm --filter @uttily/web dev',
     url: 'http://localhost:3000',
-    reuseExistingServer: true,
-    timeout: 60000,
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
   },
 });

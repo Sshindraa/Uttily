@@ -13,6 +13,7 @@ export default defineConfig({
     jsx: 'automatic',
   },
   test: {
+    exclude: ['**/node_modules/**', '**/dist/**', 'src/e2e/**'],
     // Les tests d'intégration PostgreSQL créent une base de test et
     // appliquent les migrations dans beforeAll ; ce hook peut dépasser
     // le timeout par défaut de 10s sur une machine locale froide.

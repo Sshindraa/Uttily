@@ -165,7 +165,22 @@ jobs:
   browser:
     name: Browser acceptance
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: uttily
+          POSTGRES_PASSWORD: uttily
+          POSTGRES_DB: uttily
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U uttily -d uttily"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
       - name: Checkout
@@ -183,12 +198,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Playwright Chromium
+      - name: Install Playwright Chromium with deps
         run: pnpm --filter @uttily/web exec playwright install chromium --with-deps
 
       - name: Run Playwright tests
         run: pnpm --filter @uttily/web test:browser
-
   verify:
     name: Lint, typecheck, test, build
     if: ${{ always() }}
