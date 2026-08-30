@@ -10,7 +10,7 @@ const migrationsDir = join(packageRoot, 'drizzle');
 const migration0049Path = join(migrationsDir, '0049_split_marketplace_fees.sql');
 const url = process.env.DATABASE_URL;
 const ci = process.env.CI === '1' || process.env.CI === 'true';
-const shouldSkip = !url && !ci;
+const shouldSkip = !ci && (!url || process.env.SKIP_INTEGRATION_TESTS === '1');
 
 function migrationNumber(fileName: string): number {
   return Number.parseInt(fileName.slice(0, 4), 10);
