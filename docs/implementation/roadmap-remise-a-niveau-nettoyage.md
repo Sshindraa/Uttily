@@ -55,6 +55,9 @@ travaux engineering à déclencher autour de ce plan.
 - [x] Frontières de tests fiabilisées : le flag de reproductibilité redondant a
   été retiré, le test de migration split respecte `SKIP_INTEGRATION_TESTS` et un
   garde-fou vérifie désormais les chemins des scripts déclarés dans les manifests.
+- [x] Audit technique des remboursements split réalisé : les garde-fous existants,
+  les incohérences de surfaces et les écarts multi-origines sont consignés dans
+  [`refund-split-audit-2026-08-30.md`](../engineering/refund-split-audit-2026-08-30.md).
 - [x] Dérive du schéma staging résolue : migrations `0040` à `0049` appliquées
   dans Neon, journal Drizzle vérifié à 49 entrées, puis recherche publique
   staging rejouée avec succès.
