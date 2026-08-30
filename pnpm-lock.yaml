@@ -132,9 +132,6 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.1
-      '@uttily/config':
-        specifier: workspace:*
-        version: link:../../packages/config
       esbuild:
         specifier: ^0.28.1
         version: 0.28.1
@@ -150,9 +147,6 @@ importers:
 
   packages/auth:
     devDependencies:
-      '@uttily/config':
-        specifier: workspace:*
-        version: link:../config
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
@@ -177,9 +171,6 @@ importers:
 
   packages/contracts:
     devDependencies:
-      '@uttily/config':
-        specifier: workspace:*
-        version: link:../config
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
@@ -205,9 +196,6 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.1
-      '@uttily/config':
-        specifier: workspace:*
-        version: link:../config
       postgres:
         specifier: ^3.4.0
         version: 3.4.9
@@ -230,9 +218,6 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.1
-      '@uttily/config':
-        specifier: workspace:*
-        version: link:../config
       drizzle-kit:
         specifier: ^0.28.0
         version: 0.28.1
@@ -251,9 +236,6 @@ importers:
       '@types/react-dom':
         specifier: 19.2.3
         version: 19.2.3(@types/react@19.2.17)
-      '@uttily/config':
-        specifier: workspace:*
-        version: link:../config
       react:
         specifier: 19.2.8
         version: 19.2.8

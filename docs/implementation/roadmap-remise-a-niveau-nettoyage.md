@@ -47,8 +47,11 @@ travaux engineering à déclencher autour de ce plan.
 - [x] Aucun changement de dépendance ou d'exclusion E2E introduit.
 - [x] Contradictions documentaires ciblées sur les migrations 0031 et le lifecycle
   C4-A corrigées sans réécrire les preuves historiques.
-- [x] Cartographie des scripts et suites de tests corrigée ; aucun élément orphelin
-  ou supprimable n'a été confirmé.
+- [x] Cartographie des scripts et suites de tests corrigée ; aucun script
+  opérationnel, test métier, migration ou document supprimable n'a été confirmé.
+- [x] Nettoyage différentiel des manifests effectué : six déclarations inutilisées
+  de `@uttily/config` et le script worker redondant `test:e2e` ont été retirés,
+  avec lockfile réaligné.
 - [x] Dérive du schéma staging résolue : migrations `0040` à `0049` appliquées
   dans Neon, journal Drizzle vérifié à 49 entrées, puis recherche publique
   staging rejouée avec succès.
@@ -63,7 +66,8 @@ travaux engineering à déclencher autour de ce plan.
   vérification d'une réservation de kayak dans le dashboard loueur.
 - [ ] Décisions humaines du `pilot-unblock-plan.md` clôturées.
 - [ ] Politique de refunds split approuvée et implémentée.
-- [ ] Nettoyage différentiel des fichiers, scripts et tests exécuté.
+- [x] Nettoyage différentiel des fichiers, scripts et tests exécuté ; les éléments
+  opérationnels et les preuves historiques sont conservés.
 
 La vérification staging du 30 août 2026 a également confirmé que l'écart entre
 le dépôt et la base n'était pas un fichier ou un script orphelin : il s'agissait
@@ -103,10 +107,15 @@ dans l'arbre de travail.
 | `.devin`, `.pnpm-store`, `node_modules`, `.next`, `dist`, `coverage` | Ignorés ou générés ; aucun fichier généré suivi | Conserver les règles d'exclusion, ne pas versionner |
 | Scripts root (`dev-local`, `readiness-live`, recovery) | Appelés par les commandes root, la CI ou les runbooks | Conserver |
 | Scripts database/worker et leurs fixtures | Appelés par les manifests, la CI ou les runners de test | Conserver jusqu'à preuve contraire |
+| `@uttily/config` dans `apps/worker` et `packages/{auth,contracts,core,database,ui}` | Aucune importation ni référence de configuration ; les `tsconfig` utilisent le chemin relatif partagé | Retirer des manifests et du lockfile ; conserver le package partagé utilisé par Web et ESLint racine |
+| `apps/worker` — script `test:e2e` | Aucune référence externe ; exécution identique à `test` depuis `fileParallelism: false` dans la configuration Vitest | Supprimer ; utiliser `test` pour la suite complète et `smoke:verify` pour le bundle |
 | `@uttily/ui` | Consommé par `apps/web` pour les primitives, boutons, cartes, badges et en-têtes | Conserver ; package actif, non candidat au nettoyage |
 | Migrations SQL, métadonnées Drizzle, ADR et tests de compatibilité | Preuves de schéma, décisions ou invariants | Conservation obligatoire |
 | Rapports de chantiers historiques | Références utiles aux décisions et aux régressions | Conserver et baliser l'état historique |
 | `apps/web/next-env.d.ts` | Modification locale utilisateur préexistante | Hors périmètre ; ne pas toucher |
+
+Validation de l'audit : `pnpm install --frozen-lockfile`, `pnpm check:fast`,
+`pnpm lint`, `pnpm format:check` et `pnpm build` passent le 30 août 2026.
 
 ## Règles de nettoyage
 
