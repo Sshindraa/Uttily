@@ -2,7 +2,9 @@
 
 ## Référence et périmètre
 
-Audit réalisé sur `main` au commit `8593280` après fusion de la PR #28.
+Audit initial réalisé sur `main` au commit `8593280` après fusion de la PR #28.
+Document mis à jour après formalisation de la politique proposée au commit
+`0ff0f18` ; les constats historiques restent rattachés à la baseline initiale.
 Le périmètre couvre les annulations, les amendements financiers, les
 compensations tardives, le consumer `REFUND_REQUESTED`, la projection des
 webhooks et les surfaces client.

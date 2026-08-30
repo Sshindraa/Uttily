@@ -901,10 +901,13 @@ jsonb dans bookings/payments) :**
 - `bookings.termsAcceptanceSnapshot` (jsonb, figé à la confirmation) ;
 - `bookings.taxRuleSnapshot` (jsonb, figé à la confirmation) ;
 - `bookings.commissionRuleSnapshot` (jsonb, figé à la confirmation) ;
+- `bookings.marketplaceFeeSnapshot` (jsonb, figé à la confirmation pour le
+  split) ;
 - `bookings.subtotalAmountMinor`, `bookings.mandatoryFeesAmountMinor`,
-  `bookings.totalAmountMinor`, `bookings.currency`, `bookings.taxAmountMinor`,
-  `bookings.taxRateBps`, `bookings.commissionAmountMinor` (figés par
-  convention, mutable techniquement) ;
+  `bookings.totalAmountMinor`, `bookings.customerTotalAmountMinor`,
+  `bookings.currency`, `bookings.taxAmountMinor`, `bookings.taxRateBps`,
+  `bookings.commissionAmountMinor` (figés par convention, mutable
+  techniquement ; `customerTotalAmountMinor` est le montant client du split) ;
 - `bookings.customerStartAt`, `bookings.customerEndAt`, `bookings.confirmedAt`
   (figés par convention, mutable techniquement) ;
 - `booking_lines.variantSnapshot`, `booking_lines.quantity`,
@@ -912,9 +915,15 @@ jsonb dans bookings/payments) :**
   (pas de `updatedAt`, mutable techniquement) ;
 - `payments.amountMinor`, `payments.currency`, `payments.succeededAt`,
   `payments.taxAmountMinor`, `payments.taxRateBps`, `payments.taxRuleSnapshot`,
-  `payments.commissionAmountMinor`, `payments.termsAcceptanceSnapshot`,
-  `payments.financialTermsVersion`, `payments.legalTermsVersion` (figés par
-  convention, mutable techniquement).
+  `payments.commissionAmountMinor`, `payments.marketplaceFeeSnapshot`,
+  `payments.termsAcceptanceSnapshot`, `payments.financialTermsVersion`,
+  `payments.legalTermsVersion` (figés par convention, mutable techniquement ;
+  `payments.amountMinor` vaut `customerTotalAmountMinor` pour le split).
+
+Pour un booking split, le renderer et les notifications utilisent
+`marketplaceFeeSnapshot` comme source de vérité et ne déduisent jamais
+`platformApplicationFeeAmountMinor` depuis `commissionAmountMinor`. Les bookings
+legacy conservent la forme historique et ne sont pas convertis.
 
 **Catégorie 2 — Mutable mais lu au premier traitement (snapshot nécessaire) :**
 

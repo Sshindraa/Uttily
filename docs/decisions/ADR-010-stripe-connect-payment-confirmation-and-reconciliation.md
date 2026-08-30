@@ -1,9 +1,10 @@
 # ADR-010 — Stripe Connect, paiement, confirmation et réconciliation
 
-- **Statut** : Accepté (périmètre technique et Stripe TEST)
+- **Statut** : Accepté (périmètre technique et Stripe TEST ; sémantique split
+  précisée par ADR-029 et politique proposée ADR-030)
 - **Date** : 2026-07-30
 - **Périmètre** : Lot 5 — paiement de la location et confirmation
-- **Dépendances** : ADR-003, ADR-005, ADR-009
+- **Dépendances** : ADR-003, ADR-005, ADR-009, ADR-029, ADR-030
 - **Activation réelle** : bloquée par les validations finance/juridique listées en section 4
 
 ## 1. Contexte
@@ -58,9 +59,12 @@ ne doit pas être ajoutée au PaymentIntent de la location.
 ## 3. Décisions techniques
 
 1. **Stripe Connect avec destination charges.** Un paiement possède une seule
-   organisation destination, cohérente avec le panier mono-loueur. Le montant de
-   commission figé est transmis par `application_fee_amount` lorsqu'il est
-   strictement positif ; le paramètre est omis lorsqu'il vaut zéro.
+   organisation destination, cohérente avec le panier mono-loueur. Pour un
+   paiement legacy, le montant de commission figé est transmis par
+   `application_fee_amount` lorsqu'il est strictement positif ; le paramètre est
+   omis lorsqu'il vaut zéro. Pour un paiement split, le snapshot
+   `marketplaceFeeSnapshot` est l'autorité : le PaymentIntent porte le total
+   client et `application_fee_amount` porte la somme des frais loueur et client.
 2. **Controller properties, pas de type legacy.** La configuration d'un compte
    connecté est exprimée avec les responsabilités granulaires Stripe
    (`fees_collector`, `losses_collector`, collecte des exigences et accès au
@@ -102,7 +106,9 @@ ne doit pas être ajoutée au PaymentIntent de la location.
 9. **Compensation tardive intégrale.** Si Stripe a encaissé mais que la
    réservation ne peut plus être convertie, aucune réallocation n'est tentée. Un
    remboursement du total payé est créé de manière idempotente, avec inversion du
-   transfert et restitution de la commission de plateforme.
+   transfert et restitution de la commission de plateforme pour le chemin legacy.
+   Les paiements split restent bloqués tant que la politique et le chemin
+   d'exécution par composant d'ADR-030 ne sont pas approuvés et prouvés.
 
 Stripe documente les destination charges comme adaptées aux marketplaces à une
 destination, notamment les modèles de location. Elles rendent toutefois la
@@ -137,7 +143,7 @@ Pour un brouillon mono-loueur :
 client
   → PaymentIntent créé sur le compte plateforme Uttily
   → transfer_data.destination = compte connecté du loueur
-  → application_fee_amount = commission figée
+  → application_fee_amount = application fee du snapshot
   → capture_method = automatic
 ```
 
@@ -147,9 +153,13 @@ une version de protocole. Les metadata ne constituent jamais une preuve
 d'autorisation ni une source de montant : les données locales sont vérifiées par
 identifiant et contraintes multi-tenant.
 
-Le total du PaymentIntent est exactement `booking_drafts.total_amount_minor`.
-La décomposition fiscale et la commission sont comprises dans ce total ; elles
-ne l'augmentent pas après le Lot 4.
+Pour un paiement legacy, le total du PaymentIntent est exactement
+`booking_drafts.total_amount_minor`. Pour un paiement split, le total du
+PaymentIntent est exactement `customerTotalAmountMinor` du snapshot
+`marketplaceFeeSnapshot`, tandis que `marketplaceFeeBaseAmountMinor` reste la
+base marchande. Les frais de service et la commission sont donc inclus dans le
+total client du split ; aucune composante n'est ajoutée ou recalculée après la
+finalisation du snapshot.
 
 ## 6. Finalisation financière avant paiement
 
@@ -168,6 +178,7 @@ FinancialTermsSnapshot
 - tax_rule_snapshot
 - commission_amount_minor
 - commission_rule_snapshot
+- marketplace_fee_snapshot (présent pour le split, absent pour le legacy)
 - connected_account_id
 - charge_model = DESTINATION
 - settlement_merchant_mode: PLATFORM | CONNECTED_ACCOUNT
@@ -180,7 +191,10 @@ Contraintes :
 - aucune valeur `UNDETERMINED` ou `null` pour la taxe et la commission au moment
   de l'initiation ;
 - entiers sûrs, non négatifs, EUR ;
-- `commission_amount_minor <= total_amount_minor` ;
+- pour le legacy, `commission_amount_minor <= total_amount_minor` ; pour le
+  split, `marketplaceFeeSnapshot.platformApplicationFeeAmountMinor` est
+  l'application fee attendue et `commission_amount_minor` reste une projection
+  du seul frais loueur ;
 - le total est égal au total immuable du brouillon ;
 - le compte connecté appartient à l'organisation du brouillon et accepte les
   destination charges ;
@@ -386,6 +400,12 @@ failure_code nullable
 Pour `LATE_PAYMENT_NO_BOOKING`, l'unicité `(payment_id, reason)` empêche une
 double compensation. Le montant est le total payé ; `reverse_transfer` et
 `refund_application_fee` valent vrai.
+
+Pour un paiement split, `amount_minor` du refund représente le total client à
+restituer, tandis que les montants économiques loueur et plateforme sont portés
+par le snapshot split et son delta. Les flags agrégés ne suffisent pas à prouver
+ces montants par composant ; un refund split doit donc être refusé tant que le
+chemin d'exécution et de rapprochement d'ADR-030 n'est pas validé.
 
 ### Index requis
 
@@ -619,8 +639,10 @@ invariants empêchent la conversion :
 1. enregistrer le succès externe sans créer de réservation ;
 2. créer une seule ligne `refunds` avec raison `LATE_PAYMENT_NO_BOOKING` ;
 3. écrire `PAYMENT_COMPENSATION_REQUESTED.v1` dans l'outbox ;
-4. un worker appelle Stripe hors transaction avec la clé de remboursement stable,
-   montant total, `reverse_transfer=true` et `refund_application_fee=true` ;
+4. pour le legacy, un worker appelle Stripe hors transaction avec la clé de
+   remboursement stable, le montant total, `reverse_transfer=true` et
+   `refund_application_fee=true` ; pour un paiement split, le chemin reste
+   bloqué jusqu'à validation du delta par composant d'ADR-030 ;
 5. les webhooks de refund projettent le résultat ;
 6. un échec reste visible et réessayable, avec alerte humaine.
 
@@ -1004,3 +1026,23 @@ l'événement webhook `FAILED` avec un `failure_code` et retournent `2xx` (pas
 comme dédupliqué : un retry Stripe du même `provider_event_id` retourne `200`
 sans rejouer. Les erreurs transitoires (DB, connexion) provoquent un rollback
 et `5xx` (Stripe retry).
+
+## Amendement 2026-08-30 — sémantique split et politique de remboursement
+
+ADR-029 introduit deux sémantiques financières qui doivent rester distinctes :
+
+- `totalAmountMinor` reste la base marchande dans un booking split et le total
+  historique dans un booking legacy ;
+- `customerTotalAmountMinor` est le montant réellement encaissé au client pour
+  un booking split ;
+- `platformApplicationFeeAmountMinor` est l'application fee Stripe attendue
+  pour un booking split ; `commissionAmountMinor` n'est que la projection du
+  frais loueur.
+
+ADR-030 propose que les remboursements split soient calculés entre états
+effectifs successifs, composant par composant. Cette proposition reste
+`Proposed` : aucun refund split ne doit être soumis au provider tant que
+Finance/Juridique n'ont pas validé la règle et que l'exécution Stripe exacte n'a
+pas été testée. Les règles d'état, de dette visible, de traitement manuel et de
+SLA sont précisées par ADR-023 et ADR-030 ; le comportement legacy de l'ADR-010
+reste inchangé.

@@ -2,7 +2,8 @@
 
 - **Statut** : décision externe requise avant Stripe LIVE
 - **Date** : 2026-07-30
-- **Architecture technique** : ADR-010 proposée
+- **Architecture technique** : ADR-010 acceptée pour le périmètre technique ;
+  ADR-029 et ADR-030 restent soumises au sign-off Finance/Juridique pour le split
 - **Périmètre** : responsabilités financières, fiscalité, commission et
   conditions contractuelles du paiement de location
 
@@ -13,7 +14,9 @@ Le MVP utilise un paiement Stripe Connect de type **destination charge** :
 - un panier et un paiement concernent un seul loueur professionnel ;
 - le PaymentIntent est créé par la plateforme Uttily ;
 - le compte Stripe connecté du loueur est la destination ;
-- la commission Uttily est transmise comme `application_fee_amount` ;
+- sur le chemin legacy, la commission Uttily est transmise comme
+  `application_fee_amount` ; sur le chemin split, le total client et
+  l'application fee proviennent du snapshot 13/7 d'ADR-029 ;
 - le paiement est en EUR, par carte, avec capture automatique ;
 - la confirmation repose sur le webhook signé ;
 - une réussite tardive sans réservation déclenche un remboursement intégral
@@ -56,6 +59,12 @@ implémenté sous la version serveur `split-13-7-v1` : base
 Ce choix reste une proposition technique : `FIN-002` demeure bloqué tant que
 Finance/Juridique n'ont pas signé la base, la date d'effet, la fiscalité, les
 frais Stripe et les règles de remboursement.
+
+Pour les remboursements split et les diminutions après amendement, ADR-030
+propose un calcul entre états effectifs, composant par composant. Ce chemin
+reste fail-closed (`SPLIT_REFUND_UNRESOLVED`) tant que la répartition client,
+loueur et Uttily, les frais Stripe et l'exécution provider ne sont pas approuvés
+et testés.
 
 Pour chaque offre pilote, fournir :
 
@@ -118,6 +127,10 @@ acceptation par le client.
 
 Si Stripe confirme un paiement mais que la réservation ne peut plus être créée :
 
+Le traitement ci-dessous décrit le chemin legacy. Pour un paiement split, la
+compensation doit d'abord suivre ADR-030 et reste bloquée tant que l'exécution
+par composant n'est pas validée.
+
 - aucune réallocation ni conversion rétroactive ;
 - remboursement intégral du montant payé ;
 - inversion intégrale du transfert au loueur ;
@@ -130,7 +143,8 @@ Si Stripe confirme un paiement mais que la réservation ne peut plus être cré�
 
 Finance/juridique doit confirmer le délai de remboursement annoncé au client, le
 message contractuel, le traitement des frais Stripe non récupérables et les
-obligations de notification au loueur.
+obligations de notification au loueur. Pour le split, cette validation doit
+également couvrir le SLA et les deux messages proposés par ADR-030.
 
 ## 7. Caution
 
@@ -173,3 +187,5 @@ Avant réception de cette décision :
 - [Stripe — responsabilités selon le type de charge](https://docs.stripe.com/connect/charges)
 - [Stripe — configuration des comptes connectés](https://docs.stripe.com/connect/accounts-v2/connected-account-configuration)
 - [Stripe — onboarding](https://docs.stripe.com/connect/onboarding)
+- [ADR-029 — Split des frais marketplace 13/7](../decisions/ADR-029-marketplace-fee-split-13-7.md)
+- [ADR-030 — Politique proposée de remboursement split](../decisions/ADR-030-split-refund-policy.md)

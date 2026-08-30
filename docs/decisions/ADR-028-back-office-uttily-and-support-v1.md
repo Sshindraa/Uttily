@@ -56,6 +56,13 @@ Il ne doit pas non plus devenir une deuxième application métier lourde : sa vo
   4. `reconcilePaymentSupportAction` : déclenchement du flux officiel de réconciliation Stripe pour synchroniser l'état.
 - Chaque mutation enregistre une ligne dans la table append-only `audit_log` avec `actorUserId`, `action`, `targetType`, `targetId` et `metadata: { reason, ... }`.
 
+Les règlements manuels de remboursements (`FAILED_REQUIRES_MANUAL_ACTION` →
+`SETTLED_OFF_PLATFORM`) ne font pas partie des actions automatisées du
+back-office V1. Ils suivent une procédure support contrôlée et auditée ; pour les
+refunds split, la procédure, le délai et les messages sont ceux proposés par
+l'ADR-030 et ne deviennent implémentables qu'après son approbation. Aucun agent
+ne peut contourner cette étape par une mise à jour SQL arbitraire.
+
 ## Conséquences
 
 - L'équipe support Uttily dispose d'un outil opérationnel complet et sûr pour le lancement du pilote.

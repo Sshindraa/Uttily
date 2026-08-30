@@ -1,9 +1,9 @@
 # ADR-023 — Modifications financières append-only des réservations avant retrait
 
-- **Statut** : Accepted — conception approuvée ; G7M C1–C5 livré, validé et fusionné sur `main` ; validation Core/Web/PostgreSQL et CI post-merge vertes. Les remboursements split restent volontairement bloqués tant que leur politique Finance/Juridique n'est pas signée.
+- **Statut** : Accepted — conception approuvée ; G7M C1–C5 livré, validé et fusionné sur `main` ; validation Core/Web/PostgreSQL et CI post-merge vertes. La politique proposée des remboursements split est déléguée à [ADR-030](ADR-030-split-refund-policy.md) ; son exécution reste bloquée tant que Finance/Juridique ne l'ont pas signée.
 - **Date** : 2026-08-10
 - **Décideurs** : Porteur produit Uttily, engineering
-- **Relie à** : ADR-009, ADR-010, ADR-011, ADR-013, ADR-018 ; G7M/G7P-C
+- **Relie à** : ADR-009, ADR-010, ADR-011, ADR-013, ADR-018, ADR-029, ADR-030 ; G7M/G7P-C
 - **Remplace** : la section « Modifications de réservation » reportée de l'ADR-018
 
 ## 1. Contexte et problème
@@ -18,12 +18,16 @@ immuables après confirmation. Les triggers PostgreSQL
 `booking_items` n'a pas de trigger d'immutabilité mais possède une FK NOT NULL
 vers `booking_lines.id` et une contrainte `UNIQUE(booking_id, inventory_item_id)`.
 
-### 1.2 Absence de modèle d'amendement
+### 1.2 Absence de modèle d'amendement (contexte historique)
 
 Aucun mécanisme ne permet aujourd'hui de modifier une réservation confirmée.
 L'ADR-018 §13 a explicitement reporté les modifications avec variation financière
 à un groupe futur (G7M/G7P-C) en attendant une conception paiement/remboursement
 séparée.
+
+Cette absence décrivait l'état du dépôt au 2026-08-10 ; le modèle et les flux
+G7M C1–C5 sont désormais livrés, sous réserve du blocage split documenté par
+ADR-029 et ADR-030.
 
 ### 1.3 Impossibilité de modifier directement les lignes confirmées
 
@@ -216,7 +220,9 @@ pour l'état effectif d'une réservation. Elle retourne :
 - **Allocations effectives** : allocations du dernier amendement APPLIED avec
   `status = 'CONVERTED'`, ou `booking_items` originaux.
 - **Total contractuel effectif** : `financial_snapshot_after.totalAmountMinor`
-  du dernier APPLIED, ou `bookings.totalAmountMinor`.
+  du dernier APPLIED, ou `bookings.totalAmountMinor`. Pour un booking split,
+  cette valeur est le `customerTotalAmountMinor` du snapshot ; pour un booking
+  legacy, elle reste le total historique de la réservation.
 - **Paiements initiaux et suppléments** : `SUM(payments.amount_minor WHERE
   SUCCEEDED)` + `SUM(amendment_payments.amount_minor WHERE SUCCEEDED)`.
 - **Remboursements réussis** : `SUM(refunds.amount_minor WHERE status =
@@ -364,6 +370,13 @@ Identique à NEUTRAL, avec en plus à l'étape 9 :
 L'obligation de remboursement est créée dans la même transaction que
 l'application. L'amendement est `APPLIED` et le refund est `PENDING`. Le worker
 outbox traitera le refund ultérieurement via Stripe (hors transaction).
+
+Cette application directe concerne le chemin legacy. Pour un booking split,
+la création d'un `REFUND` reste refusée avant insertion tant que la politique
+et l'exécution par composant d'[ADR-030](ADR-030-split-refund-policy.md) ne sont
+pas approuvées. Après déblocage, le montant de l'obligation client sera
+`abs(customerTotalDeltaAmountMinor)` et le snapshot de delta conservera les
+montants loueur et application fee nécessaires au rapprochement.
 
 ### 6.3 Pourquoi pas de hold ?
 
@@ -577,8 +590,8 @@ câblage des crons web `expire-holds` et `reconcile-payments`.
 
 ### 10.1 bis Commission du supplément
 
-La commission du supplément est un snapshot serveur dérivé des montants
-originaux :
+Pour un booking legacy, la commission du supplément est un snapshot serveur
+dérivé des montants originaux :
 
 ```text
 round_half_up(supplement_amount_minor * commission_original_minor
@@ -589,6 +602,17 @@ Le calcul utilise `bigint`, un arrondi half-up positif et une borne entre zéro
 et le supplément. Si le total original vaut zéro, seule une commission
 originale nulle est cohérente. Le résultat alimente `application_fee_amount` ;
 aucune valeur fournie par le client ne participe au calcul.
+
+Pour un booking split, cette formule legacy ne s'applique pas. Le snapshot
+`FINAL_STATE_DELTA_PER_COMPONENT` d'ADR-029 fournit l'autorité :
+
+- le supplément client est `customerTotalDeltaAmountMinor` ;
+- l'application fee du supplément est `platformApplicationFeeDeltaAmountMinor` ;
+- la part loueur est `merchantFeeDeltaAmountMinor` ;
+- le net économique loueur est `merchantNetDeltaAmountMinor`.
+
+Les deltas sont calculés par soustraction des deux snapshots complets, après
+arrondi de chaque état, afin d'éviter une dérive cumulative d'arrondi.
 
 Pour le remboursement :
 
@@ -685,6 +709,12 @@ par intervention manuelle (`SETTLED_OFF_PLATFORM`) tracée par `audit_log`.
 | Remboursement encore dû | `SUM(refunds.amount_minor WHERE status IN ('PENDING', 'SUBMITTED', 'FAILED_REQUIRES_MANUAL_ACTION'))` — agrège les deux origines |
 | Encaissé net | Encaissé brut − Remboursé réussi |
 | Règlement hors plateforme | `SUM(refunds.amount_minor WHERE status = 'SETTLED_OFF_PLATFORM')` |
+
+Pour un booking split, `totalAmountMinor` dans cette table désigne le montant
+client `customerTotalAmountMinor`. Les composantes loueur, plateforme et net
+loueur sont rapprochées séparément à partir des snapshots `marketplaceFeeSnapshot`
+et de leurs deltas ; le total agrégé historique ne suffit pas à déterminer un
+remboursement split.
 
 ### 11.2 Invariant conceptuel
 
@@ -807,9 +837,10 @@ lien avec la réservation.
 
 ## 14. Conséquences et migrations futures
 
-Cette ADR décrit la conception approuvée. Les migrations et implémentations
-ne sont pas créées dans ce cycle. Les conséquences à anticiper pour le lot
-d'implémentation :
+Cette ADR décrit la conception approuvée et ses conséquences. Les migrations et
+implémentations G7M C1–C5 sont livrées. Les éléments de réalisation listés
+ci-dessous sont donc déjà en place, à l'exception du chemin de remboursement
+split et de ses validations, suivis par ADR-030 :
 
 - **Nouvelles tables d'amendement** : `booking_amendments`,
   `booking_amendment_lines`, `booking_amendment_allocations`,
@@ -913,3 +944,6 @@ Les décisions produit suivantes sont approuvées et inscrites dans cet ADR :
 10. Aucun amendement à partir de `READY_FOR_PICKUP`.
 11. Aucun parcours d'auto-service complet : le loueur initie, le client accède
     seulement au paiement sécurisé du supplément.
+12. La politique économique des remboursements split relève d'ADR-030. Tant
+    qu'elle est `Proposed`, les chemins split en baisse restent fail-closed ; la
+    politique legacy de cette ADR n'est pas étendue implicitement au split.

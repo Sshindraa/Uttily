@@ -1,7 +1,9 @@
 # Roadmap — remise à niveau, cohérence et nettoyage
 
 **Date de revue :** 2026-08-30
-**Branche de référence :** `chantier/22-b0-split-marketplace-fees`
+**Branche de référence :** `main` (commit `0ff0f18`)
+**Baseline historique :** `chantier/22-b0-split-marketplace-fees` (voir tableau
+de baseline ci-dessous)
 **Périmètre :** code, schéma, tests, scripts, documentation, CI et préparation du pilote.
 
 ## Objectif

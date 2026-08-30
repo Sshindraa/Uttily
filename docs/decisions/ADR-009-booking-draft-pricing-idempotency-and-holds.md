@@ -740,7 +740,7 @@ Les tests suivants supposent un modèle de paiement qui n'existera pas au Lot 4.
 
 L'ADR-018 — Tarification flexible par durée, recherche temporelle et
 modifications de réservation (2026-08-07, Accepted — conception approuvée,
-implémentation non démarrée) étend et remplace une partie du modèle établi par
+implémentation livrée pour G7P-A/G7P-B) étend et remplace une partie du modèle établi par
 ADR-009. Cette section documente la relation sans réécrire l'historique
 d'ADR-009.
 
@@ -772,10 +772,13 @@ Les décisions suivantes d'ADR-009 sont étendues ou remplacées :
 
 ### Implémentation actuelle
 
-L'implémentation actuelle (daily-only, `daily_price_amount_minor`,
-`billableUnit = 'DAY'`) reste en place tant que la migration tarifaire future
-(ADR-018 §14) n'est pas livrée. ADR-009 n'est pas réécrit ; son historique est
-préservé. La migration tarifaire est planifiée dans les groupes G7P-A, G7P-B
-(moteur de calcul et sélection déterministe sans modifications financières) et
-G7M/G7P-C (modifications de réservation avec variation financière, conception
-paiement/remboursement requise au préalable) du découpage révisé du Lot 7.
+Les réservations legacy conservent l'implémentation daily-only,
+`daily_price_amount_minor` et `billableUnit = 'DAY'`. Les nouveaux flux utilisent
+les plans flexibles livrés par ADR-018 et les modifications financières livrées
+par ADR-023/G7M C1-C5. ADR-009 n'est pas réécrit ; son historique et sa
+compatibilité legacy sont préservés.
+
+Pour les paiements split 13/7, la sémantique du total client, de l'application
+fee et des remboursements est étendue par ADR-029 et la politique proposée
+d'ADR-030. Cette extension ne convertit aucune réservation legacy et ne débloque
+pas l'exécution LIVE.

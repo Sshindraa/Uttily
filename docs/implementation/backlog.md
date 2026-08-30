@@ -167,6 +167,10 @@ G7M-C5-C (paiement client authentifié du supplément via Stripe Elements) est e
 
 Le lot fonctionnel G7M est ainsi complet. Aucun C5-D n'est prévu. G7M C1–C5 sont fusionnés sur main et validés par CI post-merge (15 jobs parallèles, qualité/tests/build verts).
 
+Cette complétude couvre le périmètre legacy et les suppléments split livrés ;
+les baisses, annulations en baisse et compensations tardives portant un snapshot
+split restent fail-closed et sont suivies par ADR-029/ADR-030.
+
 
 Le pont direct de réservation publique vers le checkout initial (G7E / Pont Checkout) est entièrement durci et validé : migration 0038 (`public_id` sur les variantes avec trigger d'immutabilité), read model canonique public `getPublicOfferDetails` sans fuite interne, résolveur d'autorité côté serveur `resolvePublicBookingAuthority` appliquant les mêmes règles d'éligibilité que la consultation, Server Action `createBookingDraftAction` avec hold atomique de 10 minutes et empreinte d'idempotence stable. Preuves de tests : 4 tests PostgreSQL Database, 31 tests Core, 17 tests ciblés Web, 429 tests globaux Web passés, 0 erreur lint/typecheck/build. Voir `docs/implementation/public-offer-booking-bridge.md`.
 
@@ -185,6 +189,9 @@ Critères d'acceptation :
   frais marketplace issus du registre serveur fermé `split-13-7-v1`, sans taux
   fourni par l'environnement ou le navigateur ;
   compte connecté vérifié prêt avant création d'un paiement ;
+- les remboursements split restent fail-closed conformément à `ADR-029` et
+  `ADR-030` ; ce lot ne vaut ni approbation Finance/Juridique ni activation de
+  leur exécution provider ;
 - PostgreSQL local démarré depuis une base vierge, migrations et suites Web,
   Core PostgreSQL et worker vertes ; le test d'intégration hors PostgreSQL est
   explicitement sauté hors CI ;

@@ -12,6 +12,7 @@ Juridique ou fiscal.
 | Sujet | Source |
 | --- | --- |
 | Décision et périmètre | [`ADR-029`](../decisions/ADR-029-marketplace-fee-split-13-7.md) |
+| Remboursements split et diminutions après amendement | [`ADR-030`](../decisions/ADR-030-split-refund-policy.md) |
 | Moteur de calcul | [`packages/core/src/marketplace-fees/engine.ts`](../../packages/core/src/marketplace-fees/engine.ts) |
 | Types et parser du snapshot | [`packages/core/src/marketplace-fees/types.ts`](../../packages/core/src/marketplace-fees/types.ts) |
 | Schéma et migration | [`packages/database/drizzle/0049_split_marketplace_fees.sql`](../../packages/database/drizzle/0049_split_marketplace_fees.sql) |

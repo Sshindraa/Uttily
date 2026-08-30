@@ -80,6 +80,11 @@ réellement payé par le client. Les surfaces publiques utilisent le total
 client et détaillent séparément le frais de service. Les bookings legacy ne
 sont pas réinterprétés.
 
+Les remboursements ou diminutions après amendement d'un booking split restent
+bloqués en mode fail-closed tant que la politique composant par composant
+d'ADR-030 n'est pas approuvée ; le chemin legacy conserve son comportement
+historique.
+
 **Règles** :
 
 - `total_amount_minor` est **non nullable** ; pour un enregistrement legacy il
