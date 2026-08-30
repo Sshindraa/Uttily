@@ -39,6 +39,14 @@ setup(
     await page.goto('/fr/account/bookings', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('heading', { name: 'Mes locations' })).toBeVisible();
 
+    // The public shell must reflect the same authenticated Clerk session.
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(
+      page.getByRole('navigation', { name: 'Navigation client' }).getByRole('link', {
+        name: 'Se connecter',
+      }),
+    ).toHaveCount(0);
+
     execFileSync('pnpm', ['--filter', '@uttily/database', 'db:ensure-browser-e2e-membership'], {
       cwd: findWorkspaceRoot(packageRoot),
       env: process.env,

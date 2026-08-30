@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
 import type { ReactNode } from 'react';
 import type * as React from 'react';
 import { Icon, LinkButton } from '@uttily/ui';
@@ -21,9 +22,14 @@ export function ClientShell({ children }: { children: ReactNode }): React.JSX.El
             <Link href="/fr/account/bookings" className={styles.navLink}>
               Mes locations
             </Link>
-            <LinkButton href="/sign-in" variant="secondary" size="sm">
-              Se connecter
-            </LinkButton>
+            <SignedOut>
+              <LinkButton href="/sign-in" variant="secondary" size="sm">
+                Se connecter
+              </LinkButton>
+            </SignedOut>
+            <SignedIn>
+              <UserButton afterSignOutUrl="/fr/search" />
+            </SignedIn>
           </nav>
         </div>
       </header>
