@@ -59,6 +59,8 @@ pnpm benchmark:destination # mesurer le registre local ; ajouter --network pour 
 pnpm test:dev-local   # tester les garde-fous du workflow local
 pnpm recovery:restore-drill # drill restore local TEST éphémère, jamais une base distante
 pnpm test:recovery     # tests ciblés du drill et des artefacts 20-B
+pnpm test:scripts      # tester le garde-fou des scripts déclarés
+pnpm check:scripts     # vérifier les chemins utilisés par les scripts workspace
 ```
 
 Le restore drill exige explicitement `UTTILY_RECOVERY_DRILL=1`, refuse
