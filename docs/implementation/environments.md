@@ -22,9 +22,11 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
     seed ; toute autre valeur, ou `NODE_ENV=production`, est refusée avant la
     connexion PostgreSQL.
   - Le seed ne crée aucun utilisateur Clerk, compte/provider réel, paiement,
-    réservation ou appel réseau externe. Il prépare l'offre publique de
+    réservation ou appel réseau externe. Il prépare les données de
     démonstration `lyon-dev` / `kayak-dev` (lieu `lyon-shop-dev`, SKU
-    `KAY-DEV-001`) sans supprimer de ligne.
+    `KAY-DEV-001`) en brouillon, sans photo R2 fictive et sans supprimer de
+    ligne. La publication publique nécessite ensuite trois photos réelles
+    uploadées via l'interface ; R2 est neutralisé dans le workflow local.
   - `Ctrl+C` arrête Web et le worker proprement ; PostgreSQL reste actif et
     n'est jamais arrêté ou supprimé automatiquement. La garantie d'arrêt complet
     des descendants est validée et supportée sur macOS/Linux (POSIX) : toutes les
@@ -159,6 +161,7 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
 | `DATABASE_URL` | `postgresql://...` | fournie par Neon (endpoint **pooled**, hostname avec `-pooler`) | PostgreSQL + PostGIS. Connexion runtime distant : application Web et worker. Les tests unitaires n'utilisent aucune base. Les tests d'intégration PostgreSQL destructifs utilisent uniquement PostgreSQL local (garde-fou `assertLocalhost`). |
 | `DATABASE_DIRECT_URL` | `postgresql://...` (peut être identique à `DATABASE_URL` en local) | fournie par Neon (endpoint **direct**, hostname **sans** `-pooler`) | Réservée aux migrations Drizzle Kit et opérations administratives explicites. Jamais utilisée par le runtime. |
 | `PUBLIC_APP_URL` | `http://localhost:3000` | URL HTTPS publique du déploiement | Origine absolue sans chemin, query ni fragment ; utilisée pour le retour Stripe. Le serveur refuse une valeur locale ou HTTP en environnement de production. |
+| `SUPPORT_EMAIL` | `support@uttily.com` | Adresse support du déploiement | Affichée dans le pied de page des emails transactionnels ; obligatoire en production. |
 | `STRIPE_ENVIRONMENT` | `TEST` | `TEST` pour staging, `LIVE` uniquement après ADR-010 | Valeur explicite ; aucun défaut silencieux en production. |
 | `PAYMENTS_LIVE_ENABLED` | `false` | `false` tant que les verrous ADR-010 ne sont pas fermés | Le serveur refuse `LIVE` sans `true`. |
 | Frais marketplace | `split-13-7-v1` | `split-13-7-v1` après sign-off `FIN-002` | Règle serveur fermée : base `subtotal + mandatory fees`, 13 % loueur + 7 % service client, arrondi `HALF_UP_PER_COMPONENT`. Aucun taux ne vient de l'environnement ou du navigateur. |

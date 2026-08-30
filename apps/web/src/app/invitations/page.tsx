@@ -9,10 +9,15 @@ import { acceptInvitationAction } from '@/app/actions/invitations';
 export default async function InvitationsPage(props: {
   searchParams?: Promise<{ token?: string }>;
 }): Promise<React.ReactElement> {
-  const user = await getAuthenticatedUser();
-  if (!user) redirect('/sign-in');
   const searchParams = props.searchParams ? await props.searchParams : {};
   const prefilledToken = searchParams.token ?? '';
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    const invitationPath = prefilledToken
+      ? `/invitations?token=${encodeURIComponent(prefilledToken)}`
+      : '/invitations';
+    redirect(`/sign-in?redirect_url=${encodeURIComponent(invitationPath)}`);
+  }
 
   const db = getDb();
   // Liste les invitations en attente pour l'email de l'utilisateur courant.

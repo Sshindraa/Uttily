@@ -1,8 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import type { DatabaseClient } from '@uttily/database';
-import { getOperationalPlanning } from './get-operational-planning';
+import { getDefaultWeekWindow, getOperationalPlanning } from './get-operational-planning';
 
 describe('Chantier 10 — getOperationalPlanning', () => {
+  it('calcule la semaine par défaut dans le fuseau du lieu', () => {
+    const window = getDefaultWeekWindow(new Date('2026-08-30T23:30:00Z'), 'America/Los_Angeles');
+
+    expect(window.from).toEqual(new Date('2026-08-24T07:00:00Z'));
+    expect(window.to).toEqual(new Date('2026-08-31T07:00:00Z'));
+  });
+
   it('rejette un organizationId invalide', async () => {
     const fakeDb = {} as unknown as DatabaseClient;
     await expect(getOperationalPlanning(fakeDb, 'invalid-uuid')).rejects.toThrow('organizationId');

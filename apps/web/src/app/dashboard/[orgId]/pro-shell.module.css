@@ -169,15 +169,25 @@
 }
 
 .signOutLink {
+  background: transparent;
+  border: 0;
   color: #d9e2ec;
+  cursor: pointer;
   font-size: var(--ut-text-xs);
   font-weight: var(--ut-weight-semibold);
+  padding: 0;
+  text-align: left;
   text-decoration: none;
 }
 
 .signOutLink:hover {
   color: white;
   text-decoration: underline;
+}
+
+.signOutLink:disabled {
+  cursor: wait;
+  opacity: 0.7;
 }
 
 .mainContent {

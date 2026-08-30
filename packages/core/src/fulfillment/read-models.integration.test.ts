@@ -6,7 +6,11 @@ import {
   shouldSkipIntegrationTests,
   type IntegrationTestContext,
 } from '../integration/setup';
-import { listOperationalBookings, getOperationalBookingDetails } from './read-models';
+import {
+  countOperationalBookings,
+  listOperationalBookings,
+  getOperationalBookingDetails,
+} from './read-models';
 import { requireFulfillmentOperator } from './permissions';
 import { AuthorizationError } from '../identity/permissions';
 import type { MembershipRecord } from '../identity/types';
@@ -467,6 +471,42 @@ describeIntegration('fulfillment read-models — listOperationalBookings', () =>
       dateTo: new Date('2026-03-15T00:00:00Z'),
     });
     expect(resultBoth.map((r) => r.id)).toEqual([b3.bookingId]);
+  });
+
+  it('filtre par date civile du lieu, sans limite implicite', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData();
+    const booking = await seedConfirmedBooking(ids, 2);
+
+    // Le début est le 10 février à 09:00 UTC, soit le 10 février à 10:00 à Paris.
+    const pickups = await listOperationalBookings(db, ids.orgId, {
+      statuses: ['CONFIRMED'],
+      localDateAt: new Date('2026-02-10T22:30:00Z'),
+      localDateField: 'START',
+      limit: null,
+    });
+    expect(pickups.map((row) => row.id)).toEqual([booking.bookingId]);
+
+    // À 22:30 UTC le 11 février, Paris est encore le 11 février : le 10 ne doit plus matcher.
+    const nextDayPickups = await listOperationalBookings(db, ids.orgId, {
+      statuses: ['CONFIRMED'],
+      localDateAt: new Date('2026-02-11T22:30:00Z'),
+      localDateField: 'START',
+      limit: null,
+    });
+    expect(nextDayPickups).toHaveLength(0);
+  });
+
+  it('compte les réservations actives sans charger une liste bornée', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData();
+    await seedConfirmedBooking(ids, 2);
+    const active = await seedConfirmedBooking(ids, 3);
+    await setBookingStatus(active.bookingId, 'ACTIVE');
+
+    await expect(
+      countOperationalBookings(db, ids.orgId, ['CONFIRMED', 'READY_FOR_PICKUP', 'ACTIVE']),
+    ).resolves.toBe(2);
   });
 
   it('limite respectée (limit=2 retourne 2, limit=200 plafonné à 100)', async () => {

@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation';
 import { createOrganizationAction } from '@/app/actions/organizations';
+import { MVP_ORGANIZATION_CURRENCY } from '@uttily/core';
 
 export default function OnboardingOrganizationPage(): React.ReactElement {
   async function createOrganization(formData: FormData) {
     'use server';
     const legalName = String(formData.get('legalName') ?? '');
     const slugRaw = String(formData.get('slug') ?? '');
-    const defaultCurrency = String(formData.get('defaultCurrency') ?? 'EUR');
+    const defaultCurrency = String(formData.get('defaultCurrency') ?? MVP_ORGANIZATION_CURRENCY);
     const payload: Parameters<typeof createOrganizationAction>[0] = { legalName, defaultCurrency };
     if (slugRaw) payload.slug = slugRaw;
     await createOrganizationAction(payload);
@@ -28,9 +29,13 @@ export default function OnboardingOrganizationPage(): React.ReactElement {
           id="defaultCurrency"
           name="defaultCurrency"
           type="text"
-          defaultValue="EUR"
+          defaultValue={MVP_ORGANIZATION_CURRENCY}
           maxLength={3}
+          readOnly
         />
+        <p>
+          Le pilote Uttily utilise l’EUR uniquement. La multi-devise sera ajoutée ultérieurement.
+        </p>
 
         <button type="submit">Créer</button>
       </form>

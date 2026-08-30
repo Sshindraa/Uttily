@@ -120,6 +120,14 @@ describe('PublicOfferPage & OfferBookingForm — SSR et Idempotence', () => {
     expect(html).toContain('value="2026-09-01"');
     expect(html).toContain('value="2026-09-03"');
     expect(html).toContain('montant contractuel exact');
+    expect(html).not.toContain('/ jour');
+    expect(core.getPublicOfferDetails).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        intent: { kind: 'DAY_RANGE', startDate: '2026-09-01', endDateExclusive: '2026-09-03' },
+      }),
+      expect.anything(),
+    );
   });
 
   it('2. Sentinelles : prouve qu’aucun ID interne ou secret n’apparaît dans le HTML SSR', async () => {
@@ -173,7 +181,31 @@ describe('PublicOfferPage & OfferBookingForm — SSR et Idempotence', () => {
     expect(html).toContain('value="2026-09-01T14:00"');
   });
 
-  it('4. Appelle notFound() si getPublicOfferDetails retourne NOT_FOUND', async () => {
+  it('4. Ne propose pas la connexion au loueur quand le client est déjà connecté', async () => {
+    vi.mocked(auth.getAuthenticatedUser).mockResolvedValue({
+      id: 'user-1',
+      oidcSubject: 'clerk-user-1',
+      email: 'client@example.com',
+      emailVerified: true,
+      isPlatformAdmin: false,
+    });
+    vi.mocked(core.getPublicOfferDetails).mockResolvedValue({
+      kind: 'SUCCESS',
+      offer: mockOffer,
+    });
+
+    const page = await PublicOfferPage({
+      params: Promise.resolve({ locale: 'fr', publicProductId, publicLocationId }),
+      searchParams: Promise.resolve({}),
+    });
+
+    const html = renderToStaticMarkup(page);
+
+    expect(html).toContain('/fr/account/bookings');
+    expect(html).not.toContain('Espace loueur');
+  });
+
+  it('5. Appelle notFound() si getPublicOfferDetails retourne NOT_FOUND', async () => {
     vi.mocked(auth.getAuthenticatedUser).mockResolvedValue(null);
     vi.mocked(core.getPublicOfferDetails).mockResolvedValue({
       kind: 'NOT_FOUND',

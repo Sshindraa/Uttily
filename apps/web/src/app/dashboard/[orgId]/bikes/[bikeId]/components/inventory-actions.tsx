@@ -8,6 +8,7 @@ import {
   updateInventoryItemAction,
   retireInventoryItemAction,
 } from '@/app/actions/inventory';
+import { buildInventorySku } from '@/lib/inventory-sku';
 import styles from './components.module.css';
 
 interface InventoryActionsProps {
@@ -25,7 +26,7 @@ export function InventoryActions({
 }: InventoryActionsProps): React.ReactElement {
   const router = useRouter();
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [sku, setSku] = useState(`EQP-${items.length + 1}`);
+  const [sku, setSku] = useState(() => buildSuggestedInventorySku());
   const [serialNumber, setSerialNumber] = useState('');
   const [locationId, setLocationId] = useState(locations[0]?.id ?? '');
   const [isLoading, setIsLoading] = useState(false);
@@ -56,7 +57,7 @@ export function InventoryActions({
       }
 
       setIsAddOpen(false);
-      setSku(`EQP-${items.length + 2}`);
+      setSku(buildSuggestedInventorySku());
       setSerialNumber('');
       router.refresh();
     } catch (err) {
@@ -107,7 +108,7 @@ export function InventoryActions({
         <button
           type="button"
           onClick={() => {
-            setSku(`EQP-${items.length + 1}`);
+            setSku(buildSuggestedInventorySku());
             setIsAddOpen(true);
           }}
           className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
@@ -324,4 +325,8 @@ export function InventoryActions({
       )}
     </>
   );
+}
+
+function buildSuggestedInventorySku(): string {
+  return buildInventorySku('EQP', 1, globalThis.crypto.randomUUID());
 }

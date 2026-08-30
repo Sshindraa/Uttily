@@ -94,7 +94,7 @@ export default async function CompanySettingsPage({
           <div style={readOnlyItemStyle}>
             <span style={labelStyle}>Devise d’opération</span>
             <div style={protectedValueRowStyle}>
-              <strong style={valueStyle}>{org.defaultCurrency} (€)</strong>
+              <strong style={valueStyle}>{org.defaultCurrency}</strong>
               <span style={lockedBadgeStyle}>🔒 Fixée</span>
             </div>
           </div>

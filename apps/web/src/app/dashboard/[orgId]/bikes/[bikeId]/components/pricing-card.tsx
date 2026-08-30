@@ -1,5 +1,9 @@
 import type { UnifiedBike } from '@uttily/core';
-import { formatMoneyAmount } from '@/lib/status-presentation';
+import {
+  formatMoneyAmount,
+  getPricingPlanTypeLabel,
+  getPricingPlanUnitLabel,
+} from '@/lib/status-presentation';
 import { PricingDrawer } from './pricing-drawer';
 import styles from './components.module.css';
 
@@ -19,23 +23,29 @@ export function BikePricingCard({
   currency,
 }: PricingCardProps): React.ReactElement {
   const activePlan = pricing.activePlan;
-  const priceEuros = activePlan ? activePlan.priceAmountMinor / 100 : null;
-  const displayCurrency = activePlan?.currency ?? currency;
+  const planForDisplay = activePlan ?? pricing.draftPlan;
+  const priceEuros = planForDisplay ? planForDisplay.priceAmountMinor / 100 : null;
+  const displayCurrency = planForDisplay?.currency ?? currency;
+  const activePlanType = planForDisplay?.planType ?? null;
+  const canEditWithDailyEditor = activePlanType === null || activePlanType === 'DAILY';
 
   return (
     <section className={styles.card} aria-labelledby="pricing-title">
       <div className={styles.cardHeader}>
         <h2 id="pricing-title" className={styles.cardTitle}>
-          <span>🏷️</span> Tarification journalière & remises
+          <span>🏷️</span>{' '}
+          {activePlanType ? getPricingPlanTypeLabel(activePlanType) : 'Tarification'}
         </h2>
-        <PricingDrawer
-          organizationId={organizationId}
-          productId={productId}
-          variantId={variantId}
-          currentPriceEuros={priceEuros}
-          currency={displayCurrency}
-          currentTiers={activePlan?.discountTiers}
-        />
+        {canEditWithDailyEditor ? (
+          <PricingDrawer
+            organizationId={organizationId}
+            productId={productId}
+            variantId={variantId}
+            currentPriceEuros={priceEuros}
+            currency={displayCurrency}
+            currentTiers={planForDisplay?.discountTiers}
+          />
+        ) : null}
       </div>
 
       {pricing.isPriced && activePlan ? (
@@ -44,10 +54,14 @@ export function BikePricingCard({
             <span className={styles.pricingBig}>
               {formatMoneyAmount(activePlan.priceAmountMinor, displayCurrency)}
             </span>
-            <span className={styles.pricingUnit}>/ jour (TTC)</span>
+            <span className={styles.pricingUnit}>
+              {getPricingPlanUnitLabel(activePlan.planType)} (TTC)
+            </span>
           </div>
 
-          {activePlan.discountTiers && activePlan.discountTiers.length > 0 ? (
+          {activePlan.planType === 'DAILY' &&
+          activePlan.discountTiers &&
+          activePlan.discountTiers.length > 0 ? (
             <div>
               <div
                 style={{
@@ -69,7 +83,14 @@ export function BikePricingCard({
             </div>
           ) : (
             <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748b' }}>
-              Tarif unique sans palier de remise.
+              {activePlan.planType === 'DAILY'
+                ? 'Tarif unique sans palier de remise.'
+                : 'Ce plan est calculé par le moteur de tarification flexible.'}
+            </p>
+          )}
+          {!canEditWithDailyEditor && (
+            <p style={{ margin: 0, fontSize: '0.88rem', color: '#92400e' }}>
+              Cet écran ne modifie que les tarifs journaliers. Le plan actif reste inchangé.
             </p>
           )}
         </div>
@@ -82,10 +103,13 @@ export function BikePricingCard({
             borderRadius: '12px',
           }}
         >
-          <strong style={{ color: '#b45309', fontSize: '0.9rem' }}>⚠️ Aucun tarif actif</strong>
+          <strong style={{ color: '#b45309', fontSize: '0.9rem' }}>
+            ⚠️ {pricing.draftPlan ? 'Brouillon tarifaire non activé' : 'Aucun plan tarifaire actif'}
+          </strong>
           <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#92400e' }}>
-            Cet équipement ne peut pas être proposé à la réservation tant qu’un prix journalier
-            n’est pas défini.
+            {pricing.draftPlan
+              ? `Le ${getPricingPlanTypeLabel(pricing.draftPlan.planType).toLowerCase()} doit être activé avant la mise en ligne.`
+              : 'Cet équipement ne peut pas être proposé à la réservation tant qu’un plan tarifaire valide n’est pas défini.'}
           </p>
         </div>
       )}

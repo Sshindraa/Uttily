@@ -12,6 +12,12 @@ import {
   users,
 } from '@uttily/database';
 import { CatalogError } from '../catalog/errors';
+import {
+  civilDayNumber,
+  civilDayNumberToDate,
+  localDateToUtcMidnight,
+  toLocalParts,
+} from '../pricing-plans/time-utils';
 import type {
   GetOperationalPlanningOptions,
   OperationalPlanning,
@@ -20,6 +26,18 @@ import type {
 } from './types';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function getDefaultWeekWindow(asOf: Date, timeZone: string): { from: Date; to: Date } {
+  const local = toLocalParts(asOf, timeZone);
+  const localDayNumber = civilDayNumber(local.year, local.month, local.day);
+  const mondayDate = civilDayNumberToDate(localDayNumber - local.weekday);
+  const nextMondayDate = civilDayNumberToDate(localDayNumber - local.weekday + 7);
+
+  return {
+    from: localDateToUtcMidnight(mondayDate, timeZone),
+    to: localDateToUtcMidnight(nextMondayDate, timeZone),
+  };
+}
 
 export async function getOperationalPlanning(
   db: DatabaseClient,
@@ -30,34 +48,26 @@ export async function getOperationalPlanning(
     throw new CatalogError('VALIDATION', 'organizationId doit être un UUID valide.');
   }
 
-  // 1. Fenêtre temporelle : par défaut semaine courante (lundi 00:00 -> dimanche 23:59:59)
-  const now = new Date();
-  let from = options?.from;
-  let to = options?.to;
-
-  if (!from || !to) {
-    const startOfWeek = new Date(now);
-    const day = startOfWeek.getDay();
-    const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1); // ajuster pour lundi
-    startOfWeek.setDate(diff);
-    startOfWeek.setHours(0, 0, 0, 0);
-
-    const endOfWeek = new Date(startOfWeek);
-    endOfWeek.setDate(endOfWeek.getDate() + 7);
-    endOfWeek.setMilliseconds(endOfWeek.getMilliseconds() - 1);
-
-    from = from ?? startOfWeek;
-    to = to ?? endOfWeek;
+  const suppliedAsOf = options?.asOf;
+  const suppliedFrom = options?.from;
+  const suppliedTo = options?.to;
+  if (suppliedAsOf && !Number.isFinite(suppliedAsOf.getTime())) {
+    throw new CatalogError('VALIDATION', 'asOf doit être une Date valide.');
   }
-
-  if (to <= from) {
+  if (suppliedFrom && !Number.isFinite(suppliedFrom.getTime())) {
+    throw new CatalogError('VALIDATION', 'La date de début doit être valide.');
+  }
+  if (suppliedTo && !Number.isFinite(suppliedTo.getTime())) {
+    throw new CatalogError('VALIDATION', 'La date de fin doit être valide.');
+  }
+  if (suppliedFrom && suppliedTo && suppliedTo <= suppliedFrom) {
     throw new CatalogError(
       'VALIDATION',
       'La date de fin doit être postérieure à la date de début.',
     );
   }
 
-  // 2. Établissement
+  // 1. Établissement
   const locationRows = await db
     .select()
     .from(locations)
@@ -71,9 +81,32 @@ export async function getOperationalPlanning(
     .orderBy(asc(locations.name));
 
   const primaryLocation = locationRows[0];
-  const locationTimeZone = primaryLocation?.timeZone ?? 'Europe/Paris';
+  // Une organisation sans établissement peut encore afficher un état vide.
+  // UTC est alors un fuseau d'affichage neutre ; dès qu'un établissement existe,
+  // son fuseau IANA est toujours utilisé comme autorité.
+  const locationTimeZone = primaryLocation?.timeZone ?? 'UTC';
   const locationId = options?.locationId ?? primaryLocation?.id ?? null;
   const locationName = primaryLocation?.name ?? null;
+
+  // 2. Fenêtre temporelle : semaine locale courante (lundi 00:00 inclus ->
+  // lundi suivant 00:00 exclu), calculée dans le fuseau de l'établissement.
+  const asOf = options?.asOf ?? new Date();
+  if (!Number.isFinite(asOf.getTime())) {
+    throw new CatalogError('VALIDATION', 'asOf doit être une Date valide.');
+  }
+  const defaultWindow = getDefaultWeekWindow(asOf, locationTimeZone);
+  const from = options?.from ?? defaultWindow.from;
+  const to = options?.to ?? defaultWindow.to;
+
+  if (!Number.isFinite(from.getTime()) || !Number.isFinite(to.getTime())) {
+    throw new CatalogError('VALIDATION', 'Les dates du planning doivent être valides.');
+  }
+  if (to <= from) {
+    throw new CatalogError(
+      'VALIDATION',
+      'La date de fin doit être postérieure à la date de début.',
+    );
+  }
 
   // 3. Flotte d'exemplaires physiques
   const fleetRows = await db
@@ -122,6 +155,7 @@ export async function getOperationalPlanning(
       customerStartAt: bookings.customerStartAt,
       customerEndAt: bookings.customerEndAt,
       customerEmail: users.email,
+      customerDisplayName: users.displayName,
       inventoryItemId: inventoryItems.id,
       internalSku: inventoryItems.internalSku,
       productName: products.name,
@@ -140,7 +174,7 @@ export async function getOperationalPlanning(
     .where(
       and(
         eq(bookings.organizationId, organizationId),
-        inArray(bookings.status, ['CONFIRMED', 'ACTIVE', 'RETURNED']),
+        inArray(bookings.status, ['CONFIRMED', 'READY_FOR_PICKUP', 'ACTIVE', 'RETURNED']),
         isNull(inventoryItems.deletedAt),
         locationId ? eq(bookings.locationId, locationId) : undefined,
         options?.inventoryItemId
@@ -206,11 +240,11 @@ export async function getOperationalPlanning(
       startAt: b.customerStartAt,
       endAt: b.customerEndAt,
       status: b.bookingStatus,
-      customerName: b.customerEmail,
+      customerName: b.customerDisplayName ?? b.customerEmail,
     });
 
     // Départ
-    if (b.customerStartAt >= from && b.customerStartAt <= to) {
+    if (b.customerStartAt >= from && b.customerStartAt < to) {
       totalPickups++;
       events.push({
         id: `pickup_${b.bookingId}_${b.inventoryItemId}`,
@@ -226,12 +260,12 @@ export async function getOperationalPlanning(
         startAt: b.customerStartAt,
         endAt: b.customerStartAt,
         status: b.bookingStatus,
-        customerName: b.customerEmail,
+        customerName: b.customerDisplayName ?? b.customerEmail,
       });
     }
 
     // Retour
-    if (b.customerEndAt >= from && b.customerEndAt <= to) {
+    if (b.customerEndAt >= from && b.customerEndAt < to) {
       totalReturns++;
       events.push({
         id: `return_${b.bookingId}_${b.inventoryItemId}`,
@@ -247,7 +281,7 @@ export async function getOperationalPlanning(
         startAt: b.customerEndAt,
         endAt: b.customerEndAt,
         status: b.bookingStatus,
-        customerName: b.customerEmail,
+        customerName: b.customerDisplayName ?? b.customerEmail,
       });
     }
   }
@@ -282,7 +316,7 @@ export async function getOperationalPlanning(
     locationTimeZone,
     events,
     stats: {
-      totalRentals: bookingRows.length,
+      totalRentals: new Set(bookingRows.map((booking) => booking.bookingId)).size,
       totalPickups,
       totalReturns,
       totalMaintenances: maintenanceRows.length,

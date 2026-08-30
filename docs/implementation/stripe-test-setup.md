@@ -135,7 +135,11 @@ pnpm dev
 
 ### Étape 4 : Paiement (checkout)
 
-1. Aller sur `/checkout/[draftId]`.
+1. Aller sur `/checkout/[draftId]`. Lorsqu'il provient d'une offre localisée,
+   le lien porte aussi `?locale=fr` ou `?locale=en` ; conserver ce paramètre
+   jusqu'au retour de paiement afin que l'écran de confirmation et l'espace
+   client restent dans la langue choisie. Sans paramètre, le français est la
+   locale par défaut du MVP.
 2. Cliquer **« Payer »**.
 3. Remplir la carte de test Stripe : `4242 4242 4242 4242`.
 4. Confirmer le paiement.

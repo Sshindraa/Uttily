@@ -6,6 +6,7 @@ import {
   listLocations,
 } from '@uttily/core';
 import { requireCatalogManagerOf } from '@/lib/catalog-auth';
+import type { PricingPlanType } from '@/lib/status-presentation';
 import { BikeSetupWizard, type SetupBikeDTO } from './bike-setup-wizard';
 
 export default async function BikeSetupPage({
@@ -47,6 +48,8 @@ export default async function BikeSetupPage({
     })),
     isPhotosComplete: bike.photos.isComplete,
     currentPriceEuros: priceEuros,
+    pricingPlanType: activePlan?.planType as PricingPlanType | null,
+    pricingCurrency: activePlan?.currency ?? bike.variant.currency,
     draftPricingPlanId: bike.pricing.draftPlan?.id ?? null,
     discountTiers: activePlan?.discountTiers,
     inventoryCount: bike.inventory.totalCount,

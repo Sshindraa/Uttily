@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { UserButton } from '@clerk/nextjs';
+import { getAccountCopy } from '@/lib/account-copy';
 
 export default async function AccountLayout({
   children,
@@ -8,10 +10,13 @@ export default async function AccountLayout({
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
 }): Promise<React.ReactElement> {
-  const { locale } = await params;
+  const { locale: rawLocale } = await params;
+  if (rawLocale !== 'fr' && rawLocale !== 'en') notFound();
+  const locale = rawLocale;
+  const copy = getAccountCopy(locale);
 
   return (
-    <div style={layoutContainerStyle}>
+    <div style={layoutContainerStyle} lang={locale}>
       <header style={headerStyle}>
         <div style={headerInnerStyle}>
           <Link href={`/${locale}/search`} style={logoLinkStyle}>
@@ -19,10 +24,10 @@ export default async function AccountLayout({
           </Link>
           <nav style={navStyle}>
             <Link href={`/${locale}/account/bookings`} style={navLinkStyle}>
-              Mes locations
+              {copy.nav.bookings}
             </Link>
             <Link href={`/${locale}/search`} style={navSecondaryLinkStyle}>
-              Rechercher un équipement
+              {copy.nav.search}
             </Link>
             <div style={userWrapperStyle}>
               <UserButton afterSignOutUrl={`/${locale}/search`} />

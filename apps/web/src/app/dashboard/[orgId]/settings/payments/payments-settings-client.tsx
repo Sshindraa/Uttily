@@ -6,17 +6,11 @@ import {
   createConnectedAccountAction,
   createOnboardingLinkAction,
 } from '@/app/actions/connected-accounts';
+import {
+  DEFAULT_STRIPE_COUNTRY,
+  STRIPE_SUPPORTED_COUNTRIES,
+} from '@/lib/supported-stripe-countries';
 import { StatusCard } from './status-card';
-
-// Pays EU supportés pour le MVP (Stripe Connect Express).
-const SUPPORTED_COUNTRIES = [
-  { code: 'FR', label: 'France' },
-  { code: 'DE', label: 'Allemagne' },
-  { code: 'ES', label: 'Espagne' },
-  { code: 'IT', label: 'Italie' },
-  { code: 'BE', label: 'Belgique' },
-  { code: 'NL', label: 'Pays-Bas' },
-] as const;
 
 type ActionMode = 'create' | 'onboard' | null;
 
@@ -34,7 +28,7 @@ export function PaymentsSettingsClient({
   organizationId: string;
   readiness: ConnectedAccountReadiness;
 }): React.ReactElement {
-  const [country, setCountry] = useState<string>('FR');
+  const [country, setCountry] = useState<string>(DEFAULT_STRIPE_COUNTRY);
   const [error, setError] = useState<string | null>(null);
   const [pendingMode, setPendingMode] = useState<ActionMode>(null);
   const [transition, startTransition] = useTransition();
@@ -105,7 +99,7 @@ export function PaymentsSettingsClient({
             disabled={isPending}
             style={{ display: 'block', margin: '0.25rem 0 1rem', maxWidth: '20rem' }}
           >
-            {SUPPORTED_COUNTRIES.map((c) => (
+            {STRIPE_SUPPORTED_COUNTRIES.map((c) => (
               <option key={c.code} value={c.code}>
                 {c.label}
               </option>

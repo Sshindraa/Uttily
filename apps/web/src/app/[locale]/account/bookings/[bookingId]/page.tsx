@@ -6,13 +6,15 @@ import { getCustomerBooking, type CustomerBookingStatus } from '@uttily/core';
 import { Card, Badge, PageHeader } from '@uttily/ui';
 import type { BadgeTone } from '@uttily/ui';
 import { CustomerCancellationModal } from './cancellation-modal';
+import { getAccountCopy, type AccountCopy } from '@/lib/account-copy';
+import { getIntlLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
 
-function formatAmount(minor: number, currency: string): string {
+function formatAmount(minor: number, currency: string, locale: string): string {
   const value = minor / 100;
   try {
-    return new Intl.NumberFormat('fr-FR', {
+    return new Intl.NumberFormat(getIntlLocale(locale), {
       style: 'currency',
       currency,
     }).format(value);
@@ -21,8 +23,8 @@ function formatAmount(minor: number, currency: string): string {
   }
 }
 
-function formatFullDateTime(date: Date, timeZone: string): string {
-  const formatter = new Intl.DateTimeFormat('fr-FR', {
+function formatFullDateTime(date: Date, timeZone: string, locale: string): string {
+  const formatter = new Intl.DateTimeFormat(getIntlLocale(locale), {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -36,67 +38,70 @@ function formatFullDateTime(date: Date, timeZone: string): string {
 
 function getStatusBanner(
   status: CustomerBookingStatus,
+  copy: AccountCopy,
+  locale: string,
   refundAmountMinor?: number,
   currency: string = 'EUR',
 ): { title: string; desc: string; tone: BadgeTone } {
+  const statusCopy = copy.detail.statusBanner;
   switch (status) {
     case 'CONFIRMED':
       return {
-        title: 'Votre location est confirmée',
-        desc: 'Le loueur a préparé votre dossier. Présentez-vous au point de retrait à l’heure convenue.',
+        title: statusCopy.confirmedTitle,
+        desc: statusCopy.confirmedDescription,
         tone: 'success',
       };
     case 'READY_FOR_PICKUP':
       return {
-        title: 'Votre équipement est prêt au magasin',
-        desc: 'Votre équipement a été préparé par le loueur.',
+        title: statusCopy.readyTitle,
+        desc: statusCopy.readyDescription,
         tone: 'success',
       };
     case 'ACTIVE':
       return {
-        title: 'Location en cours',
-        desc: 'Profitez de votre trajet ! Pensez à restituer l’équipement avant l’heure limite de retour.',
+        title: statusCopy.activeTitle,
+        desc: statusCopy.activeDescription,
         tone: 'info',
       };
     case 'COMPLETED':
       return {
-        title: 'Location terminée',
-        desc: 'L’équipement a été restitué. Merci d’avoir loué avec Uttily !',
+        title: statusCopy.completedTitle,
+        desc: statusCopy.completedDescription,
         tone: 'neutral',
       };
     case 'CANCELLED_REFUND_PENDING':
       return {
-        title: 'Réservation annulée — Remboursement en cours de traitement',
-        desc: refundAmountMinor
-          ? `Une demande de remboursement de ${formatAmount(refundAmountMinor, currency)} a été transmise et est en cours de traitement.`
-          : 'Votre réservation est annulée.',
+        title: statusCopy.refundPendingTitle,
+        desc: statusCopy.refundPendingDescription(
+          refundAmountMinor ? formatAmount(refundAmountMinor, currency, locale) : undefined,
+        ),
         tone: 'warning',
       };
     case 'CANCELLED_REFUNDED':
       return {
-        title: 'Réservation annulée et remboursée',
-        desc: refundAmountMinor
-          ? `Un remboursement de ${formatAmount(refundAmountMinor, currency)} a été émis sur votre moyen de paiement.`
-          : 'Réservation annulée.',
+        title: statusCopy.refundedTitle,
+        desc: statusCopy.refundedDescription(
+          refundAmountMinor ? formatAmount(refundAmountMinor, currency, locale) : undefined,
+        ),
         tone: 'neutral',
       };
     case 'CANCELLED_NO_REFUND':
       return {
-        title: 'Réservation annulée',
-        desc: 'Cette réservation a été annulée conformément aux conditions applicables.',
+        title: statusCopy.noRefundTitle,
+        desc: statusCopy.noRefundDescription,
         tone: 'neutral',
       };
     case 'CANCELLED_ACTION_REQUIRED':
       return {
-        title: 'Réservation annulée — Action requise',
-        desc: 'Le traitement de votre dossier nécessite une intervention. Notre équipe vous contacte.',
+        title: statusCopy.actionRequiredTitle,
+        desc: statusCopy.actionRequiredDescription,
         tone: 'danger',
       };
     default:
       return {
-        title: 'Votre location est confirmée',
-        desc: 'Présentez-vous à l’accueil du magasin.',
-        tone: 'success',
+        title: statusCopy.unavailableTitle,
+        desc: statusCopy.unavailableDescription,
+        tone: 'danger',
       };
   }
 }
@@ -109,7 +114,9 @@ export default async function CustomerBookingDetailPage({
   const { locale, bookingId } = await params;
   const user = await getAuthenticatedUser();
   if (!user) {
-    redirect('/sign-in');
+    redirect(
+      `/sign-in?redirect_url=${encodeURIComponent(`/${locale}/account/bookings/${bookingId}`)}`,
+    );
   }
 
   const db = getDb();
@@ -119,8 +126,12 @@ export default async function CustomerBookingDetailPage({
     notFound();
   }
 
+  const copy = getAccountCopy(locale);
+
   const banner = getStatusBanner(
     booking.status,
+    copy,
+    locale,
     booking.refund?.amountMinor ?? booking.cancellationRecord?.refundAmountMinor,
     booking.currency,
   );
@@ -139,13 +150,13 @@ export default async function CustomerBookingDetailPage({
           fontSize: '0.95rem',
         }}
       >
-        ← Mes locations
+        {copy.detail.back}
       </Link>
 
       <PageHeader
-        eyebrow={booking.categoryName ?? 'Location'}
+        eyebrow={booking.categoryName ?? copy.detail.categoryFallback}
         title={booking.productName}
-        description={`Loueur : ${booking.organizationName}`}
+        description={copy.detail.renter(booking.organizationName)}
       />
 
       {/* Bannière de statut */}
@@ -194,7 +205,7 @@ export default async function CustomerBookingDetailPage({
                 color: 'var(--ut-color-ink-strong)',
               }}
             >
-              📅 Dates et lieu de location
+              {copy.detail.datesHeading}
             </h2>
 
             <div
@@ -217,10 +228,10 @@ export default async function CustomerBookingDetailPage({
                     color: 'var(--ut-color-ink-muted)',
                   }}
                 >
-                  Retrait
+                  {copy.detail.pickup}
                 </span>
                 <strong style={{ fontSize: '0.95rem', color: 'var(--ut-color-ink-strong)' }}>
-                  {formatFullDateTime(booking.startAt, booking.timeZone)}
+                  {formatFullDateTime(booking.startAt, booking.timeZone, locale)}
                 </strong>
               </div>
               <span style={{ color: 'var(--ut-color-ink-subtle)', fontSize: '1.25rem' }}>→</span>
@@ -233,10 +244,10 @@ export default async function CustomerBookingDetailPage({
                     color: 'var(--ut-color-ink-muted)',
                   }}
                 >
-                  Retour
+                  {copy.detail.return}
                 </span>
                 <strong style={{ fontSize: '0.95rem', color: 'var(--ut-color-ink-strong)' }}>
-                  {formatFullDateTime(booking.endAt, booking.timeZone)}
+                  {formatFullDateTime(booking.endAt, booking.timeZone, locale)}
                 </strong>
               </div>
             </div>
@@ -277,7 +288,7 @@ export default async function CustomerBookingDetailPage({
                     textDecoration: 'none',
                   }}
                 >
-                  Ouvrir l’itinéraire Google Maps ↗
+                  {copy.detail.mapLink}
                 </a>
                 {booking.locationPhone && (
                   <span style={{ fontSize: '0.875rem', color: 'var(--ut-color-ink-muted)' }}>
@@ -298,7 +309,7 @@ export default async function CustomerBookingDetailPage({
                 color: 'var(--ut-color-ink-strong)',
               }}
             >
-              ℹ️ Consignes &amp; Déroulement
+              {copy.detail.instructionsHeading}
             </h2>
             <ul
               style={{
@@ -313,22 +324,20 @@ export default async function CustomerBookingDetailPage({
               }}
             >
               <li>
-                <strong>Pièce d’identité :</strong> Présentez une pièce d’identité valide au moment
-                du retrait.
+                <strong>{copy.detail.identity} :</strong> {copy.detail.identityText}
               </li>
               <li>
-                <strong>Accueil magasin :</strong> Présentez-vous directement à l’accueil en
-                indiquant votre nom.
+                <strong>{copy.detail.storeReception} :</strong> {copy.detail.storeReceptionText}
               </li>
               {(booking.pickupInstructions ?? booking.locationInstructions) && (
                 <li>
-                  <strong>Consignes de retrait :</strong>{' '}
+                  <strong>{copy.detail.pickupInstructions} :</strong>{' '}
                   {booking.pickupInstructions ?? booking.locationInstructions}
                 </li>
               )}
               {booking.returnInstructions && (
                 <li>
-                  <strong>Consignes de retour :</strong> {booking.returnInstructions}
+                  <strong>{copy.detail.returnInstructions} :</strong> {booking.returnInstructions}
                 </li>
               )}
             </ul>
@@ -344,7 +353,7 @@ export default async function CustomerBookingDetailPage({
                 color: 'var(--ut-color-ink-strong)',
               }}
             >
-              🧰 Équipement réservé
+              {copy.detail.equipmentHeading}
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {booking.items.map((item, idx) => (
@@ -380,7 +389,7 @@ export default async function CustomerBookingDetailPage({
                           borderRadius: 'var(--ut-radius-sm)',
                         }}
                       >
-                        Taille {item.size}
+                        {copy.detail.size(item.size)}
                       </span>
                     )}
                   </div>
@@ -403,7 +412,7 @@ export default async function CustomerBookingDetailPage({
                   color: 'var(--ut-color-ink-strong)',
                 }}
               >
-                📄 Vos documents
+                {copy.detail.documentsHeading}
               </h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {booking.documents.map((doc) => (
@@ -428,7 +437,11 @@ export default async function CustomerBookingDetailPage({
                         {doc.title}
                       </strong>
                       <span style={{ fontSize: '0.8rem', color: 'var(--ut-color-ink-muted)' }}>
-                        Émis le {new Intl.DateTimeFormat('fr-FR').format(new Date(doc.createdAt))}
+                        {copy.detail.issuedOn(
+                          new Intl.DateTimeFormat(getIntlLocale(locale)).format(
+                            new Date(doc.createdAt),
+                          ),
+                        )}
                       </span>
                     </div>
                     <a
@@ -442,7 +455,7 @@ export default async function CustomerBookingDetailPage({
                         textDecoration: 'none',
                       }}
                     >
-                      Télécharger PDF ↗
+                      {copy.detail.downloadPdf}
                     </a>
                   </div>
                 ))}
@@ -463,7 +476,7 @@ export default async function CustomerBookingDetailPage({
                 color: 'var(--ut-color-ink-strong)',
               }}
             >
-              💳 Votre paiement
+              {copy.detail.paymentHeading}
             </h2>
             {booking.payment ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -471,19 +484,23 @@ export default async function CustomerBookingDetailPage({
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                 >
                   <span style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.95rem' }}>
-                    Montant total
+                    {copy.detail.totalAmount}
                   </span>
                   <strong style={{ fontSize: '1.35rem', color: 'var(--ut-color-ink-strong)' }}>
-                    {formatAmount(booking.payment.amountPaidMinor, booking.payment.currency)}
+                    {formatAmount(
+                      booking.payment.amountPaidMinor,
+                      booking.payment.currency,
+                      locale,
+                    )}
                   </strong>
                 </div>
                 <div>
                   <Badge tone={booking.payment.status === 'PAID' ? 'success' : 'warning'}>
                     {booking.payment.status === 'PAID'
-                      ? '✓ Payé en ligne'
+                      ? copy.detail.paidOnline
                       : booking.payment.status === 'PENDING'
-                        ? '⏳ Paiement en cours'
-                        : '⚠️ Paiement à régulariser'}
+                        ? copy.detail.paymentPending
+                        : copy.detail.paymentAction}
                   </Badge>
                   {booking.payment.paidAt && booking.payment.status === 'PAID' && (
                     <span
@@ -493,14 +510,18 @@ export default async function CustomerBookingDetailPage({
                         marginLeft: '0.5rem',
                       }}
                     >
-                      le {new Intl.DateTimeFormat('fr-FR').format(new Date(booking.payment.paidAt))}
+                      {copy.detail.paidOn(
+                        new Intl.DateTimeFormat(getIntlLocale(locale)).format(
+                          new Date(booking.payment.paidAt),
+                        ),
+                      )}
                     </span>
                   )}
                 </div>
               </div>
             ) : (
               <p style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.85rem', margin: 0 }}>
-                Informations de paiement non disponibles.
+                {copy.detail.noPayment}
               </p>
             )}
           </Card>
@@ -515,29 +536,34 @@ export default async function CustomerBookingDetailPage({
                 color: 'var(--ut-color-ink-strong)',
               }}
             >
-              ⚙️ Gestion de la réservation
+              {copy.detail.managementHeading}
             </h2>
             {booking.cancellation.allowed ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 <p style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.85rem', margin: 0 }}>
-                  Vous pouvez annuler votre réservation selon les conditions convenues.
+                  {copy.detail.cancellationAllowed}
                 </p>
-                <CustomerCancellationModal bookingId={booking.id} />
+                <CustomerCancellationModal bookingId={booking.id} locale={locale} />
               </div>
             ) : booking.cancellationRecord ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                 <p style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.85rem', margin: 0 }}>
-                  Réservation annulée le{' '}
-                  {new Intl.DateTimeFormat('fr-FR').format(
-                    new Date(booking.cancellationRecord.cancelledAt),
+                  {copy.detail.cancelledOn(
+                    new Intl.DateTimeFormat(getIntlLocale(locale)).format(
+                      new Date(booking.cancellationRecord.cancelledAt),
+                    ),
                   )}
-                  .
                 </p>
                 {booking.cancellationRecord.refundAmountMinor > 0 && (
                   <p style={{ color: 'var(--ut-color-ink-strong)', fontSize: '0.9rem', margin: 0 }}>
-                    Remboursement demandé :{' '}
                     <strong>
-                      {formatAmount(booking.cancellationRecord.refundAmountMinor, booking.currency)}
+                      {copy.detail.refundRequested(
+                        formatAmount(
+                          booking.cancellationRecord.refundAmountMinor,
+                          booking.currency,
+                          locale,
+                        ),
+                      )}
                     </strong>
                   </p>
                 )}
@@ -545,8 +571,8 @@ export default async function CustomerBookingDetailPage({
             ) : (
               <p style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.85rem', margin: 0 }}>
                 {booking.cancellation.reasonCode === 'SPLIT_REFUND_UNRESOLVED'
-                  ? 'L’annulation en ligne est temporairement indisponible pour cette réservation. Contactez le loueur pour son traitement.'
-                  : 'Cette réservation n’est plus modifiable ou annulable en ligne.'}
+                  ? copy.detail.splitRefundUnresolved
+                  : copy.detail.notModifiable}
               </p>
             )}
 
@@ -566,12 +592,12 @@ export default async function CustomerBookingDetailPage({
                   color: 'var(--ut-color-ink-strong)',
                 }}
               >
-                Besoin d’aide ?
+                {copy.detail.helpTitle}
               </span>
               <p style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.8rem', margin: 0 }}>
                 {booking.locationPhone
-                  ? `Pour toute question relative à votre équipement, contactez directement l’établissement au ${booking.locationPhone}.`
-                  : 'Pour toute question relative à votre équipement, contactez directement l’établissement.'}
+                  ? copy.detail.helpWithPhone(booking.locationPhone)
+                  : copy.detail.helpWithoutPhone}
               </p>
             </div>
           </Card>

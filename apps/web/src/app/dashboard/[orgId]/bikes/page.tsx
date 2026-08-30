@@ -6,6 +6,11 @@ import {
   type UnifiedBikeStatusSummary,
 } from '@uttily/core';
 import { requireCatalogViewerOf } from '@/lib/catalog-auth';
+import {
+  formatMoneyAmount,
+  getPricingPlanTypeLabel,
+  getPricingPlanUnitLabel,
+} from '@/lib/status-presentation';
 import { PageHeader, Card, Badge, LinkButton, Icon } from '@uttily/ui';
 import type { BadgeTone } from '@uttily/ui';
 
@@ -181,10 +186,18 @@ export default async function BikesListPage({
                         alignItems: 'center',
                       }}
                     >
-                      <span style={{ color: 'var(--ut-color-ink-muted)' }}>Tarif / jour :</span>
+                      <span style={{ color: 'var(--ut-color-ink-muted)' }}>
+                        {bike.pricingPlanType
+                          ? `${getPricingPlanTypeLabel(bike.pricingPlanType)} :`
+                          : 'Tarif :'}
+                      </span>
                       <strong style={{ color: 'var(--ut-color-ink-strong)' }}>
                         {bike.priceAmountMinor !== null
-                          ? `${(bike.priceAmountMinor / 100).toFixed(2)} €`
+                          ? `${formatMoneyAmount(bike.priceAmountMinor, bike.pricingCurrency ?? 'EUR')}${
+                              bike.pricingPlanType
+                                ? ` ${getPricingPlanUnitLabel(bike.pricingPlanType)}`
+                                : ''
+                            }`
                           : '○ Non configuré'}
                       </strong>
                     </div>

@@ -132,10 +132,11 @@ pas exactement `1` ou si `NODE_ENV` vaut `production`. `pnpm db:seed` fournit
 explicitement ce marqueur, et `dev:full -- --seed` l'injecte dans son
 environnement enfant ; aucun de ces chemins ne révèle l'URL de base ou un secret.
 La fixture reste idempotente et sans utilisateur Clerk, provider réel, Stripe,
-réservation ou paiement. Elle crée une offre publique de démonstration recherchable dans
-`/fr/search` avec la destination `lyon-dev`, l'organisation
-`test-org-dev`, le lieu `lyon-shop-dev`, le produit `kayak-dev` et le SKU
-`KAY-DEV-001`. Elle n'appelle aucun service externe et ne supprime aucune ligne.
+réservation ou paiement. Elle prépare les données de démonstration `lyon-dev`,
+`test-org-dev`, `lyon-shop-dev`, `kayak-dev` et `KAY-DEV-001` en brouillon. La
+publication publique reste volontairement bloquée jusqu'à l'upload de trois
+photos réelles via l'interface, car le stockage R2 est neutralisé en local.
+Elle n'appelle aucun service externe et ne supprime aucune ligne.
 
 Pour protéger strictement le Web local contre une configuration héritée, `dev:full`
 refuse toute clé Stripe non-TEST, accepte une chaîne vide comme absence, impose

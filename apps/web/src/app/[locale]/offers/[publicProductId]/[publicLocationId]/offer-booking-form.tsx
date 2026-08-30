@@ -182,7 +182,8 @@ export function OfferBookingForm({
       });
 
       if (res.ok) {
-        router.push(res.data.redirectUrl);
+        const separator = res.data.redirectUrl.includes('?') ? '&' : '?';
+        router.push(`${res.data.redirectUrl}${separator}locale=${locale}`);
       } else {
         setErrorMessage(res.message);
       }

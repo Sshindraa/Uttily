@@ -1,10 +1,11 @@
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import {
   countries,
   locationOpeningHours,
   locations,
   organizations,
+  pricingPlans,
   productPhotos,
   products,
   productVariants,
@@ -17,7 +18,12 @@ import type {
   PublicOfferVariant,
   PublicProductPublicationGate,
 } from './types';
-import { calculateMarketplaceFeeSnapshot } from '../marketplace-fees';
+import {
+  calculateMarketplaceFeeSnapshot,
+  calculateMarketplaceFeeSnapshotFromPricing,
+} from '../marketplace-fees';
+import { FlexiblePricingError } from '../pricing-plans/errors';
+import { quoteFlexiblePricing } from '../pricing-plans/quote-flexible-pricing';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -135,6 +141,7 @@ export async function getPublicOfferDetails(
   // 4. Charger les variantes actives et non supprimées (projection minimale)
   const variantRows = await db
     .select({
+      variantId: productVariants.id,
       publicVariantId: productVariants.publicId,
       name: productVariants.name,
       dailyPriceAmountMinor: productVariants.dailyPriceAmountMinor,
@@ -170,38 +177,12 @@ export async function getPublicOfferDetails(
     name: v.name,
   }));
 
-  const dailyPrices = variantRows
-    .filter(
-      (v): v is typeof v & { dailyPriceAmountMinor: number } =>
-        v.dailyPriceAmountMinor !== null &&
-        Number.isSafeInteger(v.dailyPriceAmountMinor) &&
-        v.dailyPriceAmountMinor > 0 &&
-        v.currency === 'EUR',
-    )
-    .map((v) => v.dailyPriceAmountMinor);
-  const lowestDailyPrice = dailyPrices.length > 0 ? Math.min(...dailyPrices) : null;
-  const price =
-    lowestDailyPrice !== null
-      ? (() => {
-          const snapshot = calculateMarketplaceFeeSnapshot({
-            marketplaceFeeBaseAmountMinor: lowestDailyPrice,
-          });
-          return {
-            currency: 'EUR' as const,
-            marketplaceFeeBaseAmountMinor: snapshot.marketplaceFeeBaseAmountMinor,
-            customerServiceFeeAmountMinor: snapshot.customerServiceFeeAmountMinor,
-            customerTotalAmountMinor: snapshot.customerTotalAmountMinor,
-            marketplaceFeeRuleVersion: snapshot.ruleVersion,
-            totalAmountMinor: snapshot.customerTotalAmountMinor,
-            planType: 'DAILY' as const,
-            publicLabel: 'À partir de',
-            requestedDurationMinutes: null,
-            billedDurationMinutes: null,
-            billedDays: 1,
-            discountPercent: null,
-          };
-        })()
-      : undefined;
+  // Avec une intention de réservation, le moteur flexible est l'autorité de
+  // l'aperçu. Sans intention (accès direct), on présente le plan actif le moins
+  // cher applicable au lieu, puis l’ancien champ comme compatibilité.
+  const price = input.intent
+    ? await getIntentPrice(db, r.orgId, r.locationId, input, variantRows)
+    : await getIndicativePrice(db, r.locationId, variantRows, input.locale);
 
   const openingHours: PublicOfferOpeningHour[] = openingHourRows.map((h) => ({
     weekday: h.weekday,
@@ -263,4 +244,194 @@ export async function getPublicOfferDetails(
   };
 
   return { kind: 'SUCCESS', offer };
+}
+
+type OfferVariantRow = {
+  variantId: string;
+  publicVariantId: string;
+  name: string;
+  dailyPriceAmountMinor: number | null;
+  currency: string;
+};
+
+async function getIntentPrice(
+  db: DatabaseClient,
+  organizationId: string,
+  locationId: string,
+  input: GetPublicOfferDetailsInput,
+  variantRows: OfferVariantRow[],
+): Promise<PublicOfferDetails['price']> {
+  const selectedVariant = input.publicVariantId
+    ? variantRows.find((variant) => variant.publicVariantId === input.publicVariantId)
+    : undefined;
+  const variantsToQuote = selectedVariant ? [selectedVariant] : variantRows;
+  if (variantsToQuote.length === 0 || !input.intent) return undefined;
+
+  try {
+    const quote = await quoteFlexiblePricing(db, {
+      organizationId,
+      locationId,
+      locale: input.locale?.trim() || 'fr',
+      intent: input.intent,
+      lines: variantsToQuote.map((variant) => ({ variantId: variant.variantId, quantity: 1 })),
+    });
+
+    const quoteLines = quote.lines.filter((line) =>
+      variantsToQuote.some((variant) => variant.variantId === line.variantId),
+    );
+    const bestLine = [...quoteLines].sort(
+      (left, right) =>
+        left.lineTotalAmountMinor - right.lineTotalAmountMinor ||
+        left.variantId.localeCompare(right.variantId),
+    )[0];
+    if (!bestLine || quote.currency !== 'EUR') return undefined;
+
+    const snapshot = calculateMarketplaceFeeSnapshotFromPricing({
+      subtotalAmountMinor: bestLine.lineTotalAmountMinor,
+      mandatoryFeesAmountMinor: 0,
+    });
+    return {
+      currency: 'EUR',
+      marketplaceFeeBaseAmountMinor: snapshot.marketplaceFeeBaseAmountMinor,
+      customerServiceFeeAmountMinor: snapshot.customerServiceFeeAmountMinor,
+      customerTotalAmountMinor: snapshot.customerTotalAmountMinor,
+      marketplaceFeeRuleVersion: snapshot.ruleVersion,
+      totalAmountMinor: snapshot.customerTotalAmountMinor,
+      planType: bestLine.planType,
+      publicLabel:
+        selectedVariant || variantsToQuote.length === 1
+          ? bestLine.publicLabel
+          : getFromLabel(input.locale),
+      requestedDurationMinutes: bestLine.requestedDurationMinutes,
+      billedDurationMinutes: bestLine.billedDurationMinutes,
+      billedDays: bestLine.billedDays,
+      discountPercent: bestLine.discountPercent,
+    };
+  } catch (error) {
+    // Une intention impossible à tarifer (hors horaires, configuration
+    // absente, etc.) ne doit pas afficher un ancien tarif trompeur.
+    if (error instanceof FlexiblePricingError) return undefined;
+    throw error;
+  }
+}
+
+async function getIndicativePrice(
+  db: DatabaseClient,
+  locationId: string,
+  variantRows: OfferVariantRow[],
+  locale: string | undefined,
+): Promise<PublicOfferDetails['price']> {
+  const activePlans = await db
+    .select({
+      id: pricingPlans.id,
+      productVariantId: pricingPlans.productVariantId,
+      locationId: pricingPlans.locationId,
+      planType: pricingPlans.planType,
+      currency: pricingPlans.currency,
+      priceAmountMinor: pricingPlans.priceAmountMinor,
+      includedDurationMinutes: pricingPlans.includedDurationMinutes,
+    })
+    .from(pricingPlans)
+    .where(
+      and(
+        inArray(
+          pricingPlans.productVariantId,
+          variantRows.map((variant) => variant.variantId),
+        ),
+        eq(pricingPlans.lifecycleState, 'ACTIVE'),
+        eq(pricingPlans.currency, 'EUR'),
+        or(isNull(pricingPlans.locationId), eq(pricingPlans.locationId, locationId)),
+      ),
+    );
+
+  const effectivePlans = variantRows.flatMap((variant) => {
+    const plans = activePlans.filter((plan) => plan.productVariantId === variant.variantId);
+    const localPlans = plans.filter((plan) => plan.locationId === locationId);
+    return plans.filter(
+      (plan) =>
+        plan.locationId === locationId ||
+        !localPlans.some(
+          (localPlan) =>
+            localPlan.planType === plan.planType &&
+            localPlan.includedDurationMinutes === plan.includedDurationMinutes,
+        ),
+    );
+  });
+  const bestActivePlan = [...effectivePlans]
+    .filter(
+      (plan) =>
+        Number.isSafeInteger(Number(plan.priceAmountMinor)) && Number(plan.priceAmountMinor) > 0,
+    )
+    .sort(
+      (left, right) =>
+        Number(left.priceAmountMinor) - Number(right.priceAmountMinor) ||
+        left.productVariantId.localeCompare(right.productVariantId) ||
+        left.id.localeCompare(right.id),
+    )[0];
+
+  if (bestActivePlan) {
+    const snapshot = calculateMarketplaceFeeSnapshot({
+      marketplaceFeeBaseAmountMinor: Number(bestActivePlan.priceAmountMinor),
+    });
+    return {
+      currency: 'EUR',
+      marketplaceFeeBaseAmountMinor: snapshot.marketplaceFeeBaseAmountMinor,
+      customerServiceFeeAmountMinor: snapshot.customerServiceFeeAmountMinor,
+      customerTotalAmountMinor: snapshot.customerTotalAmountMinor,
+      marketplaceFeeRuleVersion: snapshot.ruleVersion,
+      totalAmountMinor: snapshot.customerTotalAmountMinor,
+      planType: bestActivePlan.planType,
+      publicLabel: getIndicativePlanLabel(locale, bestActivePlan.planType),
+      requestedDurationMinutes: null,
+      billedDurationMinutes: null,
+      billedDays: bestActivePlan.planType === 'DAILY' ? 1 : null,
+      discountPercent: null,
+    };
+  }
+
+  // Compatibilité avec les anciennes fiches qui n’ont pas encore de plan actif.
+  const dailyPrices = variantRows
+    .filter(
+      (variant): variant is OfferVariantRow & { dailyPriceAmountMinor: number } =>
+        variant.dailyPriceAmountMinor !== null &&
+        Number.isSafeInteger(variant.dailyPriceAmountMinor) &&
+        variant.dailyPriceAmountMinor > 0 &&
+        variant.currency === 'EUR',
+    )
+    .map((variant) => variant.dailyPriceAmountMinor);
+  const lowestDailyPrice = dailyPrices.length > 0 ? Math.min(...dailyPrices) : null;
+  if (lowestDailyPrice === null) return undefined;
+
+  const snapshot = calculateMarketplaceFeeSnapshot({
+    marketplaceFeeBaseAmountMinor: lowestDailyPrice,
+  });
+  return {
+    currency: 'EUR',
+    marketplaceFeeBaseAmountMinor: snapshot.marketplaceFeeBaseAmountMinor,
+    customerServiceFeeAmountMinor: snapshot.customerServiceFeeAmountMinor,
+    customerTotalAmountMinor: snapshot.customerTotalAmountMinor,
+    marketplaceFeeRuleVersion: snapshot.ruleVersion,
+    totalAmountMinor: snapshot.customerTotalAmountMinor,
+    planType: 'DAILY',
+    publicLabel: getFromLabel(locale),
+    requestedDurationMinutes: null,
+    billedDurationMinutes: null,
+    billedDays: 1,
+    discountPercent: null,
+  };
+}
+
+function getIndicativePlanLabel(
+  locale: string | undefined,
+  planType: 'DAILY' | 'HOURLY' | 'FIXED_DURATION',
+): string {
+  const from = getFromLabel(locale);
+  if (locale?.toLowerCase().startsWith('en')) {
+    return `${from} · ${planType === 'DAILY' ? 'per day' : planType === 'HOURLY' ? 'per hour' : 'fixed duration'}`;
+  }
+  return `${from} · ${planType === 'DAILY' ? 'par jour' : planType === 'HOURLY' ? 'par heure' : 'forfait durée fixe'}`;
+}
+
+function getFromLabel(locale: string | undefined): string {
+  return locale?.toLowerCase().startsWith('en') ? 'From' : 'À partir de';
 }

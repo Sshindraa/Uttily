@@ -52,16 +52,16 @@ describe('AmendmentCheckoutPage — Server Component (G7M-C5-C)', () => {
     vi.clearAllMocks();
   });
 
-  it('1. redirige vers /sign-in avec redirectUrl interne encodé si non authentifié', async () => {
+  it('1. redirige vers /sign-in avec redirect_url interne encodé si non authentifié', async () => {
     vi.spyOn(auth, 'getAuthenticatedUser').mockResolvedValueOnce(null);
 
     await expect(
       AmendmentCheckoutPage({ params: Promise.resolve({ amendmentId }) }),
     ).rejects.toThrow(
-      'REDIRECT:/sign-in?redirectUrl=' + encodeURIComponent('/checkout/amendment/' + amendmentId),
+      'REDIRECT:/sign-in?redirect_url=' + encodeURIComponent('/checkout/amendment/' + amendmentId),
     );
     expect(mockRedirect).toHaveBeenCalledWith(
-      '/sign-in?redirectUrl=' + encodeURIComponent('/checkout/amendment/' + amendmentId),
+      '/sign-in?redirect_url=' + encodeURIComponent('/checkout/amendment/' + amendmentId),
     );
   });
 

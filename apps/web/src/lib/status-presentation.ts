@@ -423,6 +423,31 @@ export function formatMoneyAmount(minorAmount: number, currency = 'EUR'): string
   }
 }
 
+export type PricingPlanType = 'DAILY' | 'HOURLY' | 'FIXED_DURATION';
+
+/** Libellé métier et unité d’affichage du plan tarifaire réellement actif. */
+export function getPricingPlanTypeLabel(planType: PricingPlanType): string {
+  switch (planType) {
+    case 'DAILY':
+      return 'Tarif journalier';
+    case 'HOURLY':
+      return 'Tarif horaire';
+    case 'FIXED_DURATION':
+      return 'Forfait durée fixe';
+  }
+}
+
+export function getPricingPlanUnitLabel(planType: PricingPlanType): string {
+  switch (planType) {
+    case 'DAILY':
+      return '/ jour';
+    case 'HOURLY':
+      return '/ heure';
+    case 'FIXED_DURATION':
+      return '/ forfait';
+  }
+}
+
 /**
  * Formate une date en français dans le fuseau horaire spécifié.
  */

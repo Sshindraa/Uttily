@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import type { ReactElement, FormEvent, CSSProperties } from 'react';
 import Link from 'next/link';
 import { loadStripe, type Stripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { initiatePaymentAction } from '@/app/actions/payments';
+import { getIntlLocale, getLocaleFromPathname } from '@/lib/locale';
+import { getCheckoutCopy, type CheckoutCopy } from '@/lib/checkout-copy';
 
 interface DraftLine {
   variantId: string;
@@ -25,6 +28,7 @@ interface CheckoutClientProps {
   lines: DraftLine[];
   renterName: string;
   expiresAt: string | null;
+  locale?: 'fr' | 'en';
 }
 
 type Phase = 'idle' | 'initiating' | 'elements' | 'success' | 'error';
@@ -43,10 +47,10 @@ function getStripePromise(): Promise<Stripe | null> {
   return stripePromise;
 }
 
-function formatAmount(minor: number, currency: string): string {
+function formatAmount(minor: number, currency: string, locale: string): string {
   const value = minor / 100;
   try {
-    return new Intl.NumberFormat('fr-FR', {
+    return new Intl.NumberFormat(getIntlLocale(locale), {
       style: 'currency',
       currency,
     }).format(value);
@@ -59,6 +63,7 @@ interface PaymentFormProps {
   clientSecret: string;
   returnUrl: string;
   totalLabel: string;
+  copy: CheckoutCopy;
   onSuccess: () => void;
   onError: (message: string) => void;
 }
@@ -67,6 +72,7 @@ function PaymentForm({
   clientSecret,
   returnUrl,
   totalLabel,
+  copy,
   onSuccess,
   onError,
 }: PaymentFormProps): ReactElement {
@@ -90,7 +96,7 @@ function PaymentForm({
     if (!stripe || !elements) return;
     const paymentEl = elements.getElement('payment');
     if (!paymentEl) {
-      const message = "Le formulaire de paiement n'est pas encore initialisé.";
+      const message = copy.paymentForm.notInitialized;
       setError(message);
       onError(message);
       return;
@@ -101,8 +107,7 @@ function PaymentForm({
 
     const submitResult = await elements.submit();
     if (submitResult.error) {
-      const message =
-        submitResult.error.message ?? 'Vérifiez les informations de paiement saisies.';
+      const message = submitResult.error.message ?? copy.paymentForm.verifyDetails;
       setError(message);
       onError(message);
       setSubmitting(false);
@@ -119,7 +124,7 @@ function PaymentForm({
     });
 
     if (result.error) {
-      const message = result.error.message ?? 'Le paiement n’a pas pu aboutir. Veuillez réessayer.';
+      const message = result.error.message ?? copy.paymentForm.genericError;
       setError(message);
       onError(message);
       setSubmitting(false);
@@ -142,24 +147,24 @@ function PaymentForm({
         aria-busy={!paymentElementMounted || !paymentElementReady || submitting}
         aria-label={
           !paymentElementReady || !paymentElementMounted
-            ? 'Chargement du module de paiement'
+            ? copy.paymentForm.loadingModule
             : submitting
-              ? 'Paiement en cours...'
-              : `Payer ${totalLabel}`
+              ? copy.paymentForm.paying
+              : `${copy.paymentForm.pay} ${totalLabel}`
         }
         style={submitButtonStyle}
       >
         {!stripe
-          ? 'Chargement du paiement...'
+          ? copy.paymentForm.loadingPayment
           : !paymentElementReady || !paymentElementMounted
-            ? 'Préparation du paiement…'
+            ? copy.paymentForm.preparingPayment
             : submitting
-              ? 'Traitement du paiement…'
-              : `Payer ${totalLabel}`}
+              ? copy.paymentForm.processingPayment
+              : `${copy.paymentForm.pay} ${totalLabel}`}
       </button>
       {(!paymentElementReady || !paymentElementMounted) && stripe && (
         <p role="status" aria-live="polite" style={mutedStyle}>
-          Préparation du formulaire de paiement…
+          {copy.paymentForm.preparingForm}
         </p>
       )}
       {error && (
@@ -182,7 +187,10 @@ export function CheckoutClient({
   lines,
   renterName,
   expiresAt,
+  locale: localeOverride,
 }: CheckoutClientProps): ReactElement {
+  const locale = localeOverride ?? getLocaleFromPathname(usePathname());
+  const copy = getCheckoutCopy(locale);
   const [phase, setPhase] = useState<Phase>('idle');
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [stripe, setStripe] = useState<Stripe | null | undefined>(undefined);
@@ -222,7 +230,7 @@ export function CheckoutClient({
     }
   }, [draftId]);
 
-  const totalLabel = formatAmount(customerTotalAmountMinor, currency);
+  const totalLabel = formatAmount(customerTotalAmountMinor, currency, locale);
 
   if (phase === 'success') {
     return (
@@ -238,15 +246,14 @@ export function CheckoutClient({
               color: 'var(--ut-color-ink-strong)',
             }}
           >
-            Paiement confirmé !
+            {copy.success.title}
           </h2>
           <p style={{ color: 'var(--ut-color-ink-muted)', margin: 0 }}>
-            Votre réservation chez <strong>{renterName}</strong> est validée. Retrouvez tous les
-            détails et l’itinéraire dans votre espace.
+            {copy.success.description(renterName)}
           </p>
           <div style={{ marginTop: '1.5rem', width: '100%' }}>
             <Link
-              href="/fr/account/bookings"
+              href={`/${locale}/account/bookings`}
               style={{
                 ...submitButtonStyle,
                 display: 'inline-flex',
@@ -255,7 +262,7 @@ export function CheckoutClient({
                 textDecoration: 'none',
               }}
             >
-              Accéder à mes locations →
+              {copy.success.bookingsLink}
             </Link>
           </div>
         </div>
@@ -268,13 +275,13 @@ export function CheckoutClient({
       <section aria-labelledby="error-heading" style={sectionStyle}>
         <div style={cardStyle}>
           <h2 id="error-heading" style={{ color: 'var(--ut-color-danger)', margin: 0 }}>
-            Paiement interrompu
+            {copy.error.title}
           </h2>
           <p role="alert" style={{ color: 'var(--ut-color-ink-muted)', margin: 0 }}>
-            {errorMessage ?? 'Une erreur est survenue lors de l’initialisation de votre paiement.'}
+            {errorMessage ?? copy.error.generic}
           </p>
           <button type="button" onClick={handleInitiate} style={submitButtonStyle}>
-            Réessayer le paiement
+            {copy.error.retry}
           </button>
         </div>
       </section>
@@ -284,7 +291,7 @@ export function CheckoutClient({
   return (
     <section aria-labelledby="checkout-heading" style={sectionStyle}>
       <h2 id="checkout-heading" style={visuallyHiddenStyle}>
-        Récapitulatif et paiement
+        {copy.summary.heading}
       </h2>
 
       <div style={cardStyle}>
@@ -295,7 +302,7 @@ export function CheckoutClient({
             color: 'var(--ut-color-ink-strong)',
           }}
         >
-          Récapitulatif de votre équipement
+          {copy.summary.heading}
         </h3>
 
         <ul style={listStyle}>
@@ -305,7 +312,7 @@ export function CheckoutClient({
                 <strong>{line.title}</strong> × {line.quantity}
               </span>
               <strong style={{ color: 'var(--ut-color-ink-strong)' }}>
-                {formatAmount(line.lineTotalAmountMinor, currency)}
+                {formatAmount(line.lineTotalAmountMinor, currency, locale)}
               </strong>
             </li>
           ))}
@@ -314,15 +321,15 @@ export function CheckoutClient({
         {hasMarketplaceFeeSnapshot ? (
           <div style={breakdownStyle}>
             <div style={breakdownRowStyle}>
-              <span>Location</span>
-              <span>{formatAmount(baseAmountMinor, currency)}</span>
+              <span>{copy.summary.rental}</span>
+              <span>{formatAmount(baseAmountMinor, currency, locale)}</span>
             </div>
             <div style={breakdownRowStyle}>
-              <span>Frais de service</span>
-              <span>{formatAmount(customerServiceFeeAmountMinor, currency)}</span>
+              <span>{copy.summary.serviceFee}</span>
+              <span>{formatAmount(customerServiceFeeAmountMinor, currency, locale)}</span>
             </div>
             <div style={totalRowStyle}>
-              <span>Total à régler</span>
+              <span>{copy.summary.total}</span>
               <strong style={{ color: 'var(--ut-color-primary)', fontSize: '1.25rem' }}>
                 {totalLabel}
               </strong>
@@ -330,7 +337,7 @@ export function CheckoutClient({
           </div>
         ) : (
           <div style={totalRowStyle}>
-            <span>Total à régler</span>
+            <span>{copy.summary.total}</span>
             <strong style={{ color: 'var(--ut-color-primary)', fontSize: '1.25rem' }}>
               {totalLabel}
             </strong>
@@ -339,11 +346,12 @@ export function CheckoutClient({
 
         {expiresAt && (
           <p style={mutedStyle}>
-            Brouillon valide jusqu’au{' '}
-            {new Intl.DateTimeFormat('fr-FR', {
-              dateStyle: 'medium',
-              timeStyle: 'short',
-            }).format(new Date(expiresAt))}
+            {copy.summary.expiresAt(
+              new Intl.DateTimeFormat(getIntlLocale(locale), {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              }).format(new Date(expiresAt)),
+            )}
           </p>
         )}
       </div>
@@ -354,9 +362,9 @@ export function CheckoutClient({
             type="button"
             onClick={handleInitiate}
             style={submitButtonStyle}
-            aria-label="Initier le paiement"
+            aria-label={copy.summary.initiate}
           >
-            Payer {totalLabel}
+            {copy.paymentForm.pay} {totalLabel}
           </button>
         )}
 
@@ -366,7 +374,7 @@ export function CheckoutClient({
             role="status"
             style={{ textAlign: 'center', margin: 0, color: 'var(--ut-color-ink-muted)' }}
           >
-            Préparation du paiement…
+            {copy.summary.preparingPayment}
           </p>
         )}
 
@@ -378,11 +386,11 @@ export function CheckoutClient({
                 aria-busy="true"
                 style={{ textAlign: 'center', color: 'var(--ut-color-ink-muted)' }}
               >
-                Chargement du module de paiement…
+                {copy.paymentForm.loadingPayment}
               </p>
             ) : stripe === null ? (
               <p role="alert" style={errorStyle}>
-                Le service de paiement est momentanément indisponible. Veuillez réessayer plus tard.
+                {copy.summary.unavailable}
               </p>
             ) : clientSecret ? (
               <Elements
@@ -396,6 +404,7 @@ export function CheckoutClient({
                   clientSecret={clientSecret}
                   returnUrl={returnUrl}
                   totalLabel={totalLabel}
+                  copy={copy}
                   onSuccess={() => setPhase('success')}
                   onError={(msg) => {
                     setErrorMessage(msg);
