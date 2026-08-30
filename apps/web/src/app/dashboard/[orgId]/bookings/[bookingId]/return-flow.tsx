@@ -108,7 +108,9 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
       setIsOpen(false);
       router.refresh();
     } catch {
-      setError('Impossible d’enregistrer le retour du vélo pour le moment. Veuillez réessayer.');
+      setError(
+        'Impossible d’enregistrer le retour de l’équipement pour le moment. Veuillez réessayer.',
+      );
     } finally {
       setLoading(false);
     }
@@ -122,7 +124,7 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
         variant="secondary"
         style={{ minHeight: '44px' }}
       >
-        🔵 Effectuer le retour du vélo →
+        🔵 Effectuer le retour de l’équipement →
       </Button>
     );
   }
@@ -168,7 +170,7 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
               color: 'var(--ut-color-ink-strong)',
             }}
           >
-            🔵 Réception &amp; Retour du vélo
+            🔵 Réception &amp; Retour de l’équipement
           </h3>
           <button
             type="button"
@@ -211,7 +213,7 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
               htmlFor="return-condition"
               style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ut-color-ink)' }}
             >
-              État du vélo au retour :
+              État de l’équipement au retour :
             </label>
             <select
               id="return-condition"
@@ -357,7 +359,9 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
                     onChange={(e) => setRequiresMaintenance(e.target.checked)}
                     disabled={loading}
                   />
-                  <span>Retirer temporairement ce vélo de la location (envoyer en atelier)</span>
+                  <span>
+                    Retirer temporairement cet équipement de la location (envoyer en atelier)
+                  </span>
                 </label>
               </div>
             )}

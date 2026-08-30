@@ -68,13 +68,13 @@ export default async function UnifiedBookingDetailPage({
     let icon = 'ℹ️';
 
     if (ev.eventType === 'PREPARED') {
-      title = 'Vélo préparé au point de retrait';
+      title = 'Équipement préparé au point de retrait';
       icon = '✓';
     } else if (ev.eventType === 'PICKED_UP') {
-      title = 'Vélo remis au locataire';
+      title = 'Équipement remis au locataire';
       icon = '🟢';
     } else if (ev.eventType === 'RETURNED') {
-      title = 'Vélo restitué et contrôlé';
+      title = 'Équipement restitué et contrôlé';
       icon = '🔵';
     } else if (ev.eventType === 'CLOSED') {
       title = 'Dossier de location clôturé avec succès';
@@ -228,7 +228,7 @@ export default async function UnifiedBookingDetailPage({
           </div>
         </Card>
 
-        {/* Pilier 2 : Vélo réservé */}
+        {/* Pilier 2 : Équipement réservé */}
         <Card style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem' }}>
           <h2
             style={{
@@ -238,7 +238,7 @@ export default async function UnifiedBookingDetailPage({
               color: 'var(--ut-color-ink-strong)',
             }}
           >
-            🚲 Vélo réservé
+            🧰 Équipement réservé
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {details.items.map((item) => (
@@ -258,7 +258,7 @@ export default async function UnifiedBookingDetailPage({
                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                 >
                   <span style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.85rem' }}>
-                    Référence vélo :
+                    Référence exemplaire :
                   </span>
                   <Link
                     href={`/dashboard/${organizationId}/fleet`}
@@ -365,7 +365,7 @@ export default async function UnifiedBookingDetailPage({
                 Nombre d’équipements :
               </span>
               <strong style={{ fontSize: '1rem', color: 'var(--ut-color-ink-strong)' }}>
-                {details.items.length} vélo(s)
+                {details.items.length} équipement(s)
               </strong>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

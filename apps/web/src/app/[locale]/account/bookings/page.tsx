@@ -38,7 +38,7 @@ function getStatusBadgeProps(status: CustomerBookingStatus): { label: string; to
     case 'CONFIRMED':
       return { label: 'Confirmée', tone: 'success' };
     case 'READY_FOR_PICKUP':
-      return { label: 'Votre vélo est prêt', tone: 'success' };
+      return { label: 'Votre équipement est prêt', tone: 'success' };
     case 'ACTIVE':
       return { label: 'En cours', tone: 'info' };
     case 'COMPLETED':
@@ -80,7 +80,7 @@ export default async function CustomerBookingsPage({
         description="Retrouvez l’ensemble de vos réservations et gérez vos trajets."
         actions={
           <LinkButton href={`/${locale}/search`} variant="secondary" size="md">
-            Rechercher un vélo <Icon name="search" size={17} />
+            Rechercher un équipement <Icon name="search" size={17} />
           </LinkButton>
         }
       />
@@ -108,10 +108,10 @@ export default async function CustomerBookingsPage({
             Aucune location pour le moment
           </h2>
           <p style={{ color: 'var(--ut-color-ink-muted)', margin: 0, maxWidth: '24rem' }}>
-            Trouvez votre prochain vélo près de chez vous en quelques clics.
+            Trouvez votre prochain équipement près de chez vous en quelques clics.
           </p>
           <LinkButton href={`/${locale}/search`} variant="primary">
-            Rechercher un vélo
+            Rechercher un équipement
           </LinkButton>
         </Card>
       ) : (

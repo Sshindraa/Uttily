@@ -24,6 +24,6 @@ describe('CustomerBookingsPage (Chantier 14B)', () => {
 
   it('propose un état vide convivial avec CTA vers la recherche', () => {
     expect(pageSource).toContain('Aucune location pour le moment');
-    expect(pageSource).toContain('Rechercher un vélo');
+    expect(pageSource).toContain('Rechercher un équipement');
   });
 });
