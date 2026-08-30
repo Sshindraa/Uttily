@@ -197,6 +197,61 @@ async function createHeldDraft(ids: BaseIds, keySuffix: string, quantity = 1): P
   return result.body.draftId;
 }
 
+async function createLegacyHeldDraft(ids: BaseIds): Promise<string> {
+  if (!rawSql) throw new Error('rawSql not initialized');
+  const sql = rawSql;
+  const draft = await sql`
+    INSERT INTO booking_drafts (
+      organization_id, location_id, customer_user_id, status,
+      customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
+      timezone, prep_buffer_minutes, cleanup_buffer_minutes, currency,
+      subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
+      tax_status, tax_amount_minor, tax_rate_bps, commission_amount_minor,
+      billable_unit, billable_unit_count, cancellation_policy_snapshot
+    ) VALUES (
+      ${ids.orgId}, ${ids.locationId}, ${ids.userId}, 'DRAFT',
+      ${STD_START}, ${STD_END},
+      ${new Date(STD_START.getTime() - 30 * 60 * 1000)},
+      ${new Date(STD_END.getTime() + 30 * 60 * 1000)},
+      'Europe/Paris', 30, 30, 'EUR',
+      10000, 0, 10000, 'NOT_APPLICABLE', 0, NULL, 500,
+      'DAY', 2, ${sql.json({ policy_code: 'FLEXIBLE', policy_version: '1', timezone: 'Europe/Paris' })}
+    ) RETURNING id
+  `.then((rows) => rows[0]!);
+  await sql`
+    UPDATE booking_drafts
+    SET status = 'HELD', expires_at = now() + interval '10 minutes'
+    WHERE id = ${draft.id}
+  `;
+  const draftLine = await sql`
+    INSERT INTO booking_draft_lines (
+      draft_id, variant_id, quantity, unit_price_amount_minor,
+      billable_unit_count, line_total_amount_minor, variant_snapshot
+    ) VALUES (
+      ${draft.id}, ${ids.variantId}, 1, 5000, 2, 10000,
+      ${sql.json({ name: 'Standard' })}
+    ) RETURNING id
+  `.then((rows) => rows[0]!);
+  const hold = await sql`
+    INSERT INTO inventory_blocks (
+      organization_id, inventory_item_id, type, status,
+      customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
+      expires_at, source_id
+    ) VALUES (
+      ${ids.orgId}, ${ids.itemIds[0]!}, 'HOLD', 'ACTIVE',
+      ${STD_START}, ${STD_END},
+      ${new Date(STD_START.getTime() - 30 * 60 * 1000)},
+      ${new Date(STD_END.getTime() + 30 * 60 * 1000)},
+      now() + interval '10 minutes', ${draft.id}
+    ) RETURNING id
+  `.then((rows) => rows[0]!);
+  await sql`
+    INSERT INTO allocations (draft_line_id, inventory_block_id)
+    VALUES (${draftLine.id}, ${hold.id})
+  `;
+  return draft.id;
+}
+
 function makeFinancialTermsConfig(connectedAccountId = 'acct_test_123'): FinancialTermsConfig {
   return {
     tax: {
@@ -744,11 +799,17 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
     }
   }
 
-  async function seedTaggedRefundFixture(suffix: string, count = 1): Promise<TaggedRefundFixture> {
+  async function seedTaggedRefundFixture(
+    suffix: string,
+    count = 1,
+    options: { split?: boolean } = {},
+  ): Promise<TaggedRefundFixture> {
     if (!db || !rawSql) throw new Error('DB non initialisée');
     const ids = await seedBaseData(suffix);
     await seedPaymentAccount(ids);
-    const draftId = await createHeldDraft(ids, `tagged-${suffix}`);
+    const draftId = options.split
+      ? await createHeldDraft(ids, `tagged-${suffix}`)
+      : await createLegacyHeldDraft(ids);
     const initResult = await initiatePayment(
       makeInitDeps(),
       makeInitiateInput(ids, draftId, `tagged-${suffix}`),
@@ -770,7 +831,7 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
         protocol_version: 'v1',
       },
       'succeeded',
-      { eventId: `evt_tagged_payment_${suffix}` },
+      { eventId: `evt_tagged_payment_${suffix}`, applicationFeeAmount: 260 },
     );
     const paymentResult = await handleWebhook(
       paymentDeps,
@@ -2409,7 +2470,7 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
     if (!db || !rawSql) return;
     const ids = await seedBaseData('refund-tagged');
     await seedPaymentAccount(ids);
-    const draftId = await createHeldDraft(ids, 'refund-tagged');
+    const draftId = await createLegacyHeldDraft(ids);
     const initDeps = makeInitDeps();
     const initResult = await initiatePayment(
       initDeps,
@@ -2422,13 +2483,20 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
     const paymentId = await getPaymentId(draftId);
     const amount = await getPaymentAmount(draftId);
     const deps = makeDeps();
-    const succeeded = makeWebhookPayload('payment_intent.succeeded', piId, amount, {
-      payment_id: initResult.paymentId,
-      payment_attempt_id: initResult.paymentAttemptId,
-      draft_id: draftId,
-      organization_id: ids.orgId,
-      protocol_version: 'v1',
-    });
+    const succeeded = makeWebhookPayload(
+      'payment_intent.succeeded',
+      piId,
+      amount,
+      {
+        payment_id: initResult.paymentId,
+        payment_attempt_id: initResult.paymentAttemptId,
+        draft_id: draftId,
+        organization_id: ids.orgId,
+        protocol_version: 'v1',
+      },
+      'succeeded',
+      { applicationFeeAmount: 260 },
+    );
     await handleWebhook(deps, makeWebhookInput(succeeded, deps.adapter));
 
     const refundId = '77777777-7777-4777-8777-777777777777';
@@ -2471,6 +2539,37 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
       WHERE reason = 'EXTERNAL_REFUND' AND provider_refund_id = 're_refund_tagged_success'
     `;
     expect(Number(external[0]!['count'])).toBe(0);
+  });
+
+  it('26ter. refund BOOKING_MODIFICATION split → événement FAILED sans projection provider', async () => {
+    if (!rawSql) return;
+    const fixture = await seedTaggedRefundFixture('refund-tagged-split', 1, { split: true });
+    const body = makeChargeRefundedBody({
+      eventId: 'evt_refund_tagged_split',
+      created: 1_900_000_001,
+      chargeId: 'ch_refund_tagged_split',
+      paymentIntentId: fixture.paymentIntentId,
+      refundId: 're_refund_tagged_split',
+      refundStatus: 'succeeded',
+      amount: fixture.amount,
+      metadata: {
+        refund_id: fixture.refundIds[0]!,
+        organization_id: fixture.ids.orgId,
+        protocol_version: 'refund-requested-v1',
+      },
+    });
+
+    const result = await handleWebhook(fixture.deps, makeWebhookInput(body, fixture.deps.adapter));
+    expect(result.kind).toBe('SUCCESS');
+    expect((await refundState(fixture.refundIds[0]!)).status).toBe('PENDING');
+
+    const event = await rawSql`
+      SELECT status, failure_code
+      FROM payment_webhook_events
+      WHERE provider_event_id = 'evt_refund_tagged_split'
+    `.then((rows) => rows[0]!);
+    expect(event.status).toBe('FAILED');
+    expect(event.failure_code).toBe('REFUND_INVARIANT_BROKEN');
   });
 
   it('G7M-B2-B2A webhook direct refund.created : metadata exacte et allow-list sans fuite', async () => {

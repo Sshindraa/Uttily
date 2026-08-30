@@ -71,6 +71,7 @@ export async function previewBookingCancellation(
       paymentId: bookings.paymentId,
       paymentAmountMinor: payments.amountMinor,
       paymentCommissionMinor: payments.commissionAmountMinor,
+      paymentMarketplaceFeeSnapshot: payments.marketplaceFeeSnapshot,
       marketplaceFeeSnapshot: bookings.marketplaceFeeSnapshot,
       locationTimeZone: locations.timeZone,
     })
@@ -117,7 +118,11 @@ export async function previewBookingCancellation(
   // La politique de remboursement des deux composants split n'est pas encore
   // validée Finance/Legal. Ne pas projeter silencieusement une décision globale
   // avec reverseTransfer/refundApplicationFee : le chemin split est bloqué.
-  if (booking.marketplaceFeeSnapshot !== null && booking.marketplaceFeeSnapshot !== undefined) {
+  if (
+    (booking.marketplaceFeeSnapshot !== null && booking.marketplaceFeeSnapshot !== undefined) ||
+    (booking.paymentMarketplaceFeeSnapshot !== null &&
+      booking.paymentMarketplaceFeeSnapshot !== undefined)
+  ) {
     return {
       allowed: false,
       reasonDisallowed:

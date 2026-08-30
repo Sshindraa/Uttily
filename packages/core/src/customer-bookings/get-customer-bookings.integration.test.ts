@@ -36,8 +36,22 @@ describe.skipIf(isSkipped)(
       }
     });
 
-    async function createCustomerBookingFixture() {
+    async function createCustomerBookingFixture(options: { split?: boolean } = {}) {
       if (!rawSql) throw new Error('DB non initialisée');
+      const marketplaceFeeSnapshot = options.split
+        ? {
+            ruleVersion: 'split-13-7-v1',
+            roundingRule: 'HALF_UP_PER_COMPONENT',
+            marketplaceFeeBaseAmountMinor: 7500,
+            merchantRateBps: 1300,
+            merchantFeeAmountMinor: 975,
+            customerRateBps: 700,
+            customerServiceFeeAmountMinor: 525,
+            customerTotalAmountMinor: 8025,
+            merchantNetAmountMinor: 6525,
+            platformApplicationFeeAmountMinor: 1500,
+          }
+        : null;
       const suffix = Math.random().toString(36).slice(2, 10);
       const org = await rawSql`
         INSERT INTO organizations (legal_name, slug)
@@ -119,12 +133,13 @@ describe.skipIf(isSkipped)(
           tax_status, tax_amount_minor, commission_amount_minor,
           financial_terms_version, legal_terms_version, terms_acceptance_snapshot,
           connected_account_id, charge_model, settlement_merchant_mode, environment,
-          succeeded_at
+          succeeded_at, marketplace_fee_snapshot
         ) VALUES (
-          ${org.id}, ${draft.id}, ${customerA.id}, 'SUCCEEDED', 7500, 'EUR',
+          ${org.id}, ${draft.id}, ${customerA.id}, 'SUCCEEDED', ${marketplaceFeeSnapshot ? 8025 : 7500}, 'EUR',
           'NOT_APPLICABLE', 0, 750, 'v1', 'v1',
           ${rawSql.json({ version: 'v1', user_id: customerA.id })},
-          'acct_test', 'DESTINATION', 'CONNECTED_ACCOUNT', 'TEST'::payment_environment, now()
+          'acct_test', 'DESTINATION', 'CONNECTED_ACCOUNT', 'TEST'::payment_environment, now(),
+          ${marketplaceFeeSnapshot ? rawSql.json(marketplaceFeeSnapshot) : null}
         ) RETURNING id
       `.then((rows) => rows[0]!);
 
@@ -134,6 +149,7 @@ describe.skipIf(isSkipped)(
           status, customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
           timezone, prep_buffer_minutes, cleanup_buffer_minutes, currency,
           subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
+          customer_total_amount_minor, marketplace_fee_snapshot,
           tax_status, tax_amount_minor, commission_amount_minor,
           billable_unit, billable_unit_count, cancellation_policy_snapshot,
           terms_acceptance_snapshot, confirmed_at
@@ -141,7 +157,9 @@ describe.skipIf(isSkipped)(
           ${org.id}, ${location.id}, ${customerA.id}, ${draft.id}, ${paymentA.id}, 'CONFIRMED',
           '2026-09-10 09:00:00+00', '2026-09-12 18:00:00+00',
           '2026-09-10 08:30:00+00', '2026-09-12 18:30:00+00', 'Europe/Paris', 30, 30, 'EUR',
-          7500, 0, 7500, 'NOT_APPLICABLE', 0, 750, 'DAY', 2,
+          7500, ${marketplaceFeeSnapshot ? 8025 : null},
+          ${marketplaceFeeSnapshot ? rawSql.json(marketplaceFeeSnapshot) : null},
+          'NOT_APPLICABLE', 0, 750, 'DAY', 2,
           ${rawSql.json({ policy_code: 'FLEXIBLE', policy_version: '1' })},
           ${rawSql.json({ version: 'v1', user_id: customerA.id })}, now()
         ) RETURNING id
@@ -193,6 +211,16 @@ describe.skipIf(isSkipped)(
       expect(detail?.payment?.amountPaidMinor).toBe(7500);
       expect(detail?.payment?.status).toBe('PAID');
       expect(detail?.cancellation.allowed).toBe(true);
+    });
+
+    it('masque l’annulation en ligne pour une réservation avec frais marketplace split', async () => {
+      if (!db) throw new Error('DB non initialisée');
+      const fixture = await createCustomerBookingFixture({ split: true });
+
+      const detail = await getCustomerBooking(db, fixture.customerA.id, fixture.bookingA.id);
+      expect(detail).not.toBeNull();
+      expect(detail?.cancellation.allowed).toBe(false);
+      expect(detail?.cancellation.reasonCode).toBe('SPLIT_REFUND_UNRESOLVED');
     });
 
     it('vérité paiement fail-closed : si le statut payment n’est pas SUCCEEDED, status est PENDING', async () => {

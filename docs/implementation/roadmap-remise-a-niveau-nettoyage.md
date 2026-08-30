@@ -58,6 +58,10 @@ travaux engineering à déclencher autour de ce plan.
 - [x] Audit technique des remboursements split réalisé : les garde-fous existants,
   les incohérences de surfaces et les écarts multi-origines sont consignés dans
   [`refund-split-audit-2026-08-30.md`](../engineering/refund-split-audit-2026-08-30.md).
+- [x] Garde-fous techniques post-audit ajoutés : surface client cohérente,
+  contrôle des deux snapshots, consumer et webhook fail-closed, et traçabilité
+  du snapshot d'annulation ; la politique économique split reste bloquée par
+  les décisions Finance/Juridique.
 - [x] Dérive du schéma staging résolue : migrations `0040` à `0049` appliquées
   dans Neon, journal Drizzle vérifié à 49 entrées, puis recherche publique
   staging rejouée avec succès.

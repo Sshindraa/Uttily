@@ -86,6 +86,7 @@ export interface CustomerBookingDetail extends CustomerBookingSummary {
   readonly cancellation: {
     readonly allowed: boolean;
     readonly policyCode: string;
+    readonly reasonCode: 'SPLIT_REFUND_UNRESOLVED' | null;
   };
   readonly cancellationRecord: CustomerBookingCancellationRecord | null;
   readonly refund: CustomerBookingRefundDetail | null;

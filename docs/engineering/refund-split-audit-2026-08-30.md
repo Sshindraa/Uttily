@@ -25,6 +25,25 @@ Des écarts restent néanmoins aux frontières du système. Ils ne permettent pa
 encore de considérer le traitement des refunds split comme prêt pour une
 activation LIVE.
 
+## Suivi technique
+
+Les garde-fous sans décision métier ont depuis été renforcés :
+
+- `REFUND-AUDIT-01` : le read model client tient compte des snapshots booking
+  et paiement, désactive l'action et expose `SPLIT_REFUND_UNRESOLVED` à l'interface ;
+- `REFUND-AUDIT-03` : le consumer refuse les snapshots split sur les chemins
+  annulation, amendement et compensation avant tout appel provider ;
+- `REFUND-AUDIT-04` : le webhook tagué exige le lien booking/paiement et refuse
+  les snapshots split avec l'invariant fermé existant ;
+- `REFUND-AUDIT-05` : la trace d'annulation recopie désormais le snapshot
+  économique lorsqu'il existe, sans activer la politique split ;
+- `REFUND-AUDIT-06` : le preview compare maintenant les snapshots booking et
+  paiement et reste fail-closed dès que l'un des deux est présent.
+
+`REFUND-AUDIT-02` reste volontairement ouvert : le calcul d'annulation après
+amendement et la stratégie multi-origines nécessitent toujours une décision
+Finance/Juridique.
+
 ## Écarts identifiés
 
 | ID | Priorité | Constat | Impact | Correction proposée |

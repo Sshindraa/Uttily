@@ -17,6 +17,8 @@ function createMockDb(bookingOverrides: Record<string, unknown> = {}): DbExecuto
     paymentId: '00000000-0000-0000-0000-000000000003',
     paymentAmountMinor: 10000,
     paymentCommissionMinor: 1000,
+    paymentMarketplaceFeeSnapshot: null,
+    marketplaceFeeSnapshot: null,
     locationTimeZone: 'Europe/Paris',
     ...bookingOverrides,
   };
@@ -87,6 +89,20 @@ describe('Chantier 12 — Domaine Annulations & Remboursements V2', () => {
     expect(result.finalCommissionMinor).toBe(0);
     expect(result.finalMerchantRevenueMinor).toBe(0);
     expect(result.explanationCode).toBe('FULL_REFUND_MERCHANT');
+  });
+
+  it('bloque le preview si le snapshot marketplace est présent sur le paiement', async () => {
+    const result = await previewBookingCancellation(
+      createMockDb({
+        paymentMarketplaceFeeSnapshot: { ruleVersion: 'split-13-7-v1' },
+      }),
+      '00000000-0000-0000-0000-000000000001',
+      '00000000-0000-0000-0000-000000000002',
+    );
+
+    expect(result.allowed).toBe(false);
+    expect(result.explanationCode).toBe('SPLIT_REFUND_UNRESOLVED');
+    expect(result.refundAmountMinor).toBe(0);
   });
 
   it('applique la politique FLEXIBLE correctement (100% si >= 24h, 0% si < 24h)', async () => {

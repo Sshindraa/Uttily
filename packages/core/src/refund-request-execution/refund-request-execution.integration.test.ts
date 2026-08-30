@@ -139,8 +139,25 @@ let ctx: IntegrationTestContext | null = null;
 let db: DatabaseClient | null = null;
 let rawSql: postgres.Sql | null = null;
 
-async function seedFixture(environment: StripeEnvironment = 'TEST'): Promise<RefundFixture> {
+async function seedFixture(
+  environment: StripeEnvironment = 'TEST',
+  options: { split?: boolean } = {},
+): Promise<RefundFixture> {
   if (!rawSql) throw new Error('PostgreSQL non initialisé');
+  const marketplaceFeeSnapshot = options.split
+    ? {
+        ruleVersion: 'split-13-7-v1',
+        roundingRule: 'HALF_UP_PER_COMPONENT',
+        marketplaceFeeBaseAmountMinor: 10000,
+        merchantRateBps: 1300,
+        merchantFeeAmountMinor: 1300,
+        customerRateBps: 700,
+        customerServiceFeeAmountMinor: 700,
+        customerTotalAmountMinor: 10700,
+        merchantNetAmountMinor: 8700,
+        platformApplicationFeeAmountMinor: 2000,
+      }
+    : null;
   const suffix = Math.random().toString(36).slice(2, 10);
   const org = await rawSql`
     INSERT INTO organizations (legal_name, slug)
@@ -185,12 +202,13 @@ async function seedFixture(environment: StripeEnvironment = 'TEST'): Promise<Ref
       amount_minor, currency, tax_status, tax_amount_minor,
       commission_amount_minor, financial_terms_version, legal_terms_version,
       terms_acceptance_snapshot, connected_account_id, charge_model,
-      settlement_merchant_mode, environment, succeeded_at
+      settlement_merchant_mode, environment, succeeded_at, marketplace_fee_snapshot
     ) VALUES (
-      ${org.id}, ${draft.id}, ${user.id}, 'SUCCEEDED', 10000, 'EUR',
-      'NOT_APPLICABLE', 0, 500, 'v1', 'v1',
+      ${org.id}, ${draft.id}, ${user.id}, 'SUCCEEDED', ${marketplaceFeeSnapshot ? 10700 : 10000}, 'EUR',
+      'NOT_APPLICABLE', 0, ${marketplaceFeeSnapshot ? 2000 : 500}, 'v1', 'v1',
       ${rawSql.json({ version: 'v1', user_id: user.id, accepted_at: '2026-01-01T00:00:00Z' })},
-      'acct_b2b2a', 'DESTINATION', 'CONNECTED_ACCOUNT', ${environment}::payment_environment, now()
+      'acct_b2b2a', 'DESTINATION', 'CONNECTED_ACCOUNT', ${environment}::payment_environment, now(),
+      ${marketplaceFeeSnapshot ? rawSql.json(marketplaceFeeSnapshot) : null}
     ) RETURNING id
   `.then((rows) => rows[0]!);
   const booking = await rawSql`
@@ -659,6 +677,26 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
     );
     expect(result).toMatchObject({ claimedCount: 1, submittedCount: 1 });
     expect((await state(fixture)).outbox.status).toBe('PROCESSED');
+  });
+
+  it('refuse un remboursement split avant tout appel provider', async () => {
+    if (!rawSql || !db) throw new Error('DB non initialisée');
+    const fixture = await seedFixture('TEST', { split: true });
+    const provider = new RecordingRefundProvider('TEST');
+
+    const result = await executeRefundRequestBatch(
+      { db, provider },
+      { environment: 'TEST', batchLimit: 1 },
+    );
+
+    expect(result).toMatchObject({ claimedCount: 1, submittedCount: 0, failedCount: 1 });
+    expect(result.anomalies[0]?.code).toBe('SPLIT_REFUND_UNRESOLVED');
+    expect(provider.calls).toHaveLength(0);
+    expect((await state(fixture)).refund).toMatchObject({
+      status: 'FAILED_REQUIRES_MANUAL_ACTION',
+      failure_code: 'SPLIT_REFUND_UNRESOLVED',
+    });
+    expect((await state(fixture)).outbox.status).toBe('FAILED');
   });
 
   it('exécute un remboursement issu d’une annulation (BOOKING_CANCELLATION)', async () => {

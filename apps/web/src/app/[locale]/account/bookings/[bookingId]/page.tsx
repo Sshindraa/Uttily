@@ -544,7 +544,9 @@ export default async function CustomerBookingDetailPage({
               </div>
             ) : (
               <p style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.85rem', margin: 0 }}>
-                Cette réservation n’est plus modifiable ou annulable en ligne.
+                {booking.cancellation.reasonCode === 'SPLIT_REFUND_UNRESOLVED'
+                  ? 'L’annulation en ligne est temporairement indisponible pour cette réservation. Contactez le loueur pour son traitement.'
+                  : 'Cette réservation n’est plus modifiable ou annulable en ligne.'}
               </p>
             )}
 
