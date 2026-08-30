@@ -48,10 +48,7 @@ export function PhotoCoachLauncher({
   const [activeSlot, setActiveSlot] = useState<PhotoSlotType | null>(null);
 
   const getSlotPhoto = (type: PhotoSlotType): UnifiedBikePhotoItem | undefined => {
-    if (type === 'HERO_PROFILE') return photoItems[0];
-    if (type === 'THREE_QUARTER_FRONT' || type === 'THREE_QUARTER') return photoItems[1];
-    if (type === 'SECONDARY_VIEW' || type === 'SIGNATURE_DETAIL') return photoItems[2];
-    return undefined;
+    return photoItems.find((photo) => photo.slotKey === type);
   };
 
   return (

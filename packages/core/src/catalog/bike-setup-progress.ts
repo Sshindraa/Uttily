@@ -27,7 +27,7 @@ export function resolveBikeSetupProgress(bike: UnifiedBike): BikeSetupProgress {
     completedSteps.push('IDENTITY');
   }
 
-  // 2. Photos complètes (>= 3 photos distinctes)
+  // 2. Photos complètes (slots canoniques pour un vélo + checksums distincts)
   const isPhotosComplete = bike.photos.isComplete;
   if (isPhotosComplete) {
     completedSteps.push('PHOTOS');
