@@ -52,7 +52,7 @@ pnpm test             # boucle rapide de développement, sans PostgreSQL ni test
 pnpm check:fast       # garde-fous locaux + tests rapides + types
 pnpm test:full        # toutes les suites Vitest des workspaces ; validation finale
 pnpm build            # builder tous les packages et apps
-pnpm dev              # démarrer apps/web en développement
+pnpm dev              # démarrer Web seul (base déjà migrée requise)
 pnpm dev:full         # démarrer PostgreSQL, migrer, puis Web + worker fake
 pnpm db:seed          # appliquer la fixture locale/dev-only idempotente (brouillon)
 pnpm db:seed:browser  # fixture publique synthétique réservée à la CI E2E
@@ -63,6 +63,11 @@ pnpm test:recovery     # tests ciblés du drill et des artefacts 20-B
 pnpm test:scripts      # tester le garde-fou des scripts déclarés
 pnpm check:scripts     # vérifier les chemins utilisés par les scripts workspace
 ```
+
+`pnpm dev` démarre uniquement Next.js et n'applique aucune migration PostgreSQL.
+Pour les parcours authentifiés et les écrans qui lisent la base, utiliser
+`pnpm dev:full` afin de démarrer PostgreSQL et d'appliquer automatiquement toutes
+les migrations avant le Web.
 
 Le restore drill exige explicitement `UTTILY_RECOVERY_DRILL=1`, refuse
 `NODE_ENV=production` et n'accepte qu'une URL PostgreSQL locale. Il crée puis

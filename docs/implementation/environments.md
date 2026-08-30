@@ -8,6 +8,9 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
 
 - Runtime : Node.js 24 LTS (voir `.nvmrc`).
 - Package manager : pnpm (voir `package.json`).
+- `pnpm dev` démarre uniquement Next.js et suppose que la base locale est déjà
+  disponible et à jour ; il n'applique aucune migration. Pour les routes qui
+  lisent ou modifient PostgreSQL, le workflow recommandé est `pnpm dev:full`.
 - Workflow canonique : `pnpm dev:full` démarre le service `postgres` de Docker
   Compose avec le fichier `docker-compose.yml` racine, attend que le healthcheck
   `pg_isready` confirme que PostgreSQL est prêt, applique automatiquement les
