@@ -96,7 +96,7 @@ export default async function UnifiedBikePage({
             <span style={{ color: bike.photos.isComplete ? '#10b981' : '#f59e0b' }}>
               {bike.photos.isComplete ? '✓' : '○'}
             </span>
-            <span>{bike.photos.count}/3 photos valides</span>
+            <span>{bike.photos.count}/3 vues requises</span>
           </div>
 
           <span className={styles.summaryDivider}>|</span>

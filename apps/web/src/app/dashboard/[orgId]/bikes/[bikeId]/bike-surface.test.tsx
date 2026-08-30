@@ -158,4 +158,47 @@ describe('Fiche vélo — surface loueur', () => {
     expect(html).toContain(formattedPrice);
     expect(html).not.toContain('€');
   });
+
+  it('associe les photos aux slots canoniques plutôt qu’à leur ordre d’insertion', async () => {
+    const bike = buildBike();
+    bike.product.categorySlug = 'bike';
+    bike.photos = {
+      count: 2,
+      minRequired: 3,
+      isComplete: false,
+      items: [
+        {
+          id: 'photo-secondary',
+          publicId: 'secondary-public',
+          storageKey: 'secondary-storage',
+          sortOrder: 0,
+          slotKey: 'SECONDARY_VIEW',
+          fileState: 'AVAILABLE',
+          byteSize: 1024,
+          mimeType: 'image/jpeg',
+          checksumSha256: 'secondary-sha',
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+        },
+        {
+          id: 'photo-hero',
+          publicId: 'hero-public',
+          storageKey: 'hero-storage',
+          sortOrder: 1,
+          slotKey: 'HERO_PROFILE',
+          fileState: 'AVAILABLE',
+          byteSize: 1024,
+          mimeType: 'image/jpeg',
+          checksumSha256: 'hero-sha',
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+        },
+      ],
+    };
+
+    const html = await renderBikePage(bike);
+    const heroIndex = html.indexOf('/api/public/product-photos/hero-public');
+    const secondaryIndex = html.indexOf('/api/public/product-photos/secondary-public');
+
+    expect(heroIndex).toBeGreaterThanOrEqual(0);
+    expect(secondaryIndex).toBeGreaterThan(heroIndex);
+  });
 });

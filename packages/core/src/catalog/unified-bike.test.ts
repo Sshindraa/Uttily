@@ -41,7 +41,7 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
                   organizationId: 'org-1',
                   categoryId: 'cat-1',
                   categoryName: 'Vélo Urbain',
-                  categorySlug: 'velo-urbain',
+                  categorySlug: 'bike',
                   name: 'Canyon Roadlite',
                   slug: 'canyon-roadlite',
                   description: 'Superbe vélo de ville léger et rapide.',
@@ -223,6 +223,7 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
                   description: 'Description vélo',
                   publicationStatus: 'PUBLISHED',
                   categoryName: 'Urbain',
+                  categorySlug: 'bike',
                   createdAt: new Date(),
                 },
               ]),
@@ -255,9 +256,27 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
             if (selectIndex === 2) {
               return {
                 orderBy: vi.fn().mockResolvedValue([
-                  { productId: 'p-1', publicId: 'pub-1', checksumSha256: 's1', sortOrder: 0 },
-                  { productId: 'p-1', publicId: 'pub-2', checksumSha256: 's2', sortOrder: 1 },
-                  { productId: 'p-1', publicId: 'pub-3', checksumSha256: 's3', sortOrder: 2 },
+                  {
+                    productId: 'p-1',
+                    publicId: 'pub-1',
+                    checksumSha256: 's1',
+                    slotType: 'HERO_PROFILE',
+                    sortOrder: 0,
+                  },
+                  {
+                    productId: 'p-1',
+                    publicId: 'pub-2',
+                    checksumSha256: 's2',
+                    slotType: 'THREE_QUARTER_FRONT',
+                    sortOrder: 1,
+                  },
+                  {
+                    productId: 'p-1',
+                    publicId: 'pub-3',
+                    checksumSha256: 's3',
+                    slotType: 'SECONDARY_VIEW',
+                    sortOrder: 2,
+                  },
                 ]),
               };
             }
@@ -290,5 +309,7 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
     expect(bikes[0]?.statusSummary).toBe('ONLINE_AVAILABLE');
     expect(bikes[0]?.priceAmountMinor).toBe(2000);
     expect(bikes[0]?.activeInventoryCount).toBe(1);
+    expect(bikes[0]?.photoCount).toBe(3);
+    expect(bikes[0]?.hasRequiredPhotos).toBe(true);
   });
 });

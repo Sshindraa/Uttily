@@ -26,7 +26,7 @@ export function BikePhotosCard({
             color: photos.isComplete ? '#059669' : '#d97706',
           }}
         >
-          {photos.isComplete ? '✓ 3/3 photos conformes' : `${photos.count}/3 photos`}
+          {photos.isComplete ? '✓ 3/3 vues conformes' : `${photos.count}/3 vues requises`}
         </div>
       </div>
 

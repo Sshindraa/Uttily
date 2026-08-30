@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
+import { REQUIRED_BIKE_PHOTO_SLOTS } from '@uttily/contracts';
 import {
   categories,
   inventoryItems,
@@ -9,6 +10,7 @@ import {
   products,
 } from '@uttily/database';
 import { getVariantPricingSummary, type PricingPlanSummary } from '../pricing-plans/management';
+import { missingRequiredBikePhotoSlots } from '../photos/photo-publication-rules';
 import { collectPublicationFailures, collectPublicationFailuresBatch } from './products';
 
 export type UnifiedBikeStatusSummary =
@@ -60,6 +62,7 @@ export interface UnifiedBike {
     currency: string;
   };
   photos: {
+    /** Completed photo requirements; canonical slot coverage for bikes. */
     count: number;
     minRequired: number; // 3
     isComplete: boolean;
@@ -228,7 +231,15 @@ export async function getUnifiedBike(
   const uniqueChecksumCount = new Set(
     validPhotos.map((p) => p.checksumSha256).filter((c) => c.length > 0),
   ).size;
-  const hasPhotos = uniqueChecksumCount >= 3;
+  const missingRequiredSlots = missingRequiredBikePhotoSlots(
+    prodRow.categorySlug,
+    new Set(validPhotos.map((p) => p.slotKey)),
+  );
+  const completedRequiredPhotoCount =
+    prodRow.categorySlug === 'bike'
+      ? REQUIRED_BIKE_PHOTO_SLOTS.length - missingRequiredSlots.length
+      : Math.min(uniqueChecksumCount, 3);
+  const hasPhotos = uniqueChecksumCount >= 3 && missingRequiredSlots.length === 0;
 
   // 4. Charge la tarification de la variante
   const pricingOverview = await getVariantPricingSummary(db, organizationId, targetVariant.id);
@@ -302,7 +313,7 @@ export async function getUnifiedBike(
       currency: targetVariant.currency,
     },
     photos: {
-      count: uniqueChecksumCount,
+      count: completedRequiredPhotoCount,
       minRequired: 3,
       isComplete: hasPhotos,
       items: validPhotos,
@@ -350,6 +361,7 @@ export async function listUnifiedBikes(
       description: products.description,
       publicationStatus: products.publicationStatus,
       categoryName: categories.name,
+      categorySlug: categories.slug,
       createdAt: products.createdAt,
     })
     .from(products)
@@ -381,6 +393,7 @@ export async function listUnifiedBikes(
       productId: productPhotos.productId,
       publicId: productPhotos.publicId,
       checksumSha256: productPhotos.checksumSha256,
+      slotType: productPhotos.slotType,
       sortOrder: productPhotos.sortOrder,
     })
     .from(productPhotos)
@@ -442,8 +455,19 @@ export async function listUnifiedBikes(
 
     const prodPhotos = photoRows.filter((p) => p.productId === prod.id);
     const uniqueChecksums = new Set(prodPhotos.map((p) => p.checksumSha256).filter(Boolean));
-    const hasRequiredPhotos = uniqueChecksums.size >= 3;
-    const heroPhotoPublicId = prodPhotos[0]?.publicId ?? null;
+    const missingRequiredSlots = missingRequiredBikePhotoSlots(
+      prod.categorySlug,
+      new Set(prodPhotos.map((p) => p.slotType)),
+    );
+    const completedRequiredPhotoCount =
+      prod.categorySlug === 'bike'
+        ? REQUIRED_BIKE_PHOTO_SLOTS.length - missingRequiredSlots.length
+        : Math.min(uniqueChecksums.size, 3);
+    const hasRequiredPhotos = uniqueChecksums.size >= 3 && missingRequiredSlots.length === 0;
+    const heroPhotoPublicId =
+      prodPhotos.find((photo) => photo.slotType === 'HERO_PROFILE')?.publicId ??
+      prodPhotos[0]?.publicId ??
+      null;
 
     const activePlan = activePlanRows.find((p) => p.productVariantId === primaryVariant.id);
     const priceAmountMinor = activePlan ? Number(activePlan.priceAmountMinor) : null;
@@ -475,7 +499,7 @@ export async function listUnifiedBikes(
       variantName: primaryVariant.name,
       variantId: primaryVariant.id,
       publicationStatus: prod.publicationStatus as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
-      photoCount: uniqueChecksums.size,
+      photoCount: completedRequiredPhotoCount,
       hasRequiredPhotos,
       heroPhotoPublicId,
       priceAmountMinor,

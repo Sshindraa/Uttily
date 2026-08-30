@@ -170,7 +170,7 @@ export default async function BikesListPage({
                             : 'var(--ut-color-warning)',
                         }}
                       >
-                        {bike.hasRequiredPhotos ? '✓' : '○'} {bike.photoCount}/3 validées
+                        {bike.hasRequiredPhotos ? '✓' : '○'} {bike.photoCount}/3 vues requises
                       </strong>
                     </div>
 
