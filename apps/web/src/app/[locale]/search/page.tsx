@@ -39,7 +39,11 @@ export default async function PublicSearchPage({
       if (error instanceof PublicSearchError) {
         searchError = getPublicErrorMessage(error.code, locale);
       } else {
-        throw error;
+        // Keep the public page renderable when the data source is temporarily
+        // unavailable. The API exposes the same closed SEARCH_UNAVAILABLE
+        // code, so the page must not turn that expected failure into a Next
+        // error boundary.
+        searchError = getPublicErrorMessage('SEARCH_UNAVAILABLE', locale);
       }
     }
   }
