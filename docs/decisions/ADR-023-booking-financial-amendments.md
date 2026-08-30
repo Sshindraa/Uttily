@@ -271,8 +271,8 @@ READY_TO_APPLY → FAILED
 
 La migration 0037 (`G7M-C4-S`) rend `READY_TO_APPLY → EXPIRED` explicite dans
 le trigger PostgreSQL tout en conservant l'immutabilité des états terminaux.
-Le code d'expiration C4-A qui décidera quand effectuer cette transition reste
-à implémenter.
+Le code d'expiration C4-A qui décide quand effectuer cette transition est
+implémenté dans `expireSupplementAmendmentsBatch`.
 
 **Par type** :
 

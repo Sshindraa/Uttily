@@ -553,17 +553,14 @@ Aucun SQL n'est redige dans ce cycle.
 
 ### Correction de la migration 0031 en place vs 0032 additive
 
-La migration 0031
-(`packages/database/drizzle/0031_lot7_public_search_foundations.sql`) n'a
-jamais ete commitée, partagee ou deployee. Elle est encore untracked dans le
-worktree.
+À la date de rédaction, la migration 0031
+(`packages/database/drizzle/0031_lot7_public_search_foundations.sql`) n'était
+pas encore commitée, partagée ou déployée.
 
-Recommandation : corriger la migration 0031 en place avant son premier commit,
-plutot que creer une migration additive 0032. Justification : 0031 n'etant pas
-commitée/partagee/deployee, la corriger n'invalide aucun environnement ; un
-0032 additive creerait une dette schematique (colonnes incompletes commitees
-puis patchees) pour rien. La correction de 0031 reste une decision de G7C-R3
-(prochain cycle), pas de ce cycle.
+Recommandation historique : corriger la migration 0031 en place plutôt que
+créer une migration additive 0032. Cette recommandation a été appliquée dans
+G7C-R3 ; la migration est désormais suivie, alignée et validée. La correction
+de 0031 ne constitue donc plus une décision ou une action restante.
 
 Les corrections necessaires pour 0031 incluent : viewport/bbox, countryCode,
 type de lieu, et un modele de traductions des destinations par locale (pas de

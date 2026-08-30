@@ -50,7 +50,7 @@ pnpm format           # formater
 pnpm typecheck        # vérifier les types sur tout le workspace
 pnpm test             # boucle rapide de développement, sans PostgreSQL ni tests lourds
 pnpm check:fast       # garde-fous locaux + tests rapides + types
-pnpm test:full        # toutes les suites ; réservé à la CI ou à une validation finale
+pnpm test:full        # toutes les suites Vitest des workspaces ; validation finale
 pnpm build            # builder tous les packages et apps
 pnpm dev              # démarrer apps/web en développement
 pnpm dev:full         # démarrer PostgreSQL, migrer, puis Web + worker fake
@@ -68,8 +68,11 @@ base d'environnement partagé ou réelle.
 
 La boucle normale de développement est `pnpm test` ou `pnpm check:fast`.
 Elle exclut explicitement les intégrations PostgreSQL, les parcours E2E et les
-tests de reproductibilité PDF. Ces suites restent obligatoires dans la matrice
-CI et sont disponibles localement avec `pnpm test:full`. Une modification
+tests de reproductibilité PDF. Les suites Vitest complètes sont disponibles
+localement avec `pnpm test:full`, mais les parcours spécialisés restent séparés
+(`pnpm --filter @uttily/web test:browser`, `pnpm test:recovery` et
+`pnpm --filter @uttily/worker smoke:verify`). Ces contrôles restent obligatoires
+dans la matrice CI ou la validation finale selon leur prérequis. Une modification
 ciblée peut aussi être validée directement avec le script `test:fast` du package
 concerné.
 

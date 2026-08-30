@@ -440,13 +440,10 @@ modifiées dans ce cycle :
 
 ## Impact sur la migration 0031
 
-La migration 0031 (`packages/database/drizzle/0031_lot7_public_search_foundations.sql`)
-n'a jamais été commitée, partagée ou déployée. Elle est encore untracked dans le
-worktree (`git status` : `??`).
+À la date de rédaction de cet arbitrage, la migration 0031
+(`packages/database/drizzle/0031_lot7_public_search_foundations.sql`) n'était
+pas encore commitée. La recommandation de la corriger en place plutôt que de
+créer une migration additive 0032 a été appliquée dans G7C-R3.
 
-Recommandation : corriger la migration 0031 en place avant son premier commit,
-plutôt que créer une migration additive 0032. Justification : 0031 n'étant pas
-commitée/partagée/déployée, la corriger n'invalide aucun environnement ; un
-0032 additive créerait une dette schématique (colonnes incomplètes commitées
-puis patchées) pour rien. La correction de 0031 reste une décision de G7C-R3
-(prochain cycle), pas de ce cycle — ce cycle ne modifie aucun SQL.
+La migration 0031 est désormais suivie, alignée et validée. Ce passage est
+conservé comme justification historique ; il ne décrit pas un travail restant.

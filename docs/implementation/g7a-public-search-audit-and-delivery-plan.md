@@ -1,9 +1,12 @@
 # G7A — Audit permanent et plan de livraison : recherche publique et tableau de bord
 
 - **Date** : 2026-08-06 (révisé 2026-08-07)
-- **Phase / lot** : 11 / Lot 7 — G7B-R3 : arbitrage produit et ADR-018 ; G7C-R3 suivant (non démarré)
-- **Nature** : audit vérifié et plan d'architecture/livraison accepté ; G7C-R3 : migration 0031 untracked/non commitée, sera révisée
-- **ADR associé** : [ADR-017](../decisions/ADR-017-public-search-destination-and-product-measurement.md) — `Accepted — réserves non bloquantes listées` (révisé 2026-08-07) ; [ADR-018](../decisions/ADR-018-flexible-rental-duration-pricing-and-modification.md) — `Accepted — conception approuvée, implémentation non démarrée`
+- **Phase / lot** : 11 / Lot 7 — G7B-R3 : arbitrage produit et ADR-018 ; G7C-R3 livré depuis ce rapport
+- **Nature** : rapport historique d'audit et plan d'architecture/livraison accepté ; son état courant doit être lu dans les ADR et le contexte agent
+- **ADR associé** : [ADR-017](../decisions/ADR-017-public-search-destination-and-product-measurement.md) — `Accepted — réserves non bloquantes listées` (révisé 2026-08-07) ; [ADR-018](../decisions/ADR-018-flexible-rental-duration-pricing-and-modification.md) — conception et implémentation livrées, réserves juridiques et paiement conservées
+
+> **Document historique** : ce rapport conserve l'état observé les 6 et 7 août
+> 2026. Il ne remplace pas la branche et le commit actuellement checkoutés.
 
 ## 1. Objet et statut
 
@@ -194,8 +197,9 @@ l'agrégation bloquent cette seule activation G7H, pas G7C–G7G.
 
 ## 4. Découpage de livraison révisé (après arbitrage produit 2026-08-07)
 
-> Remplace le découpage antérieur. La migration 0031 est untracked/non
-> commitée et sera révisée en G7C-R3, pas en G7B-R3.
+> Ce découpage est historique : à sa date de rédaction, la migration 0031 était
+> encore untracked/non commitée et devait être révisée en G7C-R3. Cette révision
+> a depuis été livrée ; voir la note d'état en tête du document.
 
 | Groupe | Scope | Dépendances | Hors périmètre |
 | --- | --- | --- | --- |
@@ -218,11 +222,10 @@ paiement/remboursement ; G7D dépend de G7C-R3 et G7P-B ; G7E dépend de
 G7D ; G7F-A dépend de G7C-R3 ; G7F-B dépend de G7F-A ; G7G/G7H dépendent de
 G7B-R3 ; G7I dépend de tous.
 
-G7C-R3 est le prochain groupe. La migration 0031 n'a jamais été commitée,
-partagée ou déployée ; elle est untracked dans le worktree. Elle sera corrigée
-en place en G7C-R3 (viewport/bbox, countryCode, type de lieu, modèle de
-traductions des destinations par locale) plutôt que par une migration
-additive 0032, car aucune dette schématique n'a encore été introduite.
+Au moment de ce rapport, G7C-R3 était le prochain groupe et la migration 0031
+n'était pas encore commitée. G7C-R3 a depuis été livré : la migration 0031 est
+suivie et alignée avec les champs géographiques, les traductions et les règles
+d'activation attendus. Il n'y a pas de migration additive 0032 pour ce sujet.
 
 ## 5. Axes de validation G7I
 

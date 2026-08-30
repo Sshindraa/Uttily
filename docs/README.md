@@ -9,6 +9,7 @@
 | [Réservation & disponibilité](architecture/booking-and-availability.md) | Règles de concurrence, holds et états. |
 | [Modèle de données](architecture/data-model.md) | Entités métier et responsabilités. |
 | [Contexte agent](implementation/agent-context.md) | Brief complet pour commencer à implémenter. |
+| [Roadmap remise à niveau et nettoyage](implementation/roadmap-remise-a-niveau-nettoyage.md) | Plan priorisé de cohérence, remise à niveau, nettoyage et optimisation. |
 | [Backlog](implementation/backlog.md) | Ordre des lots et critères d'acceptation. |
 | [Invariants métier](implementation/domain-invariants.md) | Règles qui ne doivent jamais être violées. |
 | [Parcours utilisateurs](implementation/user-flows.md) | Comportements attendus côté client, loueur et administration. |

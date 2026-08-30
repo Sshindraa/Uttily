@@ -110,7 +110,9 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
   garde-fous locaux et le typecheck. `pnpm test:postgres` exige PostgreSQL
   local joignable et exécute les suites Database sans parallélisme entre
   fichiers, afin d'éviter la contention entre bases de test. La validation
-  exhaustive reste `pnpm test:full` et la matrice CI.
+  exhaustive combine `pnpm test:full` avec les suites spécialisées
+  `pnpm --filter @uttily/web test:browser`, `pnpm test:recovery` et
+  `pnpm --filter @uttily/worker smoke:verify`, ainsi que la matrice CI.
 - Le fichier `.env` racine reste destiné aux commandes locales exécutées hors
   orchestration. Pour `dev:full`, les valeurs de l'environnement enfant sont
   imposées par le workflow, indépendamment de ces fichiers, notamment les URLs
