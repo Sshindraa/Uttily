@@ -9,13 +9,15 @@ import {
 } from '@uttily/core';
 import { Card, Badge, LinkButton, Icon, PageHeader } from '@uttily/ui';
 import type { BadgeTone } from '@uttily/ui';
+import { getAccountCopy, type AccountCopy } from '@/lib/account-copy';
+import { getIntlLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
 
-function formatAmount(minor: number, currency: string): string {
+function formatAmount(minor: number, currency: string, locale: string): string {
   const value = minor / 100;
   try {
-    return new Intl.NumberFormat('fr-FR', {
+    return new Intl.NumberFormat(getIntlLocale(locale), {
       style: 'currency',
       currency,
     }).format(value);
@@ -24,8 +26,8 @@ function formatAmount(minor: number, currency: string): string {
   }
 }
 
-function formatDateRange(start: Date, end: Date, timeZone: string): string {
-  const formatter = new Intl.DateTimeFormat('fr-FR', {
+function formatDateRange(start: Date, end: Date, timeZone: string, locale: string): string {
+  const formatter = new Intl.DateTimeFormat(getIntlLocale(locale), {
     day: 'numeric',
     month: 'short',
     timeZone,
@@ -33,26 +35,29 @@ function formatDateRange(start: Date, end: Date, timeZone: string): string {
   return `${formatter.format(new Date(start))} → ${formatter.format(new Date(end))}`;
 }
 
-function getStatusBadgeProps(status: CustomerBookingStatus): { label: string; tone: BadgeTone } {
+function getStatusBadgeProps(
+  status: CustomerBookingStatus,
+  copy: AccountCopy,
+): { label: string; tone: BadgeTone } {
   switch (status) {
     case 'CONFIRMED':
-      return { label: 'Confirmée', tone: 'success' };
+      return { label: copy.statusLabels.CONFIRMED, tone: 'success' };
     case 'READY_FOR_PICKUP':
-      return { label: 'Votre équipement est prêt', tone: 'success' };
+      return { label: copy.statusLabels.READY_FOR_PICKUP, tone: 'success' };
     case 'ACTIVE':
-      return { label: 'En cours', tone: 'info' };
+      return { label: copy.statusLabels.ACTIVE, tone: 'info' };
     case 'COMPLETED':
-      return { label: 'Terminée', tone: 'neutral' };
+      return { label: copy.statusLabels.COMPLETED, tone: 'neutral' };
     case 'CANCELLED_REFUND_PENDING':
-      return { label: 'Annulée · Remboursement en cours', tone: 'warning' };
+      return { label: copy.statusLabels.CANCELLED_REFUND_PENDING, tone: 'warning' };
     case 'CANCELLED_REFUNDED':
-      return { label: 'Annulée · Remboursée', tone: 'neutral' };
+      return { label: copy.statusLabels.CANCELLED_REFUNDED, tone: 'neutral' };
     case 'CANCELLED_NO_REFUND':
-      return { label: 'Annulée', tone: 'neutral' };
+      return { label: copy.statusLabels.CANCELLED_NO_REFUND, tone: 'neutral' };
     case 'CANCELLED_ACTION_REQUIRED':
-      return { label: 'Annulée · Action requise', tone: 'danger' };
+      return { label: copy.statusLabels.CANCELLED_ACTION_REQUIRED, tone: 'danger' };
     default:
-      return { label: 'Confirmée', tone: 'success' };
+      return { label: copy.detail.statusBanner.unavailableTitle, tone: 'danger' };
   }
 }
 
@@ -64,23 +69,24 @@ export default async function CustomerBookingsPage({
   const { locale } = await params;
   const user = await getAuthenticatedUser();
   if (!user) {
-    redirect('/sign-in');
+    redirect(`/sign-in?redirect_url=${encodeURIComponent(`/${locale}/account/bookings`)}`);
   }
 
   const db = getDb();
   const { upcoming, active, past } = await listCustomerBookings(db, user.id);
+  const copy = getAccountCopy(locale);
 
   const isEmpty = upcoming.length === 0 && active.length === 0 && past.length === 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <PageHeader
-        eyebrow="Espace personnel"
-        title="Mes locations"
-        description="Retrouvez l’ensemble de vos réservations et gérez vos trajets."
+        eyebrow={copy.bookings.eyebrow}
+        title={copy.bookings.title}
+        description={copy.bookings.description}
         actions={
           <LinkButton href={`/${locale}/search`} variant="secondary" size="md">
-            Rechercher un équipement <Icon name="search" size={17} />
+            {copy.bookings.search} <Icon name="search" size={17} />
           </LinkButton>
         }
       />
@@ -105,13 +111,13 @@ export default async function CustomerBookingsPage({
               color: 'var(--ut-color-ink-strong)',
             }}
           >
-            Aucune location pour le moment
+            {copy.bookings.emptyTitle}
           </h2>
           <p style={{ color: 'var(--ut-color-ink-muted)', margin: 0, maxWidth: '24rem' }}>
-            Trouvez votre prochain équipement près de chez vous en quelques clics.
+            {copy.bookings.emptyDescription}
           </p>
           <LinkButton href={`/${locale}/search`} variant="primary">
-            Rechercher un équipement
+            {copy.bookings.search}
           </LinkButton>
         </Card>
       ) : (
@@ -130,7 +136,7 @@ export default async function CustomerBookingsPage({
                   color: 'var(--ut-color-ink-strong)',
                 }}
               >
-                À venir ({upcoming.length})
+                {copy.bookings.upcoming} ({upcoming.length})
               </h2>
               <div
                 style={{
@@ -140,7 +146,7 @@ export default async function CustomerBookingsPage({
                 }}
               >
                 {upcoming.map((b) => (
-                  <BookingCard key={b.id} booking={b} locale={locale} />
+                  <BookingCard key={b.id} booking={b} locale={locale} copy={copy} />
                 ))}
               </div>
             </section>
@@ -160,7 +166,7 @@ export default async function CustomerBookingsPage({
                   color: 'var(--ut-color-ink-strong)',
                 }}
               >
-                En cours ({active.length})
+                {copy.bookings.active} ({active.length})
               </h2>
               <div
                 style={{
@@ -170,7 +176,7 @@ export default async function CustomerBookingsPage({
                 }}
               >
                 {active.map((b) => (
-                  <BookingCard key={b.id} booking={b} locale={locale} />
+                  <BookingCard key={b.id} booking={b} locale={locale} copy={copy} />
                 ))}
               </div>
             </section>
@@ -190,7 +196,7 @@ export default async function CustomerBookingsPage({
                   color: 'var(--ut-color-ink-strong)',
                 }}
               >
-                Historique ({past.length})
+                {copy.bookings.past} ({past.length})
               </h2>
               <div
                 style={{
@@ -200,7 +206,7 @@ export default async function CustomerBookingsPage({
                 }}
               >
                 {past.map((b) => (
-                  <BookingCard key={b.id} booking={b} locale={locale} />
+                  <BookingCard key={b.id} booking={b} locale={locale} copy={copy} />
                 ))}
               </div>
             </section>
@@ -214,11 +220,13 @@ export default async function CustomerBookingsPage({
 function BookingCard({
   booking,
   locale,
+  copy,
 }: {
   booking: CustomerBookingSummary;
   locale: string;
+  copy: AccountCopy;
 }): React.ReactElement {
-  const badgeProps = getStatusBadgeProps(booking.status);
+  const badgeProps = getStatusBadgeProps(booking.status, copy);
 
   return (
     <Card
@@ -265,7 +273,7 @@ function BookingCard({
             {booking.productName}
           </h3>
           <p style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)', margin: 0 }}>
-            Loueur : <strong>{booking.organizationName}</strong>
+            {copy.bookings.renter(booking.organizationName)}
           </p>
         </div>
         <Badge tone={badgeProps.tone}>{badgeProps.label}</Badge>
@@ -291,7 +299,7 @@ function BookingCard({
           }}
         >
           <span>📅</span>
-          <span>{formatDateRange(booking.startAt, booking.endAt, booking.timeZone)}</span>
+          <span>{formatDateRange(booking.startAt, booking.endAt, booking.timeZone, locale)}</span>
         </div>
         <div
           style={{
@@ -317,7 +325,7 @@ function BookingCard({
         }}
       >
         <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--ut-color-ink-strong)' }}>
-          {formatAmount(booking.totalAmountMinor, booking.currency)}
+          {formatAmount(booking.totalAmountMinor, booking.currency, locale)}
         </span>
         <Link
           href={`/${locale}/account/bookings/${booking.id}`}
@@ -328,7 +336,7 @@ function BookingCard({
             textDecoration: 'none',
           }}
         >
-          Voir ma location →
+          {copy.bookings.view}
         </Link>
       </div>
     </Card>

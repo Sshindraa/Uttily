@@ -2,7 +2,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getUnifiedBike, listCategories, listLocations } from '@uttily/core';
 import { requireCatalogViewerOf } from '@/lib/catalog-auth';
-import { formatMoneyAmount } from '@/lib/status-presentation';
+import {
+  formatMoneyAmount,
+  getPricingPlanTypeLabel,
+  getPricingPlanUnitLabel,
+} from '@/lib/status-presentation';
 import { BikeIdentityCard } from './components/identity-card';
 import { BikePhotosCard } from './components/photos-card';
 import { BikePricingCard } from './components/pricing-card';
@@ -107,10 +111,10 @@ export default async function UnifiedBikePage({
             </span>
             <span>
               {bike.pricing.isPriced && bike.pricing.activePlan
-                ? `${formatMoneyAmount(
+                ? `${getPricingPlanTypeLabel(bike.pricing.activePlan.planType)} : ${formatMoneyAmount(
                     bike.pricing.activePlan.priceAmountMinor,
                     bike.pricing.activePlan.currency,
-                  )} / jour`
+                  )} ${getPricingPlanUnitLabel(bike.pricing.activePlan.planType)}`
                 : 'Tarif non configuré'}
             </span>
           </div>

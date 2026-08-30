@@ -13,23 +13,6 @@ const DEMO_INVENTORY_SKU = 'KAY-DEV-001';
 const DEMO_PLAN_INTERNAL_LABEL = 'local-demo-seed';
 const LYON_LONGITUDE = 4.8357;
 const LYON_LATITUDE = 45.764;
-const DEMO_PHOTOS = [
-  {
-    storageKey: 'product-photos/dev-kayak-0',
-    sortOrder: 0,
-    checksumSha256: '0'.repeat(64),
-  },
-  {
-    storageKey: 'product-photos/dev-kayak-1',
-    sortOrder: 1,
-    checksumSha256: '1'.repeat(64),
-  },
-  {
-    storageKey: 'product-photos/dev-kayak-2',
-    sortOrder: 2,
-    checksumSha256: '2'.repeat(64),
-  },
-];
 
 export function isLocalSeedEnvironment(environment = process.env) {
   return environment?.UTTILY_LOCAL_DEV === '1' && environment?.NODE_ENV === 'development';
@@ -41,7 +24,7 @@ export function assertLocalSeedEnvironment(environment = process.env) {
   }
 }
 
-function resolveLocalDatabaseUrl() {
+export function resolveLocalDatabaseUrl() {
   const configuredUrl = process.env.DATABASE_URL;
   const databaseUrl = configuredUrl === undefined ? LOCAL_DATABASE_URL : configuredUrl;
 
@@ -326,84 +309,6 @@ async function ensureProduct(tx, organizationId, categoryId) {
   return productId;
 }
 
-function photoMetadataMatches(row, photo) {
-  return (
-    row.content_type === 'image/jpeg' &&
-    Number(row.byte_size) === 102400 &&
-    Number(row.width_px) === 800 &&
-    Number(row.height_px) === 600 &&
-    row.checksum_sha256 === photo.checksumSha256 &&
-    row.deleted_at === null &&
-    row.rejection_reason === null
-  );
-}
-
-async function ensureProductPhoto(tx, organizationId, productId, photo) {
-  const rows = await tx`
-    SELECT
-      "id", "organization_id", "product_id", "content_type", "byte_size",
-      "width_px", "height_px", "checksum_sha256", "sort_order", "file_state",
-      "deleted_at", "rejection_reason"
-    FROM "product_photos"
-    WHERE "storage_key" = ${photo.storageKey}
-    LIMIT 1
-    FOR UPDATE
-  `;
-
-  if (rows.length === 0) {
-    await tx`
-      INSERT INTO "product_photos" (
-        "organization_id", "product_id", "storage_key", "content_type", "byte_size",
-        "width_px", "height_px", "checksum_sha256", "sort_order", "file_state"
-      )
-      VALUES (
-        ${organizationId}, ${productId}, ${photo.storageKey}, 'image/jpeg', 102400,
-        800, 600, ${photo.checksumSha256}, ${photo.sortOrder}, 'AVAILABLE'
-      )
-    `;
-    return;
-  }
-
-  const row = rows[0];
-  if (row.organization_id !== organizationId || row.product_id !== productId) {
-    throw new Error('Une clé photo stable est déjà utilisée par une autre fixture.');
-  }
-
-  if (row.file_state === 'AVAILABLE') {
-    if (!photoMetadataMatches(row, photo)) {
-      throw new Error('Les métadonnées d’une photo stable sont incohérentes.');
-    }
-    if (Number(row.sort_order) !== photo.sortOrder) {
-      await tx`
-        UPDATE "product_photos"
-        SET "sort_order" = ${photo.sortOrder}, "updated_at" = now()
-        WHERE "id" = ${row.id}
-      `;
-    }
-    return;
-  }
-
-  if (row.file_state !== 'PENDING_UPLOAD') {
-    throw new Error('Une photo stable ne peut pas revenir à AVAILABLE.');
-  }
-
-  await tx`
-    UPDATE "product_photos"
-    SET
-      "content_type" = 'image/jpeg',
-      "byte_size" = 102400,
-      "width_px" = 800,
-      "height_px" = 600,
-      "checksum_sha256" = ${photo.checksumSha256},
-      "sort_order" = ${photo.sortOrder},
-      "file_state" = 'AVAILABLE',
-      "rejection_reason" = NULL,
-      "deleted_at" = NULL,
-      "updated_at" = now()
-    WHERE "id" = ${row.id}
-  `;
-}
-
 async function ensureVariant(tx, productId) {
   let rows = await tx`
     SELECT "id"
@@ -643,15 +548,6 @@ async function applyLocalDemoSeed(tx) {
   const categoryId = await ensureCategory(tx);
   const productId = await ensureProduct(tx, organizationId, categoryId);
 
-  for (const photo of DEMO_PHOTOS) {
-    await ensureProductPhoto(tx, organizationId, productId, photo);
-  }
-  await tx`
-    UPDATE "products"
-    SET "publication_status" = 'PUBLISHED', "updated_at" = now()
-    WHERE "id" = ${productId}
-  `;
-
   const variantId = await ensureVariant(tx, productId);
   await ensureInventoryItem(tx, organizationId, variantId, locationId);
   await ensurePricingPlan(tx, organizationId, variantId, locationId);
@@ -681,7 +577,9 @@ function isMainModule() {
 if (isMainModule()) {
   seedLocalDemo()
     .then(() => {
-      console.log('Local demo seed applied: destination=lyon-dev product=kayak-dev');
+      console.log(
+        'Local demo seed applied: destination=lyon-dev product=kayak-dev (draft; upload real photos to publish)',
+      );
     })
     .catch(() => {
       console.error('Local demo seed failed.');

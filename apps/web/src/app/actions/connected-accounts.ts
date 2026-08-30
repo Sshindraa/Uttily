@@ -49,7 +49,8 @@ export async function createConnectedAccountAction(
   requireMembership(membership, ROLE_MANAGERS);
   const environment = resolveStripeEnvironment();
   // P3 : Valider le country code contre une allow-list configurable.
-  // La validation côté client (SUPPORTED_COUNTRIES dans payments-settings-client.tsx)
+  // La validation côté client s’appuie sur la même liste partagée, mais le serveur
+  // conserve la configuration d’environnement comme autorité de sécurité.
   // est contournable ; on valide aussi côté serveur.
   const supportedCountriesRaw = process.env.SUPPORTED_STRIPE_COUNTRIES ?? '';
   const supportedCountries = supportedCountriesRaw

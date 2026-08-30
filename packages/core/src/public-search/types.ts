@@ -190,6 +190,10 @@ export interface GetPublicOfferDetailsInput {
   publicProductId: string;
   publicLocationId: string;
   locale?: string;
+  /** Intention de réservation demandée, quand la page d'offre provient d'une recherche. */
+  intent?: PublicSearchIntent;
+  /** Variante publique choisie ; sans valeur, le prix indicatif le moins cher est retenu. */
+  publicVariantId?: string;
 }
 
 export interface PublicOfferVariant {
@@ -225,7 +229,7 @@ export interface PublicOfferDetails {
   city: string;
   postalCode: string | null;
   countryCode: string;
-  /** Prix journalier indicatif all-in, lorsque le catalogue expose un tarif. */
+  /** Prix all-in demandé, ou prix indicatif le moins cher sans intention de réservation. */
   price?: PublicPriceSummary;
   variants: PublicOfferVariant[];
   photos: PublicOfferPhoto[];

@@ -9,6 +9,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   if (!user) redirect('/sign-in');
   const db = getDb();
   const organizations = await listOrganizationsForUser(db, user.id);
+  if (organizations.length === 0) redirect('/onboarding/organization');
 
   return (
     <main>
@@ -17,20 +18,13 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
 
       <section>
         <h2>Mes organisations</h2>
-        {organizations.length === 0 ? (
-          <p>
-            Aucune organisation. <Link href="/onboarding/organization">Créer une organisation</Link>
-            .
-          </p>
-        ) : (
-          <ul>
-            {organizations.map((org) => (
-              <li key={org.id}>
-                <Link href={`/dashboard/${org.id}`}>{org.legalName}</Link> ({org.slug})
-              </li>
-            ))}
-          </ul>
-        )}
+        <ul>
+          {organizations.map((org) => (
+            <li key={org.id}>
+              <Link href={`/dashboard/${org.id}`}>{org.legalName}</Link> ({org.slug})
+            </li>
+          ))}
+        </ul>
       </section>
     </main>
   );

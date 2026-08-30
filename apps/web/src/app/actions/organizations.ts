@@ -19,6 +19,7 @@ export async function createOrganizationAction(input: CreateOrganizationInput) {
   const db = getDb();
   const { organization } = await createOrganizationForUser(db, user, input);
   revalidatePath('/dashboard');
+  revalidatePath(`/dashboard/${organization.id}`);
   return { organization };
 }
 

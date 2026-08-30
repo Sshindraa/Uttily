@@ -52,9 +52,10 @@ pnpm test             # boucle rapide de développement, sans PostgreSQL ni test
 pnpm check:fast       # garde-fous locaux + tests rapides + types
 pnpm test:full        # toutes les suites Vitest des workspaces ; validation finale
 pnpm build            # builder tous les packages et apps
-pnpm dev              # démarrer apps/web en développement
+pnpm dev              # démarrer Web seul (base déjà migrée requise)
 pnpm dev:full         # démarrer PostgreSQL, migrer, puis Web + worker fake
-pnpm db:seed          # appliquer la fixture publique locale idempotente
+pnpm db:seed          # appliquer la fixture locale/dev-only idempotente (brouillon)
+pnpm db:seed:browser  # fixture publique synthétique réservée à la CI E2E
 pnpm benchmark:destination # mesurer le registre local ; ajouter --network pour Photon/IGN
 pnpm test:dev-local   # tester les garde-fous du workflow local
 pnpm recovery:restore-drill # drill restore local TEST éphémère, jamais une base distante
@@ -62,6 +63,11 @@ pnpm test:recovery     # tests ciblés du drill et des artefacts 20-B
 pnpm test:scripts      # tester le garde-fou des scripts déclarés
 pnpm check:scripts     # vérifier les chemins utilisés par les scripts workspace
 ```
+
+`pnpm dev` démarre uniquement Next.js et n'applique aucune migration PostgreSQL.
+Pour les parcours authentifiés et les écrans qui lisent la base, utiliser
+`pnpm dev:full` afin de démarrer PostgreSQL et d'appliquer automatiquement toutes
+les migrations avant le Web.
 
 Le restore drill exige explicitement `UTTILY_RECOVERY_DRILL=1`, refuse
 `NODE_ENV=production` et n'accepte qu'une URL PostgreSQL locale. Il crée puis
@@ -132,10 +138,17 @@ pas exactement `1` ou si `NODE_ENV` vaut `production`. `pnpm db:seed` fournit
 explicitement ce marqueur, et `dev:full -- --seed` l'injecte dans son
 environnement enfant ; aucun de ces chemins ne révèle l'URL de base ou un secret.
 La fixture reste idempotente et sans utilisateur Clerk, provider réel, Stripe,
-réservation ou paiement. Elle crée une offre publique de démonstration recherchable dans
-`/fr/search` avec la destination `lyon-dev`, l'organisation
-`test-org-dev`, le lieu `lyon-shop-dev`, le produit `kayak-dev` et le SKU
-`KAY-DEV-001`. Elle n'appelle aucun service externe et ne supprime aucune ligne.
+réservation ou paiement. Elle prépare les données de démonstration `lyon-dev`,
+`test-org-dev`, `lyon-shop-dev`, `kayak-dev` et `KAY-DEV-001` en brouillon. La
+publication publique reste volontairement bloquée jusqu'à l'upload de trois
+photos réelles via l'interface, car le stockage R2 est neutralisé en local.
+Elle n'appelle aucun service externe et ne supprime aucune ligne.
+
+La CI des parcours navigateur utilise séparément `pnpm db:seed:browser`. Cette
+commande exige les marqueurs CI et E2E dédiés, réutilise la base éphémère du job,
+ajoute uniquement les métadonnées photo synthétiques nécessaires au parcours
+public, puis publie l'offre de test. Elle ne modifie pas le comportement du seed
+local et ne doit pas être utilisée pour préparer des données réelles.
 
 Pour protéger strictement le Web local contre une configuration héritée, `dev:full`
 refuse toute clé Stripe non-TEST, accepte une chaîne vide comme absence, impose

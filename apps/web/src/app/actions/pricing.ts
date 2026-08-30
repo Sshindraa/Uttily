@@ -7,6 +7,7 @@ import { isValidUuid } from '@/lib/validation';
 import {
   saveDailyPricingPlanDraft,
   activateDailyPricingPlan,
+  MVP_ORGANIZATION_CURRENCY,
   type PricingPlanSummary,
   type SaveDailyPricingPlanDraftInput,
 } from '@uttily/core';
@@ -21,18 +22,24 @@ interface ParsedFailure {
   fieldErrors: Record<string, string>;
 }
 
+// Le moteur public et Stripe sont EUR-only au MVP (ADR-009 / ADR-018).
+const MVP_PRICING_CURRENCY = MVP_ORGANIZATION_CURRENCY;
+
 function parsePricingDraft(formData: FormData): ParsedFailure | ParsedPricingDraft {
   const fieldErrors: Record<string, string> = {};
   const productId = String(formData.get('productId') ?? '');
   const variantId = String(formData.get('variantId') ?? '');
   const dailyPriceEurosRaw = String(formData.get('dailyPriceEuros') ?? '').trim();
   const internalLabel = String(formData.get('internalLabel') ?? '').trim() || undefined;
-  const currency = String(formData.get('currency') ?? 'EUR')
+  const currency = String(formData.get('currency') ?? MVP_PRICING_CURRENCY)
     .trim()
     .toUpperCase();
 
   if (!isValidUuid(productId)) fieldErrors.productId = 'Produit invalide.';
   if (!isValidUuid(variantId)) fieldErrors.variantId = 'Variante invalide.';
+  if (currency !== MVP_PRICING_CURRENCY) {
+    fieldErrors.currency = `La devise ${MVP_PRICING_CURRENCY} est la seule devise prise en charge au MVP.`;
+  }
 
   const dailyPriceEuros = parseFloat(dailyPriceEurosRaw.replace(',', '.'));
   if (isNaN(dailyPriceEuros) || dailyPriceEuros <= 0) {

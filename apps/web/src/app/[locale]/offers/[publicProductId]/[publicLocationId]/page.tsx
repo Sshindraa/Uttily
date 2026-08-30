@@ -32,20 +32,6 @@ export default async function PublicOfferPage({
   if (rawLocale !== 'fr' && rawLocale !== 'en') notFound();
   const locale: PublicUiLocale = rawLocale;
   const fr = locale === 'fr';
-
-  const db = getDb();
-  const offerResult = await getPublicOfferDetails(
-    db,
-    { publicProductId, publicLocationId, locale },
-    { publicationGate: new PostgresPhotoPublicationGate() },
-  );
-
-  if (offerResult.kind !== 'SUCCESS') {
-    notFound();
-  }
-
-  const { offer } = offerResult;
-  const user = await getAuthenticatedUser();
   const resolvedSearchParams = await searchParams;
 
   const rawIntent = resolvedSearchParams.intent;
@@ -55,6 +41,33 @@ export default async function PublicOfferPage({
   const initialStartAt = getParamString(resolvedSearchParams.startAt);
   const initialEndAt = getParamString(resolvedSearchParams.endAt);
   const initialVariantId = getParamString(resolvedSearchParams.variantId);
+  const pricingIntent = getPricingIntent(
+    rawIntent,
+    initialStartDate,
+    initialEndDateExclusive,
+    initialStartAt,
+    initialEndAt,
+  );
+
+  const db = getDb();
+  const offerResult = await getPublicOfferDetails(
+    db,
+    {
+      publicProductId,
+      publicLocationId,
+      locale,
+      ...(pricingIntent ? { intent: pricingIntent } : {}),
+      ...(initialVariantId ? { publicVariantId: initialVariantId } : {}),
+    },
+    { publicationGate: new PostgresPhotoPublicationGate() },
+  );
+
+  if (offerResult.kind !== 'SUCCESS') {
+    notFound();
+  }
+
+  const { offer } = offerResult;
+  const user = await getAuthenticatedUser();
 
   // Construire l'URL de retour vers la recherche
   const searchUrlParams = new URLSearchParams();
@@ -72,14 +85,24 @@ export default async function PublicOfferPage({
   return (
     <main className={styles.page} lang={locale}>
       <header className={styles.header}>
-        <Link href="/" className={styles.brand}>
+        <Link href={`/${locale}/search`} className={styles.brand}>
           Uttily
         </Link>
         <nav aria-label={fr ? 'Langue' : 'Language'}>
           <Link href={otherLocaleUrl} hrefLang={otherLocale}>
             {fr ? 'English' : 'Français'}
           </Link>
-          <Link href="/sign-in">{fr ? 'Espace loueur' : 'Renter portal'}</Link>
+          {user ? (
+            <Link href={`/${locale}/account/bookings`}>{fr ? 'Mes locations' : 'My bookings'}</Link>
+          ) : (
+            <Link
+              href={`/sign-in?redirect_url=${encodeURIComponent(
+                `/${locale}/offers/${publicProductId}/${publicLocationId}${searchUrlParams.toString() ? `?${searchUrlParams.toString()}` : ''}`,
+              )}`}
+            >
+              {fr ? 'Espace loueur' : 'Renter portal'}
+            </Link>
+          )}
         </nav>
       </header>
 
@@ -108,8 +131,14 @@ export default async function PublicOfferPage({
                   {new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'en-GB', {
                     style: 'currency',
                     currency: offer.price.currency,
-                  }).format(offer.price.customerTotalAmountMinor / 100)}{' '}
-                  / jour
+                  }).format(offer.price.customerTotalAmountMinor / 100)}
+                </p>
+              ) : null}
+              {offer.price ? (
+                <p className={styles.priceHint}>
+                  {fr
+                    ? 'Prix indicatif selon les critères actuels. Le montant final sera recalculé lors de la réservation.'
+                    : 'Indicative price for the current criteria. The final amount is recalculated when booking.'}
                 </p>
               ) : null}
               {offer.photos.length > 0 ? (
@@ -198,4 +227,23 @@ function getParamString(param: string | string[] | undefined): string {
   if (typeof param === 'string') return param;
   if (Array.isArray(param) && param[0]) return param[0];
   return '';
+}
+
+function getPricingIntent(
+  rawIntent: string | string[] | undefined,
+  startDate: string,
+  endDateExclusive: string,
+  startAt: string,
+  endAt: string,
+):
+  | { kind: 'DAY_RANGE'; startDate: string; endDateExclusive: string }
+  | { kind: 'TIME_RANGE'; startAt: string; endAt: string }
+  | undefined {
+  if (rawIntent === 'DAY_RANGE' && startDate && endDateExclusive && endDateExclusive > startDate) {
+    return { kind: 'DAY_RANGE', startDate, endDateExclusive };
+  }
+  if (rawIntent === 'TIME_RANGE' && startAt && endAt && endAt > startAt) {
+    return { kind: 'TIME_RANGE', startAt, endAt };
+  }
+  return undefined;
 }

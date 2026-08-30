@@ -67,8 +67,15 @@ Dès la racine `/`, Uttily distingue explicitement deux publics aux intentions t
     │
     └── /dashboard
         │
+        ├── /onboarding/organization (si aucune organisation n'est encore rattachée)
         └── /dashboard/[orgId]  (Uttily Pro — Espace d'administration)
 ```
+
+Après connexion, `/dashboard` liste les organisations actives de l'utilisateur.
+Lorsqu'il n'en possède aucune, la route l'envoie directement vers
+`/onboarding/organization`. La création réussie ouvre le cockpit de
+l'organisation nouvellement créée (`/dashboard/[orgId]`) ; l'état vide n'est
+donc pas une destination métier finale.
 
 ---
 

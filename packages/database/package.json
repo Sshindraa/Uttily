@@ -14,6 +14,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed:local": "node scripts/seed-local.mjs",
+    "db:seed:browser": "node scripts/seed-browser-e2e.mjs",
     "db:ensure-browser-e2e-membership": "node scripts/ensure-browser-e2e-membership.mjs",
     "recovery:restore-drill": "node scripts/restore-drill.mjs",
     "test:recovery": "vitest run scripts/restore-drill.test.mjs",

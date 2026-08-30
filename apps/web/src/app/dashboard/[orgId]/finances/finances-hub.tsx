@@ -16,15 +16,10 @@ import {
 } from '@/app/actions/connected-accounts';
 import { PageHeader, Card, Badge, Button, LinkButton } from '@uttily/ui';
 import type { BadgeTone } from '@uttily/ui';
-
-const SUPPORTED_COUNTRIES = [
-  { code: 'FR', label: 'France (EUR)' },
-  { code: 'BE', label: 'Belgique (EUR)' },
-  { code: 'DE', label: 'Allemagne (EUR)' },
-  { code: 'ES', label: 'Espagne (EUR)' },
-  { code: 'IT', label: 'Italie (EUR)' },
-  { code: 'NL', label: 'Pays-Bas (EUR)' },
-] as const;
+import {
+  DEFAULT_STRIPE_COUNTRY,
+  STRIPE_SUPPORTED_COUNTRIES,
+} from '@/lib/supported-stripe-countries';
 
 function getAccountBadgeTone(readiness: PayoutReadiness): BadgeTone {
   switch (readiness) {
@@ -57,7 +52,7 @@ export function FinancesHub({
   const [showBankSettings, setShowBankSettings] = useState(!status.isReady);
 
   // State pour l'onboarding Connect Embedded
-  const [country, setCountry] = useState<string>('FR');
+  const [country, setCountry] = useState<string>(DEFAULT_STRIPE_COUNTRY);
   const [isEmbeddedActive, setIsEmbeddedActive] = useState(false);
   const [stripeConnectInstance, setStripeConnectInstance] = useState<StripeConnectInstance | null>(
     null,
@@ -241,7 +236,7 @@ export function FinancesHub({
                       background: 'var(--ut-color-surface)',
                     }}
                   >
-                    {SUPPORTED_COUNTRIES.map((c) => (
+                    {STRIPE_SUPPORTED_COUNTRIES.map((c) => (
                       <option key={c.code} value={c.code}>
                         {c.label}
                       </option>

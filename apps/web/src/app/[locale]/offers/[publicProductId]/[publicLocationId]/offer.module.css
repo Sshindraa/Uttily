@@ -115,6 +115,13 @@
   color: var(--ink);
 }
 
+.priceHint {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  margin: -0.75rem 0 1rem;
+}
+
 .productDescription {
   color: var(--muted);
   line-height: 1.6;

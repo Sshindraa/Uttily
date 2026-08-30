@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gte, inArray, isNotNull, lte, max } from 'drizzle-orm';
+import { and, asc, count, eq, gte, inArray, isNotNull, lte, max, sql } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import {
   bookings,
@@ -49,17 +49,28 @@ export async function listOperationalBookings(
     statuses?: readonly BookingStatus[];
     dateFrom?: Date;
     dateTo?: Date;
-    limit?: number;
+    /**
+     * Filtre la date civile locale de l'événement dans le fuseau de chaque
+     * établissement. Les limites absolues dateFrom/dateTo restent utiles pour
+     * les listes classiques ; ce filtre sert aux tâches « aujourd'hui ».
+     */
+    localDateAt?: Date;
+    localDateField?: 'START' | 'END';
+    /** null = lecture complète explicite, sans pagination implicite. */
+    limit?: number | null;
   },
 ): Promise<OperationalBookingSummary[]> {
   // Validation runtime des inputs (G4A — defense in depth).
   assertUuid(organizationId, 'organizationId');
 
-  // Limit : défaut 50, max 100, entier sûr uniquement.
-  let limit: number;
+  // Limit : défaut 50, max 100, entier sûr uniquement. Une lecture complète
+  // doit être demandée explicitement avec null pour éviter les KPI tronqués.
+  let limit: number | null;
   const rawLimit = options?.limit;
   if (rawLimit === undefined) {
     limit = 50;
+  } else if (rawLimit === null) {
+    limit = null;
   } else {
     if (
       typeof rawLimit !== 'number' ||
@@ -89,6 +100,8 @@ export async function listOperationalBookings(
   // Dates : objets Date valides, dateFrom <= dateTo.
   const dateFrom = options?.dateFrom;
   const dateTo = options?.dateTo;
+  const localDateAt = options?.localDateAt;
+  const localDateField = options?.localDateField ?? 'START';
   if (dateFrom !== undefined) {
     if (!(dateFrom instanceof Date) || !Number.isFinite(dateFrom.getTime())) {
       throw new FulfillmentError('VALIDATION', 'dateFrom doit être une Date valide.');
@@ -98,6 +111,21 @@ export async function listOperationalBookings(
     if (!(dateTo instanceof Date) || !Number.isFinite(dateTo.getTime())) {
       throw new FulfillmentError('VALIDATION', 'dateTo doit être une Date valide.');
     }
+  }
+  if (localDateAt !== undefined) {
+    if (!(localDateAt instanceof Date) || !Number.isFinite(localDateAt.getTime())) {
+      throw new FulfillmentError('VALIDATION', 'localDateAt doit être une Date valide.');
+    }
+  }
+  if (
+    options?.localDateField !== undefined &&
+    options.localDateField !== 'START' &&
+    options.localDateField !== 'END'
+  ) {
+    throw new FulfillmentError('VALIDATION', 'localDateField doit être START ou END.');
+  }
+  if (localDateAt === undefined && options?.localDateField !== undefined) {
+    throw new FulfillmentError('VALIDATION', 'localDateField nécessite localDateAt.');
   }
   if (dateFrom && dateTo && dateFrom.getTime() > dateTo.getTime()) {
     throw new FulfillmentError('VALIDATION', 'dateFrom doit être antérieur ou égal à dateTo.');
@@ -110,8 +138,14 @@ export async function listOperationalBookings(
   }
   if (dateFrom) conditions.push(gte(bookings.customerStartAt, dateFrom));
   if (dateTo) conditions.push(lte(bookings.customerEndAt, dateTo));
+  if (localDateAt) {
+    const dateColumn = localDateField === 'END' ? bookings.customerEndAt : bookings.customerStartAt;
+    conditions.push(
+      sql`to_char(${dateColumn} AT TIME ZONE ${locations.timeZone}, 'YYYY-MM-DD') = to_char(${localDateAt.toISOString()}::timestamptz AT TIME ZONE ${locations.timeZone}, 'YYYY-MM-DD')`,
+    );
+  }
 
-  const bookingRows = await db
+  const bookingQuery = db
     .select({
       id: bookings.id,
       status: bookings.status,
@@ -124,8 +158,8 @@ export async function listOperationalBookings(
     .from(bookings)
     .innerJoin(locations, eq(bookings.locationId, locations.id))
     .where(and(...conditions))
-    .orderBy(asc(bookings.customerStartAt), asc(bookings.id))
-    .limit(limit);
+    .orderBy(asc(bookings.customerStartAt), asc(bookings.id));
+  const bookingRows = await (limit === null ? bookingQuery : bookingQuery.limit(limit));
 
   if (bookingRows.length === 0) return [];
 
@@ -199,6 +233,39 @@ export async function listOperationalBookings(
     damageReportCount: damageCountMap.get(b.id) ?? 0,
     lastFulfillmentEventAt: lastEventMap.get(b.id) ?? null,
   }));
+}
+
+/**
+ * Compte les réservations opérationnelles sans charger leurs lignes ni
+ * appliquer la limite d'affichage des listes.
+ */
+export async function countOperationalBookings(
+  db: DatabaseClient,
+  organizationId: string,
+  statuses: readonly BookingStatus[],
+): Promise<number> {
+  assertUuid(organizationId, 'organizationId');
+
+  if (statuses.length === 0) return 0;
+
+  const normalizedStatuses = [...new Set(statuses)];
+  for (const status of normalizedStatuses) {
+    if (!isBookingStatus(status)) {
+      throw new FulfillmentError('VALIDATION', `Statut de booking invalide: ${String(status)}.`);
+    }
+  }
+
+  const [row] = await db
+    .select({ value: count() })
+    .from(bookings)
+    .where(
+      and(
+        eq(bookings.organizationId, organizationId),
+        inArray(bookings.status, normalizedStatuses),
+      ),
+    );
+
+  return Number(row?.value ?? 0);
 }
 
 /**

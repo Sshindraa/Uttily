@@ -13,18 +13,28 @@ import {
 import { CheckoutClient } from './checkout-client';
 import { getPublicAppUrl } from '@/lib/public-app-url';
 import { ClientShell } from '@/components/client-shell';
+import { getCheckoutCopy } from '@/lib/checkout-copy';
 
 /**
  * Page de checkout — récapitulatif du panier de réservation puis paiement sécurisé Stripe.
  */
 export default async function CheckoutPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ draftId: string }>;
+  searchParams: Promise<{ locale?: string | string[] }>;
 }): Promise<React.ReactElement> {
   const { draftId } = await params;
+  const rawLocale = (await searchParams).locale;
+  const locale = (Array.isArray(rawLocale) ? rawLocale[0] : rawLocale) === 'en' ? 'en' : 'fr';
+  const copy = getCheckoutCopy(locale);
   const user = await getAuthenticatedUser();
-  if (!user) redirect('/sign-in');
+  if (!user) {
+    redirect(
+      `/sign-in?redirect_url=${encodeURIComponent(`/checkout/${draftId}?locale=${locale}`)}`,
+    );
+  }
   const db = getDb();
 
   // Lire le brouillon côté serveur.
@@ -51,11 +61,11 @@ export default async function CheckoutPage({
 
   if (draft.length === 0) {
     return (
-      <ClientShell>
+      <ClientShell localeOverride={locale}>
         <main style={{ maxWidth: 640, margin: '4rem auto', padding: '1rem', textAlign: 'center' }}>
-          <h1>Réservation introuvable ou expirée</h1>
+          <h1>{copy.summary.missingBookingTitle}</h1>
           <p style={{ color: 'var(--ut-color-ink-muted)' }}>
-            Ce panier de réservation n’est plus valide. Veuillez relancer une recherche.
+            {copy.summary.missingBookingDescription}
           </p>
         </main>
       </ClientShell>
@@ -65,11 +75,11 @@ export default async function CheckoutPage({
   const d = draft[0]!;
   if (d.customerUserId !== user.id) {
     return (
-      <ClientShell>
+      <ClientShell localeOverride={locale}>
         <main style={{ maxWidth: 640, margin: '4rem auto', padding: '1rem', textAlign: 'center' }}>
-          <h1>Accès refusé</h1>
+          <h1>{copy.summary.accessDeniedTitle}</h1>
           <p style={{ color: 'var(--ut-color-ink-muted)' }}>
-            Cette réservation appartient à un autre compte utilisateur.
+            {copy.summary.accessDeniedDescription}
           </p>
         </main>
       </ClientShell>
@@ -111,17 +121,17 @@ export default async function CheckoutPage({
       ? l.variantName
         ? `${l.productName} (${l.variantName})`
         : l.productName
-      : 'Équipement loué',
+      : copy.summary.fallbackEquipment,
   }));
 
-  const renterName = d.orgPublicDisplayName || d.orgLegalName || 'Loueur partenaire';
+  const renterName = d.orgPublicDisplayName || d.orgLegalName || copy.summary.fallbackRenter;
 
   return (
-    <ClientShell>
+    <ClientShell localeOverride={locale}>
       <main style={{ maxWidth: 540, margin: '2rem auto', padding: '1rem' }}>
         <CheckoutClient
           draftId={draftId}
-          returnUrl={`${publicAppUrl}/checkout/${draftId}`}
+          returnUrl={`${publicAppUrl}/checkout/${draftId}?locale=${locale}`}
           baseAmountMinor={marketplaceFeeBaseAmountMinor}
           customerServiceFeeAmountMinor={customerServiceFeeAmountMinor}
           customerTotalAmountMinor={customerTotalAmountMinor}
@@ -130,6 +140,7 @@ export default async function CheckoutPage({
           lines={formattedLines}
           renterName={renterName}
           expiresAt={d.expiresAt ? d.expiresAt.toISOString() : null}
+          locale={locale}
         />
       </main>
     </ClientShell>

@@ -10,4 +10,11 @@ describe('PublicSearchPage', () => {
   it('rends une erreur fermée au lieu de laisser remonter une panne technique', () => {
     expect(pageSource).toContain("getPublicErrorMessage('SEARCH_UNAVAILABLE', locale)");
   });
+
+  it('préserve la locale et ne propose pas une connexion aveugle', () => {
+    expect(pageSource).toContain('currentUser()');
+    expect(pageSource).toContain('`/${locale}/account/bookings`');
+    expect(pageSource).toContain('redirect_url=');
+    expect(pageSource).not.toContain('href="/fr/account/bookings"');
+  });
 });

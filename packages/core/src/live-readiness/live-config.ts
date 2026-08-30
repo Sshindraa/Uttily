@@ -121,6 +121,11 @@ export const REQUIRED_LIVE_VARIABLES: readonly LiveVariableRule[] = [
     mustBeHttps: true,
     mustBePublicHttps: true,
   },
+  {
+    name: 'SUPPORT_EMAIL',
+    description: 'Adresse support affichée dans les emails transactionnels',
+    minLength: 1,
+  },
 
   // --- Stockage R2 ---
   {

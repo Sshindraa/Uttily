@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 import { assertLocalSeedEnvironment, isLocalSeedEnvironment } from './seed-local.mjs';
+
+const seedSource = readFileSync(new URL('./seed-local.mjs', import.meta.url), 'utf8');
 
 describe('seed local environment guards', () => {
   it('refuse le seed sans marqueur local explicite', () => {
@@ -33,5 +36,12 @@ describe('seed local environment guards', () => {
 
     expect(isLocalSeedEnvironment(environment)).toBe(true);
     expect(() => assertLocalSeedEnvironment(environment)).not.toThrow();
+  });
+
+  it('ne publie pas de fixture avec des photos R2 fictives', () => {
+    expect(seedSource).not.toContain('DEMO_PHOTOS');
+    expect(seedSource).not.toContain('dev-kayak-');
+    expect(seedSource).not.toContain('"publication_status" = \'PUBLISHED\'');
+    expect(seedSource).toContain('draft; upload real photos to publish');
   });
 });

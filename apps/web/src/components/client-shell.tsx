@@ -1,34 +1,59 @@
+'use client';
+
 import Link from 'next/link';
 import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
+import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import type * as React from 'react';
 import { Icon, LinkButton } from '@uttily/ui';
+import { getLocaleFromPathname } from '@/lib/locale';
 import styles from './client-shell.module.css';
 
-export function ClientShell({ children }: { children: ReactNode }): React.JSX.Element {
+export function ClientShell({
+  children,
+  localeOverride,
+}: {
+  children: ReactNode;
+  localeOverride?: 'fr' | 'en';
+}): React.JSX.Element {
+  const pathname = usePathname();
+  const locale = localeOverride ?? getLocaleFromPathname(pathname);
+  const fr = locale === 'fr';
+  const searchHref = `/${locale}/search`;
+  const bookingsHref = `/${locale}/account/bookings`;
+  const signInHref = `/sign-in?redirect_url=${encodeURIComponent(pathname ?? '/')}`;
+
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          <Link className={styles.brand} href="/" aria-label="Uttily, accueil">
+          <Link
+            className={styles.brand}
+            href={searchHref}
+            aria-label={fr ? 'Uttily, accueil' : 'Uttily, home'}
+          >
             <span className={styles.brandMark}>U</span>
             <span>Uttily</span>
           </Link>
-          <nav aria-label="Navigation client" className={styles.nav}>
-            <Link href="/fr/search" className={styles.navLink} aria-label="Trouver un équipement">
+          <nav aria-label={fr ? 'Navigation client' : 'Customer navigation'} className={styles.nav}>
+            <Link
+              href={searchHref}
+              className={styles.navLink}
+              aria-label={fr ? 'Trouver un équipement' : 'Find equipment'}
+            >
               <Icon name="search" size={18} />
-              Trouver un équipement
+              {fr ? 'Trouver un équipement' : 'Find equipment'}
             </Link>
-            <Link href="/fr/account/bookings" className={styles.navLink}>
-              Mes locations
+            <Link href={bookingsHref} className={styles.navLink}>
+              {fr ? 'Mes locations' : 'My bookings'}
             </Link>
             <SignedOut>
-              <LinkButton href="/sign-in" variant="secondary" size="sm">
-                Se connecter
+              <LinkButton href={signInHref} variant="secondary" size="sm">
+                {fr ? 'Se connecter' : 'Sign in'}
               </LinkButton>
             </SignedOut>
             <SignedIn>
-              <UserButton afterSignOutUrl="/fr/search" />
+              <UserButton afterSignOutUrl={searchHref} />
             </SignedIn>
           </nav>
         </div>
@@ -37,7 +62,9 @@ export function ClientShell({ children }: { children: ReactNode }): React.JSX.El
       <footer className={styles.footer}>
         <div className={styles.footerInner}>
           <span className={styles.footerBrand}>Uttily</span>
-          <span>Des équipements fiables, près de vous.</span>
+          <span>
+            {fr ? 'Des équipements fiables, près de vous.' : 'Reliable equipment, near you.'}
+          </span>
         </div>
       </footer>
     </div>

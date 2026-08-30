@@ -48,6 +48,8 @@ export interface OperationalPlanning {
 }
 
 export interface GetOperationalPlanningOptions {
+  /** Instant de référence utilisé pour calculer la semaine par défaut. */
+  asOf?: Date | undefined;
   from?: Date | undefined;
   to?: Date | undefined;
   locationId?: string | undefined;

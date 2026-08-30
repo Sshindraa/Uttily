@@ -105,6 +105,8 @@ export interface UnifiedBikeSummary {
   hasRequiredPhotos: boolean;
   heroPhotoPublicId: string | null;
   priceAmountMinor: number | null;
+  pricingPlanType: 'DAILY' | 'HOURLY' | 'FIXED_DURATION' | null;
+  pricingCurrency: string | null;
   activeInventoryCount: number;
   totalInventoryCount: number;
   isPublicationReady: boolean;
@@ -413,6 +415,8 @@ export async function listUnifiedBikes(
           .select({
             productVariantId: pricingPlans.productVariantId,
             priceAmountMinor: pricingPlans.priceAmountMinor,
+            planType: pricingPlans.planType,
+            currency: pricingPlans.currency,
           })
           .from(pricingPlans)
           .where(
@@ -471,6 +475,8 @@ export async function listUnifiedBikes(
 
     const activePlan = activePlanRows.find((p) => p.productVariantId === primaryVariant.id);
     const priceAmountMinor = activePlan ? Number(activePlan.priceAmountMinor) : null;
+    const pricingPlanType = activePlan?.planType ?? null;
+    const pricingCurrency = activePlan?.currency ?? null;
 
     const variantInvs = invRows.filter((i) => i.productVariantId === primaryVariant.id);
     const activeInventoryCount = variantInvs.filter((i) => i.status === 'ACTIVE').length;
@@ -503,6 +509,8 @@ export async function listUnifiedBikes(
       hasRequiredPhotos,
       heroPhotoPublicId,
       priceAmountMinor,
+      pricingPlanType,
+      pricingCurrency,
       activeInventoryCount,
       totalInventoryCount,
       isPublicationReady,

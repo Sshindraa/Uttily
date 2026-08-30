@@ -20,6 +20,19 @@ export interface OrganizationRepository {
   ): Promise<OrganizationRecord>;
 }
 
+/** Devise du périmètre pilote ; l'architecture multi-devise reste future. */
+export const MVP_ORGANIZATION_CURRENCY = 'EUR' as const;
+
+export function normalizeMvpOrganizationCurrency(input?: string): string {
+  const currency = (input ?? MVP_ORGANIZATION_CURRENCY).trim().toUpperCase();
+  if (currency !== MVP_ORGANIZATION_CURRENCY) {
+    throw new Error(
+      `Devise non supportée au MVP : ${currency}. EUR est la seule devise disponible.`,
+    );
+  }
+  return currency;
+}
+
 /**
  * Crée une organisation et la membership OWNER de l'utilisateur courant
  * en une seule transaction (invariant : atomicité).
@@ -37,10 +50,7 @@ export async function createOrganizationForUser(
   if (!isValidSlug(slug)) {
     throw new Error('Slug invalide.');
   }
-  const defaultCurrency = input.defaultCurrency ?? 'EUR';
-  if (defaultCurrency.length !== 3) {
-    throw new Error('Devise invalide (ISO 4217, 3 lettres).');
-  }
+  const defaultCurrency = normalizeMvpOrganizationCurrency(input.defaultCurrency);
 
   return await db.transaction(async (tx) => {
     const existing = await tx
@@ -170,10 +180,7 @@ export async function updateOrganization(
     patch.legalName = name;
   }
   if (input.defaultCurrency !== undefined) {
-    if (input.defaultCurrency.length !== 3) {
-      throw new Error('Devise invalide.');
-    }
-    patch.defaultCurrency = input.defaultCurrency;
+    patch.defaultCurrency = normalizeMvpOrganizationCurrency(input.defaultCurrency);
   }
   const [row] = await db
     .update(organizations)

@@ -14,12 +14,12 @@ describe('CustomerBookingDetailPage (Chantier 14C, 14D, 14E, 14H)', () => {
   });
 
   it('intègre les cartes contextuelles orientées client (Dates/Lieu, Consignes, Équipements, Documents, Paiement)', () => {
-    expect(pageSource).toContain('Dates et lieu de location');
-    expect(pageSource).toContain('Consignes & Déroulement');
-    expect(pageSource).toContain('Consignes de retrait');
-    expect(pageSource).toContain('Équipement réservé');
-    expect(pageSource).toContain('Vos documents');
-    expect(pageSource).toContain('Votre paiement');
+    expect(pageSource).toContain('copy.detail.datesHeading');
+    expect(pageSource).toContain('copy.detail.instructionsHeading');
+    expect(pageSource).toContain('copy.detail.pickupInstructions');
+    expect(pageSource).toContain('copy.detail.equipmentHeading');
+    expect(pageSource).toContain('copy.detail.documentsHeading');
+    expect(pageSource).toContain('copy.detail.paymentHeading');
   });
 
   it('intègre la modale d’annulation locataire avec prévisualisation financière', () => {

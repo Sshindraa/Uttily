@@ -30,6 +30,7 @@ function fakeLiveEnv(): Record<string, string> {
     CRON_SECRET: 'b'.repeat(44),
     PUBLIC_SEARCH_CURSOR_SECRET: 'c'.repeat(44),
     PUBLIC_APP_URL: 'https://app.uttily.com',
+    SUPPORT_EMAIL: 'support@app.uttily.com',
     R2_ACCOUNT_ID: 'fake_account_id',
     R2_ACCESS_KEY_ID: 'fake_access_key',
     R2_SECRET_ACCESS_KEY: 'fake_secret_key',

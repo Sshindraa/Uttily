@@ -5,6 +5,7 @@
 // deactivate/retire. Le delete technique (deletedAt) sera exposé via un usage admin.
 
 import { revalidatePath } from 'next/cache';
+import { randomUUID } from 'node:crypto';
 import { requireCatalogManagerOf } from '@/lib/catalog-auth';
 import { runAction } from '@/lib/action-mapper';
 import { isValidUuid, isOneOf } from '@/lib/validation';
@@ -21,7 +22,9 @@ import {
   type TransferInventoryItemInput,
 } from '@uttily/core';
 import type { ActionResult } from '@uttily/contracts';
+import { MAX_BULK_INVENTORY_ITEMS } from '@uttily/contracts';
 import { parseUpdateInventoryItem, type ParsedFailure } from './parsers';
+import { buildInventorySku } from '@/lib/inventory-sku';
 
 // ---------------------------------------------------------------------------
 // Parseurs FormData explicites.
@@ -265,23 +268,24 @@ export async function bulkCreateInventoryItemsAction(
   if (!isValidUuid(currentLocationId)) {
     return { ok: false, code: 'VALIDATION', message: 'Établissement invalide.' };
   }
-  if (isNaN(count) || count < 1 || count > 50) {
+  if (isNaN(count) || count < 1 || count > MAX_BULK_INVENTORY_ITEMS) {
     return {
       ok: false,
       code: 'VALIDATION',
-      message: 'Le nombre d’exemplaires doit être compris entre 1 et 50.',
+      message: `Le nombre d’exemplaires doit être compris entre 1 et ${MAX_BULK_INVENTORY_ITEMS}.`,
     };
   }
 
   return runAction(async () => {
     const { db, organizationId: authorizedOrgId } = await requireCatalogManagerOf(organizationId);
 
+    const batchId = randomUUID();
     for (let i = 1; i <= count; i++) {
       await createInventoryItem(db, {
         organizationId: authorizedOrgId,
         productVariantId,
         currentLocationId,
-        internalSku: `${prefix}-${String(Date.now()).slice(-4)}-${i}`,
+        internalSku: buildInventorySku(prefix, i, batchId),
         status: 'ACTIVE',
         condition: 'NEW',
       });

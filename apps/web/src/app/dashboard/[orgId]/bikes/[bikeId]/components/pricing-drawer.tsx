@@ -29,7 +29,7 @@ export function PricingDrawer({
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [dailyPrice, setDailyPrice] = useState<string>(
-    currentPriceEuros ? String(currentPriceEuros) : '25',
+    currentPriceEuros !== null ? String(currentPriceEuros) : '',
   );
 
   const initialTier3 = currentTiers?.find((t) => t.thresholdDays === 3)?.discountPercent ?? 10;
@@ -62,7 +62,7 @@ export function PricingDrawer({
       saveFormData.set('currency', currency);
       saveFormData.set(
         'internalLabel',
-        `Tarif ${formatMoneyAmount(Math.round(parsedDailyPrice * 100), currency)}/j`,
+        `Tarif journalier ${formatMoneyAmount(Math.round(parsedDailyPrice * 100), currency)}`,
       );
       if (p3 > 0) saveFormData.set('tier3DiscountPercent', String(p3));
       if (p7 > 0) saveFormData.set('tier7DiscountPercent', String(p7));

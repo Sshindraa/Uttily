@@ -1,10 +1,14 @@
+import { getEmailBrandConfig, type EmailBrandConfig } from '../email-brand';
+
 export interface EmailLayoutOptions {
   title: string;
   preheader?: string;
   contentHtml: string;
+  brand?: EmailBrandConfig;
 }
 
 export function renderEmailLayout(options: EmailLayoutOptions): string {
+  const brand = options.brand ?? getEmailBrandConfig();
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -137,14 +141,14 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
   <div class="wrapper">
     <div class="container">
       <div class="header">
-        <a href="https://uttily.com" class="brand">Uttily<span>.</span></a>
+        <a href="${escapeHtml(brand.publicAppUrl)}" class="brand">Uttily<span>.</span></a>
       </div>
       <div class="body">
         ${options.contentHtml}
       </div>
       <div class="footer">
         Uttily — Plateforme de location d'équipements professionnels.<br>
-        Pour toute assistance, contactez votre loueur ou <a href="mailto:support@uttily.com">support@uttily.com</a>.
+        Pour toute assistance, contactez votre loueur ou <a href="mailto:${escapeHtml(brand.supportEmail)}">${escapeHtml(brand.supportEmail)}</a>.
       </div>
     </div>
   </div>

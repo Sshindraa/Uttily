@@ -8,6 +8,9 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
 
 - Runtime : Node.js 24 LTS (voir `.nvmrc`).
 - Package manager : pnpm (voir `package.json`).
+- `pnpm dev` démarre uniquement Next.js et suppose que la base locale est déjà
+  disponible et à jour ; il n'applique aucune migration. Pour les routes qui
+  lisent ou modifient PostgreSQL, le workflow recommandé est `pnpm dev:full`.
 - Workflow canonique : `pnpm dev:full` démarre le service `postgres` de Docker
   Compose avec le fichier `docker-compose.yml` racine, attend que le healthcheck
   `pg_isready` confirme que PostgreSQL est prêt, applique automatiquement les
@@ -22,9 +25,16 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
     seed ; toute autre valeur, ou `NODE_ENV=production`, est refusée avant la
     connexion PostgreSQL.
   - Le seed ne crée aucun utilisateur Clerk, compte/provider réel, paiement,
-    réservation ou appel réseau externe. Il prépare l'offre publique de
+    réservation ou appel réseau externe. Il prépare les données de
     démonstration `lyon-dev` / `kayak-dev` (lieu `lyon-shop-dev`, SKU
-    `KAY-DEV-001`) sans supprimer de ligne.
+    `KAY-DEV-001`) en brouillon, sans photo R2 fictive et sans supprimer de
+    ligne. La publication publique nécessite ensuite trois photos réelles
+    uploadées via l'interface ; R2 est neutralisé dans le workflow local.
+  - La CI des parcours navigateur n'utilise pas cette fixture brouillon : elle
+    appelle `pnpm db:seed:browser` avec `CI` et `UTTILY_BROWSER_E2E=1`. Cette
+    commande ajoute dans la base éphémère du job uniquement trois métadonnées
+    photo synthétiques pour publier l'offre de test public ; elle est refusée
+    hors CI et ne doit jamais servir à préparer des données locales ou réelles.
   - `Ctrl+C` arrête Web et le worker proprement ; PostgreSQL reste actif et
     n'est jamais arrêté ou supprimé automatiquement. La garantie d'arrêt complet
     des descendants est validée et supportée sur macOS/Linux (POSIX) : toutes les
@@ -159,6 +169,7 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
 | `DATABASE_URL` | `postgresql://...` | fournie par Neon (endpoint **pooled**, hostname avec `-pooler`) | PostgreSQL + PostGIS. Connexion runtime distant : application Web et worker. Les tests unitaires n'utilisent aucune base. Les tests d'intégration PostgreSQL destructifs utilisent uniquement PostgreSQL local (garde-fou `assertLocalhost`). |
 | `DATABASE_DIRECT_URL` | `postgresql://...` (peut être identique à `DATABASE_URL` en local) | fournie par Neon (endpoint **direct**, hostname **sans** `-pooler`) | Réservée aux migrations Drizzle Kit et opérations administratives explicites. Jamais utilisée par le runtime. |
 | `PUBLIC_APP_URL` | `http://localhost:3000` | URL HTTPS publique du déploiement | Origine absolue sans chemin, query ni fragment ; utilisée pour le retour Stripe. Le serveur refuse une valeur locale ou HTTP en environnement de production. |
+| `SUPPORT_EMAIL` | `support@uttily.com` | Adresse support du déploiement | Affichée dans le pied de page des emails transactionnels ; obligatoire en production. |
 | `STRIPE_ENVIRONMENT` | `TEST` | `TEST` pour staging, `LIVE` uniquement après ADR-010 | Valeur explicite ; aucun défaut silencieux en production. |
 | `PAYMENTS_LIVE_ENABLED` | `false` | `false` tant que les verrous ADR-010 ne sont pas fermés | Le serveur refuse `LIVE` sans `true`. |
 | Frais marketplace | `split-13-7-v1` | `split-13-7-v1` après sign-off `FIN-002` | Règle serveur fermée : base `subtotal + mandatory fees`, 13 % loueur + 7 % service client, arrondi `HALF_UP_PER_COMPONENT`. Aucun taux ne vient de l'environnement ou du navigateur. |

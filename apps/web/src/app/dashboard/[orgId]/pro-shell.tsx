@@ -1,5 +1,6 @@
 'use client';
 
+import { useClerk } from '@clerk/nextjs';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -56,8 +57,20 @@ export function ProShell({
   const pathname = usePathname() ?? '';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileViewport, setMobileViewport] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const { signOut } = useClerk();
   const links = navItems.map((item) => ({ ...item, href: item.href(orgId) }));
+
+  const handleChangeAccount = async (): Promise<void> => {
+    setIsSigningOut(true);
+    try {
+      await signOut({ redirectUrl: '/sign-in' });
+    } catch {
+      // Le bouton reste disponible si le provider échoue temporairement.
+      setIsSigningOut(false);
+    }
+  };
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(max-width: 64rem)');
@@ -168,9 +181,14 @@ export function ProShell({
 
         <div className={styles.sidebarFooter}>
           <span className={styles.userEmail}>{email}</span>
-          <Link href="/sign-in" className={styles.signOutLink}>
-            Changer de compte
-          </Link>
+          <button
+            type="button"
+            className={styles.signOutLink}
+            onClick={() => void handleChangeAccount()}
+            disabled={isSigningOut}
+          >
+            {isSigningOut ? 'Déconnexion…' : 'Changer de compte'}
+          </button>
         </div>
       </aside>
 

@@ -1,8 +1,9 @@
 import {
   listLocations,
   listMaintenanceDashboardSignals,
-  listPendingInvitations,
   listOperationalBookings,
+  countOperationalBookings,
+  listMembers,
   listInventorySummaries,
   getOrganizationOnboardingReadiness,
   getOrganizationById,
@@ -42,26 +43,27 @@ export default async function OrganizationDashboardPage({
   const org = await getOrganizationById(db, organizationId);
   const readiness = await getOrganizationOnboardingReadiness(db, organizationId);
   const locations = await listLocations(db, organizationId);
-  const invitations = await listPendingInvitations(db, organizationId);
   const maintenanceSignals = await listMaintenanceDashboardSignals(db, organizationId, { asOf });
-  const allBookings = await listOperationalBookings(db, organizationId);
+  const todayPickups = await listOperationalBookings(db, organizationId, {
+    statuses: ['CONFIRMED', 'READY_FOR_PICKUP'],
+    localDateAt: asOf,
+    localDateField: 'START',
+    limit: null,
+  });
+  const todayReturns = await listOperationalBookings(db, organizationId, {
+    statuses: ['ACTIVE'],
+    localDateAt: asOf,
+    localDateField: 'END',
+    limit: null,
+  });
+  const activeBookingCount = await countOperationalBookings(db, organizationId, [
+    'CONFIRMED',
+    'READY_FOR_PICKUP',
+    'ACTIVE',
+  ]);
+  const members = await listMembers(db, organizationId);
   const inventoryItems = await listInventorySummaries(db, organizationId);
   const financesOverview = await getMerchantFinanceOverview(db, organizationId);
-
-  // Calculs du Cockpit "Aujourd'hui"
-  const endOfDay = new Date(asOf.getFullYear(), asOf.getMonth(), asOf.getDate(), 23, 59, 59);
-
-  // Départs prévus aujourd'hui
-  const todayPickups = allBookings.filter(
-    (b) =>
-      (b.status === 'CONFIRMED' || b.status === 'READY_FOR_PICKUP') &&
-      new Date(b.customerStartAt) <= endOfDay,
-  );
-
-  // Retours prévus aujourd'hui
-  const todayReturns = allBookings.filter(
-    (b) => b.status === 'ACTIVE' && new Date(b.customerEndAt) <= endOfDay,
-  );
 
   // Équipements en service & maintenance
   const activeFleetCount = inventoryItems.filter(
@@ -93,10 +95,12 @@ export default async function OrganizationDashboardPage({
     })),
   ].sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 
+  const referenceTimeZone = locations[0]?.timeZone;
   const formattedDate = new Intl.DateTimeFormat('fr-FR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
+    ...(referenceTimeZone ? { timeZone: referenceTimeZone } : {}),
   }).format(asOf);
 
   return (
@@ -290,7 +294,7 @@ export default async function OrganizationDashboardPage({
               </div>
               <div className={styles.weekStatRow}>
                 <span>Réservations actives</span>
-                <strong>{allBookings.length}</strong>
+                <strong>{activeBookingCount}</strong>
               </div>
               <div className={styles.weekStatRow}>
                 <span>Établissements ouverts</span>
@@ -298,7 +302,7 @@ export default async function OrganizationDashboardPage({
               </div>
               <div className={styles.weekStatRow}>
                 <span>Membres d'équipe</span>
-                <strong>{invitations.length + 1}</strong>
+                <strong>{members.length}</strong>
               </div>
             </div>
           </section>

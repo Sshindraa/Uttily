@@ -4,10 +4,17 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { PhotoSlotType } from '@uttily/contracts';
+import { MAX_BULK_INVENTORY_ITEMS } from '@uttily/contracts';
 import { PhotoCoachModal } from '@/components/photo-coach/PhotoCoachModal';
 import { updateProductAction, publishBikeFromSetupAction } from '@/app/actions/products';
 import { saveDailyPricingPlanDraftAction } from '@/app/actions/pricing';
 import { bulkCreateInventoryItemsAction } from '@/app/actions/inventory';
+import {
+  formatMoneyAmount,
+  getPricingPlanTypeLabel,
+  getPricingPlanUnitLabel,
+  type PricingPlanType,
+} from '@/lib/status-presentation';
 import styles from './setup.module.css';
 
 export type SetupStep = 'IDENTITY' | 'PHOTOS' | 'PRICING' | 'INVENTORY' | 'REVIEW';
@@ -23,6 +30,8 @@ export interface SetupBikeDTO {
   photos: Array<{ id: string; publicId: string; sortOrder: number }>;
   isPhotosComplete: boolean;
   currentPriceEuros: number | null;
+  pricingPlanType: PricingPlanType | null;
+  pricingCurrency: string;
   draftPricingPlanId?: string | null | undefined;
   discountTiers?: Array<{ thresholdDays: number; discountPercent: number }> | undefined;
   inventoryCount: number;
@@ -66,7 +75,7 @@ export function BikeSetupWizard({
 
   // Étape 3 : Tarif
   const [dailyPrice, setDailyPrice] = useState(
-    bike.currentPriceEuros ? String(bike.currentPriceEuros) : '25',
+    bike.currentPriceEuros !== null ? String(bike.currentPriceEuros) : '',
   );
   const [tier3, setTier3] = useState(
     String(bike.discountTiers?.find((t) => t.thresholdDays === 3)?.discountPercent ?? 10),
@@ -77,6 +86,14 @@ export function BikeSetupWizard({
   const [tier14, setTier14] = useState(
     String(bike.discountTiers?.find((t) => t.thresholdDays === 14)?.discountPercent ?? 30),
   );
+  const hasNonDailyPricingPlan = bike.pricingPlanType !== null && bike.pricingPlanType !== 'DAILY';
+  const displayedPricingPlanType: PricingPlanType = bike.pricingPlanType ?? 'DAILY';
+  const displayedPrice = dailyPrice.trim()
+    ? formatMoneyAmount(
+        Math.round((parseFloat(dailyPrice.replace(',', '.')) || 0) * 100),
+        bike.pricingCurrency,
+      )
+    : '—';
 
   // Étape 4 : Flotte
   const [fleetCount, setFleetCount] = useState(bike.inventoryCount > 0 ? bike.inventoryCount : 3);
@@ -116,6 +133,12 @@ export function BikeSetupWizard({
   // 3. Sauvegarde Étape Tarif
   async function handleSavePricing(e: React.FormEvent): Promise<void> {
     e.preventDefault();
+    if (hasNonDailyPricingPlan) {
+      setError(
+        `${getPricingPlanTypeLabel(displayedPricingPlanType)} déjà configuré. Cet assistant ne modifie que les tarifs journaliers.`,
+      );
+      return;
+    }
     setError(null);
     setIsLoading(true);
     try {
@@ -123,8 +146,14 @@ export function BikeSetupWizard({
       formData.set('productId', bike.id);
       formData.set('variantId', bike.variantId);
       formData.set('dailyPriceEuros', dailyPrice);
-      formData.set('currency', 'EUR');
-      formData.set('internalLabel', `Tarif ${dailyPrice} €/j`);
+      formData.set('currency', bike.pricingCurrency);
+      formData.set(
+        'internalLabel',
+        `Tarif journalier ${formatMoneyAmount(
+          Math.round((parseFloat(dailyPrice.replace(',', '.')) || 0) * 100),
+          bike.pricingCurrency,
+        )}`,
+      );
       if (parseInt(tier3, 10) > 0) formData.set('tier3DiscountPercent', tier3);
       if (parseInt(tier7, 10) > 0) formData.set('tier7DiscountPercent', tier7);
       if (parseInt(tier14, 10) > 0) formData.set('tier14DiscountPercent', tier14);
@@ -521,10 +550,28 @@ export function BikeSetupWizard({
             <span className={styles.stepBadge}>Étape 3 sur 5</span>
             <h2 className={styles.stepTitle}>🏷️ Quel est votre tarif de location ?</h2>
             <p className={styles.stepSubtitle}>
-              Fixez votre tarif journalier de base. Les réductions dégressives encouragent les
-              locations longue durée.
+              {hasNonDailyPricingPlan
+                ? `${getPricingPlanTypeLabel(displayedPricingPlanType)} déjà configuré. Cet assistant ne modifie que les tarifs journaliers.`
+                : 'Fixez votre tarif journalier de base. Les réductions dégressives encouragent les locations longue durée.'}
             </p>
           </div>
+
+          {hasNonDailyPricingPlan && (
+            <div
+              role="status"
+              style={{
+                padding: '14px 16px',
+                background: '#fffbeb',
+                border: '1px solid #fde68a',
+                color: '#92400e',
+                borderRadius: '12px',
+                fontSize: '0.9rem',
+              }}
+            >
+              Le plan actif reste inchangé. Utilisez l’écran de gestion des plans flexibles pour
+              modifier un tarif horaire ou un forfait.
+            </div>
+          )}
 
           <form
             onSubmit={handleSavePricing}
@@ -535,7 +582,9 @@ export function BikeSetupWizard({
                 htmlFor="step-price"
                 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}
               >
-                Prix de base par jour (€ TTC) :
+                {hasNonDailyPricingPlan
+                  ? `${getPricingPlanTypeLabel(displayedPricingPlanType)} (${bike.pricingCurrency}) :`
+                  : `Prix de base par jour (${bike.pricingCurrency} TTC) :`}
               </label>
               <input
                 id="step-price"
@@ -544,7 +593,7 @@ export function BikeSetupWizard({
                 onChange={(e) => setDailyPrice(e.target.value)}
                 placeholder="25.00"
                 required
-                disabled={isLoading}
+                disabled={isLoading || hasNonDailyPricingPlan}
                 style={{
                   padding: '12px 16px',
                   border: '1.5px solid #cbd5e1',
@@ -587,6 +636,7 @@ export function BikeSetupWizard({
                   type="number"
                   value={tier3}
                   onChange={(e) => setTier3(e.target.value)}
+                  disabled={isLoading || hasNonDailyPricingPlan}
                   style={{
                     padding: '8px 12px',
                     border: '1.5px solid #cbd5e1',
@@ -611,6 +661,7 @@ export function BikeSetupWizard({
                   type="number"
                   value={tier7}
                   onChange={(e) => setTier7(e.target.value)}
+                  disabled={isLoading || hasNonDailyPricingPlan}
                   style={{
                     padding: '8px 12px',
                     border: '1.5px solid #cbd5e1',
@@ -635,6 +686,7 @@ export function BikeSetupWizard({
                   type="number"
                   value={tier14}
                   onChange={(e) => setTier14(e.target.value)}
+                  disabled={isLoading || hasNonDailyPricingPlan}
                   style={{
                     padding: '8px 12px',
                     border: '1.5px solid #cbd5e1',
@@ -652,7 +704,12 @@ export function BikeSetupWizard({
               >
                 ← Retour
               </button>
-              <button type="submit" disabled={isLoading} className={styles.primaryActionBtn}>
+              <button
+                type={hasNonDailyPricingPlan ? 'button' : 'submit'}
+                onClick={hasNonDailyPricingPlan ? () => setCurrentStep('INVENTORY') : undefined}
+                disabled={isLoading}
+                className={styles.primaryActionBtn}
+              >
                 {isLoading ? 'Enregistrement…' : 'Continuer vers la flotte →'}
               </button>
             </div>
@@ -688,8 +745,8 @@ export function BikeSetupWizard({
               <span className={styles.counterValue}>{fleetCount}</span>
               <button
                 type="button"
-                onClick={() => setFleetCount((c) => Math.min(50, c + 1))}
-                disabled={fleetCount >= 50 || isLoading}
+                onClick={() => setFleetCount((c) => Math.min(MAX_BULK_INVENTORY_ITEMS, c + 1))}
+                disabled={fleetCount >= MAX_BULK_INVENTORY_ITEMS || isLoading}
                 className={styles.counterBtn}
               >
                 +
@@ -784,9 +841,9 @@ export function BikeSetupWizard({
                 {bike.name}
               </h3>
               <div className={styles.previewPrice}>
-                {dailyPrice} €{' '}
+                {displayedPrice}{' '}
                 <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 600 }}>
-                  / jour
+                  {getPricingPlanUnitLabel(displayedPricingPlanType)}
                 </span>
               </div>
               <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
@@ -843,7 +900,8 @@ export function BikeSetupWizard({
                 fontSize: '0.9rem',
               }}
             >
-              <span>✓</span> Tarification journalière définie ({dailyPrice} €/j)
+              <span>✓</span> {getPricingPlanTypeLabel(displayedPricingPlanType)} définie (
+              {displayedPrice} {getPricingPlanUnitLabel(displayedPricingPlanType)})
             </div>
             <div
               style={{

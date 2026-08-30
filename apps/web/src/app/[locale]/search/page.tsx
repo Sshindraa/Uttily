@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { currentUser } from '@clerk/nextjs/server';
 import { notFound } from 'next/navigation';
 import { listPublicSearchFilterOptions, PublicSearchError } from '@uttily/core';
 import { getDb } from '@/lib/db';
@@ -49,6 +50,8 @@ export default async function PublicSearchPage({
   }
 
   const otherLocale = fr ? 'en' : 'fr';
+  const isAuthenticated = (await currentUser()) !== null;
+  const currentSearchPath = `/${locale}/search${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;
   const selectedDestination =
     filters.destinations.find(
       (destination) => destination.publicId === parsed.values.destinationPublicId,
@@ -56,15 +59,19 @@ export default async function PublicSearchPage({
   return (
     <main className={styles.page} lang={locale}>
       <header className={styles.header}>
-        <Link href="/" className={styles.brand} aria-label="Uttily, accueil">
+        <Link href={`/${locale}/search`} className={styles.brand} aria-label="Uttily, accueil">
           Uttily
         </Link>
         <nav aria-label={fr ? 'Navigation et langue' : 'Navigation and language'}>
-          <Link href="/fr/account/bookings">{fr ? 'Mes locations' : 'My bookings'}</Link>
+          <Link href={`/${locale}/account/bookings`}>{fr ? 'Mes locations' : 'My bookings'}</Link>
           <Link href={`/${otherLocale}/search`} hrefLang={otherLocale}>
             {fr ? 'English' : 'Français'}
           </Link>
-          <Link href="/sign-in">{fr ? 'Espace loueur' : 'Renter portal'}</Link>
+          {!isAuthenticated ? (
+            <Link href={`/sign-in?redirect_url=${encodeURIComponent(currentSearchPath)}`}>
+              {fr ? 'Espace loueur' : 'Renter portal'}
+            </Link>
+          ) : null}
         </nav>
       </header>
 

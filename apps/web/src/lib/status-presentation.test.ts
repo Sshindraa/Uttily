@@ -8,6 +8,8 @@ import {
   getRefundStatusPresentation,
   formatMoneyAmount,
   formatHumanDate,
+  getPricingPlanTypeLabel,
+  getPricingPlanUnitLabel,
 } from './status-presentation';
 import {
   BOOKING_STATUSES,
@@ -84,5 +86,14 @@ describe('status-presentation', () => {
     expect(result).toContain('15');
     expect(result).toContain('juin');
     expect(result).toContain('2026');
+  });
+
+  it('présente chaque type de plan avec son unité réelle', () => {
+    expect(getPricingPlanTypeLabel('DAILY')).toBe('Tarif journalier');
+    expect(getPricingPlanUnitLabel('DAILY')).toBe('/ jour');
+    expect(getPricingPlanTypeLabel('HOURLY')).toBe('Tarif horaire');
+    expect(getPricingPlanUnitLabel('HOURLY')).toBe('/ heure');
+    expect(getPricingPlanTypeLabel('FIXED_DURATION')).toBe('Forfait durée fixe');
+    expect(getPricingPlanUnitLabel('FIXED_DURATION')).toBe('/ forfait');
   });
 });

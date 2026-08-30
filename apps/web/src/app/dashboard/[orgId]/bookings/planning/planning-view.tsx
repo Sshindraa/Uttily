@@ -14,6 +14,45 @@ interface PlanningViewProps {
   selectedLocationId: string | null;
 }
 
+function getLocalDateKey(date: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const get = (type: string): string => parts.find((part) => part.type === type)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+function addCivilDays(dateKey: string, days: number): string {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const date = new Date(Date.UTC(year!, month! - 1, day!));
+  date.setUTCDate(date.getUTCDate() + days);
+  return [date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate()]
+    .map((part) => String(part).padStart(2, '0'))
+    .join('-');
+}
+
+function formatLocalDateKey(dateKey: string): { label: string; shortLabel: string } {
+  const date = new Date(`${dateKey}T12:00:00.000Z`);
+  const parts = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'UTC',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+  }).formatToParts(date);
+  const get = (type: string): string => parts.find((part) => part.type === type)?.value ?? '';
+  const weekday = get('weekday');
+  const day = get('day');
+  const month = get('month');
+  const capitalizedWeekday = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+  return {
+    label: `${capitalizedWeekday} ${day} ${month}`,
+    shortLabel: `${weekday.slice(0, 3)}. ${day}`,
+  };
+}
+
 export function PlanningView({
   orgId,
   planning,
@@ -23,36 +62,32 @@ export function PlanningView({
   const [viewMode, setViewMode] = useState<'PLANNING' | 'FLEET'>('PLANNING');
 
   // Construction des 7 jours de la fenêtre
-  const days: { date: Date; dateStr: string; label: string; shortLabel: string }[] = [];
-  const start = new Date(planning.from);
+  const days: { dateStr: string; label: string; shortLabel: string }[] = [];
+  const firstDateKey = getLocalDateKey(planning.from, planning.locationTimeZone);
 
   for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(d.getDate() + i);
-    const dateStr = d.toISOString().slice(0, 10);
-    const dayName = d.toLocaleDateString('fr-FR', { weekday: 'long' });
-    const dayNumber = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    const dateStr = addCivilDays(firstDateKey, i);
+    const { label, shortLabel } = formatLocalDateKey(dateStr);
 
     days.push({
-      date: d,
       dateStr,
-      label: `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${dayNumber}`,
-      shortLabel: `${dayName.slice(0, 3)}. ${d.getDate()}`,
+      label,
+      shortLabel,
     });
   }
 
   // Filtrage des événements par jour
   function getDayEvents(dayDateStr: string) {
     const pickUps = planning.events.filter(
-      (e) => e.type === 'PICKUP' && new Date(e.startAt).toISOString().slice(0, 10) === dayDateStr,
+      (e) => e.type === 'PICKUP' && getLocalDateKey(e.startAt, e.locationTimeZone) === dayDateStr,
     );
     const returns = planning.events.filter(
-      (e) => e.type === 'RETURN' && new Date(e.endAt).toISOString().slice(0, 10) === dayDateStr,
+      (e) => e.type === 'RETURN' && getLocalDateKey(e.endAt, e.locationTimeZone) === dayDateStr,
     );
     const maintenances = planning.events.filter((e) => {
       if (e.type !== 'MAINTENANCE') return false;
-      const mStart = new Date(e.startAt).toISOString().slice(0, 10);
-      const mEnd = new Date(e.endAt).toISOString().slice(0, 10);
+      const mStart = getLocalDateKey(e.startAt, e.locationTimeZone);
+      const mEnd = getLocalDateKey(e.endAt, e.locationTimeZone);
       return dayDateStr >= mStart && dayDateStr <= mEnd;
     });
 
@@ -63,8 +98,8 @@ export function PlanningView({
   function getItemDayStatus(itemId: string, dayDateStr: string) {
     const isMaintenance = planning.events.find((e) => {
       if (e.type !== 'MAINTENANCE' || e.inventoryItemId !== itemId) return false;
-      const mStart = new Date(e.startAt).toISOString().slice(0, 10);
-      const mEnd = new Date(e.endAt).toISOString().slice(0, 10);
+      const mStart = getLocalDateKey(e.startAt, e.locationTimeZone);
+      const mEnd = getLocalDateKey(e.endAt, e.locationTimeZone);
       return dayDateStr >= mStart && dayDateStr <= mEnd;
     });
 
@@ -78,8 +113,8 @@ export function PlanningView({
 
     const isRented = planning.events.find((e) => {
       if (e.type !== 'RENTAL' || e.inventoryItemId !== itemId) return false;
-      const rStart = new Date(e.startAt).toISOString().slice(0, 10);
-      const rEnd = new Date(e.endAt).toISOString().slice(0, 10);
+      const rStart = getLocalDateKey(e.startAt, e.locationTimeZone);
+      const rEnd = getLocalDateKey(e.endAt, e.locationTimeZone);
       return dayDateStr >= rStart && dayDateStr <= rEnd;
     });
 
@@ -211,9 +246,7 @@ export function PlanningView({
                           <div className={styles.eventHeader}>
                             <span className={styles.eventTime}>
                               ↓ Départ ·{' '}
-                              {formatDateTimeInTimeZone(p.startAt, planning.locationTimeZone).slice(
-                                -5,
-                              )}
+                              {formatDateTimeInTimeZone(p.startAt, p.locationTimeZone).slice(-5)}
                             </span>
                             <span className={styles.eventSku}>{p.internalSku}</span>
                           </div>
@@ -232,9 +265,7 @@ export function PlanningView({
                           <div className={styles.eventHeader}>
                             <span className={styles.eventTime}>
                               ↑ Retour ·{' '}
-                              {formatDateTimeInTimeZone(r.endAt, planning.locationTimeZone).slice(
-                                -5,
-                              )}
+                              {formatDateTimeInTimeZone(r.endAt, r.locationTimeZone).slice(-5)}
                             </span>
                             <span className={styles.eventSku}>{r.internalSku}</span>
                           </div>

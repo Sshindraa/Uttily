@@ -54,4 +54,11 @@ describe('Dashboard — Navigation IA Pro définitive', () => {
     expect(layout).toContain('aria-label="Navigation principale"');
     expect(layout).toContain("aria-current={active ? 'page' : undefined}");
   });
+
+  it('le changement de compte déconnecte réellement la session Clerk', () => {
+    expect(layout).toContain('useClerk');
+    expect(layout).toContain("signOut({ redirectUrl: '/sign-in' })");
+    expect(layout).toContain('Changer de compte');
+    expect(layout).toContain('<button');
+  });
 });

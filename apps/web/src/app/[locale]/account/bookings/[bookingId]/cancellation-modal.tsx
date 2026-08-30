@@ -8,15 +8,18 @@ import {
 } from '@/app/actions/customer-bookings';
 import type { CancellationPreviewResult } from '@uttily/core';
 import { Dialog, Button } from '@uttily/ui';
+import { getAccountCopy } from '@/lib/account-copy';
+import { getIntlLocale } from '@/lib/locale';
 
 interface CustomerCancellationModalProps {
   bookingId: string;
+  locale: string;
 }
 
-function formatAmount(minor: number, currency: string): string {
+function formatAmount(minor: number, currency: string, locale: string): string {
   const value = minor / 100;
   try {
-    return new Intl.NumberFormat('fr-FR', {
+    return new Intl.NumberFormat(getIntlLocale(locale), {
       style: 'currency',
       currency,
     }).format(value);
@@ -27,7 +30,9 @@ function formatAmount(minor: number, currency: string): string {
 
 export function CustomerCancellationModal({
   bookingId,
+  locale,
 }: CustomerCancellationModalProps): React.ReactElement {
+  const copy = getAccountCopy(locale);
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
@@ -71,7 +76,7 @@ export function CustomerCancellationModal({
     setIsSubmitting(true);
     setErrorMessage(null);
 
-    const idempotencyKey = `cancel_cust_${bookingId}_${Date.now()}`;
+    const idempotencyKey = `cancel_cust_${bookingId}_${crypto.randomUUID()}`;
     const res = await cancelMyBookingAction({
       bookingId,
       idempotencyKey,
@@ -87,7 +92,7 @@ export function CustomerCancellationModal({
       });
     } else {
       if (res.error === 'PREVIEW_STALE') {
-        setErrorMessage('Les conditions ont évolué. Vos montants ont été actualisés.');
+        setErrorMessage(copy.cancellation.stalePreview);
         const refreshRes = await previewMyBookingCancellationAction(bookingId);
         if (refreshRes.ok) {
           setPreview(refreshRes.data);
@@ -110,10 +115,10 @@ export function CustomerCancellationModal({
           border: '1px solid currentColor',
         }}
       >
-        Annuler ma réservation
+        {copy.cancellation.button}
       </Button>
 
-      <Dialog open={isOpen} title="Annulation de réservation" onClose={handleClose}>
+      <Dialog open={isOpen} title={copy.cancellation.dialogTitle} onClose={handleClose}>
         {successResult ? (
           <div
             style={{
@@ -142,11 +147,13 @@ export function CustomerCancellationModal({
             </div>
             <p style={{ color: 'var(--ut-color-ink-strong)', fontSize: '1rem', margin: 0 }}>
               {successResult.refundAmountMinor > 0
-                ? `Votre réservation a bien été annulée. Une demande de remboursement de ${formatAmount(successResult.refundAmountMinor, successResult.currency)} a été transmise pour traitement selon les conditions applicables.`
-                : 'Votre réservation a bien été annulée.'}
+                ? copy.cancellation.successWithRefund(
+                    formatAmount(successResult.refundAmountMinor, successResult.currency, locale),
+                  )
+                : copy.cancellation.successWithoutRefund}
             </p>
             <Button type="button" onClick={handleClose} variant="primary" style={{ width: '100%' }}>
-              Retour à ma réservation
+              {copy.cancellation.backToBooking}
             </Button>
           </div>
         ) : (
@@ -159,7 +166,7 @@ export function CustomerCancellationModal({
                   color: 'var(--ut-color-ink-muted)',
                 }}
               >
-                Calcul des conditions de remboursement...
+                {copy.cancellation.loading}
               </div>
             )}
 
@@ -194,8 +201,10 @@ export function CustomerCancellationModal({
                   <div
                     style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}
                   >
-                    <span>Montant réglé</span>
-                    <strong>{formatAmount(preview.paidAmountMinor, preview.currency)}</strong>
+                    <span>{copy.cancellation.paidAmount}</span>
+                    <strong>
+                      {formatAmount(preview.paidAmountMinor, preview.currency, locale)}
+                    </strong>
                   </div>
                   <div
                     style={{
@@ -205,8 +214,10 @@ export function CustomerCancellationModal({
                       color: 'var(--ut-color-success)',
                     }}
                   >
-                    <span>Remboursement prévu</span>
-                    <strong>{formatAmount(preview.refundAmountMinor, preview.currency)}</strong>
+                    <span>{copy.cancellation.expectedRefund}</span>
+                    <strong>
+                      {formatAmount(preview.refundAmountMinor, preview.currency, locale)}
+                    </strong>
                   </div>
                   <div
                     style={{
@@ -216,13 +227,15 @@ export function CustomerCancellationModal({
                       color: 'var(--ut-color-ink-muted)',
                     }}
                   >
-                    <span>Frais retenus</span>
-                    <span>{formatAmount(preview.retainedAmountMinor, preview.currency)}</span>
+                    <span>{copy.cancellation.retainedFees}</span>
+                    <span>
+                      {formatAmount(preview.retainedAmountMinor, preview.currency, locale)}
+                    </span>
                   </div>
                 </div>
 
                 <p style={{ fontSize: '0.8rem', color: 'var(--ut-color-ink-muted)', margin: 0 }}>
-                  Calculé conformément à la politique d’annulation applicable à cette réservation.
+                  {copy.cancellation.policyNotice}
                 </p>
 
                 <div
@@ -239,7 +252,7 @@ export function CustomerCancellationModal({
                     disabled={isSubmitting}
                     variant="secondary"
                   >
-                    Conserver ma réservation
+                    {copy.cancellation.keepBooking}
                   </Button>
                   <Button
                     type="button"
@@ -247,7 +260,7 @@ export function CustomerCancellationModal({
                     disabled={isSubmitting}
                     variant="danger"
                   >
-                    {isSubmitting ? 'Annulation…' : 'Confirmer l’annulation'}
+                    {isSubmitting ? copy.cancellation.cancelling : copy.cancellation.confirm}
                   </Button>
                 </div>
               </div>
