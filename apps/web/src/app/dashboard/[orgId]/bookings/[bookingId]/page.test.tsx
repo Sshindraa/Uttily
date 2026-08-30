@@ -19,7 +19,8 @@ describe('UnifiedBookingDetailPage (Chantier 8A, 8B, 8C, 8E & 21-U2.2)', () => {
   });
 
   it('affiche les 4 piliers unifiés et le journal d’activité', () => {
-    expect(pageSource).toContain('Vélo réservé');
+    expect(pageSource).toContain('Équipement réservé');
+    expect(pageSource).toContain('Référence exemplaire');
     expect(pageSource).toContain('Dates &amp; Point de retrait');
     expect(pageSource).toContain('Locataire');
     expect(pageSource).toContain('Journal d’activité du dossier');

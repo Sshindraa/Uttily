@@ -54,6 +54,13 @@ travaux engineering à déclencher autour de ce plan.
   staging rejouée avec succès.
 - [x] Recherche publique rendue résiliente aux pannes techniques : l'interface
   affiche `SEARCH_UNAVAILABLE` au lieu de laisser remonter une erreur Next.
+- [x] Smoke test connecté TEST rejoué sur staging : hold, paiement Stripe TEST,
+  réservation confirmée, documents client et split financier 13/7 vérifiés.
+- [x] Variables Vercel historiques `COMMISSION_BPS` et
+  `PLATFORM_COMMISSION_RATE_BPS` supprimées de Production et Preview, puis
+  redéploiement `main` vérifié prêt.
+- [x] Vocabulaire des écrans de réservation réaligné sur « équipement » après
+  vérification d'une réservation de kayak dans le dashboard loueur.
 - [ ] Décisions humaines du `pilot-unblock-plan.md` clôturées.
 - [ ] Politique de refunds split approuvée et implémentée.
 - [ ] Nettoyage différentiel des fichiers, scripts et tests exécuté.

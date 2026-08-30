@@ -32,7 +32,7 @@ export function DepartureFlow({ orgId, bookingId, items }: DepartureFlowProps): 
     setError(null);
 
     try {
-      // 1. Enregistrer le rapport d'état au départ si un vélo existe
+      // 1. Enregistrer le rapport d'état au départ si un exemplaire existe
       if (firstItem) {
         const conditionFormData = new FormData();
         conditionFormData.append('bookingId', bookingId);
@@ -49,13 +49,15 @@ export function DepartureFlow({ orgId, bookingId, items }: DepartureFlowProps): 
         );
 
         if (!conditionResult.ok) {
-          setError(conditionResult.message || "Erreur lors de l'enregistrement de l'état du vélo");
+          setError(
+            conditionResult.message || "Erreur lors de l'enregistrement de l'état de l'équipement",
+          );
           setLoading(false);
           return;
         }
       }
 
-      // 2. Transitionner vers ACTIVE (Vélo remis au client)
+      // 2. Transitionner vers ACTIVE (Équipement remis au client)
       const transitionFormData = new FormData();
       transitionFormData.append('bookingId', bookingId);
       transitionFormData.append('idempotencyKey', crypto.randomUUID());
@@ -75,7 +77,9 @@ export function DepartureFlow({ orgId, bookingId, items }: DepartureFlowProps): 
       setIsOpen(false);
       router.refresh();
     } catch {
-      setError('Impossible de confirmer la remise du vélo pour le moment. Veuillez réessayer.');
+      setError(
+        'Impossible de confirmer la remise de l’équipement pour le moment. Veuillez réessayer.',
+      );
     } finally {
       setLoading(false);
     }
@@ -135,7 +139,7 @@ export function DepartureFlow({ orgId, bookingId, items }: DepartureFlowProps): 
               color: 'var(--ut-color-ink-strong)',
             }}
           >
-            🟢 Départ · Remise du vélo
+            🟢 Départ · Remise de l’équipement
           </h3>
           <button
             type="button"
@@ -174,7 +178,7 @@ export function DepartureFlow({ orgId, bookingId, items }: DepartureFlowProps): 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ color: 'var(--ut-color-success)', fontWeight: 700 }}>✓</span>
             <span>
-              Référence vélo : <strong>{firstItem?.internalSku ?? '—'}</strong>
+              Référence exemplaire : <strong>{firstItem?.internalSku ?? '—'}</strong>
               {firstItem?.serialNumber ? ` (N° ${firstItem.serialNumber})` : ''}
             </span>
           </div>
@@ -203,7 +207,7 @@ export function DepartureFlow({ orgId, bookingId, items }: DepartureFlowProps): 
               htmlFor="departure-condition"
               style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ut-color-ink)' }}
             >
-              État du vélo avant remise :
+              État de l’équipement avant remise :
             </label>
             <select
               id="departure-condition"

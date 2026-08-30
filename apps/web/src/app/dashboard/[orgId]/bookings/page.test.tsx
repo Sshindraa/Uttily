@@ -14,6 +14,7 @@ describe('BookingsListPage (Chantier 7A, 7C & 21-U2.2)', () => {
 
   it('utilise un vocabulaire centré sur les Réservations et les départs/retours', () => {
     expect(pageSource).toContain('title="Réservations"');
+    expect(pageSource).toContain('Réservation · {booking.bookingItemCount} équipement');
     expect(pageSource).toContain('Préparer le départ →');
     expect(pageSource).toContain('Effectuer le retour →');
   });

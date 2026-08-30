@@ -10,15 +10,30 @@
 
 ## État courant vérifié le 30 août 2026
 
-- Vercel `uttily-staging` sert le commit de merge `df6549b` sur
+- Vercel `uttily-staging` sert le commit de merge `cebc640` sur
   `https://uttily-staging.vercel.app`.
 - Neon `Uttily-dev`, branche `staging` : journal Drizzle à 49 migrations ; les
   migrations `0040` à `0049` ont été appliquées le 30 août 2026.
 - Le parcours public recherche → résultat → page d’offre a été vérifié sur
   Annecy pour la période du 10 au 11 juin 2030 ; une offre est retournée et sa
   page est accessible.
-- Le parcours authentifié Clerk/Stripe/worker/R2/Resend n’a pas été rejoué dans
-  cette remise à niveau. Aucun fournisseur LIVE n’a été activé.
+- Le parcours authentifié Clerk/Stripe TEST a été rejoué : recherche, hold,
+  checkout, confirmation, espace client, espace loueur et finances. La preuve
+  actuelle ne remplace pas la vérification indépendante des logs worker/R2/
+  Resend détaillée dans le rapport historique. Aucun fournisseur LIVE n’a été
+  activé.
+
+### Preuve connectée actuelle — 30 août 2026
+
+- Utilisateur Clerk TEST : `uttily-staging-e2e+clerk_test@example.com` dans
+  `Uttily Demo Rental`.
+- Réservation créée sur Annecy pour le 10 juin 2030 :
+  `8e71444c-828b-4754-8215-e58d0ffa839c`, statut `CONFIRMED`.
+- Stripe TEST : paiement de 90,95 € confirmé.
+- Finances loueur : location 85,00 €, frais plateforme 11,05 € (13 %), net
+  73,95 € ; les frais client observés côté checkout sont de 5,95 € (7 %).
+- Documents visibles côté client : confirmation, contrat et reçu.
+- Les identifiants, secrets et fournisseurs LIVE restent hors périmètre.
 
 Ce document clôt le déploiement Web staging après le ticket R2/Resend/worker
 décrit dans `g8a-staging-r2-resend-worker-smoke-test.md`. Aucun fournisseur LIVE,

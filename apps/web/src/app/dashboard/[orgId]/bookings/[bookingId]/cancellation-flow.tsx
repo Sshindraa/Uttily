@@ -197,8 +197,8 @@ export function CancellationFlow({ orgId, bookingId }: CancellationFlowProps): R
                   </div>
 
                   <div className={styles.inventoryNotice}>
-                    🚲 <strong>Libération de flotte :</strong> Le vélo physique attribué à cette
-                    réservation redeviendra immédiatement disponible à la location.
+                    🧰 <strong>Libération de flotte :</strong> L’équipement physique attribué à
+                    cette réservation redeviendra immédiatement disponible à la location.
                   </div>
                 </div>
               ) : null}

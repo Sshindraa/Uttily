@@ -271,7 +271,7 @@ export function PlanningView({
           <table className={styles.fleetTable}>
             <thead>
               <tr>
-                <th className={styles.bikeColHeader}>Vélo / Exemplaire</th>
+                <th className={styles.bikeColHeader}>Équipement / Exemplaire</th>
                 {days.map((day) => (
                   <th key={day.dateStr} className={styles.dayColHeader}>
                     {day.shortLabel}

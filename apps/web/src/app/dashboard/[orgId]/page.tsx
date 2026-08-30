@@ -76,7 +76,7 @@ export default async function OrganizationDashboardPage({
       bookingId: b.id,
       time: b.customerStartAt,
       timeZone: b.locationTimeZone,
-      modelName: `${b.bookingItemCount} vélo(s) à remettre`,
+      modelName: `${b.bookingItemCount} équipement(s) à remettre`,
       sku: `#${b.id.slice(0, 6).toUpperCase()}`,
       clientName: 'Client Réservataire',
       locationName: b.locationName,
@@ -86,7 +86,7 @@ export default async function OrganizationDashboardPage({
       bookingId: b.id,
       time: b.customerEndAt,
       timeZone: b.locationTimeZone,
-      modelName: `${b.bookingItemCount} vélo(s) à réceptionner`,
+      modelName: `${b.bookingItemCount} équipement(s) à réceptionner`,
       sku: `#${b.id.slice(0, 6).toUpperCase()}`,
       clientName: 'Client Réservataire',
       locationName: b.locationName,
@@ -145,7 +145,7 @@ export default async function OrganizationDashboardPage({
           <div className={`${styles.kpiIcon} ${styles.kpiIconSky}`}>🚲</div>
           <div className={styles.kpiText}>
             <span className={styles.kpiValue}>{activeFleetCount}</span>
-            <span className={styles.kpiLabel}>Vélos en service</span>
+            <span className={styles.kpiLabel}>Équipements en service</span>
           </div>
         </Link>
 

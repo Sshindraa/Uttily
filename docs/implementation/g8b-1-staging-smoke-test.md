@@ -7,14 +7,31 @@
 ## État courant vérifié le 30 août 2026
 
 - Déploiement Web courant : `uttily-staging`, domaine
-  `https://uttily-staging.vercel.app`, commit de merge `df6549b`.
+  `https://uttily-staging.vercel.app`, commit de merge `cebc640`.
 - Base Neon `Uttily-dev/staging` : migrations `0040` à `0049` appliquées dans
   l’ordre, journal Drizzle à 49 entrées.
 - Vérification publique : recherche Annecy du 10 au 11 juin 2030 fonctionnelle,
   une offre retournée, puis page de l’offre accessible avec photos, horaires et
   formulaire de réservation.
-- Ce contrôle n’est pas une nouvelle preuve du parcours Clerk/Stripe/R2
-  connecté ; aucun fournisseur LIVE n’a été activé.
+- Smoke test connecté rejoué en TEST : session Clerk du pilote, hold, paiement
+  Stripe TEST de 90,95 €, réservation confirmée, trois documents visibles dans
+  l’espace client et écriture financière à 13 % côté loueur.
+- Ce contrôle ne constitue pas une preuve indépendante des logs webhook,
+  worker, R2 ou Resend ; aucun fournisseur LIVE n’a été activé.
+
+## Contrôle connecté courant du 30 août 2026
+
+- Utilisateur Clerk TEST : `uttily-staging-e2e+clerk_test@example.com`, organisation
+  `Uttily Demo Rental`.
+- Parcours rejoué : recherche Annecy (10–11 juin 2030) → hold → checkout Stripe
+  TEST → confirmation → espace client → espace loueur.
+- Réservation créée : `8e71444c-828b-4754-8215-e58d0ffa839c`, statut `CONFIRMED`.
+- Montants observés : prix de location 85,00 €, frais client 5,95 € (7 %),
+  total payé 90,95 €, frais plateforme loueur 11,05 € (13 %), net loueur
+  73,95 €.
+- Documents visibles dans l’espace client : confirmation, contrat et reçu.
+- Le parcours est limité à Stripe TEST et aux données Neon staging ; aucune
+  transaction LIVE n’a été exécutée.
 
 ## Référence
 

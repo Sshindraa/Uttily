@@ -187,7 +187,7 @@ export default async function BookingsListPage({
                           color: 'var(--ut-color-ink-strong)',
                         }}
                       >
-                        Réservation · {booking.bookingItemCount} vélo
+                        Réservation · {booking.bookingItemCount} équipement
                         {booking.bookingItemCount > 1 ? 's' : ''}
                       </h2>
                       <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>

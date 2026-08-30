@@ -22,7 +22,7 @@ export default async function AccountLayout({
               Mes locations
             </Link>
             <Link href={`/${locale}/search`} style={navSecondaryLinkStyle}>
-              Rechercher un vélo
+              Rechercher un équipement
             </Link>
             <div style={userWrapperStyle}>
               <UserButton afterSignOutUrl={`/${locale}/search`} />
