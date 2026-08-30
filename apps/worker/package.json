@@ -10,7 +10,6 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:fast": "vitest run --exclude '**/*.integration.test.ts' --exclude 'src/email-delivery-finalizer.test.ts' --exclude 'src/adapters/pdf-lib-document-renderer.test.ts' --exclude 'src/adapters/pdf-lib-reproducibility.test.ts' --exclude 'src/smoke-harness.test.ts'",
-    "test:e2e": "vitest run --fileParallelism=false",
     "build": "node build.mjs",
     "smoke:built": "node scripts/smoke-built-worker.mjs",
     "smoke": "pnpm build && pnpm smoke:built",
@@ -29,7 +28,6 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@uttily/config": "workspace:*",
     "esbuild": "^0.28.1",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
