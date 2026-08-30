@@ -207,6 +207,7 @@ export async function cancelConfirmedBooking(
         commissionRefundedMinor: preview.commissionRefundedMinor,
         finalCommissionMinor: preview.finalCommissionMinor,
         finalMerchantRevenueMinor: preview.finalMerchantRevenueMinor,
+        marketplaceFeeSnapshot: booking.marketplaceFeeSnapshot,
         currency: 'EUR',
         explanationCode: preview.explanationCode,
         inventoryReleased: true,

@@ -2270,9 +2270,12 @@ async function projectTaggedBookingModificationRefund(
       organizationId: payments.organizationId,
       connectedAccountId: payments.connectedAccountId,
       environment: payments.environment,
+      paymentMarketplaceFeeSnapshot: payments.marketplaceFeeSnapshot,
+      bookingMarketplaceFeeSnapshot: bookings.marketplaceFeeSnapshot,
     })
     .from(payments)
     .innerJoin(paymentAttempts, eq(paymentAttempts.paymentId, payments.id))
+    .innerJoin(bookings, eq(bookings.paymentId, payments.id))
     .where(
       and(
         eq(payments.id, localRefund.paymentId),
@@ -2286,6 +2289,14 @@ async function projectTaggedBookingModificationRefund(
     .for('update')
     .limit(1);
   if (paymentRows.length === 0) throw new RefundProjectionError('REFUND_PI_MISMATCH');
+  if (
+    (paymentRows[0]!.paymentMarketplaceFeeSnapshot !== null &&
+      paymentRows[0]!.paymentMarketplaceFeeSnapshot !== undefined) ||
+    (paymentRows[0]!.bookingMarketplaceFeeSnapshot !== null &&
+      paymentRows[0]!.bookingMarketplaceFeeSnapshot !== undefined)
+  ) {
+    throw new RefundProjectionError('REFUND_INVARIANT_BROKEN');
+  }
   if (event.accountId !== null && paymentRows[0]!.connectedAccountId !== event.accountId) {
     throw new RefundProjectionError('REFUND_ACCOUNT_MISMATCH');
   }

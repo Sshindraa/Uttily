@@ -280,6 +280,7 @@ export async function getCustomerBooking(
       currency: bookings.currency,
       confirmedAt: bookings.confirmedAt,
       cancellationPolicySnapshot: bookings.cancellationPolicySnapshot,
+      marketplaceFeeSnapshot: bookings.marketplaceFeeSnapshot,
       locationName: locations.name,
       locationAddressLine1: locations.addressLine1,
       locationAddressLine2: locations.addressLine2,
@@ -355,6 +356,7 @@ export async function getCustomerBooking(
 
   // 4. Charger le paiement (Fail-closed : jamais de synthèse artificielle 'PAID' si absent !)
   let payment: CustomerBookingPaymentDetail | null = null;
+  let paymentHasMarketplaceFeeSnapshot = false;
   if (booking.paymentId) {
     const paymentRows = await db
       .select({
@@ -362,6 +364,7 @@ export async function getCustomerBooking(
         currency: payments.currency,
         status: payments.status,
         succeededAt: payments.succeededAt,
+        marketplaceFeeSnapshot: payments.marketplaceFeeSnapshot,
       })
       .from(payments)
       .where(eq(payments.id, booking.paymentId))
@@ -369,6 +372,8 @@ export async function getCustomerBooking(
 
     if (paymentRows[0]) {
       const p = paymentRows[0];
+      paymentHasMarketplaceFeeSnapshot =
+        p.marketplaceFeeSnapshot !== null && p.marketplaceFeeSnapshot !== undefined;
       let payStatus: 'PAID' | 'PENDING' | 'FAILED' | 'UNAVAILABLE' = 'PENDING';
       if (p.status === 'SUCCEEDED') payStatus = 'PAID';
       else if (p.status === 'FAILED') payStatus = 'FAILED';
@@ -481,6 +486,9 @@ export async function getCustomerBooking(
   // 7. Policy code
   const snapshot = booking.cancellationPolicySnapshot as { policy_code?: string } | null;
   const policyCode = snapshot?.policy_code ?? 'FLEXIBLE';
+  const hasMarketplaceFeeSnapshot =
+    booking.marketplaceFeeSnapshot !== null && booking.marketplaceFeeSnapshot !== undefined;
+  const cancellationBlockedBySplit = hasMarketplaceFeeSnapshot || paymentHasMarketplaceFeeSnapshot;
 
   const status = projectCustomerBookingStatus(
     booking.status,
@@ -524,8 +532,11 @@ export async function getCustomerBooking(
     items,
     payment,
     cancellation: {
-      allowed: booking.status === 'CONFIRMED' || booking.status === 'READY_FOR_PICKUP',
+      allowed:
+        (booking.status === 'CONFIRMED' || booking.status === 'READY_FOR_PICKUP') &&
+        !cancellationBlockedBySplit,
       policyCode,
+      reasonCode: cancellationBlockedBySplit ? 'SPLIT_REFUND_UNRESOLVED' : null,
     },
     cancellationRecord,
     refund: refundDetail,

@@ -48,6 +48,25 @@ function assertLeaseRows(rows: unknown[], code: 'LEASE_LOST') {
   }
 }
 
+function assertNoMarketplaceFeeSnapshot(snapshot: unknown, context: string): void {
+  if (snapshot !== null && snapshot !== undefined) {
+    throw new RefundRequestError(
+      'SPLIT_REFUND_UNRESOLVED',
+      `Remboursement split refusé : snapshot marketplace présent sur ${context}`,
+    );
+  }
+}
+
+function containsMarketplaceFeeSnapshot(value: unknown): boolean {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    'marketplaceFeeSnapshot' in value &&
+    (value as { marketplaceFeeSnapshot?: unknown }).marketplaceFeeSnapshot !== null &&
+    (value as { marketplaceFeeSnapshot?: unknown }).marketplaceFeeSnapshot !== undefined
+  );
+}
+
 /** Pre-call validation transaction; acquires row locks on outbox, refund, payment, attempt. */
 export async function verifyRefundRequest(
   db: DatabaseClient,
@@ -221,6 +240,7 @@ export async function verifyRefundRequest(
       if (payment.environment !== environment) {
         throw new RefundRequestError('ENVIRONMENT_MISMATCH', 'Environnement paiement incohérent');
       }
+      assertNoMarketplaceFeeSnapshot(payment.marketplaceFeeSnapshot, 'le paiement');
 
       // Vérification de la réservation annulée
       const bookingRows = await tx
@@ -238,6 +258,7 @@ export async function verifyRefundRequest(
           'La réservation doit être au statut CANCELLED pour exécuter le remboursement d’annulation',
         );
       }
+      assertNoMarketplaceFeeSnapshot(booking.marketplaceFeeSnapshot, 'la réservation');
 
       // Vérification de la trace d'annulation
       const cancellationRows = await tx
@@ -259,6 +280,7 @@ export async function verifyRefundRequest(
           'Incohérence trace d’annulation / remboursement',
         );
       }
+      assertNoMarketplaceFeeSnapshot(cancellation.marketplaceFeeSnapshot, 'la trace d’annulation');
 
       const attemptRows = await tx
         .select({
@@ -324,6 +346,7 @@ export async function verifyRefundRequest(
       if (payment.environment !== environment) {
         throw new RefundRequestError('ENVIRONMENT_MISMATCH', 'Environnement paiement incohérent');
       }
+      assertNoMarketplaceFeeSnapshot(payment.marketplaceFeeSnapshot, 'le paiement');
 
       const amendmentRows = await tx
         .select()
@@ -341,6 +364,15 @@ export async function verifyRefundRequest(
         amendment.status !== 'APPLIED'
       ) {
         throw new RefundRequestError('AMENDMENT_MISMATCH', 'Amendment incohérent');
+      }
+      if (
+        containsMarketplaceFeeSnapshot(amendment.financialSnapshotBefore) ||
+        containsMarketplaceFeeSnapshot(amendment.financialSnapshotAfter)
+      ) {
+        throw new RefundRequestError(
+          'SPLIT_REFUND_UNRESOLVED',
+          'Remboursement split refusé : snapshot marketplace présent sur l’amendement',
+        );
       }
 
       const attemptRows = await tx
@@ -423,6 +455,10 @@ export async function verifyRefundRequest(
       if (amendmentPayment.environment !== environment) {
         throw new RefundRequestError('ENVIRONMENT_MISMATCH', 'Environnement paiement incohérent');
       }
+      assertNoMarketplaceFeeSnapshot(
+        amendmentPayment.marketplaceFeeDeltaSnapshot,
+        'le paiement d’amendement',
+      );
 
       const amendmentRows = await tx
         .select()
