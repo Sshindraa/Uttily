@@ -62,6 +62,10 @@ travaux engineering à déclencher autour de ce plan.
   contrôle des deux snapshots, consumer et webhook fail-closed, et traçabilité
   du snapshot d'annulation ; la politique économique split reste bloquée par
   les décisions Finance/Juridique.
+- [x] Proposition de politique de remboursement split formalisée dans
+  [`ADR-030`](../decisions/ADR-030-split-refund-policy.md) : delta entre états
+  effectifs, calcul composant par composant, traitement des frais Stripe et
+  escalade manuelle.
 - [x] Dérive du schéma staging résolue : migrations `0040` à `0049` appliquées
   dans Neon, journal Drizzle vérifié à 49 entrées, puis recherche publique
   staging rejouée avec succès.
@@ -75,7 +79,8 @@ travaux engineering à déclencher autour de ce plan.
 - [x] Vocabulaire des écrans de réservation réaligné sur « équipement » après
   vérification d'une réservation de kayak dans le dashboard loueur.
 - [ ] Décisions humaines du `pilot-unblock-plan.md` clôturées.
-- [ ] Politique de refunds split approuvée et implémentée.
+- [ ] Politique de refunds split approuvée par Finance/Juridique, rendue
+  exécutable par le provider et implémentée.
 - [x] Nettoyage différentiel des fichiers, scripts et tests exécuté ; les éléments
   opérationnels et les preuves historiques sont conservés.
 
@@ -160,7 +165,7 @@ Les mêmes décisions n'ont pas le même effet selon le pilote visé :
 | --- | --- | --- | --- |
 | P0 | Référentiel et gel | Une seule branche/commit de référence, état Git propre et preuves de validation datées | `git status`, format, tests ciblés et CI lisibles ; aucune modification utilisateur écrasée |
 | P0 | `GATE-PILOT` | Décisions humaines et readiness pilotées par le plan canonique | Le statut est lu dans `pilot-unblock-plan.md`, sans copie divergente dans cette roadmap |
-| P0 | Remboursements split | Politique versionnée pour les remboursements totaux, partiels, annulations en baisse et compensations tardives | Tests d’invariance, d’idempotence et d’absence d’appel provider en cas de divergence ; retrait du blocage uniquement après sign-off |
+| P0 | Remboursements split | Proposition versionnée dans `ADR-030` pour les remboursements totaux, partiels, annulations en baisse et compensations tardives | Sign-off Finance/Juridique, provider composant par composant, tests d’invariance et d’idempotence ; retrait du blocage uniquement après validation complète |
 | P0 | Termes et documents | Chaque version acceptée par le client pointe vers un document réellement publié | `v1` est référencé par un document, une date d’effet et une preuve d’acceptation complète |
 | P1 | `GATE-PILOT` — partenaire, privacy et opérations | Partenaire, contrat, données, recovery, confidentialité et contacts confirmés | Les lignes concernées du `pilot-unblock-plan.md` sont clôturées selon le type de pilote choisi |
 | P1 | Documentation | Les documents actifs décrivent le code courant ; les historiques sont balisés | Aucun document actif ne présente 10 % comme règle actuelle ou une fonctionnalité livrée comme non livrée |
@@ -207,8 +212,11 @@ Les mêmes décisions n'ont pas le même effet selon le pilote visé :
 
 - Tant que `FIN-002`, `LEGAL-005` et les décisions associées ne sont pas signés,
   conserver le fail-closed sur les refunds split.
-- Après arbitrage, versionner la politique de refund total, partiel, annulation,
-  supplément, compensation tardive, rejeu et panne provider.
+- La proposition actuelle est versionnée dans
+  [`ADR-030`](../decisions/ADR-030-split-refund-policy.md), mais son statut
+  reste `Proposed` jusqu'au sign-off Finance/Juridique.
+- Après approbation, versionner la politique de refund total, partiel,
+  annulation, supplément, compensation tardive, rejeu et panne provider.
 - Vérifier les invariants base, frais client, frais loueur, application fee, net
   marchand, devise, arrondis et immuabilité du snapshot.
 - Tester séparément les chemins legacy et split, y compris réconciliation,

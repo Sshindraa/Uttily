@@ -76,8 +76,10 @@ un snapshot split échouent volontairement fermés avec
 Avant une activation LIVE, `FIN-002` doit encore fixer et faire approuver la
 base fiscale, la date d'effet, la TVA, les frais Stripe, le settlement, les
 chargebacks, les responsabilités et le traitement de chaque composant lors
-des remboursements. La présence du moteur et de ses tests ne vaut pas
-validation externe.
+des remboursements. La proposition de politique par delta entre états effectifs
+est formalisée dans [ADR-030](../decisions/ADR-030-split-refund-policy.md), mais
+son statut `Proposed` ne vaut pas validation externe. La présence du moteur et
+de ses tests ne vaut pas validation externe.
 
 ## Vérification rapide par un agent
 

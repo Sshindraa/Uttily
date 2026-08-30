@@ -39,8 +39,10 @@ règle inconnues et refunds split non spécifiés échouent fermés. Les refunds
 legacy conservent leur comportement existant.
 
 Les amendements split utilisent `FINAL_STATE_DELTA_PER_COMPONENT` sous la règle
-historique du booking. Un delta négatif n'est pas converti en refund tant que
-la politique Finance/Juridique n'est pas signée.
+historique du booking. La politique proposée pour convertir un delta négatif en
+obligations de remboursement est décrite dans [ADR-030](ADR-030-split-refund-policy.md).
+Un delta négatif n'est pas converti en refund tant que cette politique n'est
+pas signée par Finance/Juridique.
 
 ### CURRENT_SPLIT_FEE_REFUND_BEHAVIOR
 
