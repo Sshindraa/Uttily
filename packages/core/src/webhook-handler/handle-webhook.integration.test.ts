@@ -1109,8 +1109,9 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
     expect(payment!.status).toBe('PROCESSING');
   });
 
-  // 6. Compensation tardive : brouillon EXPIRED + payment_intent.succeeded
-  it('6. paiement tardif : compensation (refund PENDING + outbox), pas de réservation', async () => {
+  // 6. Paiement tardif split : le remboursement reste bloqué tant que la
+  // politique Finance/Legal des composants de frais n'est pas validée.
+  it('6. paiement tardif split : remboursement bloqué, aucune écriture partielle', async () => {
     if (!db || !rawSql) return;
     const ids = await seedBaseData();
     await seedPaymentAccount(ids);
@@ -1145,28 +1146,28 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
     const bookings = await rawSql`SELECT id FROM bookings WHERE draft_id = ${draftId}`;
     expect(bookings.length).toBe(0);
 
-    // Paiement SUCCEEDED.
+    // Le split est fail-closed : le paiement ne devient pas SUCCEEDED.
     const payment =
       await rawSql`SELECT status, succeeded_at FROM payments WHERE id = ${paymentId}`.then(
         (r) => r[0],
       );
-    expect(payment!.status).toBe('SUCCEEDED');
-    expect(payment!.succeeded_at).not.toBeNull();
+    expect(payment!.status).toBe('REQUIRES_PAYMENT_METHOD');
+    expect(payment!.succeeded_at).toBeNull();
 
-    // Refund PENDING avec reason LATE_PAYMENT_NO_BOOKING.
+    // Aucun refund global ne doit masquer la décision non validée.
     const refund =
       await rawSql`SELECT status, reason, amount_minor, reverse_transfer, refund_application_fee FROM refunds WHERE payment_id = ${paymentId}`;
-    expect(refund.length).toBe(1);
-    expect(refund[0]!.status).toBe('PENDING');
-    expect(refund[0]!.reason).toBe('LATE_PAYMENT_NO_BOOKING');
-    expect(refund[0]!.reverse_transfer).toBe(true);
-    expect(refund[0]!.refund_application_fee).toBe(true);
+    expect(refund.length).toBe(0);
 
-    // Outbox PAYMENT_COMPENSATION_REQUESTED.
+    // Aucune demande de compensation ne doit être publiée.
     const outbox =
       await rawSql`SELECT event_type FROM outbox_events WHERE aggregate_id = ${paymentId}`;
-    expect(outbox.length).toBe(1);
-    expect(outbox[0]!.event_type).toBe('PAYMENT_COMPENSATION_REQUESTED');
+    expect(outbox.length).toBe(0);
+
+    const webhookEvent =
+      await rawSql`SELECT status, failure_code FROM payment_webhook_events WHERE provider_object_id = ${piId}`;
+    expect(webhookEvent[0]!.status).toBe('FAILED');
+    expect(webhookEvent[0]!.failure_code).toBe('WEBHOOK_INVARIANT_BROKEN');
   });
 
   // 7. Événements désordonnés : succeeded puis processing → pas de régression
@@ -1626,13 +1627,12 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
     const paymentId = await getPaymentId(draftId);
     const amount = await getPaymentAmount(draftId);
 
-    // Modifier le montant du payment APRÈS initiation mais AVANT webhook.
-    // Cela brise l'invariant montant == piData.amount.
+    // Le montant local reste immuable. Simuler l'invariant brisé en envoyant
+    // un montant externe différent dans le webhook.
     const tamperedAmount = amount + 999;
-    await rawSql`UPDATE "payments" SET "amount_minor" = ${tamperedAmount} WHERE "id" = ${paymentId}`;
 
     const deps = makeDeps();
-    const body = makeWebhookPayload('payment_intent.succeeded', piId, amount, {
+    const body = makeWebhookPayload('payment_intent.succeeded', piId, tamperedAmount, {
       payment_id: paymentId,
       payment_attempt_id: initResult.paymentAttemptId,
       draft_id: draftId,
