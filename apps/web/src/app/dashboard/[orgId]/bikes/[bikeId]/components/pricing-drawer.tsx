@@ -145,9 +145,9 @@ export function PricingDrawer({
                 <div
                   style={{
                     padding: '10px',
-                    background: '#fef2f2',
-                    border: '1px solid #fecaca',
-                    color: '#b91c1c',
+                    background: 'var(--ut-color-danger-soft)',
+                    border: '1px solid var(--ut-color-danger-soft)',
+                    color: 'var(--ut-color-danger)',
                     borderRadius: '8px',
                     fontSize: '0.85rem',
                   }}
@@ -175,25 +175,37 @@ export function PricingDrawer({
               {/* Aperçu en direct */}
               <div
                 style={{
-                  background: '#f0fdf4',
-                  border: '1px solid #bbf7d0',
+                  background: 'var(--ut-color-success-soft)',
+                  border: '1px solid var(--ut-color-success-soft)',
                   padding: '14px',
                   borderRadius: '10px',
                 }}
               >
-                <div style={{ fontWeight: 800, color: '#166534', fontSize: '0.9rem' }}>
+                <div
+                  style={{
+                    fontWeight: 800,
+                    color: 'var(--ut-color-success-strong)',
+                    fontSize: '0.9rem',
+                  }}
+                >
                   Aperçu de votre offre :
                 </div>
                 <div
                   style={{
                     fontSize: '1.25rem',
                     fontWeight: 900,
-                    color: '#0f172a',
+                    color: 'var(--ut-color-ink-strong)',
                     marginTop: '4px',
                   }}
                 >
                   {formatMoneyAmount(Math.round(parsedDailyPrice * 100), currency)}{' '}
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#64748b' }}>
+                  <span
+                    style={{
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: 'var(--ut-color-ink-muted)',
+                    }}
+                  >
                     / jour
                   </span>
                 </div>
@@ -202,14 +214,14 @@ export function PricingDrawer({
               {/* Remises dégressives */}
               <div
                 style={{
-                  borderTop: '1px solid #e2e8f0',
+                  borderTop: '1px solid var(--ut-color-border)',
                   paddingTop: '12px',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '12px',
                 }}
               >
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1e293b' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--ut-color-ink)' }}>
                   Remises longue durée (optionnelles) :
                 </div>
 
@@ -221,7 +233,10 @@ export function PricingDrawer({
                     alignItems: 'center',
                   }}
                 >
-                  <label htmlFor="tier-3" style={{ fontSize: '0.85rem', color: '#475569' }}>
+                  <label
+                    htmlFor="tier-3"
+                    style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}
+                  >
                     Dès 3 jours (% remise) :
                   </label>
                   <input
@@ -244,7 +259,10 @@ export function PricingDrawer({
                     alignItems: 'center',
                   }}
                 >
-                  <label htmlFor="tier-7" style={{ fontSize: '0.85rem', color: '#475569' }}>
+                  <label
+                    htmlFor="tier-7"
+                    style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}
+                  >
                     Dès 7 jours (% remise) :
                   </label>
                   <input
@@ -267,7 +285,10 @@ export function PricingDrawer({
                     alignItems: 'center',
                   }}
                 >
-                  <label htmlFor="tier-14" style={{ fontSize: '0.85rem', color: '#475569' }}>
+                  <label
+                    htmlFor="tier-14"
+                    style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}
+                  >
                     Dès 14 jours (% remise) :
                   </label>
                   <input

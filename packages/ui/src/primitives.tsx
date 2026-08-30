@@ -31,14 +31,20 @@ const buttonBase: CSSProperties = {
 };
 
 const buttonVariants: Record<ButtonVariant, CSSProperties> = {
-  primary: { background: 'var(--ut-color-primary)', color: 'white' },
+  primary: {
+    background: 'var(--ut-color-primary)',
+    color: 'var(--ut-color-ink-on-dark)',
+  },
   secondary: {
     background: 'var(--ut-color-surface)',
     borderColor: 'var(--ut-color-border-strong)',
     color: 'var(--ut-color-ink-strong)',
   },
   quiet: { background: 'transparent', color: 'var(--ut-color-primary-strong)' },
-  danger: { background: 'var(--ut-color-danger)', color: 'white' },
+  danger: {
+    background: 'var(--ut-color-danger)',
+    color: 'var(--ut-color-ink-on-dark)',
+  },
 };
 
 const buttonSizes: Record<ControlSize, CSSProperties> = {

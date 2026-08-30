@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { getSupplementCheckoutSummary } from '@uttily/core';
+import { ClientShell } from '@/components/client-shell';
 import { SupplementCheckoutClient } from './supplement-checkout-client';
 
 interface PageProps {
@@ -28,62 +29,62 @@ export default async function AmendmentCheckoutPage({
 
   if (summary.kind === 'NOT_FOUND') {
     return (
-      <main style={containerStyle}>
+      <CheckoutFrame>
         <h1>Paiement introuvable</h1>
         <p>Ce paiement de modification n'existe pas ou ne vous est pas accessible.</p>
-      </main>
+      </CheckoutFrame>
     );
   }
 
   if (summary.kind === 'EXPIRED') {
     return (
-      <main style={containerStyle}>
+      <CheckoutFrame>
         <h1>Délai de paiement expiré</h1>
         <p>
           Le délai de 10 minutes pour régler cette modification a expiré. Les articles associés ont
           été libérés.
         </p>
-      </main>
+      </CheckoutFrame>
     );
   }
 
   if (summary.kind === 'PAID') {
     return (
-      <main style={containerStyle}>
+      <CheckoutFrame>
         <h1>Modification déjà réglée</h1>
         <p>
           Ce supplément a déjà été réglé. La modification est en cours d'application ou a déjà été
           confirmée.
         </p>
-      </main>
+      </CheckoutFrame>
     );
   }
 
   if (summary.kind === 'PROCESSING') {
     return (
-      <main style={containerStyle}>
+      <CheckoutFrame>
         <h1>Paiement en cours de traitement</h1>
         <p>
           Votre paiement est en cours de validation bancaire. Vous serez notifié dès sa
           confirmation.
         </p>
-      </main>
+      </CheckoutFrame>
     );
   }
 
   if (summary.kind === 'INVALID_STATE') {
     return (
-      <main style={containerStyle}>
+      <CheckoutFrame>
         <h1>Paiement indisponible</h1>
         <p>
           Ce paiement ne peut pas être effectué dans l'état actuel. Veuillez contacter votre loueur.
         </p>
-      </main>
+      </CheckoutFrame>
     );
   }
 
   return (
-    <main style={containerStyle}>
+    <CheckoutFrame>
       <h1>Règlement du supplément</h1>
       <SupplementCheckoutClient
         amendmentId={amendmentId}
@@ -92,13 +93,21 @@ export default async function AmendmentCheckoutPage({
         holdDeadline={summary.holdDeadline}
         timeZone={summary.timeZone}
       />
-    </main>
+    </CheckoutFrame>
+  );
+}
+
+function CheckoutFrame({ children }: { children: React.ReactNode }): React.ReactElement {
+  return (
+    <ClientShell>
+      <main style={containerStyle}>{children}</main>
+    </ClientShell>
   );
 }
 
 const containerStyle: React.CSSProperties = {
-  maxWidth: 520,
+  maxWidth: '32.5rem',
   margin: '2rem auto',
-  padding: '1.5rem',
-  fontFamily: 'system-ui, -apple-system, sans-serif',
+  padding: 'var(--ut-space-6) var(--ut-space-4)',
+  color: 'var(--ut-color-ink)',
 };

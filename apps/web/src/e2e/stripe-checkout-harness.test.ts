@@ -42,7 +42,7 @@ import {
  *
  * Exécution :
  *   DATABASE_URL=postgresql://uttily:uttily@localhost:5432/uttuly \
- *   pnpm --filter @uttily/web test src/e2e/stripe-checkout-harness.test.ts
+ *   pnpm --filter @uttily/web test:harness
  */
 
 const isCi = process.env.CI === '1' || process.env.CI === 'true';
@@ -236,7 +236,16 @@ function makeWebhookPayload(
   metadata: Record<string, string>,
   connectedAccountId: string,
   eventId: string,
+  financialOverrides: {
+    applicationFeeAmountMinor?: number | null;
+    onBehalfOfAccountId?: string | null;
+  } = {},
 ): string {
+  const applicationFeeAmount =
+    financialOverrides.applicationFeeAmountMinor === undefined
+      ? 500
+      : financialOverrides.applicationFeeAmountMinor;
+  const onBehalfOf = financialOverrides.onBehalfOfAccountId ?? null;
   return JSON.stringify({
     id: eventId,
     type,
@@ -251,8 +260,8 @@ function makeWebhookPayload(
         currency: 'eur',
         metadata,
         transfer_data: { destination: connectedAccountId },
-        application_fee_amount: 500,
-        on_behalf_of: null,
+        application_fee_amount: applicationFeeAmount,
+        on_behalf_of: onBehalfOf,
       },
     },
   });
@@ -358,6 +367,8 @@ describe.skipIf(shouldSkipIntegrationTests())(
       expect(paymentSecretScan.length).toBe(0);
 
       const piId = initResult.providerPaymentIntentId;
+      const providerIntent = await adapter.retrievePaymentIntent(piId);
+      expect(providerIntent.connectedAccountId).toBe(accountResult.providerAccountId);
       const paymentId = (
         await sql`SELECT "id" FROM "payments" WHERE "draft_id" = ${draftId}`.then((r) => r[0]!)
       ).id;
@@ -384,6 +395,10 @@ describe.skipIf(shouldSkipIntegrationTests())(
         },
         accountResult.providerAccountId,
         'evt_harness_succeeded_1',
+        {
+          applicationFeeAmountMinor: providerIntent.applicationFeeAmountMinor,
+          onBehalfOfAccountId: providerIntent.onBehalfOfAccountId,
+        },
       );
       const signature = adapter.generateValidSignature(body, 'platform');
       const webhookInput: WebhookHandlerInput = {

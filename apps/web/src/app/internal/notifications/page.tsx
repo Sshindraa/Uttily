@@ -47,7 +47,9 @@ export default async function NotificationsSupportPage({
         </p>
 
         <div className={styles.filtersBar}>
-          <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Filtrer par statut :</span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-support-muted)' }}>
+            Filtrer par statut :
+          </span>
           <Link
             href="/internal/notifications"
             className={`${styles.filterLink} ${!validStatus ? styles.filterLinkActive : ''}`}
@@ -99,7 +101,14 @@ export default async function NotificationsSupportPage({
           <tbody>
             {notifs.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                <td
+                  colSpan={9}
+                  style={{
+                    padding: '2rem',
+                    textAlign: 'center',
+                    color: 'var(--ut-color-support-subtle)',
+                  }}
+                >
                   Aucune notification trouvée pour ce filtre.
                 </td>
               </tr>
@@ -119,7 +128,7 @@ export default async function NotificationsSupportPage({
                     {n.organizationId ? (
                       <Link
                         href={`/internal/organizations/${n.organizationId}`}
-                        style={{ color: '#cbd5e1' }}
+                        style={{ color: 'var(--ut-color-support-ink-soft)' }}
                       >
                         {n.organizationName ?? 'Organisation'}
                       </Link>
@@ -129,7 +138,10 @@ export default async function NotificationsSupportPage({
                   </td>
                   <td className={styles.td}>
                     {n.bookingId ? (
-                      <Link href={`/internal/bookings/${n.bookingId}`} style={{ color: '#38bdf8' }}>
+                      <Link
+                        href={`/internal/bookings/${n.bookingId}`}
+                        style={{ color: 'var(--ut-color-support-link)' }}
+                      >
                         <code>{n.bookingId.slice(0, 8)}...</code>
                       </Link>
                     ) : (
@@ -142,7 +154,11 @@ export default async function NotificationsSupportPage({
                   <td className={styles.td}>{n.attemptCount}</td>
                   <td
                     className={styles.td}
-                    style={{ color: n.failureCode ? '#f87171' : '#64748b' }}
+                    style={{
+                      color: n.failureCode
+                        ? 'var(--ut-color-support-danger)'
+                        : 'var(--ut-color-support-subtle)',
+                    }}
                   >
                     {n.failureCode ?? '—'}
                     {n.requiresManualReview && (

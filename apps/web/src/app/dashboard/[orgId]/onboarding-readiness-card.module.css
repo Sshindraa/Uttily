@@ -1,9 +1,9 @@
 .card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
   border-radius: 20px;
   padding: 24px 28px;
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--ut-shadow-md);
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -27,7 +27,7 @@
 .title {
   font-size: 1.3rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   margin: 0;
   display: flex;
   align-items: center;
@@ -36,7 +36,7 @@
 
 .subtitle {
   font-size: 0.9rem;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   margin: 0;
 }
 
@@ -45,9 +45,9 @@
   align-items: center;
   gap: 6px;
   padding: 6px 16px;
-  background: #f0f9ff;
-  border: 1.5px solid #bae6fd;
-  color: #0284c7;
+  background: var(--ut-color-primary-soft);
+  border: 1.5px solid var(--ut-color-primary-soft);
+  color: var(--ut-color-primary);
   border-radius: 9999px;
   font-size: 0.95rem;
   font-weight: 800;
@@ -56,28 +56,28 @@
 .progressBarContainer {
   width: 100%;
   height: 10px;
-  background: #f1f5f9;
+  background: var(--ut-color-surface-soft);
   border-radius: 9999px;
   overflow: hidden;
 }
 
 .progressBarFill {
   height: 100%;
-  background: linear-gradient(90deg, #0284c7 0%, #38bdf8 100%);
+  background: linear-gradient(90deg, var(--ut-color-primary) 0%, var(--ut-color-primary) 100%);
   border-radius: 9999px;
   transition: width 0.4s ease;
 }
 
 .progressBarComplete {
-  background: linear-gradient(90deg, #059669 0%, #10b981 100%);
+  background: linear-gradient(90deg, var(--ut-color-success) 0%, var(--ut-color-success) 100%);
 }
 
 .celebrationBanner {
   padding: 16px 20px;
-  background: #f0fdf4;
-  border: 1.5px solid #86efac;
+  background: var(--ut-color-success-soft);
+  border: 1.5px solid var(--ut-color-success-soft);
   border-radius: 14px;
-  color: #166534;
+  color: var(--ut-color-success-strong);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -86,12 +86,12 @@
 .celebrationTitle {
   font-weight: 800;
   font-size: 1.05rem;
-  color: #15803d;
+  color: var(--ut-color-success);
 }
 
 .celebrationText {
   font-size: 0.92rem;
-  color: #166534;
+  color: var(--ut-color-success-strong);
 }
 
 .milestonesList {
@@ -113,15 +113,15 @@
 }
 
 .milestoneItemDone {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface-raised);
+  border: 1px solid var(--ut-color-border);
   opacity: 0.8;
 }
 
 .milestoneItemActive {
-  background: #f0f9ff;
-  border: 2px solid #0284c7;
-  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.12);
+  background: var(--ut-color-primary-soft);
+  border: 2px solid var(--ut-color-primary);
+  box-shadow: var(--ut-shadow-primary-subtle);
 }
 
 .milestoneLeft {
@@ -131,13 +131,13 @@
 }
 
 .iconDone {
-  color: #10b981;
+  color: var(--ut-color-success);
   font-weight: 900;
   font-size: 1.15rem;
 }
 
 .iconActive {
-  color: #0284c7;
+  color: var(--ut-color-primary);
   font-weight: 900;
   font-size: 1.25rem;
   animation: pulse 2s infinite;
@@ -156,7 +156,7 @@
 }
 
 .iconPending {
-  color: #94a3b8;
+  color: var(--ut-color-ink-subtle);
   font-size: 1.1rem;
 }
 
@@ -169,12 +169,12 @@
 .milestoneLabel {
   font-weight: 700;
   font-size: 0.95rem;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
 }
 
 .milestoneLabelDone {
   font-weight: 600;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
 }
 
 .badgeActiveStep {
@@ -183,31 +183,31 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #0369a1;
+  color: var(--ut-color-primary-strong);
 }
 
 .actionBtnPrimary {
   padding: 8px 16px;
-  background: #0284c7;
-  color: #ffffff;
+  background: var(--ut-color-primary);
+  color: var(--ut-color-surface);
   border-radius: 10px;
   font-weight: 700;
   font-size: 0.88rem;
   text-decoration: none;
   transition: all 0.15s ease;
   white-space: nowrap;
-  box-shadow: 0 2px 4px rgba(2, 132, 199, 0.2);
+  box-shadow: var(--ut-shadow-primary-subtle);
 }
 
 .actionBtnPrimary:hover {
-  background: #0369a1;
+  background: var(--ut-color-primary-strong);
   transform: translateY(-1px);
 }
 
 .actionBtnSecondary {
   padding: 6px 12px;
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--ut-color-surface-soft);
+  color: var(--ut-color-ink);
   border-radius: 8px;
   font-weight: 600;
   font-size: 0.85rem;
@@ -217,14 +217,18 @@
 }
 
 .actionBtnSecondary:hover {
-  background: #e2e8f0;
-  color: #0f172a;
+  background: var(--ut-color-border);
+  color: var(--ut-color-ink-strong);
 }
 
 /* Mode exploitation 100 % */
 .healthCard {
-  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
-  border: 1.5px solid #a7f3d0;
+  background: linear-gradient(
+    135deg,
+    var(--ut-color-success-soft) 0%,
+    var(--ut-color-success-soft) 100%
+  );
+  border: 1.5px solid var(--ut-color-success-soft);
   border-radius: 18px;
   padding: 20px 24px;
   display: flex;
@@ -247,10 +251,10 @@
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  background: #ffffff;
-  border: 1px solid #bbf7d0;
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-success-soft);
   border-radius: 9999px;
   font-size: 0.88rem;
   font-weight: 700;
-  color: #166534;
+  color: var(--ut-color-success-strong);
 }

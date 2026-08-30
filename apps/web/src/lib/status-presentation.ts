@@ -36,9 +36,9 @@ export function getBookingStatusPresentation(status: BookingStatus): StatusBadge
       return {
         label: 'Confirmée · À préparer',
         badgeStyle: {
-          backgroundColor: '#eff6ff',
-          color: '#1d4ed8',
-          borderColor: '#bfdbfe',
+          backgroundColor: 'var(--ut-color-primary-soft)',
+          color: 'var(--ut-color-primary-strong)',
+          borderColor: 'var(--ut-color-primary-soft)',
         },
         icon: '✓',
       };
@@ -46,9 +46,9 @@ export function getBookingStatusPresentation(status: BookingStatus): StatusBadge
       return {
         label: 'Prête au retrait',
         badgeStyle: {
-          backgroundColor: '#ecfdf5',
-          color: '#047857',
-          borderColor: '#a7f3d0',
+          backgroundColor: 'var(--ut-color-success-soft)',
+          color: 'var(--ut-color-success)',
+          borderColor: 'var(--ut-color-success-soft)',
         },
         icon: '🟢',
       };
@@ -56,9 +56,9 @@ export function getBookingStatusPresentation(status: BookingStatus): StatusBadge
       return {
         label: 'Location en cours',
         badgeStyle: {
-          backgroundColor: '#f0fdf4',
-          color: '#15803d',
-          borderColor: '#bbf7d0',
+          backgroundColor: 'var(--ut-color-success-soft)',
+          color: 'var(--ut-color-success)',
+          borderColor: 'var(--ut-color-success-soft)',
         },
         icon: '🧰',
       };
@@ -66,9 +66,9 @@ export function getBookingStatusPresentation(status: BookingStatus): StatusBadge
       return {
         label: 'Équipement restitué · À réceptionner',
         badgeStyle: {
-          backgroundColor: '#fefce8',
-          color: '#854d0e',
-          borderColor: '#fef08a',
+          backgroundColor: 'var(--ut-color-warning-soft)',
+          color: 'var(--ut-color-warning)',
+          borderColor: 'var(--ut-color-warning-soft)',
         },
         icon: '🔍',
       };
@@ -76,9 +76,9 @@ export function getBookingStatusPresentation(status: BookingStatus): StatusBadge
       return {
         label: 'Dossier clôturé',
         badgeStyle: {
-          backgroundColor: '#f8fafc',
-          color: '#475569',
-          borderColor: '#e2e8f0',
+          backgroundColor: 'var(--ut-color-surface-raised)',
+          color: 'var(--ut-color-ink-muted)',
+          borderColor: 'var(--ut-color-border)',
         },
         icon: '🏁',
       };
@@ -86,9 +86,9 @@ export function getBookingStatusPresentation(status: BookingStatus): StatusBadge
       return {
         label: 'Annulée',
         badgeStyle: {
-          backgroundColor: '#fef2f2',
-          color: '#b91c1c',
-          borderColor: '#fecaca',
+          backgroundColor: 'var(--ut-color-danger-soft)',
+          color: 'var(--ut-color-danger)',
+          borderColor: 'var(--ut-color-danger-soft)',
         },
         icon: '✕',
       };
@@ -96,9 +96,9 @@ export function getBookingStatusPresentation(status: BookingStatus): StatusBadge
       return {
         label: 'Annulée · Remboursée',
         badgeStyle: {
-          backgroundColor: '#f8fafc',
-          color: '#64748b',
-          borderColor: '#e2e8f0',
+          backgroundColor: 'var(--ut-color-surface-raised)',
+          color: 'var(--ut-color-ink-muted)',
+          borderColor: 'var(--ut-color-border)',
         },
         icon: '↩',
       };
@@ -121,45 +121,45 @@ export function getInventoryConditionPresentation(
       return {
         label: 'Neuf',
         badgeStyle: {
-          backgroundColor: '#f0fdf4',
-          color: '#166534',
-          borderColor: '#bbf7d0',
+          backgroundColor: 'var(--ut-color-success-soft)',
+          color: 'var(--ut-color-success-strong)',
+          borderColor: 'var(--ut-color-success-soft)',
         },
       };
     case 'GOOD':
       return {
         label: 'Bon état',
         badgeStyle: {
-          backgroundColor: '#f0fdf4',
-          color: '#15803d',
-          borderColor: '#bbf7d0',
+          backgroundColor: 'var(--ut-color-success-soft)',
+          color: 'var(--ut-color-success)',
+          borderColor: 'var(--ut-color-success-soft)',
         },
       };
     case 'FAIR':
       return {
         label: 'État correct',
         badgeStyle: {
-          backgroundColor: '#fefce8',
-          color: '#854d0e',
-          borderColor: '#fef08a',
+          backgroundColor: 'var(--ut-color-warning-soft)',
+          color: 'var(--ut-color-warning)',
+          borderColor: 'var(--ut-color-warning-soft)',
         },
       };
     case 'POOR':
       return {
         label: 'Usagé',
         badgeStyle: {
-          backgroundColor: '#fff7ed',
-          color: '#9a3412',
-          borderColor: '#fed7aa',
+          backgroundColor: 'var(--ut-color-accent-soft)',
+          color: 'var(--ut-color-accent-strong)',
+          borderColor: 'var(--ut-color-accent-soft)',
         },
       };
     case 'BROKEN':
       return {
         label: 'En réparation / Hors service',
         badgeStyle: {
-          backgroundColor: '#fef2f2',
-          color: '#991b1b',
-          borderColor: '#fecaca',
+          backgroundColor: 'var(--ut-color-danger-soft)',
+          color: 'var(--ut-color-danger)',
+          borderColor: 'var(--ut-color-danger-soft)',
         },
       };
     default: {
@@ -181,9 +181,9 @@ export function getInventoryStatusPresentation(
     return {
       label: 'En maintenance',
       badgeStyle: {
-        backgroundColor: '#fff7ed',
-        color: '#c2410c',
-        borderColor: '#ffedd5',
+        backgroundColor: 'var(--ut-color-accent-soft)',
+        color: 'var(--ut-color-accent-strong)',
+        borderColor: 'var(--ut-color-accent-soft)',
       },
       icon: '🔧',
     };
@@ -194,9 +194,9 @@ export function getInventoryStatusPresentation(
       return {
         label: 'En service · Disponible',
         badgeStyle: {
-          backgroundColor: '#f0fdf4',
-          color: '#166534',
-          borderColor: '#dcfce7',
+          backgroundColor: 'var(--ut-color-success-soft)',
+          color: 'var(--ut-color-success-strong)',
+          borderColor: 'var(--ut-color-success-soft)',
         },
         icon: '🟢',
       };
@@ -204,9 +204,9 @@ export function getInventoryStatusPresentation(
       return {
         label: 'Retiré du parc',
         badgeStyle: {
-          backgroundColor: '#f1f5f9',
-          color: '#475569',
-          borderColor: '#e2e8f0',
+          backgroundColor: 'var(--ut-color-surface-soft)',
+          color: 'var(--ut-color-ink-muted)',
+          borderColor: 'var(--ut-color-border)',
         },
         icon: '⚫',
       };
@@ -214,9 +214,9 @@ export function getInventoryStatusPresentation(
       return {
         label: 'Déclaré perdu / volé',
         badgeStyle: {
-          backgroundColor: '#fef2f2',
-          color: '#991b1b',
-          borderColor: '#fecaca',
+          backgroundColor: 'var(--ut-color-danger-soft)',
+          color: 'var(--ut-color-danger)',
+          borderColor: 'var(--ut-color-danger-soft)',
         },
         icon: '⚠️',
       };
@@ -242,9 +242,9 @@ export function getBikeStatusSummaryPresentation(
       return {
         label: 'En ligne · Réservable',
         badgeStyle: {
-          backgroundColor: '#ecfdf5',
-          color: '#065f46',
-          borderColor: '#a7f3d0',
+          backgroundColor: 'var(--ut-color-success-soft)',
+          color: 'var(--ut-color-success-strong)',
+          borderColor: 'var(--ut-color-success-soft)',
         },
         icon: '🟢',
       };
@@ -252,9 +252,9 @@ export function getBikeStatusSummaryPresentation(
       return {
         label: 'En ligne · Indisponible',
         badgeStyle: {
-          backgroundColor: '#fef2f2',
-          color: '#dc2626',
-          borderColor: '#fca5a5',
+          backgroundColor: 'var(--ut-color-danger-soft)',
+          color: 'var(--ut-color-danger)',
+          borderColor: 'var(--ut-color-danger-border)',
         },
         icon: '🔴',
       };
@@ -262,9 +262,9 @@ export function getBikeStatusSummaryPresentation(
       return {
         label: 'Prêt à publier',
         badgeStyle: {
-          backgroundColor: '#eff6ff',
-          color: '#1d4ed8',
-          borderColor: '#bfdbfe',
+          backgroundColor: 'var(--ut-color-primary-soft)',
+          color: 'var(--ut-color-primary-strong)',
+          borderColor: 'var(--ut-color-primary-soft)',
         },
         icon: '🔵',
       };
@@ -272,9 +272,9 @@ export function getBikeStatusSummaryPresentation(
       return {
         label: 'Configuration incomplète',
         badgeStyle: {
-          backgroundColor: '#f8fafc',
-          color: '#475569',
-          borderColor: '#e2e8f0',
+          backgroundColor: 'var(--ut-color-surface-raised)',
+          color: 'var(--ut-color-ink-muted)',
+          borderColor: 'var(--ut-color-border)',
         },
         icon: '⚪',
       };
@@ -282,9 +282,9 @@ export function getBikeStatusSummaryPresentation(
       return {
         label: 'Archivé',
         badgeStyle: {
-          backgroundColor: '#f1f5f9',
-          color: '#64748b',
-          borderColor: '#cbd5e1',
+          backgroundColor: 'var(--ut-color-surface-soft)',
+          color: 'var(--ut-color-ink-muted)',
+          borderColor: 'var(--ut-color-border-strong)',
         },
         icon: '⚫',
       };
@@ -305,9 +305,9 @@ export function getPaymentStatusPresentation(status: PaymentStatus): StatusBadge
       return {
         label: 'Payé',
         badgeStyle: {
-          backgroundColor: '#ecfdf5',
-          color: '#047857',
-          borderColor: '#a7f3d0',
+          backgroundColor: 'var(--ut-color-success-soft)',
+          color: 'var(--ut-color-success)',
+          borderColor: 'var(--ut-color-success-soft)',
         },
         icon: '✓',
       };
@@ -316,9 +316,9 @@ export function getPaymentStatusPresentation(status: PaymentStatus): StatusBadge
       return {
         label: 'Paiement en cours',
         badgeStyle: {
-          backgroundColor: '#eff6ff',
-          color: '#1d4ed8',
-          borderColor: '#bfdbfe',
+          backgroundColor: 'var(--ut-color-primary-soft)',
+          color: 'var(--ut-color-primary-strong)',
+          borderColor: 'var(--ut-color-primary-soft)',
         },
         icon: '⏳',
       };
@@ -327,9 +327,9 @@ export function getPaymentStatusPresentation(status: PaymentStatus): StatusBadge
       return {
         label: 'Action de paiement requise',
         badgeStyle: {
-          backgroundColor: '#fffbeb',
-          color: '#b45309',
-          borderColor: '#fde68a',
+          backgroundColor: 'var(--ut-color-warning-surface)',
+          color: 'var(--ut-color-warning-strong)',
+          borderColor: 'var(--ut-color-warning-border)',
         },
         icon: '⚠️',
       };
@@ -337,9 +337,9 @@ export function getPaymentStatusPresentation(status: PaymentStatus): StatusBadge
       return {
         label: 'Paiement échoué',
         badgeStyle: {
-          backgroundColor: '#fef2f2',
-          color: '#b91c1c',
-          borderColor: '#fecaca',
+          backgroundColor: 'var(--ut-color-danger-soft)',
+          color: 'var(--ut-color-danger)',
+          borderColor: 'var(--ut-color-danger-soft)',
         },
         icon: '✕',
       };
@@ -347,9 +347,9 @@ export function getPaymentStatusPresentation(status: PaymentStatus): StatusBadge
       return {
         label: 'Paiement annulé',
         badgeStyle: {
-          backgroundColor: '#f8fafc',
-          color: '#64748b',
-          borderColor: '#e2e8f0',
+          backgroundColor: 'var(--ut-color-surface-raised)',
+          color: 'var(--ut-color-ink-muted)',
+          borderColor: 'var(--ut-color-border)',
         },
         icon: '—',
       };
@@ -367,9 +367,9 @@ export function getRefundStatusPresentation(status: RefundStatus): StatusBadgeDe
       return {
         label: 'Remboursé',
         badgeStyle: {
-          backgroundColor: '#ecfdf5',
-          color: '#047857',
-          borderColor: '#a7f3d0',
+          backgroundColor: 'var(--ut-color-success-soft)',
+          color: 'var(--ut-color-success)',
+          borderColor: 'var(--ut-color-success-soft)',
         },
         icon: '✓',
       };
@@ -378,9 +378,9 @@ export function getRefundStatusPresentation(status: RefundStatus): StatusBadgeDe
       return {
         label: 'Remboursement en cours',
         badgeStyle: {
-          backgroundColor: '#fffbeb',
-          color: '#b45309',
-          borderColor: '#fde68a',
+          backgroundColor: 'var(--ut-color-warning-surface)',
+          color: 'var(--ut-color-warning-strong)',
+          borderColor: 'var(--ut-color-warning-border)',
         },
         icon: '⏳',
       };
@@ -389,9 +389,9 @@ export function getRefundStatusPresentation(status: RefundStatus): StatusBadgeDe
       return {
         label: 'Intervention requise',
         badgeStyle: {
-          backgroundColor: '#fef2f2',
-          color: '#b91c1c',
-          borderColor: '#fecaca',
+          backgroundColor: 'var(--ut-color-danger-soft)',
+          color: 'var(--ut-color-danger)',
+          borderColor: 'var(--ut-color-danger-soft)',
         },
         icon: '⚠️',
       };

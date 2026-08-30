@@ -12,9 +12,15 @@ import styles from './client-shell.module.css';
 export function ClientShell({
   children,
   localeOverride,
+  alternateHref,
+  alternateLabel,
+  showAuthAction = true,
 }: {
   children: ReactNode;
   localeOverride?: 'fr' | 'en';
+  alternateHref?: string;
+  alternateLabel?: string;
+  showAuthAction?: boolean;
 }): React.JSX.Element {
   const pathname = usePathname();
   const locale = localeOverride ?? getLocaleFromPathname(pathname);
@@ -47,11 +53,18 @@ export function ClientShell({
             <Link href={bookingsHref} className={styles.navLink}>
               {fr ? 'Mes locations' : 'My bookings'}
             </Link>
-            <SignedOut>
-              <LinkButton href={signInHref} variant="secondary" size="sm">
-                {fr ? 'Se connecter' : 'Sign in'}
-              </LinkButton>
-            </SignedOut>
+            {alternateHref && alternateLabel ? (
+              <Link href={alternateHref} className={styles.navLink}>
+                {alternateLabel}
+              </Link>
+            ) : null}
+            {showAuthAction ? (
+              <SignedOut>
+                <LinkButton href={signInHref} variant="secondary" size="sm">
+                  {fr ? 'Se connecter' : 'Sign in'}
+                </LinkButton>
+              </SignedOut>
+            ) : null}
             <SignedIn>
               <UserButton afterSignOutUrl={searchHref} />
             </SignedIn>

@@ -5,8 +5,12 @@
 }
 
 .header {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  border: 1px solid #334155;
+  background: linear-gradient(
+    135deg,
+    var(--ut-color-support-elevated) 0%,
+    var(--ut-color-support-footer) 100%
+  );
+  border: 1px solid var(--ut-color-support-border-muted);
   border-radius: 12px;
   padding: 1.75rem;
 }
@@ -14,12 +18,12 @@
 .title {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--ut-color-support-ink-strong);
   margin-bottom: 0.5rem;
 }
 
 .subtitle {
-  color: #94a3b8;
+  color: var(--ut-color-support-muted);
   font-size: 0.95rem;
 }
 
@@ -30,9 +34,9 @@
   align-items: flex-start;
   padding: 1rem 1.15rem;
   border-radius: 10px;
-  border: 1px solid #92400e;
-  background: rgba(146, 64, 14, 0.14);
-  color: #fcd34d;
+  border: 1px solid var(--ut-color-support-warning-border);
+  background: var(--ut-color-support-warning-bg-subtle);
+  color: var(--ut-color-support-warning-soft);
   font-size: 0.9rem;
   line-height: 1.5;
 }
@@ -44,7 +48,7 @@
 
 .noticeTitle {
   font-weight: 700;
-  color: #fde68a;
+  color: var(--ut-color-support-warning-strong);
 }
 
 .rangeBar {
@@ -57,7 +61,7 @@
 
 .rangeLabel {
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: var(--ut-color-support-muted);
 }
 
 .rangeLink {
@@ -66,27 +70,27 @@
   font-size: 0.85rem;
   font-weight: 600;
   text-decoration: none;
-  background: #111827;
-  color: #94a3b8;
-  border: 1px solid #1f2937;
+  background: var(--ut-color-support-surface);
+  color: var(--ut-color-support-muted);
+  border: 1px solid var(--ut-color-support-border);
   transition: all 0.15s ease;
 }
 
 .rangeLink:hover {
-  background: #1e293b;
-  color: #f8fafc;
+  background: var(--ut-color-support-elevated);
+  color: var(--ut-color-support-ink-strong);
 }
 
 .rangeLinkActive {
-  background: #1e3a5f;
-  color: #e0f2fe;
-  border-color: #38bdf8;
+  background: var(--ut-color-support-primary-soft);
+  color: var(--ut-color-support-primary-ink);
+  border-color: var(--ut-color-support-link);
 }
 
 .windowInfo {
   margin-top: 1rem;
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--ut-color-support-subtle);
 }
 
 .envGrid {
@@ -96,8 +100,8 @@
 }
 
 .envCard {
-  background: #0f172a;
-  border: 1px solid #1f2937;
+  background: var(--ut-color-support-footer);
+  border: 1px solid var(--ut-color-support-border);
   border-radius: 12px;
   padding: 1.25rem;
 }
@@ -112,7 +116,7 @@
 .envTitle {
   font-size: 1.05rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--ut-color-support-ink-strong);
 }
 
 .envBadge {
@@ -121,9 +125,9 @@
   letter-spacing: 0.04em;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  border: 1px solid #334155;
-  color: #94a3b8;
-  background: #111827;
+  border: 1px solid var(--ut-color-support-border-muted);
+  color: var(--ut-color-support-muted);
+  background: var(--ut-color-support-surface);
 }
 
 .metricGrid {
@@ -133,8 +137,8 @@
 }
 
 .metricCard {
-  background: #111827;
-  border: 1px solid #1f2937;
+  background: var(--ut-color-support-surface);
+  border: 1px solid var(--ut-color-support-border);
   border-radius: 8px;
   padding: 0.75rem 0.9rem;
 }
@@ -143,20 +147,20 @@
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--ut-color-support-subtle);
   margin-bottom: 0.3rem;
 }
 
 .metricValue {
   font-size: 1.35rem;
   font-weight: 700;
-  color: #f1f5f9;
+  color: var(--ut-color-support-ink);
   font-variant-numeric: tabular-nums;
 }
 
 .ratioGrid {
   margin-top: 1rem;
-  border-top: 1px solid #1f2937;
+  border-top: 1px solid var(--ut-color-support-border);
   padding-top: 0.9rem;
   display: grid;
   gap: 0.6rem;
@@ -171,25 +175,25 @@
 
 .ratioLabel {
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: var(--ut-color-support-muted);
 }
 
 .ratioValue {
   font-size: 1rem;
   font-weight: 700;
-  color: #38bdf8;
+  color: var(--ut-color-support-link);
   font-variant-numeric: tabular-nums;
 }
 
 .ratioEmpty {
-  color: #64748b;
+  color: var(--ut-color-support-subtle);
   font-weight: 600;
 }
 
 .privacyNote {
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--ut-color-support-subtle);
   line-height: 1.6;
-  border-top: 1px solid #1f2937;
+  border-top: 1px solid var(--ut-color-support-border);
   padding-top: 1rem;
 }

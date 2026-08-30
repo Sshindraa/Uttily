@@ -26,10 +26,18 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
     connexion PostgreSQL.
   - Le seed ne crée aucun utilisateur Clerk, compte/provider réel, paiement,
     réservation ou appel réseau externe. Il prépare les données de
-    démonstration `lyon-dev` / `kayak-dev` (lieu `lyon-shop-dev`, SKU
-    `KAY-DEV-001`) en brouillon, sans photo R2 fictive et sans supprimer de
-    ligne. La publication publique nécessite ensuite trois photos réelles
-    uploadées via l'interface ; R2 est neutralisé dans le workflow local.
+    démonstration `lyon-dev` et `annecy-dev` avec le produit `kayak-dev`, un
+    lieu et un exemplaire par destination (`lyon-shop-dev` /
+    `annecy-shop-dev`). Le produit reste en brouillon, sans photo R2 fictive et
+    sans supprimer de ligne. La publication publique nécessite ensuite trois
+    photos réelles uploadées via l'interface ; R2 est neutralisé dans le
+    workflow local.
+  - `pnpm db:seed:preview` est un parcours local distinct, explicitement marqué
+    par `UTTILY_LOCAL_PREVIEW=1`. Il réutilise la fixture locale, ajoute trois
+    métadonnées photo synthétiques et publie `kayak-dev` pour tester le rendu
+    d'une offre publique. Aucun objet R2 n'est créé ; cette commande est
+    refusée hors développement local et ne doit pas être utilisée avec staging
+    ou production. Rejouer `pnpm db:seed` remet le produit en brouillon.
   - La CI des parcours navigateur n'utilise pas cette fixture brouillon : elle
     appelle `pnpm db:seed:browser` avec `CI` et `UTTILY_BROWSER_E2E=1`. Cette
     commande ajoute dans la base éphémère du job uniquement trois métadonnées

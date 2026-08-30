@@ -46,7 +46,9 @@ export default async function InternalCockpitPage({
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>
               Résultats de recherche pour{' '}
-              <span style={{ color: '#38bdf8' }}>« {searchResults.query} »</span>
+              <span style={{ color: 'var(--ut-color-support-link)' }}>
+                « {searchResults.query} »
+              </span>
             </h2>
             <span className={styles.resultBadge}>{searchResults.totalMatches} résultat(s)</span>
           </div>
@@ -63,7 +65,13 @@ export default async function InternalCockpitPage({
               {/* Organisations */}
               {searchResults.byCategory.organizations.length > 0 && (
                 <div>
-                  <h3 style={{ fontSize: '1rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
+                  <h3
+                    style={{
+                      fontSize: '1rem',
+                      color: 'var(--ut-color-support-muted)',
+                      marginBottom: '0.5rem',
+                    }}
+                  >
                     🏢 Organisations ({searchResults.byCategory.organizations.length})
                   </h3>
                   <div className={styles.tableWrapper}>
@@ -112,7 +120,13 @@ export default async function InternalCockpitPage({
               {/* Réservations */}
               {searchResults.byCategory.bookings.length > 0 && (
                 <div>
-                  <h3 style={{ fontSize: '1rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
+                  <h3
+                    style={{
+                      fontSize: '1rem',
+                      color: 'var(--ut-color-support-muted)',
+                      marginBottom: '0.5rem',
+                    }}
+                  >
                     📋 Réservations ({searchResults.byCategory.bookings.length})
                   </h3>
                   <div className={styles.tableWrapper}>
@@ -161,7 +175,13 @@ export default async function InternalCockpitPage({
               {/* Paiements */}
               {searchResults.byCategory.payments.length > 0 && (
                 <div>
-                  <h3 style={{ fontSize: '1rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
+                  <h3
+                    style={{
+                      fontSize: '1rem',
+                      color: 'var(--ut-color-support-muted)',
+                      marginBottom: '0.5rem',
+                    }}
+                  >
                     💳 Paiements ({searchResults.byCategory.payments.length})
                   </h3>
                   <div className={styles.tableWrapper}>
@@ -206,7 +226,13 @@ export default async function InternalCockpitPage({
               {/* Remboursements */}
               {searchResults.byCategory.refunds.length > 0 && (
                 <div>
-                  <h3 style={{ fontSize: '1rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
+                  <h3
+                    style={{
+                      fontSize: '1rem',
+                      color: 'var(--ut-color-support-muted)',
+                      marginBottom: '0.5rem',
+                    }}
+                  >
                     💶 Remboursements ({searchResults.byCategory.refunds.length})
                   </h3>
                   <div className={styles.tableWrapper}>
@@ -251,7 +277,13 @@ export default async function InternalCockpitPage({
               {/* Utilisateurs */}
               {searchResults.byCategory.users.length > 0 && (
                 <div>
-                  <h3 style={{ fontSize: '1rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
+                  <h3
+                    style={{
+                      fontSize: '1rem',
+                      color: 'var(--ut-color-support-muted)',
+                      marginBottom: '0.5rem',
+                    }}
+                  >
                     👤 Utilisateurs ({searchResults.byCategory.users.length})
                   </h3>
                   <div className={styles.tableWrapper}>

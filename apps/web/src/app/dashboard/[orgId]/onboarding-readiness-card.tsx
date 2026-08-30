@@ -24,24 +24,29 @@ export function OnboardingReadinessCard({
         <div>
           <h2
             id="health-bar-title"
-            style={{ margin: '0 0 4px 0', fontSize: '1.2rem', fontWeight: 800, color: '#166534' }}
+            style={{
+              margin: '0 0 4px 0',
+              fontSize: '1.2rem',
+              fontWeight: 800,
+              color: 'var(--ut-color-success-strong)',
+            }}
           >
             🚀 Votre boutique est active & en ligne
           </h2>
-          <p style={{ margin: 0, fontSize: '0.9rem', color: '#15803d' }}>
+          <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--ut-color-success)' }}>
             Prête à recevoir des réservations réelles en temps réel.
           </p>
         </div>
 
         <div className={styles.healthBadges}>
           <span className={styles.healthBadge}>
-            <span style={{ color: '#10b981' }}>●</span> Boutique active
+            <span style={{ color: 'var(--ut-color-success)' }}>●</span> Boutique active
           </span>
           <span className={styles.healthBadge}>
-            <span style={{ color: '#10b981' }}>●</span> Versements bancaires activés
+            <span style={{ color: 'var(--ut-color-success)' }}>●</span> Versements bancaires activés
           </span>
           <span className={styles.healthBadge}>
-            <span style={{ color: '#10b981' }}>●</span> Flotte & Tarifs en ligne
+            <span style={{ color: 'var(--ut-color-success)' }}>●</span> Flotte & Tarifs en ligne
           </span>
           <Link href={`/dashboard/${orgId}/bikes`} className={styles.actionBtnPrimary}>
             Voir mes équipements en ligne →
@@ -127,12 +132,14 @@ export function OnboardingReadinessCard({
                   >
                     {step.label}
                   </div>
-                  <div style={{ fontSize: '0.82rem', color: '#64748b' }}>{step.description}</div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--ut-color-ink-muted)' }}>
+                    {step.description}
+                  </div>
                   {step.key === 'FIRST_BIKE' && progress.firstBike.name && !step.completed && (
                     <div
                       style={{
                         fontSize: '0.78rem',
-                        color: '#0284c7',
+                        color: 'var(--ut-color-primary)',
                         fontWeight: 700,
                         marginTop: '2px',
                       }}

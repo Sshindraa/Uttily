@@ -9,6 +9,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
+    "test:harness": "vitest run --config vitest.e2e.config.ts src/e2e/stripe-checkout-harness.test.ts",
     "test:fast": "vitest run --passWithNoTests --exclude '**/*.integration.test.ts' --exclude 'src/e2e/**' --exclude 'src/app/api/cron/**' --exclude 'src/app/actions/catalog.test.ts' --exclude 'src/app/actions/connected-accounts.test.ts' --exclude 'src/app/actions/fulfillment.test.ts' --exclude 'src/app/actions/payments.test.ts'",
     "test:browser": "playwright test"
   },

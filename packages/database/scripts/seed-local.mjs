@@ -4,15 +4,55 @@ import postgres from 'postgres';
 
 const LOCAL_DATABASE_URL = 'postgresql://uttily:uttily@127.0.0.1:5432/uttily';
 const LOCAL_DATABASE_HOSTS = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
-const DEMO_DESTINATION_SLUG = 'lyon-dev';
 const DEMO_ORGANIZATION_SLUG = 'test-org-dev';
-const DEMO_LOCATION_SLUG = 'lyon-shop-dev';
 const DEMO_PRODUCT_SLUG = 'kayak-dev';
 const DEMO_VARIANT_SKU_SUFFIX = 'dev-standard';
-const DEMO_INVENTORY_SKU = 'KAY-DEV-001';
 const DEMO_PLAN_INTERNAL_LABEL = 'local-demo-seed';
-const LYON_LONGITUDE = 4.8357;
-const LYON_LATITUDE = 45.764;
+
+// Ces destinations et lieux sont des fixtures de parcours locales. Ils ne
+// valent pas activation commerciale dans staging ou production.
+const LOCAL_DEMO_DESTINATIONS = [
+  {
+    slug: 'lyon-dev',
+    label: 'Lyon',
+    longitude: 4.8357,
+    latitude: 45.764,
+    bbox: { south: 45.707, west: 4.771, north: 45.809, east: 4.899 },
+    sortOrder: 0,
+  },
+  {
+    slug: 'annecy-dev',
+    label: 'Annecy',
+    longitude: 6.1296,
+    latitude: 45.8992,
+    bbox: { south: 45.8, west: 5.99, north: 45.99, east: 6.27 },
+    sortOrder: 1,
+  },
+];
+
+const LOCAL_DEMO_LOCATIONS = [
+  {
+    slug: 'lyon-shop-dev',
+    name: 'Lyon Shop Dev',
+    addressLine1: '1 place Bellecour',
+    city: 'Lyon',
+    postalCode: '69002',
+    longitude: 4.8357,
+    latitude: 45.764,
+    inventorySku: 'KAY-DEV-001',
+    legacyInventorySku: 'KAY-LYON-DEV-001',
+  },
+  {
+    slug: 'annecy-shop-dev',
+    name: 'Annecy Shop Dev',
+    addressLine1: '12 avenue du Lac',
+    city: 'Annecy',
+    postalCode: '74000',
+    longitude: 6.1296,
+    latitude: 45.8992,
+    inventorySku: 'KAY-ANNECY-DEV-001',
+  },
+];
 
 export function isLocalSeedEnvironment(environment = process.env) {
   return environment?.UTTILY_LOCAL_DEV === '1' && environment?.NODE_ENV === 'development';
@@ -67,11 +107,11 @@ async function ensureCountry(tx) {
   `;
 }
 
-async function ensureDestination(tx) {
+async function ensureDestination(tx, destination) {
   const existingRows = await tx`
     SELECT "id"
     FROM "destinations"
-    WHERE "slug" = ${DEMO_DESTINATION_SLUG}
+    WHERE "slug" = ${destination.slug}
     ORDER BY "deleted_at" NULLS FIRST, "created_at" ASC, "id" ASC
     LIMIT 1
     FOR UPDATE
@@ -85,9 +125,10 @@ async function ensureDestination(tx) {
         "bbox_south", "bbox_west", "bbox_north", "bbox_east", "is_active"
       )
       VALUES (
-        ${DEMO_DESTINATION_SLUG}, 'FR', 'CITY',
-        ST_SetSRID(ST_MakePoint(${LYON_LONGITUDE}, ${LYON_LATITUDE}), 4326),
-        45.707, 4.771, 45.809, 4.899, false
+        ${destination.slug}, 'FR', 'CITY',
+        ST_SetSRID(ST_MakePoint(${destination.longitude}, ${destination.latitude}), 4326),
+        ${destination.bbox.south}, ${destination.bbox.west},
+        ${destination.bbox.north}, ${destination.bbox.east}, false
       )
       RETURNING "id"
     `;
@@ -107,12 +148,12 @@ async function ensureDestination(tx) {
     SET
       "country_code" = 'FR',
       "place_type" = 'CITY',
-      "center" = ST_SetSRID(ST_MakePoint(${LYON_LONGITUDE}, ${LYON_LATITUDE}), 4326),
-      "bbox_south" = 45.707,
-      "bbox_west" = 4.771,
-      "bbox_north" = 45.809,
-      "bbox_east" = 4.899,
-      "sort_order" = 0,
+      "center" = ST_SetSRID(ST_MakePoint(${destination.longitude}, ${destination.latitude}), 4326),
+      "bbox_south" = ${destination.bbox.south},
+      "bbox_west" = ${destination.bbox.west},
+      "bbox_north" = ${destination.bbox.north},
+      "bbox_east" = ${destination.bbox.east},
+      "sort_order" = ${destination.sortOrder},
       "deleted_at" = NULL,
       "updated_at" = now()
     WHERE "id" = ${destinationId}
@@ -120,8 +161,8 @@ async function ensureDestination(tx) {
   await tx`
     INSERT INTO "destination_translations" ("destination_id", "locale", "label")
     VALUES
-      (${destinationId}, 'fr', 'Lyon'),
-      (${destinationId}, 'en', 'Lyon')
+      (${destinationId}, 'fr', ${destination.label}),
+      (${destinationId}, 'en', ${destination.label})
     ON CONFLICT ("destination_id", "locale") DO UPDATE SET
       "label" = EXCLUDED."label",
       "updated_at" = now()
@@ -177,12 +218,12 @@ async function ensureOrganization(tx) {
   return organizationId;
 }
 
-async function ensureLocation(tx, organizationId) {
+async function ensureLocation(tx, organizationId, location) {
   const existingRows = await tx`
     SELECT "id"
     FROM "locations"
     WHERE "organization_id" = ${organizationId}
-      AND "slug" = ${DEMO_LOCATION_SLUG}
+      AND "slug" = ${location.slug}
     ORDER BY "deleted_at" NULLS FIRST, "created_at" ASC, "id" ASC
     LIMIT 1
     FOR UPDATE
@@ -198,9 +239,9 @@ async function ensureLocation(tx, organizationId) {
         "prep_buffer_minutes", "cleanup_buffer_minutes", "operating_currency"
       )
       VALUES (
-        ${organizationId}, 'Lyon Shop Dev', ${DEMO_LOCATION_SLUG}, 'Europe/Paris',
-        '1 place Bellecour', NULL, 'Lyon', '69002', 'FR',
-        ST_SetSRID(ST_MakePoint(${LYON_LONGITUDE}, ${LYON_LATITUDE}), 4326),
+        ${organizationId}, ${location.name}, ${location.slug}, 'Europe/Paris',
+        ${location.addressLine1}, NULL, ${location.city}, ${location.postalCode}, 'FR',
+        ST_SetSRID(ST_MakePoint(${location.longitude}, ${location.latitude}), 4326),
         true, true, 30, 30, 'EUR'
       )
       RETURNING "id"
@@ -213,14 +254,14 @@ async function ensureLocation(tx, organizationId) {
   await tx`
     UPDATE "locations"
     SET
-      "name" = 'Lyon Shop Dev',
+      "name" = ${location.name},
       "time_zone" = 'Europe/Paris',
-      "address_line1" = '1 place Bellecour',
+      "address_line1" = ${location.addressLine1},
       "address_line2" = NULL,
-      "city" = 'Lyon',
-      "postal_code" = '69002',
+      "city" = ${location.city},
+      "postal_code" = ${location.postalCode},
       "country_code" = 'FR',
-      "geo_point" = ST_SetSRID(ST_MakePoint(${LYON_LONGITUDE}, ${LYON_LATITUDE}), 4326),
+      "geo_point" = ST_SetSRID(ST_MakePoint(${location.longitude}, ${location.latitude}), 4326),
       "pickup_enabled" = true,
       "is_publicly_listed" = true,
       "prep_buffer_minutes" = 30,
@@ -363,12 +404,19 @@ async function ensureVariant(tx, productId) {
   return variantId;
 }
 
-async function ensureInventoryItem(tx, organizationId, variantId, locationId) {
+async function ensureInventoryItem(
+  tx,
+  organizationId,
+  variantId,
+  locationId,
+  inventorySku,
+  legacyInventorySku = inventorySku,
+) {
   const existingRows = await tx`
     SELECT "id"
     FROM "inventory_items"
     WHERE "organization_id" = ${organizationId}
-      AND "internal_sku" = ${DEMO_INVENTORY_SKU}
+      AND ("internal_sku" = ${inventorySku} OR "internal_sku" = ${legacyInventorySku})
     ORDER BY "deleted_at" NULLS FIRST, "created_at" ASC, "id" ASC
     LIMIT 1
     FOR UPDATE
@@ -381,7 +429,7 @@ async function ensureInventoryItem(tx, organizationId, variantId, locationId) {
         "organization_id", "product_variant_id", "internal_sku", "condition",
         "status", "current_location_id"
       )
-      VALUES (${organizationId}, ${variantId}, ${DEMO_INVENTORY_SKU}, 'NEW', 'ACTIVE', ${locationId})
+      VALUES (${organizationId}, ${variantId}, ${inventorySku}, 'NEW', 'ACTIVE', ${locationId})
       RETURNING "id"
     `;
     inventoryItemId = insertedRows[0].id;
@@ -393,6 +441,7 @@ async function ensureInventoryItem(tx, organizationId, variantId, locationId) {
     UPDATE "inventory_items"
     SET
       "product_variant_id" = ${variantId},
+      "internal_sku" = ${inventorySku},
       "condition" = 'NEW',
       "status" = 'ACTIVE',
       "current_location_id" = ${locationId},
@@ -541,16 +590,27 @@ async function applyLocalDemoSeed(tx) {
   await tx`SELECT pg_advisory_xact_lock(hashtextextended('uttily-local-demo-seed', 0))`;
 
   await ensureCountry(tx);
-  await ensureDestination(tx);
+  for (const destination of LOCAL_DEMO_DESTINATIONS) {
+    await ensureDestination(tx, destination);
+  }
   const organizationId = await ensureOrganization(tx);
-  const locationId = await ensureLocation(tx, organizationId);
-  await ensureOpeningHours(tx, locationId);
   const categoryId = await ensureCategory(tx);
   const productId = await ensureProduct(tx, organizationId, categoryId);
 
   const variantId = await ensureVariant(tx, productId);
-  await ensureInventoryItem(tx, organizationId, variantId, locationId);
-  await ensurePricingPlan(tx, organizationId, variantId, locationId);
+  for (const location of LOCAL_DEMO_LOCATIONS) {
+    const locationId = await ensureLocation(tx, organizationId, location);
+    await ensureOpeningHours(tx, locationId);
+    await ensureInventoryItem(
+      tx,
+      organizationId,
+      variantId,
+      locationId,
+      location.inventorySku,
+      location.legacyInventorySku,
+    );
+    await ensurePricingPlan(tx, organizationId, variantId, locationId);
+  }
 }
 
 export async function seedLocalDemo() {
@@ -578,7 +638,7 @@ if (isMainModule()) {
   seedLocalDemo()
     .then(() => {
       console.log(
-        'Local demo seed applied: destination=lyon-dev product=kayak-dev (draft; upload real photos to publish)',
+        'Local demo seed applied: destinations=lyon-dev,annecy-dev product=kayak-dev (draft; upload real photos to publish)',
       );
     })
     .catch(() => {

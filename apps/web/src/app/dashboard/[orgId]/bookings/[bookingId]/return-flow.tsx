@@ -137,7 +137,7 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'var(--ut-color-overlay)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',

@@ -1,0 +1,52 @@
+.page {
+  min-height: calc(100vh - 5rem);
+  padding: 4rem 1.5rem 6rem;
+  background: var(--ut-color-surface-raised);
+}
+
+.card {
+  width: min(100%, 32rem);
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  border: var(--ut-border-thin);
+  border-radius: var(--ut-radius-lg);
+  background: var(--ut-color-surface);
+  box-shadow: var(--ut-shadow-md);
+}
+
+.title {
+  margin: 0;
+  color: var(--ut-color-ink-strong);
+  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  letter-spacing: -0.04em;
+}
+
+.description {
+  margin: 0.65rem 0 1.75rem;
+  color: var(--ut-color-ink-muted);
+}
+
+.clerk {
+  width: 100%;
+}
+
+.clerk :global(.cl-rootBox),
+.clerk :global(.cl-card) {
+  width: 100%;
+}
+
+.clerk :global(.cl-card) {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+@media (max-width: 40rem) {
+  .page {
+    padding: 2rem 1rem 4rem;
+  }
+
+  .card {
+    padding: 1.25rem;
+  }
+}

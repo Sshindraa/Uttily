@@ -283,7 +283,11 @@ export default async function OrganizationDashboardPage({
                 <span>Revenus nets ({financesOverview.period.label})</span>
                 <Link
                   href={`/dashboard/${organizationId}/finances`}
-                  style={{ color: '#059669', fontWeight: 800, textDecoration: 'none' }}
+                  style={{
+                    color: 'var(--ut-color-success)',
+                    fontWeight: 800,
+                    textDecoration: 'none',
+                  }}
                 >
                   {(financesOverview.merchant.netAfterCommissionMinor / 100).toLocaleString(
                     'fr-FR',

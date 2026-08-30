@@ -71,10 +71,10 @@ export function NotificationActionButtons({
           style={{
             fontSize: '0.75rem',
             padding: '0.2rem 0.4rem',
-            background: 'rgba(239, 68, 68, 0.15)',
-            color: '#f87171',
+            background: 'var(--ut-color-support-danger-bg)',
+            color: 'var(--ut-color-support-danger)',
             borderRadius: '4px',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
+            border: '1px solid var(--ut-color-support-danger-border)',
           }}
           title="Le délai de 24h est dépassé après tentative incertaine. Relance interdite pour éviter tout risque de double envoi."
         >
@@ -100,7 +100,14 @@ export function NotificationActionButtons({
       )}
 
       {msg && (
-        <span style={{ fontSize: '0.75rem', color: msg.startsWith('✅') ? '#4ade80' : '#f87171' }}>
+        <span
+          style={{
+            fontSize: '0.75rem',
+            color: msg.startsWith('✅')
+              ? 'var(--ut-color-support-success)'
+              : 'var(--ut-color-support-danger)',
+          }}
+        >
           {msg}
         </span>
       )}

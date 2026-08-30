@@ -16,14 +16,14 @@
 .pageTitle {
   font-size: 1.85rem;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   margin: 0;
   letter-spacing: -0.02em;
 }
 
 .pageSubtitle {
   font-size: 0.95rem;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   margin: 4px 0 0 0;
 }
 
@@ -38,20 +38,20 @@
   align-items: center;
   gap: 8px;
   padding: 10px 18px;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border-strong);
   border-radius: 12px;
   font-size: 0.88rem;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   text-decoration: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  box-shadow: var(--ut-shadow-sm);
   transition: all 0.15s ease;
 }
 
 .btnExportCsv:hover {
-  background: #f8fafc;
-  border-color: #94a3b8;
+  background: var(--ut-color-surface-raised);
+  border-color: var(--ut-color-ink-subtle);
   transform: translateY(-1px);
 }
 
@@ -63,26 +63,30 @@
 }
 
 .statCard {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
   border-radius: 18px;
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  box-shadow: var(--ut-shadow-sm);
 }
 
 .statCardHighlight {
-  background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
-  border-color: #bbf7d0;
-  box-shadow: 0 4px 16px rgba(5, 150, 105, 0.06);
+  background: linear-gradient(
+    135deg,
+    var(--ut-color-surface) 0%,
+    var(--ut-color-success-soft) 100%
+  );
+  border-color: var(--ut-color-success-soft);
+  box-shadow: var(--ut-shadow-success);
 }
 
 .statLabel {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -90,44 +94,44 @@
 .statNumberPrimary {
   font-size: 2.1rem;
   font-weight: 900;
-  color: #059669;
+  color: var(--ut-color-success);
   letter-spacing: -0.02em;
 }
 
 .statNumber {
   font-size: 1.8rem;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
 }
 
 .statSubText {
   font-size: 0.8rem;
-  color: #94a3b8;
+  color: var(--ut-color-ink-subtle);
   font-weight: 500;
 }
 
 .statBlue {
-  color: #0284c7;
+  color: var(--ut-color-primary);
 }
 
 .statAmber {
-  color: #d97706;
+  color: var(--ut-color-warning);
 }
 
 .statRed {
-  color: #dc2626;
+  color: var(--ut-color-danger);
 }
 
 /* Section Versements Bancaires */
 .payoutsSection {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
   border-radius: 20px;
   padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+  box-shadow: var(--ut-shadow-sm);
 }
 
 .payoutsHeader {
@@ -141,7 +145,7 @@
 .payoutsTitle {
   font-size: 1.2rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   margin: 0;
   display: flex;
   align-items: center;
@@ -150,32 +154,32 @@
 
 .payoutsSubtitle {
   font-size: 0.88rem;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   font-weight: 600;
 }
 
 .btnToggleSettings {
   padding: 8px 14px;
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
+  background: var(--ut-color-surface-raised);
+  border: 1px solid var(--ut-color-border-strong);
   border-radius: 10px;
   font-size: 0.85rem;
   font-weight: 700;
-  color: #334155;
+  color: var(--ut-color-ink);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .btnToggleSettings:hover {
-  background: #f1f5f9;
+  background: var(--ut-color-surface-soft);
 }
 
 .payoutsMetricsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 16px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface-raised);
+  border: 1px solid var(--ut-color-border);
   border-radius: 14px;
   padding: 16px 20px;
 }
@@ -188,38 +192,38 @@
 
 .payoutMetricLabel {
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   font-weight: 600;
 }
 
 .payoutMetricValue {
   font-size: 1.05rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
 }
 
 .bankDrawer {
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--ut-color-surface-soft);
   padding-top: 20px;
 }
 
 .bankStatusBox {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface-raised);
+  border: 1px solid var(--ut-color-border);
   border-radius: 14px;
   padding: 18px;
 }
 
 /* Section Activité & Tableau */
 .activitySection {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
   border-radius: 20px;
   padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+  box-shadow: var(--ut-shadow-sm);
 }
 
 .activityHeaderRow {
@@ -233,13 +237,13 @@
 .activityTitle {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   margin: 0;
 }
 
 .activitySubtitle {
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: var(--ut-color-ink-subtle);
   font-weight: 600;
 }
 
@@ -252,22 +256,22 @@
 
 .searchInput {
   padding: 8px 14px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ut-color-border-strong);
   border-radius: 10px;
   font-size: 0.88rem;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   min-width: 240px;
 }
 
 .searchInput:focus {
   outline: none;
-  border-color: #0284c7;
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.1);
+  border-color: var(--ut-color-primary);
+  box-shadow: var(--ut-shadow-primary-ring);
 }
 
 .typeFilterToggle {
   display: flex;
-  background: #f1f5f9;
+  background: var(--ut-color-surface-soft);
   padding: 3px;
   border-radius: 10px;
   gap: 3px;
@@ -277,7 +281,7 @@
   padding: 6px 12px;
   font-size: 0.82rem;
   font-weight: 700;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   border: none;
   background: transparent;
   border-radius: 7px;
@@ -286,9 +290,9 @@
 }
 
 .typeBtnActive {
-  background: #ffffff;
-  color: #0f172a;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  background: var(--ut-color-surface);
+  color: var(--ut-color-ink-strong);
+  box-shadow: var(--ut-shadow-sm);
 }
 
 .tableWrapper {
@@ -303,18 +307,18 @@
 }
 
 .table th {
-  background: #f8fafc;
+  background: var(--ut-color-surface-raised);
   padding: 12px 14px;
   font-weight: 700;
-  color: #475569;
-  border-bottom: 1px solid #e2e8f0;
+  color: var(--ut-color-ink-muted);
+  border-bottom: 1px solid var(--ut-color-border);
   font-size: 0.8rem;
   text-transform: uppercase;
 }
 
 .table td {
   padding: 14px 14px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--ut-color-surface-soft);
   vertical-align: middle;
 }
 
@@ -322,12 +326,12 @@
   display: flex;
   flex-direction: column;
   font-weight: 700;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
 }
 
 .timeSub {
   font-size: 0.75rem;
-  color: #94a3b8;
+  color: var(--ut-color-ink-subtle);
   font-weight: 500;
 }
 
@@ -340,7 +344,7 @@
 .bookingLink {
   font-family: monospace;
   font-weight: 800;
-  color: #0284c7;
+  color: var(--ut-color-primary);
   text-decoration: none;
 }
 
@@ -351,31 +355,31 @@
 .refBadge {
   font-family: monospace;
   font-weight: 700;
-  color: #334155;
+  color: var(--ut-color-ink);
 }
 
 .productNameSub {
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
 }
 
 .clientCell {
-  color: #475569;
+  color: var(--ut-color-ink-muted);
   font-size: 0.82rem;
 }
 
 .amountCell {
   font-weight: 600;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
 }
 
 .commCell {
   font-size: 0.82rem;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
 }
 
 .netCell {
-  color: #059669;
+  color: var(--ut-color-success);
   font-weight: 800;
   font-size: 0.95rem;
 }
@@ -389,33 +393,33 @@
 }
 
 .badgeSuccess {
-  background: #f0fdf4;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  background: var(--ut-color-success-soft);
+  color: var(--ut-color-success-strong);
+  border: 1px solid var(--ut-color-success-soft);
 }
 
 .badgePending {
-  background: #fffbeb;
-  color: #92400e;
-  border: 1px solid #fde68a;
+  background: var(--ut-color-warning-soft);
+  color: var(--ut-color-warning);
+  border: 1px solid var(--ut-color-warning-soft);
 }
 
 .badgeInTransit {
-  background: #eff6ff;
-  color: #1e40af;
-  border: 1px solid #bfdbfe;
+  background: var(--ut-color-primary-soft);
+  color: var(--ut-color-primary-strong);
+  border: 1px solid var(--ut-color-primary-soft);
 }
 
 .badgeMuted {
-  background: #f8fafc;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface-raised);
+  color: var(--ut-color-ink-muted);
+  border: 1px solid var(--ut-color-border);
 }
 
 .emptyTable {
   text-align: center;
   padding: 32px;
-  color: #94a3b8;
+  color: var(--ut-color-ink-subtle);
   font-style: italic;
 }
 
@@ -447,32 +451,32 @@
 .formLabel {
   font-weight: 700;
   font-size: 0.85rem;
-  color: #334155;
+  color: var(--ut-color-ink);
 }
 
 .textInput {
   padding: 10px 14px;
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid var(--ut-color-border-strong);
   border-radius: 10px;
   font-size: 0.92rem;
-  color: #0f172a;
-  background: #ffffff;
+  color: var(--ut-color-ink-strong);
+  background: var(--ut-color-surface);
 }
 
 .textInput:focus {
   outline: none;
-  border-color: #0284c7;
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+  border-color: var(--ut-color-primary);
+  box-shadow: var(--ut-shadow-primary-ring);
 }
 
 .selectInput {
   padding: 9px 14px;
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid var(--ut-color-border-strong);
   border-radius: 10px;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #0f172a;
-  background: #ffffff;
+  color: var(--ut-color-ink-strong);
+  background: var(--ut-color-surface);
 }
 
 .btnPrimary {
@@ -480,8 +484,8 @@
   align-items: center;
   justify-content: center;
   padding: 10px 20px;
-  background: #0284c7;
-  color: #ffffff;
+  background: var(--ut-color-primary);
+  color: var(--ut-color-surface);
   border: none;
   border-radius: 10px;
   font-weight: 800;
@@ -491,7 +495,7 @@
 }
 
 .btnPrimary:hover:not(:disabled) {
-  background: #0369a1;
+  background: var(--ut-color-primary-strong);
 }
 
 .btnSecondary {
@@ -499,9 +503,9 @@
   align-items: center;
   justify-content: center;
   padding: 9px 16px;
-  background: #ffffff;
-  color: #334155;
-  border: 1.5px solid #cbd5e1;
+  background: var(--ut-color-surface);
+  color: var(--ut-color-ink);
+  border: 1.5px solid var(--ut-color-border-strong);
   border-radius: 10px;
   font-weight: 700;
   font-size: 0.88rem;
@@ -510,7 +514,7 @@
 }
 
 .btnSecondary:hover:not(:disabled) {
-  background: #f1f5f9;
+  background: var(--ut-color-surface-soft);
 }
 
 .embeddedFooter {
@@ -518,13 +522,13 @@
   justify-content: space-between;
   align-items: center;
   padding-top: 14px;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--ut-color-surface-soft);
 }
 
 .fallbackLinkBtn {
   background: transparent;
   border: none;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -533,19 +537,19 @@
 
 .errorAlert {
   padding: 12px 16px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--ut-color-danger-soft);
+  border: 1px solid var(--ut-color-danger-soft);
   border-radius: 12px;
-  color: #b91c1c;
+  color: var(--ut-color-danger);
   font-size: 0.9rem;
 }
 
 .successAlert {
   padding: 12px 16px;
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
+  background: var(--ut-color-success-soft);
+  border: 1px solid var(--ut-color-success-soft);
   border-radius: 12px;
-  color: #059669;
+  color: var(--ut-color-success);
   font-size: 0.9rem;
   font-weight: 700;
 }
@@ -555,16 +559,16 @@
   align-items: flex-start;
   gap: 12px;
   padding: 16px 20px;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
+  background: var(--ut-color-primary-soft);
+  border: 1px solid var(--ut-color-primary-soft);
   border-radius: 14px;
   font-size: 0.88rem;
-  color: #0369a1;
+  color: var(--ut-color-primary-strong);
   line-height: 1.5;
 }
 
 .payoutsHistoryBlock {
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--ut-color-surface-soft);
   padding-top: 16px;
   display: flex;
   flex-direction: column;
@@ -574,13 +578,13 @@
 .payoutsHistoryTitle {
   font-size: 0.95rem;
   font-weight: 800;
-  color: #1e293b;
+  color: var(--ut-color-ink);
   margin: 0;
 }
 
 .embeddedContainer {
-  background: #ffffff;
-  border: 1.5px solid #0284c7;
+  background: var(--ut-color-surface);
+  border: 1.5px solid var(--ut-color-primary);
   border-radius: 16px;
   padding: 20px;
   display: flex;
@@ -593,7 +597,7 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--ut-color-border);
   padding-bottom: 12px;
 }
 

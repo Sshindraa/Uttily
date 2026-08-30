@@ -24,7 +24,7 @@ function Indicator({
           width: '0.75rem',
           height: '0.75rem',
           borderRadius: '50%',
-          backgroundColor: active ? '#16a34a' : '#dc2626',
+          backgroundColor: active ? 'var(--ut-color-success)' : 'var(--ut-color-danger)',
           flexShrink: 0,
         }}
       />
@@ -58,7 +58,7 @@ export function StatusCard({
     <section
       aria-labelledby="status-card-title"
       style={{
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--ut-color-border)',
         borderRadius: '0.5rem',
         padding: '1rem',
         marginTop: '1rem',
@@ -98,7 +98,9 @@ export function StatusCard({
       )}
 
       {readiness.providerAccountId && (
-        <p style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+        <p
+          style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: 'var(--ut-color-ink-muted)' }}
+        >
           Compte Stripe : <code>{readiness.providerAccountId}</code>
         </p>
       )}

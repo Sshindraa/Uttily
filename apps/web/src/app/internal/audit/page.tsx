@@ -42,7 +42,14 @@ export default async function AuditSupportPage({
           <tbody>
             {logs.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                <td
+                  colSpan={5}
+                  style={{
+                    padding: '2rem',
+                    textAlign: 'center',
+                    color: 'var(--ut-color-support-subtle)',
+                  }}
+                >
                   Aucun événement d’audit trouvé.
                 </td>
               </tr>
@@ -68,7 +75,7 @@ export default async function AuditSupportPage({
                         style={{
                           margin: 0,
                           fontSize: '0.75rem',
-                          color: '#94a3b8',
+                          color: 'var(--ut-color-support-muted)',
                           overflowX: 'auto',
                         }}
                       >

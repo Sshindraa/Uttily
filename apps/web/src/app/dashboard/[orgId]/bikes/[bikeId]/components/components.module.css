@@ -1,9 +1,9 @@
 .card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
   border-radius: 18px;
   padding: 24px 28px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--ut-shadow-sm);
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -15,14 +15,14 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--ut-color-surface-soft);
   padding-bottom: 14px;
 }
 
 .cardTitle {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   margin: 0;
   display: flex;
   align-items: center;
@@ -35,10 +35,10 @@
   justify-content: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #f8fafc;
-  border: 1.5px solid #cbd5e1;
+  background: var(--ut-color-surface-raised);
+  border: 1.5px solid var(--ut-color-border-strong);
   border-radius: 10px;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
@@ -46,20 +46,20 @@
 }
 
 .actionBtn:hover {
-  background: #f1f5f9;
-  border-color: #94a3b8;
+  background: var(--ut-color-surface-soft);
+  border-color: var(--ut-color-ink-subtle);
 }
 
 .actionBtnPrimary {
-  background: #0284c7;
-  border-color: #0284c7;
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.2);
+  background: var(--ut-color-primary);
+  border-color: var(--ut-color-primary);
+  color: var(--ut-color-surface);
+  box-shadow: var(--ut-shadow-primary-subtle);
 }
 
 .actionBtnPrimary:hover {
-  background: #0369a1;
-  border-color: #0369a1;
+  background: var(--ut-color-primary-strong);
+  border-color: var(--ut-color-primary-strong);
 }
 
 /* Grille Photos */
@@ -70,10 +70,10 @@
 }
 
 .photoSlotCard {
-  border: 1.5px dashed #cbd5e1;
+  border: 1.5px dashed var(--ut-color-border-strong);
   border-radius: 14px;
   padding: 16px;
-  background: #f8fafc;
+  background: var(--ut-color-surface-raised);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -86,14 +86,14 @@
 }
 
 .photoSlotCard:hover {
-  border-color: #0284c7;
-  background: #f0f9ff;
+  border-color: var(--ut-color-primary);
+  background: var(--ut-color-primary-soft);
 }
 
 .photoSlotCardFilled {
   border-style: solid;
-  border-color: #e2e8f0;
-  background: #ffffff;
+  border-color: var(--ut-color-border);
+  background: var(--ut-color-surface);
 }
 
 .photoSlotThumbnail {
@@ -106,7 +106,7 @@
 .photoSlotLabel {
   font-weight: 700;
   font-size: 0.88rem;
-  color: #1e293b;
+  color: var(--ut-color-ink);
 }
 
 .photoSlotStatus {
@@ -127,13 +127,13 @@
 .pricingBig {
   font-size: 2rem;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   letter-spacing: -0.02em;
 }
 
 .pricingUnit {
   font-size: 1rem;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   font-weight: 600;
 }
 
@@ -145,12 +145,12 @@
 }
 
 .tierBadge {
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface-soft);
+  border: 1px solid var(--ut-color-border);
   padding: 6px 12px;
   border-radius: 8px;
   font-size: 0.85rem;
-  color: #334155;
+  color: var(--ut-color-ink);
   font-weight: 600;
 }
 
@@ -172,21 +172,21 @@
 }
 
 .fleetBadgeActive {
-  background: #ecfdf5;
-  color: #059669;
-  border: 1px solid #a7f3d0;
+  background: var(--ut-color-success-soft);
+  color: var(--ut-color-success);
+  border: 1px solid var(--ut-color-success-soft);
 }
 
 .fleetBadgeMaintenance {
-  background: #fffbeb;
-  color: #d97706;
-  border: 1px solid #fde68a;
+  background: var(--ut-color-warning-soft);
+  color: var(--ut-color-warning);
+  border: 1px solid var(--ut-color-warning-soft);
 }
 
 .fleetBadgeRetired {
-  background: #f1f5f9;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface-soft);
+  color: var(--ut-color-ink-muted);
+  border: 1px solid var(--ut-color-border);
 }
 
 .itemsTable {
@@ -199,25 +199,25 @@
   text-align: left;
   font-size: 0.8rem;
   font-weight: 700;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   padding: 8px 12px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--ut-color-border);
 }
 
 .itemsTable td {
   padding: 12px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--ut-color-surface-soft);
   font-size: 0.9rem;
-  color: #1e293b;
+  color: var(--ut-color-ink);
 }
 
 /* Drawer / Modal Overlay */
 .drawerOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.5);
+  background: var(--ut-color-overlay-dark);
   backdrop-filter: blur(2px);
   z-index: 999;
   display: flex;
@@ -229,8 +229,8 @@
   width: 100%;
   max-width: 480px;
   height: 100%;
-  background: #ffffff;
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+  background: var(--ut-color-surface);
+  box-shadow: var(--ut-shadow-lg);
   display: flex;
   flex-direction: column;
   padding: 28px;
@@ -243,14 +243,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--ut-color-border);
   padding-bottom: 16px;
 }
 
 .drawerTitle {
   font-size: 1.25rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   margin: 0;
 }
 
@@ -259,7 +259,7 @@
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   line-height: 1;
 }
 
@@ -272,29 +272,29 @@
 .formLabel {
   font-size: 0.88rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--ut-color-ink);
 }
 
 .inputField {
   padding: 10px 14px;
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid var(--ut-color-border-strong);
   border-radius: 10px;
   font-size: 0.95rem;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
 }
 
 .inputField:focus {
   outline: none;
-  border-color: #0284c7;
-  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+  border-color: var(--ut-color-primary);
+  box-shadow: var(--ut-shadow-primary-ring);
 }
 
 .textareaField {
   padding: 10px 14px;
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid var(--ut-color-border-strong);
   border-radius: 10px;
   font-size: 0.95rem;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   min-height: 90px;
   resize: vertical;
 }
@@ -304,7 +304,7 @@
   justify-content: flex-end;
   gap: 12px;
   margin-top: auto;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--ut-color-border);
   padding-top: 16px;
 }
 

@@ -75,8 +75,8 @@ export function SupplementPaymentHandoff({
           data-testid="copy-payment-link-button"
           style={{
             padding: '0.625rem 1.25rem',
-            backgroundColor: '#2563eb',
-            color: '#ffffff',
+            backgroundColor: 'var(--ut-color-primary)',
+            color: 'var(--ut-color-surface)',
             border: 'none',
             borderRadius: '0.375rem',
             fontWeight: 600,
@@ -93,8 +93,8 @@ export function SupplementPaymentHandoff({
             display: 'inline-block',
             padding: '0.625rem 1rem',
             backgroundColor: 'transparent',
-            color: '#4b5563',
-            border: '1px solid #d1d5db',
+            color: 'var(--ut-color-ink)',
+            border: '1px solid var(--ut-color-border)',
             borderRadius: '0.375rem',
             fontWeight: 500,
             fontSize: '0.875rem',
@@ -113,7 +113,10 @@ export function SupplementPaymentHandoff({
           style={{
             margin: 0,
             fontSize: '0.875rem',
-            color: copyFeedback === 'Impossible de copier automatiquement.' ? '#b91c1c' : '#059669',
+            color:
+              copyFeedback === 'Impossible de copier automatiquement.'
+                ? 'var(--ut-color-danger)'
+                : 'var(--ut-color-success)',
             fontWeight: 500,
           }}
         >
@@ -307,8 +310,8 @@ export function AmendBookingForm({
           display: 'flex',
           flexDirection: 'column',
           gap: '1.5rem',
-          backgroundColor: '#ffffff',
-          border: '1px solid #e5e7eb',
+          backgroundColor: 'var(--ut-color-surface)',
+          border: '1px solid var(--ut-color-border)',
           borderRadius: '0.5rem',
           padding: '2rem',
           maxWidth: '680px',
@@ -320,11 +323,13 @@ export function AmendBookingForm({
               width: '2.5rem',
               height: '2.5rem',
               borderRadius: '9999px',
-              backgroundColor: isSupplement ? '#eff6ff' : '#ecfdf5',
+              backgroundColor: isSupplement
+                ? 'var(--ut-color-primary-soft)'
+                : 'var(--ut-color-success-soft)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: isSupplement ? '#2563eb' : '#059669',
+              color: isSupplement ? 'var(--ut-color-primary)' : 'var(--ut-color-success)',
               fontSize: '1.25rem',
             }}
           >
@@ -339,13 +344,19 @@ export function AmendBookingForm({
                 fontSize: '1.25rem',
                 fontWeight: 600,
                 margin: 0,
-                color: '#111827',
+                color: 'var(--ut-color-ink-strong)',
                 outline: 'none',
               }}
             >
               {isSupplement ? 'Modification en attente de paiement' : 'Modification enregistrée'}
             </h2>
-            <p style={{ margin: '0.25rem 0 0 0', color: '#4b5563', fontSize: '0.875rem' }}>
+            <p
+              style={{
+                margin: '0.25rem 0 0 0',
+                color: 'var(--ut-color-ink)',
+                fontSize: '0.875rem',
+              }}
+            >
               Réservation n° {bookingId.slice(0, 8)}
             </p>
           </div>
@@ -355,11 +366,17 @@ export function AmendBookingForm({
           data-testid="amendment-success-message"
           style={{
             padding: '1rem',
-            backgroundColor: isSupplement ? '#f0f9ff' : '#f0fdf4',
-            border: isSupplement ? '1px solid #bae6fd' : '1px solid #bbf7d0',
+            backgroundColor: isSupplement
+              ? 'var(--ut-color-primary-soft)'
+              : 'var(--ut-color-success-soft)',
+            border: isSupplement
+              ? '1px solid var(--ut-color-primary-soft)'
+              : '1px solid var(--ut-color-success-soft)',
             borderRadius: '0.375rem',
             fontSize: '0.925rem',
-            color: isSupplement ? '#0369a1' : '#166534',
+            color: isSupplement
+              ? 'var(--ut-color-primary-strong)'
+              : 'var(--ut-color-success-strong)',
             lineHeight: 1.5,
           }}
         >
@@ -401,8 +418,8 @@ export function AmendBookingForm({
               style={{
                 display: 'inline-block',
                 padding: '0.625rem 1.25rem',
-                backgroundColor: '#2563eb',
-                color: '#ffffff',
+                backgroundColor: 'var(--ut-color-primary)',
+                color: 'var(--ut-color-surface)',
                 borderRadius: '0.375rem',
                 fontWeight: 500,
                 fontSize: '0.875rem',
@@ -425,8 +442,8 @@ export function AmendBookingForm({
           display: 'flex',
           flexDirection: 'column',
           gap: '1.5rem',
-          backgroundColor: '#ffffff',
-          border: '1px solid #e5e7eb',
+          backgroundColor: 'var(--ut-color-surface)',
+          border: '1px solid var(--ut-color-border)',
           borderRadius: '0.5rem',
           padding: '1.5rem',
         }}
@@ -435,7 +452,9 @@ export function AmendBookingForm({
           <h2 id="context-heading" style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>
             Contexte de réservation
           </h2>
-          <p style={{ margin: '0.25rem 0 0 0', color: '#4b5563', fontSize: '0.875rem' }}>
+          <p
+            style={{ margin: '0.25rem 0 0 0', color: 'var(--ut-color-ink)', fontSize: '0.875rem' }}
+          >
             Lieu : {locationName} ({locationTimeZone}) — Montant actuel :{' '}
             {formatEuros(currentTotalAmountMinor)}
           </p>
@@ -444,7 +463,7 @@ export function AmendBookingForm({
         {/* Période / Horaires selon le type d'intention */}
         <fieldset
           style={{
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--ut-color-border)',
             borderRadius: '0.375rem',
             padding: '1rem',
             margin: 0,
@@ -488,7 +507,7 @@ export function AmendBookingForm({
                   style={{
                     width: '100%',
                     padding: '0.5rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--ut-color-border)',
                     borderRadius: '0.375rem',
                     fontSize: '0.875rem',
                   }}
@@ -520,7 +539,7 @@ export function AmendBookingForm({
                   style={{
                     width: '100%',
                     padding: '0.5rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--ut-color-border)',
                     borderRadius: '0.375rem',
                     fontSize: '0.875rem',
                   }}
@@ -561,7 +580,7 @@ export function AmendBookingForm({
                   style={{
                     width: '100%',
                     padding: '0.5rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--ut-color-border)',
                     borderRadius: '0.375rem',
                     fontSize: '0.875rem',
                   }}
@@ -594,14 +613,18 @@ export function AmendBookingForm({
                   style={{
                     width: '100%',
                     padding: '0.5rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--ut-color-border)',
                     borderRadius: '0.375rem',
                     fontSize: '0.875rem',
                   }}
                 />
                 <p
                   id="amend-end-date-helper"
-                  style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: '#6b7280' }}
+                  style={{
+                    margin: '0.25rem 0 0 0',
+                    fontSize: '0.75rem',
+                    color: 'var(--ut-color-ink-muted)',
+                  }}
                 >
                   Indiquez le jour de retour du matériel (borne exclusive pour le calcul
                   journalier).
@@ -614,7 +637,7 @@ export function AmendBookingForm({
         {/* Quantités par article */}
         <fieldset
           style={{
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--ut-color-border)',
             borderRadius: '0.375rem',
             padding: '1rem',
             margin: 0,
@@ -634,7 +657,7 @@ export function AmendBookingForm({
                   flexWrap: 'wrap',
                   gap: '0.75rem',
                   padding: '0.75rem',
-                  backgroundColor: '#f9fafb',
+                  backgroundColor: 'var(--ut-color-surface-raised)',
                   borderRadius: '0.375rem',
                 }}
               >
@@ -642,7 +665,13 @@ export function AmendBookingForm({
                   <p style={{ margin: 0, fontWeight: 600, fontSize: '0.925rem' }}>
                     {line.productName} — {line.variantName}
                   </p>
-                  <p style={{ margin: '0.25rem 0 0 0', color: '#6b7280', fontSize: '0.8125rem' }}>
+                  <p
+                    style={{
+                      margin: '0.25rem 0 0 0',
+                      color: 'var(--ut-color-ink-muted)',
+                      fontSize: '0.8125rem',
+                    }}
+                  >
                     Quantité actuelle : {line.currentQuantity} (
                     {formatEuros(line.lineTotalAmountMinor)})
                   </p>
@@ -666,7 +695,7 @@ export function AmendBookingForm({
                     style={{
                       width: '70px',
                       padding: '0.4rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--ut-color-border)',
                       borderRadius: '0.375rem',
                       textAlign: 'center',
                       fontSize: '0.875rem',
@@ -676,7 +705,13 @@ export function AmendBookingForm({
               </div>
             ))}
           </div>
-          <p style={{ margin: '0.75rem 0 0 0', color: '#6b7280', fontSize: '0.8125rem' }}>
+          <p
+            style={{
+              margin: '0.75rem 0 0 0',
+              color: 'var(--ut-color-ink-muted)',
+              fontSize: '0.8125rem',
+            }}
+          >
             Indication : positionner la quantité d'un article à 0 le retire de la réservation.
           </p>
         </fieldset>
@@ -688,10 +723,10 @@ export function AmendBookingForm({
             role="alert"
             style={{
               padding: '0.75rem 1rem',
-              backgroundColor: '#fef2f2',
-              border: '1px solid #fecaca',
+              backgroundColor: 'var(--ut-color-danger-soft)',
+              border: '1px solid var(--ut-color-danger-soft)',
               borderRadius: '0.375rem',
-              color: '#b91c1c',
+              color: 'var(--ut-color-danger)',
               fontSize: '0.875rem',
               outline: 'none',
             }}
@@ -706,8 +741,8 @@ export function AmendBookingForm({
             disabled={isBusy}
             style={{
               padding: '0.625rem 1.25rem',
-              backgroundColor: isBusy ? '#93c5fd' : '#2563eb',
-              color: '#ffffff',
+              backgroundColor: isBusy ? 'var(--ut-color-primary-soft)' : 'var(--ut-color-primary)',
+              color: 'var(--ut-color-surface)',
               border: 'none',
               borderRadius: '0.375rem',
               fontWeight: 500,
@@ -731,15 +766,15 @@ export function AmendBookingForm({
               flexDirection: 'column',
               gap: '1rem',
               padding: '1.5rem',
-              backgroundColor: '#ffffff',
-              border: '1px solid #e5e7eb',
+              backgroundColor: 'var(--ut-color-surface)',
+              border: '1px solid var(--ut-color-border)',
               borderRadius: '0.5rem',
             }}
           >
             <h3 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>
               Confirmer la modification
             </h3>
-            <p style={{ margin: 0, color: '#4b5563', fontSize: '0.875rem' }}>
+            <p style={{ margin: 0, color: 'var(--ut-color-ink)', fontSize: '0.875rem' }}>
               En confirmant, les changements vérifiés ci-dessus seront appliqués autoritairement à
               la réservation.
             </p>
@@ -751,10 +786,10 @@ export function AmendBookingForm({
                 role="alert"
                 style={{
                   padding: '0.75rem 1rem',
-                  backgroundColor: '#fef2f2',
-                  border: '1px solid #fecaca',
+                  backgroundColor: 'var(--ut-color-danger-soft)',
+                  border: '1px solid var(--ut-color-danger-soft)',
                   borderRadius: '0.375rem',
-                  color: '#b91c1c',
+                  color: 'var(--ut-color-danger)',
                   fontSize: '0.875rem',
                   outline: 'none',
                 }}
@@ -771,8 +806,10 @@ export function AmendBookingForm({
                 data-testid="confirm-amendment-button"
                 style={{
                   padding: '0.75rem 1.5rem',
-                  backgroundColor: isBusy ? '#93c5fd' : '#059669',
-                  color: '#ffffff',
+                  backgroundColor: isBusy
+                    ? 'var(--ut-color-primary-soft)'
+                    : 'var(--ut-color-success)',
+                  color: 'var(--ut-color-surface)',
                   border: 'none',
                   borderRadius: '0.375rem',
                   fontWeight: 600,

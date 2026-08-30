@@ -10,7 +10,7 @@
 }
 
 .backLink {
-  color: #0284c7;
+  color: var(--ut-color-primary);
   font-weight: 700;
   font-size: 0.9rem;
   text-decoration: none;
@@ -21,11 +21,11 @@
 }
 
 .headerCard {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
   border-radius: 20px;
   padding: 24px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--ut-shadow-card-subtle);
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -49,21 +49,21 @@
   font-family: monospace;
   font-weight: 800;
   font-size: 0.95rem;
-  color: #0f172a;
-  background: #f1f5f9;
+  color: var(--ut-color-ink-strong);
+  background: var(--ut-color-surface-soft);
   padding: 2px 8px;
   border-radius: 6px;
 }
 
 .serialBadge {
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
 }
 
 .pageTitle {
   font-size: 1.75rem;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   margin: 6px 0 0 0;
   letter-spacing: -0.02em;
 }
@@ -78,15 +78,15 @@
 }
 
 .statusOpen {
-  background: #fffbeb;
-  color: #92400e;
-  border: 1px solid #fde68a;
+  background: var(--ut-color-warning-soft);
+  color: var(--ut-color-warning);
+  border: 1px solid var(--ut-color-warning-soft);
 }
 
 .statusResolved {
-  background: #f0fdf4;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  background: var(--ut-color-success-soft);
+  color: var(--ut-color-success-strong);
+  border: 1px solid var(--ut-color-success-soft);
 }
 
 .actionHero {
@@ -99,19 +99,19 @@
   align-items: center;
   justify-content: center;
   padding: 12px 20px;
-  background: #d97706;
-  color: #ffffff;
+  background: var(--ut-color-warning);
+  color: var(--ut-color-surface);
   border-radius: 12px;
   font-weight: 800;
   font-size: 0.92rem;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.25);
+  box-shadow: var(--ut-shadow-warning);
   transition: all 0.15s ease;
 }
 
 .startActionBtn:hover {
-  background: #b45309;
+  background: var(--ut-color-warning);
   transform: translateY(-1px);
 }
 
@@ -120,19 +120,19 @@
   align-items: center;
   justify-content: center;
   padding: 12px 24px;
-  background: #059669;
-  color: #ffffff;
+  background: var(--ut-color-success);
+  color: var(--ut-color-surface);
   border-radius: 12px;
   font-weight: 800;
   font-size: 0.95rem;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+  box-shadow: var(--ut-shadow-success);
   transition: all 0.15s ease;
 }
 
 .resolvePrimaryBtn:hover {
-  background: #047857;
+  background: var(--ut-color-success-strong);
   transform: translateY(-1px);
 }
 
@@ -143,11 +143,11 @@
 }
 
 .card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
   border-radius: 18px;
   padding: 22px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--ut-shadow-card-subtle);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -156,18 +156,18 @@
 .cardTitle {
   font-size: 1.1rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   margin: 0;
   display: flex;
   align-items: center;
   gap: 8px;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--ut-color-surface-soft);
   padding-bottom: 12px;
 }
 
 .issueBox {
-  background: #fffbeb;
-  border: 1px solid #fde68a;
+  background: var(--ut-color-warning-soft);
+  border: 1px solid var(--ut-color-warning-soft);
   border-radius: 12px;
   padding: 14px;
   display: flex;
@@ -178,13 +178,13 @@
 .issueLabel {
   font-size: 0.75rem;
   font-weight: 700;
-  color: #92400e;
+  color: var(--ut-color-warning);
   text-transform: uppercase;
 }
 
 .issueText {
   font-size: 1rem;
-  color: #78350f;
+  color: var(--ut-color-warning);
 }
 
 .detailsList {
@@ -210,7 +210,7 @@
 .itemSkuLink {
   font-family: monospace;
   font-weight: 800;
-  color: #0284c7;
+  color: var(--ut-color-primary);
   text-decoration: none;
 }
 
@@ -219,25 +219,25 @@
 }
 
 .tagAvailable {
-  color: #166534;
+  color: var(--ut-color-success-strong);
   font-weight: 700;
 }
 
 .tagBlocked {
-  color: #b91c1c;
+  color: var(--ut-color-danger);
   font-weight: 700;
 }
 
 /* Modal */
 .modalCard {
-  background: #ffffff;
-  border: 1.5px solid #059669;
+  background: var(--ut-color-surface);
+  border: 1.5px solid var(--ut-color-success);
   border-radius: 18px;
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--ut-shadow-md);
   width: 100%;
 }
 
@@ -245,7 +245,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--ut-color-border);
   padding-bottom: 10px;
 }
 
@@ -253,12 +253,12 @@
   margin: 0;
   font-size: 1.1rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
 }
 
 .modalSub {
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   margin: 0;
 }
 
@@ -266,12 +266,12 @@
   background: transparent;
   border: none;
   font-size: 1.1rem;
-  color: #94a3b8;
+  color: var(--ut-color-ink-subtle);
   cursor: pointer;
 }
 
 .closeBtn:hover {
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
 }
 
 .form {
@@ -282,10 +282,10 @@
 
 .formError {
   padding: 10px 14px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--ut-color-danger-soft);
+  border: 1px solid var(--ut-color-danger-soft);
   border-radius: 8px;
-  color: #b91c1c;
+  color: var(--ut-color-danger);
   font-size: 0.85rem;
 }
 
@@ -298,20 +298,20 @@
 .formGroup label {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #334155;
+  color: var(--ut-color-ink);
 }
 
 .selectInput {
   padding: 10px 12px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ut-color-border-strong);
   border-radius: 8px;
   font-size: 0.9rem;
-  background: #ffffff;
+  background: var(--ut-color-surface);
 }
 
 .textArea {
   padding: 10px 12px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--ut-color-border-strong);
   border-radius: 8px;
   font-size: 0.9rem;
   font-family: inherit;
@@ -327,8 +327,8 @@
 
 .cancelBtn {
   padding: 10px 16px;
-  background: #f1f5f9;
-  color: #475569;
+  background: var(--ut-color-surface-soft);
+  color: var(--ut-color-ink-muted);
   border-radius: 10px;
   font-weight: 700;
   font-size: 0.88rem;
@@ -337,13 +337,13 @@
 }
 
 .cancelBtn:hover {
-  background: #e2e8f0;
+  background: var(--ut-color-border);
 }
 
 .submitBtn {
   padding: 10px 20px;
-  background: #059669;
-  color: #ffffff;
+  background: var(--ut-color-success);
+  color: var(--ut-color-surface);
   border-radius: 10px;
   font-weight: 800;
   font-size: 0.88rem;
@@ -353,5 +353,5 @@
 }
 
 .submitBtn:hover {
-  background: #047857;
+  background: var(--ut-color-success-strong);
 }

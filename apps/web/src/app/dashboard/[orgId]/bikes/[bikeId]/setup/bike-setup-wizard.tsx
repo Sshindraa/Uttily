@@ -274,9 +274,9 @@ export function BikeSetupWizard({
         <div
           style={{
             padding: '12px 16px',
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            color: '#b91c1c',
+            background: 'var(--ut-color-danger-soft)',
+            border: '1px solid var(--ut-color-danger-soft)',
+            color: 'var(--ut-color-danger)',
             borderRadius: '12px',
             fontSize: '0.88rem',
           }}
@@ -303,7 +303,7 @@ export function BikeSetupWizard({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label
                 htmlFor="step-name"
-                style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}
+                style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--ut-color-ink)' }}
               >
                 Nom du modèle :
               </label>
@@ -316,7 +316,7 @@ export function BikeSetupWizard({
                 disabled={isLoading}
                 style={{
                   padding: '12px 16px',
-                  border: '1.5px solid #cbd5e1',
+                  border: '1.5px solid var(--ut-color-border-strong)',
                   borderRadius: '12px',
                   fontSize: '0.95rem',
                 }}
@@ -326,7 +326,7 @@ export function BikeSetupWizard({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label
                 htmlFor="step-cat"
-                style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}
+                style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--ut-color-ink)' }}
               >
                 Catégorie :
               </label>
@@ -338,7 +338,7 @@ export function BikeSetupWizard({
                 disabled={isLoading}
                 style={{
                   padding: '12px 16px',
-                  border: '1.5px solid #cbd5e1',
+                  border: '1.5px solid var(--ut-color-border-strong)',
                   borderRadius: '12px',
                   fontSize: '0.95rem',
                 }}
@@ -354,7 +354,7 @@ export function BikeSetupWizard({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label
                 htmlFor="step-desc"
-                style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}
+                style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--ut-color-ink)' }}
               >
                 Description pour les locataires :
               </label>
@@ -367,7 +367,7 @@ export function BikeSetupWizard({
                 disabled={isLoading}
                 style={{
                   padding: '12px 16px',
-                  border: '1.5px solid #cbd5e1',
+                  border: '1.5px solid var(--ut-color-border-strong)',
                   borderRadius: '12px',
                   fontSize: '0.95rem',
                   resize: 'vertical',
@@ -413,7 +413,13 @@ export function BikeSetupWizard({
                     className={styles.photoSlotThumbnail}
                   />
                   <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>1. Profil latéral Hero</div>
-                  <span style={{ fontSize: '0.8rem', color: '#059669', fontWeight: 700 }}>
+                  <span
+                    style={{
+                      fontSize: '0.8rem',
+                      color: 'var(--ut-color-success)',
+                      fontWeight: 700,
+                    }}
+                  >
                     ✓ Conforme
                   </span>
                 </>
@@ -421,7 +427,7 @@ export function BikeSetupWizard({
                 <>
                   <div style={{ fontSize: '2.2rem' }}>🚲</div>
                   <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>1. Profil latéral Hero</div>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--ut-color-ink-muted)' }}>
                     Vue complète de profil
                   </span>
                   <button
@@ -448,7 +454,13 @@ export function BikeSetupWizard({
                     className={styles.photoSlotThumbnail}
                   />
                   <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>2. 3/4 Avant dynamique</div>
-                  <span style={{ fontSize: '0.8rem', color: '#059669', fontWeight: 700 }}>
+                  <span
+                    style={{
+                      fontSize: '0.8rem',
+                      color: 'var(--ut-color-success)',
+                      fontWeight: 700,
+                    }}
+                  >
                     ✓ Conforme
                   </span>
                 </>
@@ -456,7 +468,7 @@ export function BikeSetupWizard({
                 <>
                   <div style={{ fontSize: '2.2rem' }}>📐</div>
                   <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>2. 3/4 Avant dynamique</div>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--ut-color-ink-muted)' }}>
                     Volume et poste de pilotage
                   </span>
                   <button
@@ -485,7 +497,13 @@ export function BikeSetupWizard({
                   <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>
                     3. Vue libre valorisante
                   </div>
-                  <span style={{ fontSize: '0.8rem', color: '#059669', fontWeight: 700 }}>
+                  <span
+                    style={{
+                      fontSize: '0.8rem',
+                      color: 'var(--ut-color-success)',
+                      fontWeight: 700,
+                    }}
+                  >
                     ✓ Conforme
                   </span>
                 </>
@@ -495,7 +513,7 @@ export function BikeSetupWizard({
                   <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>
                     3. Vue libre valorisante
                   </div>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--ut-color-ink-muted)' }}>
                     Détail, écran ou transmission
                   </span>
                   <button
@@ -561,9 +579,9 @@ export function BikeSetupWizard({
               role="status"
               style={{
                 padding: '14px 16px',
-                background: '#fffbeb',
-                border: '1px solid #fde68a',
-                color: '#92400e',
+                background: 'var(--ut-color-surface)beb',
+                border: '1px solid var(--ut-color-warning-soft)',
+                color: 'var(--ut-color-warning)',
                 borderRadius: '12px',
                 fontSize: '0.9rem',
               }}
@@ -580,7 +598,7 @@ export function BikeSetupWizard({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label
                 htmlFor="step-price"
-                style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}
+                style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--ut-color-ink)' }}
               >
                 {hasNonDailyPricingPlan
                   ? `${getPricingPlanTypeLabel(displayedPricingPlanType)} (${bike.pricingCurrency}) :`
@@ -596,7 +614,7 @@ export function BikeSetupWizard({
                 disabled={isLoading || hasNonDailyPricingPlan}
                 style={{
                   padding: '12px 16px',
-                  border: '1.5px solid #cbd5e1',
+                  border: '1.5px solid var(--ut-color-border-strong)',
                   borderRadius: '12px',
                   fontSize: '1.1rem',
                   fontWeight: 800,
@@ -607,16 +625,16 @@ export function BikeSetupWizard({
             {/* Paliers */}
             <div
               style={{
-                background: '#f8fafc',
+                background: 'var(--ut-color-surface-raised)',
                 padding: '18px',
                 borderRadius: '14px',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--ut-color-border)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '12px',
               }}
             >
-              <strong style={{ fontSize: '0.9rem', color: '#1e293b' }}>
+              <strong style={{ fontSize: '0.9rem', color: 'var(--ut-color-ink)' }}>
                 Réductions longue durée :
               </strong>
 
@@ -628,7 +646,10 @@ export function BikeSetupWizard({
                   alignItems: 'center',
                 }}
               >
-                <label htmlFor="step-tier3" style={{ fontSize: '0.85rem', color: '#475569' }}>
+                <label
+                  htmlFor="step-tier3"
+                  style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}
+                >
                   Dès 3 jours (% remise) :
                 </label>
                 <input
@@ -639,7 +660,7 @@ export function BikeSetupWizard({
                   disabled={isLoading || hasNonDailyPricingPlan}
                   style={{
                     padding: '8px 12px',
-                    border: '1.5px solid #cbd5e1',
+                    border: '1.5px solid var(--ut-color-border-strong)',
                     borderRadius: '8px',
                   }}
                 />
@@ -653,7 +674,10 @@ export function BikeSetupWizard({
                   alignItems: 'center',
                 }}
               >
-                <label htmlFor="step-tier7" style={{ fontSize: '0.85rem', color: '#475569' }}>
+                <label
+                  htmlFor="step-tier7"
+                  style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}
+                >
                   Dès 7 jours (% remise) :
                 </label>
                 <input
@@ -664,7 +688,7 @@ export function BikeSetupWizard({
                   disabled={isLoading || hasNonDailyPricingPlan}
                   style={{
                     padding: '8px 12px',
-                    border: '1.5px solid #cbd5e1',
+                    border: '1.5px solid var(--ut-color-border-strong)',
                     borderRadius: '8px',
                   }}
                 />
@@ -678,7 +702,10 @@ export function BikeSetupWizard({
                   alignItems: 'center',
                 }}
               >
-                <label htmlFor="step-tier14" style={{ fontSize: '0.85rem', color: '#475569' }}>
+                <label
+                  htmlFor="step-tier14"
+                  style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}
+                >
                   Dès 14 jours (% remise) :
                 </label>
                 <input
@@ -689,7 +716,7 @@ export function BikeSetupWizard({
                   disabled={isLoading || hasNonDailyPricingPlan}
                   style={{
                     padding: '8px 12px',
-                    border: '1.5px solid #cbd5e1',
+                    border: '1.5px solid var(--ut-color-border-strong)',
                     borderRadius: '8px',
                   }}
                 />
@@ -756,7 +783,7 @@ export function BikeSetupWizard({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label
                 htmlFor="step-loc"
-                style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}
+                style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--ut-color-ink)' }}
               >
                 Boutique / Point de retrait :
               </label>
@@ -768,7 +795,7 @@ export function BikeSetupWizard({
                 disabled={isLoading}
                 style={{
                   padding: '12px 16px',
-                  border: '1.5px solid #cbd5e1',
+                  border: '1.5px solid var(--ut-color-border-strong)',
                   borderRadius: '12px',
                   fontSize: '0.95rem',
                 }}
@@ -825,8 +852,8 @@ export function BikeSetupWizard({
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background: '#f8fafc',
-                  color: '#94a3b8',
+                  background: 'var(--ut-color-surface-raised)',
+                  color: 'var(--ut-color-ink-subtle)',
                 }}
               >
                 Aucune photo principale
@@ -834,19 +861,34 @@ export function BikeSetupWizard({
             )}
 
             <div className={styles.previewContent}>
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0284c7' }}>
+              <div
+                style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--ut-color-primary)' }}
+              >
                 {bike.categoryName} • Version {bike.variantName}
               </div>
-              <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, color: '#0f172a' }}>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: '1.3rem',
+                  fontWeight: 900,
+                  color: 'var(--ut-color-ink-strong)',
+                }}
+              >
                 {bike.name}
               </h3>
               <div className={styles.previewPrice}>
                 {displayedPrice}{' '}
-                <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 600 }}>
+                <span
+                  style={{
+                    fontSize: '0.9rem',
+                    color: 'var(--ut-color-ink-muted)',
+                    fontWeight: 600,
+                  }}
+                >
                   {getPricingPlanUnitLabel(displayedPricingPlanType)}
                 </span>
               </div>
-              <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
                 📍 Disponible à {selectedLocation?.name ?? 'votre boutique'} ({fleetCount}{' '}
                 exemplaires)
               </div>
@@ -856,8 +898,8 @@ export function BikeSetupWizard({
           {/* Checklist de validation */}
           <div
             style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
+              background: 'var(--ut-color-surface-raised)',
+              border: '1px solid var(--ut-color-border)',
               borderRadius: '16px',
               padding: '18px',
               display: 'flex',
@@ -870,7 +912,7 @@ export function BikeSetupWizard({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                color: '#059669',
+                color: 'var(--ut-color-success)',
                 fontWeight: 700,
                 fontSize: '0.9rem',
               }}
@@ -882,7 +924,9 @@ export function BikeSetupWizard({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                color: bike.isPhotosComplete ? '#059669' : '#d97706',
+                color: bike.isPhotosComplete
+                  ? 'var(--ut-color-success)'
+                  : 'var(--ut-color-warning)',
                 fontWeight: 700,
                 fontSize: '0.9rem',
               }}
@@ -895,7 +939,7 @@ export function BikeSetupWizard({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                color: '#059669',
+                color: 'var(--ut-color-success)',
                 fontWeight: 700,
                 fontSize: '0.9rem',
               }}
@@ -908,7 +952,7 @@ export function BikeSetupWizard({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                color: '#059669',
+                color: 'var(--ut-color-success)',
                 fontWeight: 700,
                 fontSize: '0.9rem',
               }}
@@ -930,7 +974,10 @@ export function BikeSetupWizard({
               onClick={handlePublish}
               disabled={isLoading || !bike.isPublicationReady}
               className={styles.primaryActionBtn}
-              style={{ background: '#059669', boxShadow: '0 2px 10px rgba(5, 150, 105, 0.3)' }}
+              style={{
+                background: 'var(--ut-color-success)',
+                boxShadow: 'var(--ut-shadow-success)',
+              }}
             >
               {isLoading ? 'Mise en ligne en cours…' : '🚀 Mettre en ligne mon équipement'}
             </button>

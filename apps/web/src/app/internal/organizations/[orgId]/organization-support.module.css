@@ -5,8 +5,12 @@
 }
 
 .headerCard {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  border: 1px solid #334155;
+  background: linear-gradient(
+    135deg,
+    var(--ut-color-support-elevated) 0%,
+    var(--ut-color-support-footer) 100%
+  );
+  border: 1px solid var(--ut-color-support-border-muted);
   border-radius: 12px;
   padding: 1.75rem;
   display: flex;
@@ -25,7 +29,7 @@
 .title {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--ut-color-support-ink-strong);
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -36,7 +40,7 @@
   align-items: center;
   gap: 1rem;
   font-size: 0.9rem;
-  color: #94a3b8;
+  color: var(--ut-color-support-muted);
   flex-wrap: wrap;
 }
 
@@ -51,15 +55,15 @@
 }
 
 .readySuccess {
-  background: rgba(34, 197, 94, 0.15);
-  color: #4ade80;
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  background: var(--ut-color-support-success-bg);
+  color: var(--ut-color-support-success);
+  border: 1px solid var(--ut-color-support-success-border);
 }
 
 .readyWarning {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: var(--ut-color-support-warning-bg);
+  color: var(--ut-color-support-warning);
+  border: 1px solid var(--ut-color-support-warning-border-alpha);
 }
 
 .grid2Col {
@@ -69,8 +73,8 @@
 }
 
 .card {
-  background: #111827;
-  border: 1px solid #1f2937;
+  background: var(--ut-color-support-surface);
+  border: 1px solid var(--ut-color-support-border);
   border-radius: 10px;
   padding: 1.5rem;
   display: flex;
@@ -81,11 +85,11 @@
 .cardTitle {
   font-size: 1.15rem;
   font-weight: 600;
-  color: #f8fafc;
+  color: var(--ut-color-support-ink-strong);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--ut-color-support-border);
   padding-bottom: 0.75rem;
 }
 
@@ -96,9 +100,9 @@
 }
 
 .alertBanner {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #fca5a5;
+  background: var(--ut-color-support-danger-bg-subtle);
+  border: 1px solid var(--ut-color-support-danger-border);
+  color: var(--ut-color-support-danger-soft);
   padding: 0.85rem 1rem;
   border-radius: 6px;
   font-size: 0.9rem;
@@ -115,17 +119,17 @@
 }
 
 .infoLabel {
-  color: #94a3b8;
+  color: var(--ut-color-support-muted);
 }
 
 .infoVal {
-  color: #f1f5f9;
+  color: var(--ut-color-support-ink);
   font-weight: 500;
 }
 
 .tableWrapper {
-  background: #0d1320;
-  border: 1px solid #1f2937;
+  background: var(--ut-color-support-deep-alt);
+  border: 1px solid var(--ut-color-support-border);
   border-radius: 8px;
   overflow-x: auto;
 }
@@ -137,21 +141,21 @@
 }
 
 .th {
-  background: #162032;
-  color: #94a3b8;
+  background: var(--ut-color-support-navigation-alt);
+  color: var(--ut-color-support-muted);
   padding: 0.6rem 0.85rem;
   text-align: left;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--ut-color-support-border);
 }
 
 .td {
   padding: 0.65rem 0.85rem;
-  border-bottom: 1px solid #1f2937;
-  color: #cbd5e1;
+  border-bottom: 1px solid var(--ut-color-support-border);
+  color: var(--ut-color-support-ink-soft);
 }
 
 .actionBtn {
-  background: #0284c7;
+  background: var(--ut-color-support-primary);
   color: white;
   border: none;
   border-radius: 4px;
@@ -162,5 +166,5 @@
 }
 
 .actionBtn:hover {
-  background: #0369a1;
+  background: var(--ut-color-support-primary-strong);
 }

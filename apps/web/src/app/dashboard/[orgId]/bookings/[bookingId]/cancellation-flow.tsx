@@ -157,7 +157,13 @@ export function CancellationFlow({ orgId, bookingId }: CancellationFlowProps): R
               </div>
 
               {isLoadingPreview ? (
-                <div style={{ padding: '24px 0', textAlign: 'center', color: '#64748b' }}>
+                <div
+                  style={{
+                    padding: '24px 0',
+                    textAlign: 'center',
+                    color: 'var(--ut-color-ink-muted)',
+                  }}
+                >
                   Calcul des montants de remboursement…
                 </div>
               ) : preview ? (

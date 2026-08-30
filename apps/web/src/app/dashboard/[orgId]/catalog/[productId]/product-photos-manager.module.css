@@ -1,7 +1,7 @@
 .section {
   margin-block: 2rem;
   padding: 1rem;
-  border: 1px solid #d8ddd7;
+  border: 1px solid var(--ut-color-border);
   border-radius: 0.75rem;
 }
 
@@ -18,21 +18,29 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.75rem 1.25rem;
-  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
-  color: #ffffff;
+  background: linear-gradient(
+    135deg,
+    var(--ut-color-primary) 0%,
+    var(--ut-color-primary-strong) 100%
+  );
+  color: var(--ut-color-surface);
   font-weight: 600;
   font-size: 0.95rem;
   border-radius: 0.5rem;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.2);
+  box-shadow: var(--ut-shadow-primary-subtle);
   transition: all 0.2s ease;
 }
 
 .coachButton:hover {
-  background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+  background: linear-gradient(
+    135deg,
+    var(--ut-color-primary-strong) 0%,
+    var(--ut-color-primary-strong) 100%
+  );
   transform: translateY(-1px);
-  box-shadow: 0 6px 8px -1px rgba(2, 132, 199, 0.3);
+  box-shadow: var(--ut-shadow-primary-subtle);
 }
 
 .form {
@@ -43,12 +51,12 @@
 
 .help {
   margin: 0;
-  color: #5d6a62;
+  color: var(--ut-color-ink-muted);
   font-size: 0.9rem;
 }
 
 .error {
-  color: #9b1c1c;
+  color: var(--ut-color-danger);
 }
 
 .grid {
@@ -64,7 +72,7 @@
   gap: 0.5rem;
   min-width: 0;
   padding: 0.75rem;
-  border: 1px solid #d8ddd7;
+  border: 1px solid var(--ut-color-border);
   border-radius: 0.5rem;
 }
 
@@ -73,15 +81,15 @@
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
-  background: #f7f4ed;
+  background: var(--ut-color-surface-raised);
 }
 
 .placeholder {
   display: grid;
   place-items: center;
-  color: #5d6a62;
+  color: var(--ut-color-ink-muted);
 }
 
 .deleteButton {
-  color: #9b1c1c;
+  color: var(--ut-color-danger);
 }

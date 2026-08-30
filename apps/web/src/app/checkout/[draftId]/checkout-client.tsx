@@ -491,7 +491,7 @@ const submitButtonStyle: CSSProperties = {
   padding: '0.75rem 1.25rem',
   fontSize: '1rem',
   fontWeight: 700,
-  color: '#fff',
+  color: 'var(--ut-color-surface)',
   background: 'var(--ut-color-accent)',
   border: 'none',
   borderRadius: 'var(--ut-radius-md)',

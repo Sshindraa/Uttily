@@ -5,22 +5,26 @@
 }
 
 .hero {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  border: 1px solid #334155;
+  background: linear-gradient(
+    135deg,
+    var(--ut-color-support-elevated) 0%,
+    var(--ut-color-support-footer) 100%
+  );
+  border: 1px solid var(--ut-color-support-border-muted);
   border-radius: 12px;
   padding: 2rem;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--ut-shadow-support-card);
 }
 
 .heroTitle {
   font-size: 1.75rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
-  color: #f8fafc;
+  color: var(--ut-color-support-ink-strong);
 }
 
 .heroSubtitle {
-  color: #94a3b8;
+  color: var(--ut-color-support-muted);
   font-size: 0.95rem;
   margin-bottom: 1.5rem;
 }
@@ -33,24 +37,24 @@
 
 .searchInput {
   flex: 1;
-  background: #090d16;
-  border: 1px solid #475569;
+  background: var(--ut-color-support-deep);
+  border: 1px solid var(--ut-color-support-border-light);
   border-radius: 8px;
   padding: 0.85rem 1.25rem;
   font-size: 1rem;
-  color: #ffffff;
+  color: var(--ut-color-support-ink-strong);
   outline: none;
   transition: border-color 0.15s ease;
 }
 
 .searchInput:focus {
-  border-color: #38bdf8;
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+  border-color: var(--ut-color-support-link);
+  box-shadow: 0 0 0 3px var(--ut-color-support-link-focus);
 }
 
 .searchButton {
-  background: #0284c7;
-  color: #ffffff;
+  background: var(--ut-color-support-primary);
+  color: var(--ut-color-support-ink-strong);
   border: none;
   border-radius: 8px;
   padding: 0.85rem 1.5rem;
@@ -64,7 +68,7 @@
 }
 
 .searchButton:hover {
-  background: #0369a1;
+  background: var(--ut-color-support-primary-strong);
 }
 
 .statsGrid {
@@ -74,8 +78,8 @@
 }
 
 .statCard {
-  background: #151e2e;
-  border: 1px solid #27354d;
+  background: var(--ut-color-support-panel);
+  border: 1px solid var(--ut-color-support-border-alt);
   border-radius: 8px;
   padding: 1.25rem;
   display: flex;
@@ -87,14 +91,14 @@
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #94a3b8;
+  color: var(--ut-color-support-muted);
   font-weight: 600;
 }
 
 .statValue {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #38bdf8;
+  color: var(--ut-color-support-link);
 }
 
 .resultsSection {
@@ -107,22 +111,22 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--ut-color-support-border);
   padding-bottom: 0.75rem;
 }
 
 .sectionTitle {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #f8fafc;
+  color: var(--ut-color-support-ink-strong);
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
 .resultBadge {
-  background: #1e293b;
-  color: #38bdf8;
+  background: var(--ut-color-support-elevated);
+  color: var(--ut-color-support-link);
   font-size: 0.75rem;
   font-weight: 600;
   padding: 0.2rem 0.5rem;
@@ -130,8 +134,8 @@
 }
 
 .tableWrapper {
-  background: #111827;
-  border: 1px solid #1f2937;
+  background: var(--ut-color-support-surface);
+  border: 1px solid var(--ut-color-support-border);
   border-radius: 8px;
   overflow-x: auto;
 }
@@ -144,27 +148,27 @@
 }
 
 .th {
-  background: #162032;
-  color: #94a3b8;
+  background: var(--ut-color-support-navigation-alt);
+  color: var(--ut-color-support-muted);
   font-weight: 600;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--ut-color-support-border);
   white-space: nowrap;
 }
 
 .td {
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid #1f2937;
-  color: #cbd5e1;
+  border-bottom: 1px solid var(--ut-color-support-border);
+  color: var(--ut-color-support-ink-soft);
   vertical-align: middle;
 }
 
 .tr:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--ut-color-border-on-dark);
 }
 
 .link {
-  color: #38bdf8;
+  color: var(--ut-color-support-link);
   text-decoration: none;
   font-weight: 500;
 }
@@ -183,28 +187,28 @@
 }
 
 .statusSuccess {
-  background: rgba(34, 197, 94, 0.15);
-  color: #4ade80;
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  background: var(--ut-color-support-success-bg);
+  color: var(--ut-color-support-success);
+  border: 1px solid var(--ut-color-support-success-border);
 }
 
 .statusWarning {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: var(--ut-color-support-warning-bg);
+  color: var(--ut-color-support-warning);
+  border: 1px solid var(--ut-color-support-warning-border-alpha);
 }
 
 .statusError {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: var(--ut-color-support-danger-bg);
+  color: var(--ut-color-support-danger);
+  border: 1px solid var(--ut-color-support-danger-border);
 }
 
 .emptyState {
   padding: 3rem;
   text-align: center;
-  color: #64748b;
-  background: #111827;
-  border: 1px dashed #334155;
+  color: var(--ut-color-support-subtle);
+  background: var(--ut-color-support-surface);
+  border: 1px dashed var(--ut-color-support-border-muted);
   border-radius: 8px;
 }

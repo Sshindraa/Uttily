@@ -71,7 +71,10 @@ export function PhotoCoachLauncher({
                     className={styles.photoSlotThumbnail}
                   />
                   <div className={styles.photoSlotLabel}>{config.title}</div>
-                  <div className={styles.photoSlotStatus} style={{ color: '#059669' }}>
+                  <div
+                    className={styles.photoSlotStatus}
+                    style={{ color: 'var(--ut-color-success)' }}
+                  >
                     ✓ Photo conforme
                   </div>
                   <button
@@ -86,7 +89,9 @@ export function PhotoCoachLauncher({
                 <>
                   <div style={{ fontSize: '2rem' }}>{config.icon}</div>
                   <div className={styles.photoSlotLabel}>{config.title}</div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{config.subtitle}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--ut-color-ink-muted)' }}>
+                    {config.subtitle}
+                  </div>
                   <button
                     type="button"
                     className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}

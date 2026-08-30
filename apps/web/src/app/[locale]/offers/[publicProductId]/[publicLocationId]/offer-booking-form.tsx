@@ -247,7 +247,7 @@ export function OfferBookingForm({
             style={{
               cursor: 'pointer',
               background: intentKind === 'DAY_RANGE' ? 'var(--accent)' : 'var(--paper)',
-              color: intentKind === 'DAY_RANGE' ? '#fff' : 'var(--ink)',
+              color: intentKind === 'DAY_RANGE' ? 'var(--ut-color-ink-on-dark)' : 'var(--ink)',
               fontWeight: 600,
             }}
             onClick={() => setIntentKind('DAY_RANGE')}
@@ -260,7 +260,7 @@ export function OfferBookingForm({
             style={{
               cursor: 'pointer',
               background: intentKind === 'TIME_RANGE' ? 'var(--accent)' : 'var(--paper)',
-              color: intentKind === 'TIME_RANGE' ? '#fff' : 'var(--ink)',
+              color: intentKind === 'TIME_RANGE' ? 'var(--ut-color-ink-on-dark)' : 'var(--ink)',
               fontWeight: 600,
             }}
             onClick={() => setIntentKind('TIME_RANGE')}

@@ -35,7 +35,7 @@ export default async function OrganizationSupportPage({
           <Link
             href="/internal"
             style={{
-              color: '#38bdf8',
+              color: 'var(--ut-color-support-link)',
               fontSize: '0.85rem',
               textDecoration: 'none',
               marginBottom: '0.5rem',
@@ -62,7 +62,11 @@ export default async function OrganizationSupportPage({
             <Link
               href={`/dashboard/${org.id}`}
               target="_blank"
-              style={{ color: '#38bdf8', textDecoration: 'underline', fontSize: '0.85rem' }}
+              style={{
+                color: 'var(--ut-color-support-link)',
+                textDecoration: 'underline',
+                fontSize: '0.85rem',
+              }}
             >
               Ouvrir l’espace Pro ↗
             </Link>
@@ -141,16 +145,26 @@ export default async function OrganizationSupportPage({
           </div>
 
           <div
-            style={{ marginTop: '0.5rem', borderTop: '1px solid #1f2937', paddingTop: '0.75rem' }}
+            style={{
+              marginTop: '0.5rem',
+              borderTop: '1px solid var(--ut-color-support-border)',
+              paddingTop: '0.75rem',
+            }}
           >
-            <h3 style={{ fontSize: '0.9rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
+            <h3
+              style={{
+                fontSize: '0.9rem',
+                color: 'var(--ut-color-support-muted)',
+                marginBottom: '0.5rem',
+              }}
+            >
               Jalons d’Onboarding Pro ({org.readiness.percentage}%) :
             </h3>
             <ul
               style={{
                 paddingLeft: '1.2rem',
                 fontSize: '0.85rem',
-                color: '#cbd5e1',
+                color: 'var(--ut-color-support-ink-soft)',
                 lineHeight: '1.6',
               }}
             >
@@ -184,9 +198,19 @@ export default async function OrganizationSupportPage({
           </div>
 
           <div
-            style={{ marginTop: '0.5rem', borderTop: '1px solid #1f2937', paddingTop: '0.75rem' }}
+            style={{
+              marginTop: '0.5rem',
+              borderTop: '1px solid var(--ut-color-support-border)',
+              paddingTop: '0.75rem',
+            }}
           >
-            <h3 style={{ fontSize: '0.9rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
+            <h3
+              style={{
+                fontSize: '0.9rem',
+                color: 'var(--ut-color-support-muted)',
+                marginBottom: '0.5rem',
+              }}
+            >
               Établissements ({org.locations.length})
             </h3>
             <div className={styles.tableWrapper}>
@@ -252,7 +276,10 @@ export default async function OrganizationSupportPage({
                 </tr>
               ))}
               {org.pendingInvitations.map((inv) => (
-                <tr key={inv.id} style={{ background: 'rgba(245, 158, 11, 0.04)' }}>
+                <tr
+                  key={inv.id}
+                  style={{ background: 'var(--ut-color-support-warning-bg-subtle)' }}
+                >
                   <td className={styles.td}>Invitation</td>
                   <td className={styles.td}>
                     <strong>{inv.email}</strong>
@@ -262,7 +289,7 @@ export default async function OrganizationSupportPage({
                     <code>{inv.role}</code>
                   </td>
                   <td className={styles.td}>
-                    <span style={{ color: '#fbbf24' }}>
+                    <span style={{ color: 'var(--ut-color-support-warning)' }}>
                       En attente (Expire: {inv.expiresAt.toLocaleDateString('fr-FR')})
                     </span>
                   </td>
@@ -282,7 +309,7 @@ export default async function OrganizationSupportPage({
           <span>📋 Dernières Réservations ({org.recentBookings.length})</span>
         </h2>
         {org.recentBookings.length === 0 ? (
-          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
+          <p style={{ color: 'var(--ut-color-support-subtle)', fontSize: '0.9rem' }}>
             Aucune réservation trouvée pour cette organisation.
           </p>
         ) : (
@@ -315,7 +342,7 @@ export default async function OrganizationSupportPage({
                     <td className={styles.td}>
                       <Link
                         href={`/internal/bookings/${b.id}`}
-                        style={{ color: '#38bdf8', textDecoration: 'none' }}
+                        style={{ color: 'var(--ut-color-support-link)', textDecoration: 'none' }}
                       >
                         Diagnostic complet →
                       </Link>

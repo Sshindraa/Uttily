@@ -44,4 +44,17 @@ describe('seed local environment guards', () => {
     expect(seedSource).not.toContain('"publication_status" = \'PUBLISHED\'');
     expect(seedSource).toContain('draft; upload real photos to publish');
   });
+
+  it('prépare les deux destinations locales utilisées par les parcours de recherche', () => {
+    expect(seedSource).toContain("slug: 'lyon-dev'");
+    expect(seedSource).toContain("slug: 'annecy-dev'");
+    expect(seedSource).toContain("label: 'Annecy'");
+    expect(seedSource).toContain("slug: 'lyon-shop-dev'");
+    expect(seedSource).toContain("slug: 'annecy-shop-dev'");
+  });
+
+  it('la publication synthétique est isolée dans le seed de preview', () => {
+    expect(seedSource).not.toContain('local-preview-kayak-dev');
+    expect(seedSource).toContain('product=kayak-dev (draft; upload real photos to publish)');
+  });
 });

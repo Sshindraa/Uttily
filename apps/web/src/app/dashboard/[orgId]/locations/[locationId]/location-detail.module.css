@@ -1,0 +1,143 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ut-space-6);
+}
+
+.sectionTitle {
+  color: var(--ut-color-ink-strong);
+  font-size: var(--ut-text-lg);
+  font-weight: var(--ut-weight-semibold);
+  margin: 0;
+}
+
+.subheading {
+  color: var(--ut-color-ink-strong);
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-semibold);
+  margin: 0;
+}
+
+.exceptionDate {
+  color: var(--ut-color-ink-strong);
+  font-size: var(--ut-text-sm);
+}
+
+.grid {
+  align-items: start;
+  display: grid;
+  gap: var(--ut-space-6);
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ut-space-5);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ut-space-5);
+}
+
+.sideColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ut-space-6);
+}
+
+.exceptionForm {
+  background: var(--ut-color-surface-raised);
+  border: var(--ut-border-thin);
+  border-radius: var(--ut-radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ut-space-3);
+  padding: var(--ut-space-4);
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ut-space-1);
+}
+
+.hoursRow {
+  display: grid;
+  gap: var(--ut-space-2);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.submitRow {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: var(--ut-space-1);
+}
+
+.exceptionsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ut-space-2);
+}
+
+.exceptionListContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ut-space-3);
+}
+
+.exceptionCard {
+  align-items: center;
+  background: var(--ut-color-surface-raised);
+  border: var(--ut-border-thin);
+  border-radius: var(--ut-radius-md);
+  display: flex;
+  gap: var(--ut-space-3);
+  justify-content: space-between;
+  padding: var(--ut-space-3);
+}
+
+.exceptionInfo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ut-space-1);
+  min-width: 0;
+}
+
+.exceptionHeader {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ut-space-2);
+}
+
+.exceptionReason {
+  color: var(--ut-color-ink-muted);
+  font-size: var(--ut-text-xs);
+  margin: 0;
+}
+
+.mutedText,
+.helpText {
+  color: var(--ut-color-ink-muted);
+  margin: 0;
+}
+
+.helpText {
+  font-size: var(--ut-text-sm);
+  line-height: var(--ut-leading-relaxed);
+}
+
+@media (max-width: 56rem) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 32rem) {
+  .hoursRow {
+    grid-template-columns: 1fr;
+  }
+}

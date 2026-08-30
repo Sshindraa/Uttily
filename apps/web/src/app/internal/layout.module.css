@@ -2,19 +2,18 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #0b0f19;
-  color: #f1f5f9;
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: var(--ut-color-support-background);
+  color: var(--ut-color-support-ink);
+  font-family: var(--ut-font-sans);
 }
 
 .topBar {
-  background: #111827;
-  border-bottom: 1px solid #1f2937;
+  background: var(--ut-color-support-surface);
+  border-bottom: 1px solid var(--ut-color-support-border);
   position: sticky;
   top: 0;
   z-index: 50;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--ut-shadow-support-header);
 }
 
 .topBarInner {
@@ -39,34 +38,34 @@
   gap: 0.5rem;
   font-weight: 700;
   font-size: 1.1rem;
-  color: #ffffff;
+  color: var(--ut-color-support-ink-strong);
   text-decoration: none;
   letter-spacing: -0.02em;
 }
 
 .adminBadge {
-  background: #dc2626;
-  color: #ffffff;
+  background: var(--ut-color-support-danger-strong);
+  color: var(--ut-color-support-ink-strong);
   font-size: 0.65rem;
   font-weight: 800;
   text-transform: uppercase;
   padding: 0.2rem 0.55rem;
   border-radius: 9999px;
   letter-spacing: 0.08em;
-  box-shadow: 0 0 10px rgba(220, 38, 38, 0.4);
+  box-shadow: var(--ut-shadow-support-danger);
 }
 
 .userEmail {
   font-size: 0.85rem;
-  color: #94a3b8;
+  color: var(--ut-color-support-muted);
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
 .navBar {
-  background: #161f30;
-  border-bottom: 1px solid #243048;
+  background: var(--ut-color-support-navigation);
+  border-bottom: 1px solid var(--ut-color-support-border-strong);
 }
 
 .navInner {
@@ -81,7 +80,7 @@
 
 .navLink {
   padding: 0.75rem 1rem;
-  color: #94a3b8;
+  color: var(--ut-color-support-muted);
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 500;
@@ -94,14 +93,14 @@
 }
 
 .navLink:hover {
-  color: #f8fafc;
-  background: rgba(255, 255, 255, 0.03);
+  color: var(--ut-color-support-ink-strong);
+  background: var(--ut-color-support-link-bg);
 }
 
 .navLinkActive {
-  color: #38bdf8;
-  border-bottom-color: #38bdf8;
-  background: rgba(56, 189, 248, 0.05);
+  color: var(--ut-color-support-link);
+  border-bottom-color: var(--ut-color-support-link);
+  background: var(--ut-color-support-link-bg);
 }
 
 .mainContent {
@@ -113,10 +112,10 @@
 }
 
 .footer {
-  border-top: 1px solid #1f2937;
+  border-top: 1px solid var(--ut-color-support-border);
   padding: 1.25rem 1.5rem;
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--ut-color-support-subtle);
   text-align: center;
-  background: #0f172a;
+  background: var(--ut-color-support-footer);
 }

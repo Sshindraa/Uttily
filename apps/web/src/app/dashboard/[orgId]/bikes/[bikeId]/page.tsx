@@ -41,12 +41,12 @@ export default async function UnifiedBikePage({
       >
         <Link
           href={`/dashboard/${organizationId}/bikes`}
-          style={{ color: '#0284c7', textDecoration: 'none', fontWeight: 700 }}
+          style={{ color: 'var(--ut-color-primary)', textDecoration: 'none', fontWeight: 700 }}
         >
           ← Retour à Mes équipements
         </Link>
-        <span style={{ color: '#cbd5e1' }}>/</span>
-        <span style={{ color: '#64748b' }}>{bike.product.name}</span>
+        <span style={{ color: 'var(--ut-color-border-strong)' }}>/</span>
+        <span style={{ color: 'var(--ut-color-ink-muted)' }}>{bike.product.name}</span>
       </nav>
 
       {/* Hero Header de l’équipement */}
@@ -72,7 +72,11 @@ export default async function UnifiedBikePage({
             {bike.statusSummary === 'ONLINE_UNAVAILABLE' && (
               <span
                 className={styles.statusBadgeIncomplete}
-                style={{ borderColor: '#fca5a5', color: '#dc2626', background: '#fef2f2' }}
+                style={{
+                  borderColor: 'var(--ut-color-danger-soft)',
+                  color: 'var(--ut-color-danger)',
+                  background: 'var(--ut-color-danger-soft)',
+                }}
               >
                 🔴 En ligne · Indisponible (aucun exemplaire actif ou tarif manquant)
               </span>
@@ -86,7 +90,10 @@ export default async function UnifiedBikePage({
             {bike.statusSummary === 'ARCHIVED' && (
               <span
                 className={styles.statusBadgeIncomplete}
-                style={{ color: '#64748b', background: '#f1f5f9' }}
+                style={{
+                  color: 'var(--ut-color-ink-muted)',
+                  background: 'var(--ut-color-surface-soft)',
+                }}
               >
                 ⚫ Archivé
               </span>
@@ -97,7 +104,13 @@ export default async function UnifiedBikePage({
         {/* Barre de Synthèse Rapide */}
         <div className={styles.summaryBar}>
           <div className={styles.summaryItem}>
-            <span style={{ color: bike.photos.isComplete ? '#10b981' : '#f59e0b' }}>
+            <span
+              style={{
+                color: bike.photos.isComplete
+                  ? 'var(--ut-color-success)'
+                  : 'var(--ut-color-warning)',
+              }}
+            >
               {bike.photos.isComplete ? '✓' : '○'}
             </span>
             <span>{bike.photos.count}/3 vues requises</span>
@@ -106,7 +119,13 @@ export default async function UnifiedBikePage({
           <span className={styles.summaryDivider}>|</span>
 
           <div className={styles.summaryItem}>
-            <span style={{ color: bike.pricing.isPriced ? '#10b981' : '#f59e0b' }}>
+            <span
+              style={{
+                color: bike.pricing.isPriced
+                  ? 'var(--ut-color-success)'
+                  : 'var(--ut-color-warning)',
+              }}
+            >
               {bike.pricing.isPriced ? '✓' : '○'}
             </span>
             <span>
@@ -122,7 +141,14 @@ export default async function UnifiedBikePage({
           <span className={styles.summaryDivider}>|</span>
 
           <div className={styles.summaryItem}>
-            <span style={{ color: bike.inventory.activeCount > 0 ? '#10b981' : '#f59e0b' }}>
+            <span
+              style={{
+                color:
+                  bike.inventory.activeCount > 0
+                    ? 'var(--ut-color-success)'
+                    : 'var(--ut-color-warning)',
+              }}
+            >
               {bike.inventory.activeCount > 0 ? '✓' : '○'}
             </span>
             <span>{bike.inventory.activeCount} exemplaire(s) en service</span>
@@ -134,8 +160,8 @@ export default async function UnifiedBikePage({
       {!bike.publication.ready && bike.publication.failures.length > 0 && (
         <section
           style={{
-            background: '#fffbeb',
-            border: '1px solid #fde68a',
+            background: 'var(--ut-color-surface)beb',
+            border: '1px solid var(--ut-color-warning-soft)',
             borderRadius: '16px',
             padding: '20px 24px',
             display: 'flex',
@@ -144,10 +170,20 @@ export default async function UnifiedBikePage({
           }}
           aria-labelledby="failures-title"
         >
-          <strong id="failures-title" style={{ color: '#92400e', fontSize: '1rem' }}>
+          <strong
+            id="failures-title"
+            style={{ color: 'var(--ut-color-warning)', fontSize: '1rem' }}
+          >
             ⚠️ Éléments requis pour mettre cet équipement en ligne :
           </strong>
-          <ul style={{ margin: 0, paddingLeft: '20px', color: '#b45309', fontSize: '0.92rem' }}>
+          <ul
+            style={{
+              margin: 0,
+              paddingLeft: '20px',
+              color: 'var(--ut-color-warning)',
+              fontSize: '0.92rem',
+            }}
+          >
             {bike.publication.failures.map((f, i) => (
               <li key={i}>{f}</li>
             ))}

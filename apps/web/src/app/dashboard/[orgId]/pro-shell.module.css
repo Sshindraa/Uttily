@@ -6,8 +6,8 @@
 }
 
 .sidebar {
-  background: var(--ut-color-ink-strong);
-  color: white;
+  background: var(--ut-color-surface-dark);
+  color: var(--ut-color-ink-on-dark);
   display: flex;
   flex-direction: column;
   height: 100vh;
@@ -26,7 +26,7 @@
 
 .brand {
   align-items: center;
-  color: white;
+  color: var(--ut-color-ink-on-dark);
   display: inline-flex;
   font-size: 1.2rem;
   font-weight: var(--ut-weight-black);
@@ -36,7 +36,7 @@
 }
 
 .brand em {
-  color: #99f6e4;
+  color: var(--ut-color-primary-soft);
   font-size: var(--ut-text-sm);
   font-style: normal;
   letter-spacing: 0;
@@ -46,7 +46,7 @@
   align-items: center;
   background: var(--ut-color-accent);
   border-radius: var(--ut-radius-md);
-  color: white;
+  color: var(--ut-color-ink-on-dark);
   display: inline-flex;
   font-size: 0.95rem;
   height: 2rem;
@@ -56,8 +56,8 @@
 
 .orgContext {
   align-items: center;
-  background: rgb(255 255 255 / 0.09);
-  border: 1px solid rgb(255 255 255 / 0.12);
+  background: var(--ut-color-surface-dark-translucent);
+  border: 1px solid var(--ut-color-border-on-dark);
   border-radius: var(--ut-radius-md);
   display: flex;
   gap: var(--ut-space-3);
@@ -66,7 +66,7 @@
 
 .orgAvatar {
   align-items: center;
-  background: #ccfbf1;
+  background: var(--ut-color-primary-soft);
   border-radius: var(--ut-radius-md);
   color: var(--ut-color-primary-strong);
   display: inline-flex;
@@ -89,7 +89,7 @@
 }
 
 .orgDetails small {
-  color: #9fb3c8;
+  color: var(--ut-color-ink-on-dark-subtle);
   font-size: var(--ut-text-xs);
   margin-top: 2px;
   text-transform: capitalize;
@@ -104,7 +104,7 @@
 }
 
 .navLabel {
-  color: #829ab1;
+  color: var(--ut-color-ink-on-dark-subtle);
   font-size: var(--ut-text-xs);
   font-weight: var(--ut-weight-bold);
   letter-spacing: 0.1em;
@@ -121,7 +121,7 @@
   align-items: center;
   border-left: 3px solid transparent;
   border-radius: 0 var(--ut-radius-md) var(--ut-radius-md) 0;
-  color: #bcccdc;
+  color: var(--ut-color-ink-on-dark-muted);
   display: flex;
   font-size: var(--ut-text-sm);
   font-weight: var(--ut-weight-semibold);
@@ -136,32 +136,32 @@
 
 .navLink:hover,
 .navLinkActive {
-  background: rgb(255 255 255 / 0.1);
-  color: white;
+  background: var(--ut-color-surface-dark-translucent-strong);
+  color: var(--ut-color-ink-on-dark);
 }
 
 .navLinkActive {
-  border-left-color: #fb923c;
+  border-left-color: var(--ut-color-accent);
 }
 
 .navLinkActive svg {
-  color: #fdba74;
+  color: var(--ut-color-accent-soft);
 }
 
 .navDivider {
-  border-top: 1px solid rgb(255 255 255 / 0.12);
+  border-top: 1px solid var(--ut-color-border-on-dark-muted);
   margin: var(--ut-space-4) var(--ut-space-3) var(--ut-space-2);
 }
 
 .sidebarFooter {
-  border-top: 1px solid rgb(255 255 255 / 0.12);
+  border-top: 1px solid var(--ut-color-border-on-dark-muted);
   display: grid;
   gap: var(--ut-space-2);
   padding: var(--ut-space-5) var(--ut-space-3) 0;
 }
 
 .userEmail {
-  color: #9fb3c8;
+  color: var(--ut-color-ink-on-dark-subtle);
   font-size: var(--ut-text-xs);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -171,7 +171,7 @@
 .signOutLink {
   background: transparent;
   border: 0;
-  color: #d9e2ec;
+  color: var(--ut-color-ink-on-dark-muted);
   cursor: pointer;
   font-size: var(--ut-text-xs);
   font-weight: var(--ut-weight-semibold);
@@ -181,7 +181,7 @@
 }
 
 .signOutLink:hover {
-  color: white;
+  color: var(--ut-color-ink-on-dark);
   text-decoration: underline;
 }
 
@@ -220,7 +220,7 @@
 
   .mobileHeader {
     align-items: center;
-    background: var(--ut-color-ink-strong);
+    background: var(--ut-color-surface-dark);
     display: flex;
     justify-content: space-between;
     padding: var(--ut-space-3) var(--ut-space-4);
@@ -232,9 +232,9 @@
   .menuButton {
     align-items: center;
     background: transparent;
-    border: 1px solid rgb(255 255 255 / 0.3);
+    border: 1px solid var(--ut-color-border-on-dark-strong);
     border-radius: var(--ut-radius-md);
-    color: white;
+    color: var(--ut-color-ink-on-dark);
     cursor: pointer;
     display: inline-flex;
     height: 44px;
@@ -243,7 +243,7 @@
   }
 
   .scrim {
-    background: rgb(16 42 67 / 0.5);
+    background: var(--ut-color-overlay-dark);
     border: 0;
     bottom: 0;
     cursor: pointer;

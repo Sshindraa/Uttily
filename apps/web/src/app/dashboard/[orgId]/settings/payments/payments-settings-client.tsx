@@ -77,7 +77,7 @@ export function PaymentsSettingsClient({
       <StatusCard readiness={readiness} />
 
       {error && (
-        <p role="alert" aria-live="assertive" style={{ color: '#dc2626' }}>
+        <p role="alert" aria-live="assertive" style={{ color: 'var(--ut-color-danger)' }}>
           {error}
         </p>
       )}
@@ -156,7 +156,7 @@ export function PaymentsSettingsClient({
       {!readiness.notConfigured &&
         (onboardingStatus === 'DISABLED' || onboardingStatus === 'REJECTED') && (
           <section aria-labelledby="error-title">
-            <h2 id="error-title" style={{ color: '#dc2626' }}>
+            <h2 id="error-title" style={{ color: 'var(--ut-color-danger)' }}>
               Compte indisponible
             </h2>
             <p role="alert">

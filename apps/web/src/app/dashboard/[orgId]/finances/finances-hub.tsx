@@ -99,7 +99,7 @@ export function FinancesHub({
         appearance: {
           overlays: 'dialog',
           variables: {
-            colorPrimary: '#0284c7',
+            colorPrimary: 'var(--ut-color-primary)',
             fontFamily: 'inherit',
           },
         },
@@ -450,7 +450,7 @@ export function FinancesHub({
                   border: 'var(--ut-border-thin)',
                   background:
                     filterType === 'ALL' ? 'var(--ut-color-ink-strong)' : 'var(--ut-color-surface)',
-                  color: filterType === 'ALL' ? '#ffffff' : 'var(--ut-color-ink)',
+                  color: filterType === 'ALL' ? 'var(--ut-color-surface)' : 'var(--ut-color-ink)',
                   cursor: 'pointer',
                 }}
               >
@@ -470,7 +470,8 @@ export function FinancesHub({
                     filterType === 'PAYMENTS'
                       ? 'var(--ut-color-ink-strong)'
                       : 'var(--ut-color-surface)',
-                  color: filterType === 'PAYMENTS' ? '#ffffff' : 'var(--ut-color-ink)',
+                  color:
+                    filterType === 'PAYMENTS' ? 'var(--ut-color-surface)' : 'var(--ut-color-ink)',
                   cursor: 'pointer',
                 }}
               >
@@ -490,7 +491,8 @@ export function FinancesHub({
                     filterType === 'REFUNDS'
                       ? 'var(--ut-color-ink-strong)'
                       : 'var(--ut-color-surface)',
-                  color: filterType === 'REFUNDS' ? '#ffffff' : 'var(--ut-color-ink)',
+                  color:
+                    filterType === 'REFUNDS' ? 'var(--ut-color-surface)' : 'var(--ut-color-ink)',
                   cursor: 'pointer',
                 }}
               >

@@ -15,14 +15,14 @@
 .pageTitle {
   font-size: 1.85rem;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   margin: 0;
   letter-spacing: -0.02em;
 }
 
 .pageSubtitle {
   font-size: 0.95rem;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   margin: 4px 0 0 0;
 }
 
@@ -34,7 +34,7 @@
 .tabsList {
   display: flex;
   gap: 8px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--ut-color-border);
   padding-bottom: 8px;
 }
 
@@ -43,38 +43,38 @@
   border-radius: 10px;
   font-size: 0.88rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   text-decoration: none;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
   white-space: nowrap;
   transition: all 0.15s ease;
 }
 
 .tabBtn:hover {
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--ut-color-surface-raised);
+  color: var(--ut-color-ink-strong);
 }
 
 .tabBtnActive {
-  background: #0284c7;
-  color: #ffffff;
-  border-color: #0284c7;
+  background: var(--ut-color-primary);
+  color: var(--ut-color-surface);
+  border-color: var(--ut-color-primary);
   font-weight: 700;
 }
 
 .errorAlert {
   padding: 12px 16px;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: var(--ut-color-danger-soft);
+  border: 1px solid var(--ut-color-danger-soft);
   border-radius: 12px;
-  color: #b91c1c;
+  color: var(--ut-color-danger);
   font-size: 0.9rem;
 }
 
 .emptyState {
-  background: #ffffff;
-  border: 1.5px dashed #cbd5e1;
+  background: var(--ut-color-surface);
+  border: 1.5px dashed var(--ut-color-border-strong);
   border-radius: 20px;
   padding: 48px;
   text-align: center;
@@ -91,11 +91,11 @@
 }
 
 .bookingCard {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
   border-radius: 18px;
   padding: 20px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--ut-shadow-card-subtle);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -106,7 +106,7 @@
 
 .bookingCard:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--ut-shadow-md);
 }
 
 .cardHeader {
@@ -127,8 +127,8 @@
   font-family: monospace;
   font-weight: 800;
   font-size: 0.85rem;
-  color: #0f172a;
-  background: #f1f5f9;
+  color: var(--ut-color-ink-strong);
+  background: var(--ut-color-surface-soft);
   padding: 3px 8px;
   border-radius: 6px;
 }
@@ -144,32 +144,32 @@
 }
 
 .statusConfirmed {
-  background: #eff6ff;
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
+  background: var(--ut-color-primary-soft);
+  color: var(--ut-color-primary-strong);
+  border: 1px solid var(--ut-color-primary-soft);
 }
 
 .statusInUse {
-  background: #f0fdf4;
-  color: #15803d;
-  border: 1px solid #bbf7d0;
+  background: var(--ut-color-success-soft);
+  color: var(--ut-color-success);
+  border: 1px solid var(--ut-color-success-soft);
 }
 
 .statusReturned {
-  background: #f8fafc;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface-raised);
+  color: var(--ut-color-ink-muted);
+  border: 1px solid var(--ut-color-border);
 }
 
 .statusCancelled {
-  background: #fef2f2;
-  color: #b91c1c;
-  border: 1px solid #fecaca;
+  background: var(--ut-color-danger-soft);
+  color: var(--ut-color-danger);
+  border: 1px solid var(--ut-color-danger-soft);
 }
 
 .dateChip {
   font-size: 0.82rem;
-  color: #475569;
+  color: var(--ut-color-ink-muted);
   font-weight: 600;
 }
 
@@ -177,7 +177,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: #f8fafc;
+  background: var(--ut-color-surface-raised);
   border-radius: 12px;
   padding: 14px;
 }
@@ -198,7 +198,7 @@
 
 .timeLabel {
   font-size: 0.75rem;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   font-weight: 600;
   text-transform: uppercase;
 }
@@ -207,13 +207,13 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  border-top: 1px solid #e2e8f0;
+  border-top: 1px solid var(--ut-color-border);
   padding-top: 10px;
 }
 
 .itemsLabel {
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   font-weight: 700;
   text-transform: uppercase;
 }
@@ -237,17 +237,17 @@
 .itemSku {
   font-family: monospace;
   font-weight: 700;
-  color: #0284c7;
-  background: #ffffff;
+  color: var(--ut-color-primary);
+  background: var(--ut-color-surface);
   padding: 2px 6px;
   border-radius: 4px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ut-color-border);
   font-size: 0.8rem;
 }
 
 .itemName {
   font-weight: 600;
-  color: #1e293b;
+  color: var(--ut-color-ink);
 }
 
 .cardFooter {
@@ -260,8 +260,8 @@
   align-items: center;
   justify-content: center;
   padding: 10px 18px;
-  background: #0284c7;
-  color: #ffffff;
+  background: var(--ut-color-primary);
+  color: var(--ut-color-surface);
   border-radius: 10px;
   font-weight: 700;
   font-size: 0.88rem;
@@ -271,7 +271,7 @@
 }
 
 .ctaPrimary:hover {
-  background: #0369a1;
+  background: var(--ut-color-primary-strong);
 }
 
 .ctaSecondary {
@@ -279,8 +279,8 @@
   align-items: center;
   justify-content: center;
   padding: 10px 18px;
-  background: #059669;
-  color: #ffffff;
+  background: var(--ut-color-success);
+  color: var(--ut-color-surface);
   border-radius: 10px;
   font-weight: 700;
   font-size: 0.88rem;
@@ -290,7 +290,7 @@
 }
 
 .ctaSecondary:hover {
-  background: #047857;
+  background: var(--ut-color-success-strong);
 }
 
 .ctaNeutral {
@@ -298,8 +298,8 @@
   align-items: center;
   justify-content: center;
   padding: 8px 16px;
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--ut-color-surface-soft);
+  color: var(--ut-color-ink);
   border-radius: 10px;
   font-weight: 600;
   font-size: 0.85rem;
@@ -308,6 +308,6 @@
 }
 
 .ctaNeutral:hover {
-  background: #e2e8f0;
-  color: #0f172a;
+  background: var(--ut-color-border);
+  color: var(--ut-color-ink-strong);
 }
