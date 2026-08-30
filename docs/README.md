@@ -19,6 +19,7 @@
 | [ADR-002](decisions/ADR-002-professionnels-only.md) | Lancement réservé aux loueurs professionnels. |
 | [ADR-003](decisions/ADR-003-reservation-flow.md) | Allocation immédiate et hold temporaire. |
 | [ADR-019](decisions/ADR-019-ai-native-global-rental-infrastructure.md) | Direction stratégique AI-native et garde-fous durables. |
+| [ADR-030](decisions/ADR-030-split-refund-policy.md) | Politique proposée de remboursement split, soumise à validation Finance/Juridique. |
 
 ## Règle de maintenance
 
