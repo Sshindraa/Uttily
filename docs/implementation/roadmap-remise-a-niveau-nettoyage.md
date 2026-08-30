@@ -49,9 +49,19 @@ travaux engineering à déclencher autour de ce plan.
   C4-A corrigées sans réécrire les preuves historiques.
 - [x] Cartographie des scripts et suites de tests corrigée ; aucun élément orphelin
   ou supprimable n'a été confirmé.
+- [x] Dérive du schéma staging résolue : migrations `0040` à `0049` appliquées
+  dans Neon, journal Drizzle vérifié à 49 entrées, puis recherche publique
+  staging rejouée avec succès.
+- [x] Recherche publique rendue résiliente aux pannes techniques : l'interface
+  affiche `SEARCH_UNAVAILABLE` au lieu de laisser remonter une erreur Next.
 - [ ] Décisions humaines du `pilot-unblock-plan.md` clôturées.
 - [ ] Politique de refunds split approuvée et implémentée.
 - [ ] Nettoyage différentiel des fichiers, scripts et tests exécuté.
+
+La vérification staging du 30 août 2026 a également confirmé que l'écart entre
+le dépôt et la base n'était pas un fichier ou un script orphelin : il s'agissait
+d'une application incomplète des migrations `0040` à `0049`. La base a été
+réalignée dans Neon `staging` uniquement ; `production` n'a pas été modifiée.
 
 ## Baseline capturée — 2026-08-30
 
