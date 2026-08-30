@@ -12,19 +12,7 @@ import {
   type ProductPhotoSummary,
 } from '@uttily/core';
 import type { ActionResult, PhotoSlotType } from '@uttily/contracts';
-
-const VALID_SLOT_TYPES = new Set<PhotoSlotType>([
-  'HERO_PROFILE',
-  'THREE_QUARTER',
-  'SIGNATURE_DETAIL',
-  'FULL_BIKE',
-  'DRIVETRAIN',
-  'BRAKES_TIRES',
-  'BATTERY',
-  'MOTOR',
-  'DISPLAY',
-  'CHARGER',
-]);
+import { parseProductPhotoSlotType } from './product-photo-slot';
 
 export async function uploadProductPhotoAction(
   organizationId: string,
@@ -34,11 +22,7 @@ export async function uploadProductPhotoAction(
   const productId = String(formData.get('productId') ?? '');
   const photoId = String(formData.get('photoId') ?? '');
   const replacePhotoId = String(formData.get('replacePhotoId') ?? '').trim() || null;
-  const rawSlotType = String(formData.get('slotType') ?? '').trim() || null;
-  const slotType =
-    rawSlotType && VALID_SLOT_TYPES.has(rawSlotType as PhotoSlotType)
-      ? (rawSlotType as PhotoSlotType)
-      : null;
+  const slotType = parseProductPhotoSlotType(formData.get('slotType'));
   const file = formData.get('file');
   if (
     !isValidUuid(productId) ||

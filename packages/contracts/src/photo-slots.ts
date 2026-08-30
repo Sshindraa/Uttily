@@ -7,19 +7,22 @@
  * 3. SECONDARY_VIEW      : Vue libre valorisante (détail utile si pertinent : cockpit, écran, panier, selle ; sinon 3/4 arrière)
  */
 
-export type PhotoSlotType =
-  | 'HERO_PROFILE'
-  | 'THREE_QUARTER_FRONT'
-  | 'SECONDARY_VIEW'
-  | 'THREE_QUARTER' // Alias rétrocompatibilité
-  | 'SIGNATURE_DETAIL' // Alias rétrocompatibilité
-  | 'FULL_BIKE'
-  | 'DRIVETRAIN'
-  | 'BRAKES_TIRES'
-  | 'BATTERY'
-  | 'MOTOR'
-  | 'DISPLAY'
-  | 'CHARGER';
+export const PHOTO_SLOT_TYPES = [
+  'HERO_PROFILE',
+  'THREE_QUARTER_FRONT',
+  'SECONDARY_VIEW',
+  'THREE_QUARTER', // Alias rétrocompatibilité
+  'SIGNATURE_DETAIL', // Alias rétrocompatibilité
+  'FULL_BIKE',
+  'DRIVETRAIN',
+  'BRAKES_TIRES',
+  'BATTERY',
+  'MOTOR',
+  'DISPLAY',
+  'CHARGER',
+] as const;
+
+export type PhotoSlotType = (typeof PHOTO_SLOT_TYPES)[number];
 
 export interface PhotoSlotDefinition {
   type: PhotoSlotType;
