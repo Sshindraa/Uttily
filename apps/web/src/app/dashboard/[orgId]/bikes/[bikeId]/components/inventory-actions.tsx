@@ -25,7 +25,7 @@ export function InventoryActions({
 }: InventoryActionsProps): React.ReactElement {
   const router = useRouter();
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [sku, setSku] = useState(`VELO-${items.length + 1}`);
+  const [sku, setSku] = useState(`EQP-${items.length + 1}`);
   const [serialNumber, setSerialNumber] = useState('');
   const [locationId, setLocationId] = useState(locations[0]?.id ?? '');
   const [isLoading, setIsLoading] = useState(false);
@@ -52,11 +52,11 @@ export function InventoryActions({
       );
 
       if (!res.ok) {
-        throw new Error(res.message || 'Erreur lors de l’ajout du vélo.');
+        throw new Error(res.message || 'Erreur lors de l’ajout de l’exemplaire.');
       }
 
       setIsAddOpen(false);
-      setSku(`VELO-${items.length + 2}`);
+      setSku(`EQP-${items.length + 2}`);
       setSerialNumber('');
       router.refresh();
     } catch (err) {
@@ -81,7 +81,7 @@ export function InventoryActions({
           { ok: false, code: 'UNKNOWN', message: '' },
           formData,
         );
-        if (!res.ok) throw new Error(res.message || 'Erreur lors du retrait du vélo.');
+        if (!res.ok) throw new Error(res.message || 'Erreur lors du retrait de l’exemplaire.');
       } else {
         const formData = new FormData();
         formData.set('itemId', itemId);
@@ -107,12 +107,12 @@ export function InventoryActions({
         <button
           type="button"
           onClick={() => {
-            setSku(`VELO-${items.length + 1}`);
+            setSku(`EQP-${items.length + 1}`);
             setIsAddOpen(true);
           }}
           className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
         >
-          ➕ Ajouter un vélo
+          ➕ Ajouter un exemplaire
         </button>
       </div>
 
@@ -131,12 +131,12 @@ export function InventoryActions({
         </div>
       )}
 
-      {/* Tableau des vélos physiques */}
+      {/* Tableau des exemplaires physiques */}
       {items.length > 0 ? (
         <table className={styles.itemsTable}>
           <thead>
             <tr>
-              <th>Référence vélo</th>
+              <th>Référence exemplaire</th>
               <th>N° Série</th>
               <th>Statut</th>
               <th>Action</th>
@@ -216,8 +216,8 @@ export function InventoryActions({
           }}
         >
           <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b' }}>
-            Aucun vélo enregistré. Cliquez sur « Ajouter un vélo » pour renseigner vos premiers
-            vélos en boutique.
+            Aucun exemplaire enregistré. Cliquez sur « Ajouter un exemplaire » pour renseigner vos
+            premiers équipements en boutique.
           </p>
         </div>
       )}
@@ -234,7 +234,7 @@ export function InventoryActions({
           >
             <div className={styles.drawerHeader}>
               <h3 id="add-bike-drawer-title" className={styles.drawerTitle}>
-                🚲 Ajouter un vélo à la flotte
+                🧰 Ajouter un exemplaire à la flotte
               </h3>
               <button
                 type="button"
@@ -253,7 +253,7 @@ export function InventoryActions({
             >
               <div className={styles.formGroup}>
                 <label htmlFor="bike-sku" className={styles.formLabel}>
-                  Référence vélo (ex: CAN-001) :
+                  Référence exemplaire (ex : EQP-001) :
                 </label>
                 <input
                   id="bike-sku"
@@ -315,7 +315,7 @@ export function InventoryActions({
                   disabled={isLoading}
                   className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
                 >
-                  {isLoading ? 'Ajout en cours…' : 'Ajouter le vélo à la flotte'}
+                  {isLoading ? 'Ajout en cours…' : 'Ajouter l’exemplaire à la flotte'}
                 </button>
               </div>
             </form>

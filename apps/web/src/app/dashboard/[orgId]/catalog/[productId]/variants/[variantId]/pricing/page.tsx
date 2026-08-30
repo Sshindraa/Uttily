@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
  * Route historique de tarification par variante (Chantier 3).
  *
  * Chantier 17.1-A — fermeture de l'arbre Catalogue : la tarification se règle
- * depuis la fiche canonique **Mes vélos**. Cette route redirige uniquement.
+ * depuis la fiche canonique **Mes équipements**. Cette route redirige uniquement.
  */
 export default async function LegacyCatalogVariantPricingRedirect({
   params,

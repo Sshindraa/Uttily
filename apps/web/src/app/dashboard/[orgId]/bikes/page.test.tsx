@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 const PAGE_PATH = join(__dirname, 'page.tsx');
 
-describe('BikesListPage (Mes Vélos & 21-U2.2)', () => {
+describe('BikesListPage (Mes équipements & 21-U2.2)', () => {
   const pageSource = readFileSync(PAGE_PATH, 'utf8');
 
   it('utilise listUnifiedBikes et exige les autorisations catalogue du loueur', () => {
@@ -12,9 +12,9 @@ describe('BikesListPage (Mes Vélos & 21-U2.2)', () => {
     expect(pageSource).toContain('listUnifiedBikes(db, organizationId)');
   });
 
-  it('affiche les titres, le CTA d’ajout et les liens vers les fiches vélos', () => {
-    expect(pageSource).toContain('Mes vélos');
-    expect(pageSource).toContain('Ajouter un vélo');
+  it('affiche les titres, le CTA d’ajout et les liens vers les fiches équipements', () => {
+    expect(pageSource).toContain('Mes équipements');
+    expect(pageSource).toContain('Ajouter un équipement');
     expect(pageSource).toContain('/bikes/${bike.id}');
   });
 

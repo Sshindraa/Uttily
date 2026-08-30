@@ -12,11 +12,11 @@ describe('FleetListPage (Chantier 7A & 7B & 21-U2.2)', () => {
     expect(pageSource).toContain('listInventorySummaries(db, organizationId)');
   });
 
-  it('utilise un vocabulaire centré sur la Flotte de vélos sans jargon interne', () => {
+  it('utilise un vocabulaire centré sur la flotte d’équipements sans jargon interne', () => {
     expect(pageSource).toContain('title="Flotte"');
-    expect(pageSource).toContain('Vélos au total');
+    expect(pageSource).toContain('Équipements au total');
     expect(pageSource).toContain('Disponibles');
     expect(pageSource).toContain('En maintenance');
-    expect(pageSource).toContain('Référence vélo');
+    expect(pageSource).toContain('Référence exemplaire');
   });
 });

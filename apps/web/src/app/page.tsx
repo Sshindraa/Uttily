@@ -49,7 +49,7 @@ export default function HomePage(): React.ReactElement {
               <div>
                 <Icon name="bike" size={19} />
                 <span>Équipement</span>
-                <strong>Vélos électriques, VTT, ville &amp; route</strong>
+                <strong>Équipements de plein air, vélos, kayaks...</strong>
               </div>
             </div>
             <LinkButton
@@ -72,8 +72,8 @@ export default function HomePage(): React.ReactElement {
               <div className={styles.stepNumber}>1</div>
               <h3>Choisissez votre équipement</h3>
               <p>
-                Indiquez votre destination et vos dates pour accéder aux vélos et matériels
-                réellement disponibles.
+                Indiquez votre destination et vos dates pour accéder aux équipements réellement
+                disponibles.
               </p>
             </Card>
             <Card className={styles.stepCard}>

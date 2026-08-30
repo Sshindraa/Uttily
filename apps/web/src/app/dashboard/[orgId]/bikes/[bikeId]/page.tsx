@@ -39,13 +39,13 @@ export default async function UnifiedBikePage({
           href={`/dashboard/${organizationId}/bikes`}
           style={{ color: '#0284c7', textDecoration: 'none', fontWeight: 700 }}
         >
-          ← Retour à Mes Vélos
+          ← Retour à Mes équipements
         </Link>
         <span style={{ color: '#cbd5e1' }}>/</span>
         <span style={{ color: '#64748b' }}>{bike.product.name}</span>
       </nav>
 
-      {/* Hero Header du Vélo */}
+      {/* Hero Header de l’équipement */}
       <section className={styles.heroCard} aria-labelledby="bike-heading">
         <div className={styles.heroTop}>
           <div className={styles.titleArea}>
@@ -53,11 +53,11 @@ export default async function UnifiedBikePage({
               <span className={styles.categoryTag}>{bike.product.categoryName}</span>
               <span>•</span>
               <span>
-                Taille : <strong>{bike.variant.name}</strong>
+                Version : <strong>{bike.variant.name}</strong>
               </span>
             </div>
             <h1 id="bike-heading" className={styles.bikeTitle}>
-              🚲 {bike.product.name}
+              🧰 {bike.product.name}
             </h1>
           </div>
 
@@ -70,7 +70,7 @@ export default async function UnifiedBikePage({
                 className={styles.statusBadgeIncomplete}
                 style={{ borderColor: '#fca5a5', color: '#dc2626', background: '#fef2f2' }}
               >
-                🔴 En ligne · Indisponible (aucun vélo actif ou tarif manquant)
+                🔴 En ligne · Indisponible (aucun exemplaire actif ou tarif manquant)
               </span>
             )}
             {bike.statusSummary === 'READY_TO_PUBLISH' && (
@@ -121,7 +121,7 @@ export default async function UnifiedBikePage({
             <span style={{ color: bike.inventory.activeCount > 0 ? '#10b981' : '#f59e0b' }}>
               {bike.inventory.activeCount > 0 ? '✓' : '○'}
             </span>
-            <span>{bike.inventory.activeCount} vélo(s) en service</span>
+            <span>{bike.inventory.activeCount} exemplaire(s) en service</span>
           </div>
         </div>
       </section>
@@ -141,7 +141,7 @@ export default async function UnifiedBikePage({
           aria-labelledby="failures-title"
         >
           <strong id="failures-title" style={{ color: '#92400e', fontSize: '1rem' }}>
-            ⚠️ Éléments requis pour mettre ce vélo en ligne :
+            ⚠️ Éléments requis pour mettre cet équipement en ligne :
           </strong>
           <ul style={{ margin: 0, paddingLeft: '20px', color: '#b45309', fontSize: '0.92rem' }}>
             {bike.publication.failures.map((f, i) => (

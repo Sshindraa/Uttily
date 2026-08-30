@@ -16,9 +16,9 @@ const surfaces: ProSurface[] = [
     url: /\/dashboard\/[^/]+$/,
   },
   {
-    name: 'Mes vélos',
+    name: 'Mes équipements',
     path: (organizationId) => `/dashboard/${organizationId}/bikes`,
-    heading: /Mes vélos/,
+    heading: /Mes équipements/,
   },
   {
     name: 'Réservations',
@@ -85,7 +85,7 @@ const surfaces: ProSurface[] = [
   {
     name: 'Redirection Catalogue historique',
     path: (organizationId) => `/dashboard/${organizationId}/catalog`,
-    heading: /Mes vélos/,
+    heading: /Mes équipements/,
     url: /\/bikes$/,
   },
 ];
@@ -195,7 +195,7 @@ test.describe('Authenticated Pro browser evidence', () => {
     const organizationId = await findOrganizationId(page);
     await page.goto(`/dashboard/${organizationId}/finances`, { waitUntil: 'domcontentloaded' });
     const filter = page.getByRole('textbox', {
-      name: 'Rechercher par référence, vélo, client',
+      name: 'Rechercher par référence, équipement, client',
     });
     await expect(filter).toBeVisible();
     await filter.focus();

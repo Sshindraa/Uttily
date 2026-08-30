@@ -131,10 +131,10 @@ describe('Fiche vélo — surface loueur', () => {
   it('n’expose aucun jargon technique et rend les libellés métier', async () => {
     const html = await renderBikePage(buildBike());
 
-    expect(html).not.toMatch(/Variante|SKU|exemplaire/i);
-    expect(html).toContain('Taille');
-    expect(html).toContain('Référence vélo');
-    expect(html).toContain('Vélos en flotte');
+    expect(html).not.toMatch(/Variante|SKU/i);
+    expect(html).toContain('Version');
+    expect(html).toContain('Référence exemplaire');
+    expect(html).toContain('Exemplaires en flotte');
     expect(html).not.toContain('Flotte physique &amp; exemplaires');
     expect(html).not.toContain('Aucun exemplaire physique enregistré');
   });
@@ -148,7 +148,7 @@ describe('Fiche vélo — surface loueur', () => {
     expect(html).toContain('Un vélo de ville léger et fiable.');
     expect(html).toContain('CAN-001');
     expect(html).toContain('SN-2026-001');
-    expect(html).toContain('2 vélo(s) en service');
+    expect(html).toContain('2 exemplaire(s) en service');
   });
 
   it('formate le prix avec la devise portée par le read model', async () => {

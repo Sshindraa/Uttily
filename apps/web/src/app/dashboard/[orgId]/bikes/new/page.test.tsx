@@ -17,7 +17,7 @@ describe('NewBikePage (/bikes/new)', () => {
   it('propose un formulaire simple d’étape 1 et appelle createBikeDraftAction', () => {
     expect(formSource).toContain('createBikeDraftAction');
     expect(formSource).toContain('Étape 1 sur 5');
-    expect(formSource).toContain('Nom commercial du vélo');
+    expect(formSource).toContain('Nom commercial de l’équipement');
     expect(formSource).toContain('Taille / Version');
     expect(formSource).toContain('/setup');
   });

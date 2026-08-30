@@ -44,7 +44,7 @@ export function OnboardingReadinessCard({
             <span style={{ color: '#10b981' }}>●</span> Flotte & Tarifs en ligne
           </span>
           <Link href={`/dashboard/${orgId}/bikes`} className={styles.actionBtnPrimary}>
-            Voir mes vélos en ligne →
+            Voir mes équipements en ligne →
           </Link>
         </div>
       </section>
@@ -79,14 +79,14 @@ export function OnboardingReadinessCard({
         />
       </div>
 
-      {/* Moment Clé : Quand l'activité, la boutique et le premier vélo sont prêts et qu'il ne reste que les virements */}
+      {/* Moment Clé : Quand l'activité, la boutique et le premier équipement sont prêts et qu'il ne reste que les virements */}
       {progress.isConfigurationComplete && !progress.isReadyForReservations && (
         <div className={styles.celebrationBanner}>
-          <div className={styles.celebrationTitle}>🎉 Votre premier vélo est prêt !</div>
+          <div className={styles.celebrationTitle}>🎉 Votre premier équipement est prêt !</div>
           <div className={styles.celebrationText}>
             {progress.firstBike.name ? <strong>{progress.firstBike.name} : </strong> : null}
             {progress.firstBike.photosCount}/3 photos ✓ • Tarif configuré ✓ •{' '}
-            {progress.firstBike.inventoryCount} vélo(s) en flotte ✓.
+            {progress.firstBike.inventoryCount} exemplaire(s) en flotte ✓.
           </div>
           <div style={{ marginTop: '8px', fontSize: '0.9rem' }}>
             Une dernière étape pour commencer à louer : activez vos virements bancaires.
@@ -137,7 +137,7 @@ export function OnboardingReadinessCard({
                         marginTop: '2px',
                       }}
                     >
-                      🚲 {progress.firstBike.name} ({progress.firstBike.photosCount}/3 photos)
+                      🧰 {progress.firstBike.name} ({progress.firstBike.photosCount}/3 photos)
                     </div>
                   )}
                 </div>

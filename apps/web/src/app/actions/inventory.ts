@@ -269,7 +269,7 @@ export async function bulkCreateInventoryItemsAction(
     return {
       ok: false,
       code: 'VALIDATION',
-      message: 'Le nombre de vélos doit être compris entre 1 et 50.',
+      message: 'Le nombre d’exemplaires doit être compris entre 1 et 50.',
     };
   }
 

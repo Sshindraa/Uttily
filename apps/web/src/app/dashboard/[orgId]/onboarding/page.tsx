@@ -27,8 +27,8 @@ export default async function UnifiedOnboardingPage({
           <span style={{ fontSize: '3rem' }}>🎉</span>
           <h1 className={styles.successTitle}>Votre boutique Uttily est prête !</h1>
           <p className={styles.successSubtitle}>
-            Toutes les étapes d'activation sont validées. Votre premier vélo est en ligne et vous
-            pouvez recevoir des réservations réelles.
+            Toutes les étapes d'activation sont validées. Votre premier équipement est en ligne et
+            vous pouvez recevoir des réservations réelles.
           </p>
 
           <div className={styles.wowDetails}>
@@ -41,12 +41,12 @@ export default async function UnifiedOnboardingPage({
             </div>
             {progress.firstBike.name && (
               <div className={styles.wowItem}>
-                <span className={styles.wowIcon}>🚲</span>
+                <span className={styles.wowIcon}>🧰</span>
                 <div>
                   <strong>{progress.firstBike.name}</strong>
                   <p>
-                    3 photos certifiées • Tarif actif • {progress.firstBike.inventoryCount} vélo(s)
-                    en stock
+                    3 photos certifiées • Tarif actif • {progress.firstBike.inventoryCount}{' '}
+                    exemplaire(s) en stock
                   </p>
                 </div>
               </div>
@@ -135,13 +135,13 @@ export default async function UnifiedOnboardingPage({
 
             {progress.currentStep.key === 'FIRST_BIKE' && progress.firstBike.name && (
               <div className={styles.firstBikeHighlight}>
-                <span style={{ fontSize: '1.5rem' }}>🚲</span>
+                <span style={{ fontSize: '1.5rem' }}>🧰</span>
                 <div>
                   <strong>{progress.firstBike.name}</strong>
                   <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: '#0369a1' }}>
                     {progress.firstBike.photosCount}/3 photos •{' '}
                     {progress.firstBike.hasPrice ? 'Tarif OK' : 'Tarif à définir'} •{' '}
-                    {progress.firstBike.inventoryCount} vélo(s)
+                    {progress.firstBike.inventoryCount} exemplaire(s)
                   </p>
                 </div>
               </div>

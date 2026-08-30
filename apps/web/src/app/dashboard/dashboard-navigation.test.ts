@@ -13,7 +13,7 @@ describe('Dashboard — Navigation IA Pro définitive', () => {
 
   const expectedNavEntries = [
     { label: 'Accueil', href: '`/dashboard/${orgId}`' },
-    { label: 'Mes vélos', href: '/bikes' },
+    { label: 'Mes équipements', href: '/bikes' },
     { label: 'Réservations', href: '/bookings' },
     { label: 'Flotte', href: '/fleet' },
     { label: 'Établissements', href: '/locations' },

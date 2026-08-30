@@ -44,10 +44,10 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
       );
 
       if (!res.ok) {
-        throw new Error(res.message || 'Erreur lors de la création du vélo.');
+        throw new Error(res.message || 'Erreur lors de la création de l’équipement.');
       }
 
-      // Redirection immédiate vers le setup du vélo avec son bikeId réel
+      // Redirection immédiate vers le setup de l’équipement avec son bikeId réel
       router.push(`/dashboard/${organizationId}/bikes/${res.data.bikeId}/setup`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue.');
@@ -59,10 +59,10 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
     <div className={styles.container}>
       <nav aria-label="Fil d’Ariane" className={styles.breadcrumb}>
         <Link href={`/dashboard/${organizationId}/bikes`} className={styles.breadcrumbLink}>
-          ← Mes vélos
+          ← Mes équipements
         </Link>
         <span>/</span>
-        <span>Nouveau vélo</span>
+        <span>Nouvel équipement</span>
       </nav>
 
       <div className={styles.card}>
@@ -71,10 +71,10 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
           <span className={styles.autosaveBadge}>Sauvegarde automatique activée</span>
         </div>
 
-        <h1 className={styles.title}>🚲 Quel vélo proposez-vous ?</h1>
+        <h1 className={styles.title}>🧰 Quel équipement proposez-vous ?</h1>
         <p className={styles.subtitle}>
-          Renseignez le modèle de votre vélo. Dès cette étape validée, votre brouillon est sécurisé
-          et vous pourrez reprendre sa configuration à tout moment.
+          Renseignez le modèle de votre équipement. Dès cette étape validée, votre brouillon est
+          sécurisé et vous pourrez reprendre sa configuration à tout moment.
         </p>
 
         {error && <div className={styles.errorAlert}>{error}</div>}
@@ -82,14 +82,14 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.formGroup}>
             <label htmlFor="bike-name" className={styles.label}>
-              Nom commercial du vélo :
+              Nom commercial de l’équipement :
             </label>
             <input
               id="bike-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="ex: Canyon Roadlite, Moustache Samedi 28..."
+              placeholder="ex : Kayak de randonnée, tente 2 places..."
               className={styles.input}
               required
               disabled={isLoading}
@@ -126,7 +126,7 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
                 type="text"
                 value={size}
                 onChange={(e) => setSize(e.target.value)}
-                placeholder="ex: M, L, Taille Unique, Cadre Bas..."
+                placeholder="ex : Standard, Taille Unique, Version renforcée..."
                 className={styles.input}
                 required
                 disabled={isLoading}
@@ -142,7 +142,7 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
               id="bike-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Précisez les points forts : usage recommandé, confort, autonomie (VAE), antivol ou accessoires fournis..."
+              placeholder="Précisez les points forts : usage recommandé, confort, autonomie, accessoires fournis..."
               className={styles.textarea}
               rows={4}
               required

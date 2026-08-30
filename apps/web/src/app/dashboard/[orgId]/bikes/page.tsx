@@ -42,12 +42,12 @@ export default async function BikesListPage({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <PageHeader
         eyebrow="Flotte & Références"
-        title="Mes vélos"
-        description={`${bikes.length} référence(s) vélo · ${totalActiveFleet} vélo(s) en service`}
+        title="Mes équipements"
+        description={`${bikes.length} référence(s) · ${totalActiveFleet} exemplaire(s) en service`}
         actions={
           canManage ? (
             <LinkButton href={`/dashboard/${organizationId}/bikes/new`} variant="primary">
-              Ajouter un vélo
+              Ajouter un équipement
             </LinkButton>
           ) : undefined
         }
@@ -73,15 +73,15 @@ export default async function BikesListPage({
               color: 'var(--ut-color-ink-strong)',
             }}
           >
-            Aucun vélo pour le moment
+            Aucun équipement pour le moment
           </h2>
           <p style={{ color: 'var(--ut-color-ink-muted)', margin: 0, maxWidth: '28rem' }}>
-            Ajoutez votre premier vélo pour définir ses photos, son tarif journalier et vos vélos
-            disponibles.
+            Ajoutez votre premier équipement pour définir ses photos, son tarif journalier et vos
+            exemplaires disponibles.
           </p>
           {canManage && (
             <LinkButton href={`/dashboard/${organizationId}/bikes/new`} variant="primary">
-              Ajouter mon premier vélo →
+              Ajouter mon premier équipement →
             </LinkButton>
           )}
         </Card>
@@ -137,7 +137,7 @@ export default async function BikesListPage({
                         {bike.name}
                       </h2>
                       <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
-                        {bike.categoryName} · Taille : <strong>{bike.variantName}</strong>
+                        {bike.categoryName} · Version : <strong>{bike.variantName}</strong>
                       </span>
                     </div>
                     <Badge tone={badgeProps.tone}>{badgeProps.label}</Badge>
@@ -196,7 +196,9 @@ export default async function BikesListPage({
                         alignItems: 'center',
                       }}
                     >
-                      <span style={{ color: 'var(--ut-color-ink-muted)' }}>Vélos en flotte :</span>
+                      <span style={{ color: 'var(--ut-color-ink-muted)' }}>
+                        Exemplaires en flotte :
+                      </span>
                       <strong
                         style={{
                           color:
@@ -206,7 +208,7 @@ export default async function BikesListPage({
                         }}
                       >
                         {bike.activeInventoryCount >= 1 ? '✓' : '○'} {bike.activeInventoryCount}{' '}
-                        vélo(s)
+                        exemplaire(s)
                       </strong>
                     </div>
                   </div>
@@ -232,7 +234,7 @@ export default async function BikesListPage({
                       gap: '0.35rem',
                     }}
                   >
-                    {isReadyOrOnline ? 'Gérer le vélo' : 'Continuer la configuration'}{' '}
+                    {isReadyOrOnline ? 'Gérer l’équipement' : 'Continuer la configuration'}{' '}
                     <Icon name="arrow-right" size={16} />
                   </Link>
                 </div>

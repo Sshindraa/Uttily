@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
  *
  * Chantier 17.1-A — fermeture de l'arbre Catalogue : la variante n'est plus une
  * page autonome. L'identité, la taille et le tarif se pilotent depuis la fiche
- * canonique **Mes vélos**. Cette route redirige uniquement.
+ * canonique **Mes équipements**. Cette route redirige uniquement.
  */
 export default async function LegacyCatalogVariantRedirect({
   params,

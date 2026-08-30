@@ -59,7 +59,7 @@ describe('resolveUnifiedOnboardingProgress', () => {
     expect(progress.percentage).toBe(50);
     expect(progress.currentStepNum).toBe(3);
     expect(progress.currentStep?.key).toBe('FIRST_BIKE');
-    expect(progress.primaryCta.label).toBe('Ajouter mon premier vélo →');
+    expect(progress.primaryCta.label).toBe('Ajouter mon premier équipement →');
     expect(progress.primaryCta.href).toBe(`/dashboard/${ORG_ID}/bikes/new`);
   });
 
@@ -87,7 +87,7 @@ describe('resolveUnifiedOnboardingProgress', () => {
     expect(progress.firstBike.id).toBe(BIKE_ID);
     expect(progress.firstBike.name).toBe('Canyon Roadlite');
     expect(progress.firstBike.photosCount).toBe(1);
-    expect(progress.primaryCta.label).toBe('Continuer la configuration du vélo →');
+    expect(progress.primaryCta.label).toBe('Continuer la configuration de l’équipement →');
     expect(progress.primaryCta.href).toBe(`/dashboard/${ORG_ID}/bikes/${BIKE_ID}/setup`);
   });
 
@@ -143,6 +143,6 @@ describe('resolveUnifiedOnboardingProgress', () => {
     expect(progress.percentage).toBe(100);
     expect(progress.currentStepNum).toBe('COMPLETE');
     expect(progress.isReadyForReservations).toBe(true);
-    expect(progress.primaryCta.label).toBe('Voir mes vélos en ligne →');
+    expect(progress.primaryCta.label).toBe('Voir mes équipements en ligne →');
   });
 });

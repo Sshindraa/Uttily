@@ -167,10 +167,10 @@ export default async function OrganizationSupportPage({
         {/* Flotte & Établissements */}
         <div className={styles.card}>
           <h2 className={styles.cardTitle}>
-            <span>🚲 Flotte & Établissements</span>
+            <span>🧰 Flotte & Établissements</span>
           </h2>
           <div className={styles.infoGrid}>
-            <div className={styles.infoLabel}>Total vélos physiques :</div>
+            <div className={styles.infoLabel}>Total équipements physiques :</div>
             <div className={styles.infoVal}>{org.inventoryOverview.total} exemplaire(s)</div>
 
             <div className={styles.infoLabel}>Disponibles / Actifs :</div>

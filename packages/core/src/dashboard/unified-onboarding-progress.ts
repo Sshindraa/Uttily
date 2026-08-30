@@ -5,7 +5,7 @@
  * le loueur :
  * 1. Mon activité (Organization)
  * 2. Ma boutique (Location & horaires)
- * 3. Mon premier vélo (Produit + Photos + Tarif + Exemplaires)
+ * 3. Mon premier équipement (Produit + Photos + Tarif + Exemplaires)
  * 4. Mes virements (Paiements & Coordonnées bancaires)
  *
  * Déterminé EXCLUSIVEMENT à partir des données réelles (zéro champ d'état fragile).
@@ -74,7 +74,7 @@ export function resolveUnifiedOnboardingProgress(
   // Étape 2 : Ma boutique
   const isStoreComplete = locMilestone?.completed ?? false;
 
-  // Étape 3 : Mon premier vélo (regroupe Produit, Photos, Tarif, Inventaire)
+  // Étape 3 : Mon premier équipement (regroupe Produit, Photos, Tarif, Inventaire)
   const firstBikeId = prodMilestone?.details.productId ?? null;
   const isProductCreated = prodMilestone?.completed ?? false;
   const isPhotosComplete = photoMilestone?.completed ?? false;
@@ -93,7 +93,7 @@ export function resolveUnifiedOnboardingProgress(
     isComplete: isFirstBikeComplete,
   };
 
-  // URL du premier vélo : si déjà créé, renvoie vers son setup résumable, sinon vers /bikes/new
+  // URL du premier équipement : si déjà créé, renvoie vers son setup résumable, sinon vers /bikes/new
   const firstBikeHref = firstBikeId
     ? `/dashboard/${orgId}/bikes/${firstBikeId}/setup`
     : `/dashboard/${orgId}/bikes/new`;
@@ -125,12 +125,12 @@ export function resolveUnifiedOnboardingProgress(
     {
       key: 'FIRST_BIKE',
       num: 3,
-      label: '③ Mon premier vélo',
-      shortLabel: 'Premier vélo',
+      label: '③ Mon premier équipement',
+      shortLabel: 'Premier équipement',
       description: 'Modèle, photos normées, tarif journalier et nombre d’exemplaires.',
       completed: isFirstBikeComplete,
       href: firstBikeHref,
-      ctaLabel: firstBikeId ? 'Continuer le vélo' : 'Ajouter mon premier vélo',
+      ctaLabel: firstBikeId ? 'Continuer l’équipement' : 'Ajouter mon premier équipement',
     },
     {
       key: 'PAYOUTS',
@@ -159,7 +159,9 @@ export function resolveUnifiedOnboardingProgress(
     primaryCta = { label: 'Ajouter ma boutique →', href: `/dashboard/${orgId}/locations/new` };
   } else if (!isFirstBikeComplete) {
     primaryCta = {
-      label: firstBikeId ? 'Continuer la configuration du vélo →' : 'Ajouter mon premier vélo →',
+      label: firstBikeId
+        ? 'Continuer la configuration de l’équipement →'
+        : 'Ajouter mon premier équipement →',
       href: firstBikeHref,
     };
   } else if (!isPayoutsComplete) {
@@ -168,7 +170,7 @@ export function resolveUnifiedOnboardingProgress(
       href: `/dashboard/${orgId}/finances`,
     };
   } else {
-    primaryCta = { label: 'Voir mes vélos en ligne →', href: `/dashboard/${orgId}/bikes` };
+    primaryCta = { label: 'Voir mes équipements en ligne →', href: `/dashboard/${orgId}/bikes` };
   }
 
   return {

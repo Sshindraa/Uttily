@@ -27,7 +27,7 @@ describe('OnboardingReadinessCard Component (Chantier 6 - 4 Étapes Unifiées)',
     ],
   };
 
-  it('affiche les 4 grandes étapes produit (Activité, Boutique, 1er Vélo, Virements)', () => {
+  it('affiche les 4 grandes étapes produit (Activité, Boutique, 1er équipement, Virements)', () => {
     const html = renderToStaticMarkup(
       <OnboardingReadinessCard
         orgId="1c13f5b8-cbc1-4c5c-a474-47f0a9d00172"
@@ -38,12 +38,12 @@ describe('OnboardingReadinessCard Component (Chantier 6 - 4 Étapes Unifiées)',
     expect(html).toContain('Créer ma boutique Uttily');
     expect(html).toContain('① Mon activité');
     expect(html).toContain('② Ma boutique');
-    expect(html).toContain('③ Mon premier vélo');
+    expect(html).toContain('③ Mon premier équipement');
     expect(html).toContain('④ Mes virements');
     expect(html).toContain('2 sur 4 étapes complétées');
   });
 
-  it('affiche le premier vélo en cours de configuration et le CTA vers le setup', () => {
+  it('affiche le premier équipement en cours de configuration et le CTA vers le setup', () => {
     const html = renderToStaticMarkup(
       <OnboardingReadinessCard
         orgId="1c13f5b8-cbc1-4c5c-a474-47f0a9d00172"
@@ -52,10 +52,10 @@ describe('OnboardingReadinessCard Component (Chantier 6 - 4 Étapes Unifiées)',
     );
 
     expect(html).toContain('Canyon Roadlite');
-    expect(html).toContain('Continuer le vélo →');
+    expect(html).toContain('Continuer l’équipement →');
   });
 
-  it('affiche le bandeau de célébration quand le 1er vélo est prêt et que seuls les virements restent', () => {
+  it('affiche le bandeau de célébration quand le 1er équipement est prêt et que seuls les virements restent', () => {
     const configCompleteReadiness: OrganizationOnboardingReadiness = {
       ...sampleReadiness,
       completedCount: 6,
@@ -84,8 +84,8 @@ describe('OnboardingReadinessCard Component (Chantier 6 - 4 Étapes Unifiées)',
       />,
     );
 
-    expect(html).toContain('🎉 Votre premier vélo est prêt !');
-    expect(html).toContain('3/3 photos ✓ • Tarif configuré ✓ • 3 vélo(s) en flotte ✓');
+    expect(html).toContain('🎉 Votre premier équipement est prêt !');
+    expect(html).toContain('3/3 photos ✓ • Tarif configuré ✓ • 3 exemplaire(s) en flotte ✓');
     expect(html).toContain('Activer mes virements →');
   });
 
@@ -109,6 +109,6 @@ describe('OnboardingReadinessCard Component (Chantier 6 - 4 Étapes Unifiées)',
     expect(html).toContain('Votre boutique est active &amp; en ligne');
     expect(html).toContain('Boutique active');
     expect(html).toContain('Versements bancaires activés');
-    expect(html).toContain('Voir mes vélos en ligne →');
+    expect(html).toContain('Voir mes équipements en ligne →');
   });
 });

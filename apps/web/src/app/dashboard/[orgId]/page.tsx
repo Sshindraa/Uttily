@@ -63,7 +63,7 @@ export default async function OrganizationDashboardPage({
     (b) => b.status === 'ACTIVE' && new Date(b.customerEndAt) <= endOfDay,
   );
 
-  // Vélos en service & maintenance
+  // Équipements en service & maintenance
   const activeFleetCount = inventoryItems.filter(
     (i) => i.status === 'ACTIVE' && i.condition !== 'BROKEN',
   ).length;
@@ -107,7 +107,7 @@ export default async function OrganizationDashboardPage({
         description={`Voici l'activité de ${org?.legalName ?? 'votre organisation'} à suivre aujourd'hui.`}
         actions={
           <LinkButton href={`/dashboard/${organizationId}/bikes/new`} size="md">
-            Ajouter un vélo <Icon name="arrow-right" size={17} />
+            Ajouter un équipement <Icon name="arrow-right" size={17} />
           </LinkButton>
         }
       />

@@ -210,7 +210,7 @@ export async function createBikeDraftAction(
 
   const fieldErrors: Record<string, string> = {};
   if (name.length < 2) {
-    fieldErrors.name = 'Le nom du vélo doit comporter au moins 2 caractères.';
+    fieldErrors.name = 'Le nom de l’équipement doit comporter au moins 2 caractères.';
   }
   if (!isValidUuid(categoryId)) {
     fieldErrors.categoryId = 'Veuillez sélectionner une catégorie valide.';
@@ -220,7 +220,7 @@ export async function createBikeDraftAction(
     return {
       ok: false,
       code: 'VALIDATION',
-      message: 'Veuillez renseigner correctement les informations du vélo.',
+      message: 'Veuillez renseigner correctement les informations de l’équipement.',
       fieldErrors,
     };
   }
@@ -264,7 +264,7 @@ export async function publishBikeFromSetupAction(
     return {
       ok: false,
       code: 'VALIDATION',
-      message: 'Identifiant de vélo invalide.',
+      message: 'Identifiant d’équipement invalide.',
     };
   }
 

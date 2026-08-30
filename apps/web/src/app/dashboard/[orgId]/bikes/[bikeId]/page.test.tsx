@@ -21,7 +21,7 @@ describe('UnifiedBikePage (Fiche Vélo Unifiée v2 - Centre de commande)', () =>
   });
 
   it('fournit le fil d’Ariane et les badges de statut fail-closed', () => {
-    expect(pageSource).toContain('← Retour à Mes Vélos');
+    expect(pageSource).toContain('← Retour à Mes équipements');
     expect(pageSource).toContain('ONLINE_AVAILABLE');
     expect(pageSource).toContain('En ligne · Disponible');
   });

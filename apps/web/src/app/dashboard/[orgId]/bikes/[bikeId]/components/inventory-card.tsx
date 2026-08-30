@@ -19,7 +19,7 @@ export function BikeInventoryCard({
     <section className={styles.card} aria-labelledby="inventory-title">
       <div className={styles.cardHeader}>
         <h2 id="inventory-title" className={styles.cardTitle}>
-          <span>🚲</span> Vélos en flotte
+          <span>🧰</span> Exemplaires en flotte
         </h2>
         <div className={styles.fleetSummary}>
           <span className={`${styles.fleetCountBadge} ${styles.fleetBadgeActive}`}>

@@ -17,7 +17,7 @@ describe('BikeSetupPage (/bikes/[bikeId]/setup)', () => {
   });
 
   it('intègre les 5 étapes dans son wizard client', () => {
-    expect(wizardSource).toContain('1. Mon vélo');
+    expect(wizardSource).toContain('1. Mon équipement');
     expect(wizardSource).toContain('2. Mes photos');
     expect(wizardSource).toContain('3. Mon tarif');
     expect(wizardSource).toContain('4. Mes exemplaires');

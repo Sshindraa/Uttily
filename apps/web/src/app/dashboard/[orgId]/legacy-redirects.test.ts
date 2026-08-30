@@ -54,7 +54,7 @@ async function expectRedirect(
 }
 
 describe('Routes héritées converties en redirections (Chantier 17.1-A)', () => {
-  describe('arbre Catalogue → fiche canonique Mes vélos', () => {
+  describe('arbre Catalogue → fiche canonique Mes équipements', () => {
     it('/catalog/[productId]/edit → /bikes/[productId]', async () => {
       await expectRedirect(
         LegacyCatalogEdit as LegacyPage,
@@ -107,7 +107,7 @@ describe('Routes héritées converties en redirections (Chantier 17.1-A)', () =>
   });
 
   describe('les cibles canoniques existent réellement', () => {
-    it('la fiche vélo canonique existe', () => {
+    it('la fiche équipement canonique existe', () => {
       expect(existsSync(join(__dirname, 'bikes/[bikeId]/page.tsx'))).toBe(true);
     });
 

@@ -35,7 +35,7 @@ export default async function FleetListPage({
       <PageHeader
         eyebrow="Inventaire physique"
         title="Flotte"
-        description="Suivi unitaire de vos vélos en service, états et maintenance."
+        description="Suivi unitaire de vos équipements en service, états et maintenance."
         actions={
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <LinkButton href={`/dashboard/${organizationId}/fleet/maintenance`} variant="secondary">
@@ -46,7 +46,7 @@ export default async function FleetListPage({
             )}
             {canManage && (
               <LinkButton href={`/dashboard/${organizationId}/bikes`} variant="primary">
-                Gérer mes vélos
+                Gérer mes équipements
               </LinkButton>
             )}
           </div>
@@ -70,7 +70,7 @@ export default async function FleetListPage({
             {items.length}
           </span>
           <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
-            Vélos au total
+            Équipements au total
           </span>
         </Card>
         <Card
@@ -115,15 +115,15 @@ export default async function FleetListPage({
               color: 'var(--ut-color-ink-strong)',
             }}
           >
-            Aucun vélo dans votre flotte
+            Aucun équipement dans votre flotte
           </h2>
           <p style={{ color: 'var(--ut-color-ink-muted)', margin: 0, maxWidth: '28rem' }}>
-            Ajoutez vos vélos depuis la rubrique Mes Vélos pour les rendre disponibles à la
-            location.
+            Ajoutez vos équipements depuis la rubrique Mes équipements pour les rendre disponibles à
+            la location.
           </p>
           {canManage && (
             <LinkButton href={`/dashboard/${organizationId}/bikes/new`} variant="primary">
-              Ajouter mon premier vélo
+              Ajouter mon premier équipement
             </LinkButton>
           )}
         </Card>
@@ -145,7 +145,7 @@ export default async function FleetListPage({
                     color: 'var(--ut-color-ink-muted)',
                   }}
                 >
-                  Référence vélo
+                  Référence exemplaire
                 </th>
                 <th
                   style={{
@@ -155,7 +155,7 @@ export default async function FleetListPage({
                     color: 'var(--ut-color-ink-muted)',
                   }}
                 >
-                  Vélo / Taille
+                  Équipement / Version
                 </th>
                 <th
                   style={{
@@ -282,7 +282,7 @@ export default async function FleetListPage({
                           textDecoration: 'none',
                         }}
                       >
-                        Fiche vélo →
+                        Fiche équipement →
                       </Link>
                     </td>
                   </tr>

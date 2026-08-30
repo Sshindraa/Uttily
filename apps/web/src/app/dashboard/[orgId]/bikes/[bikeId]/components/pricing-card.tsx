@@ -84,8 +84,8 @@ export function BikePricingCard({
         >
           <strong style={{ color: '#b45309', fontSize: '0.9rem' }}>⚠️ Aucun tarif actif</strong>
           <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#92400e' }}>
-            Ce vélo ne peut pas être proposé à la réservation tant qu’un prix journalier n’est pas
-            défini.
+            Cet équipement ne peut pas être proposé à la réservation tant qu’un prix journalier
+            n’est pas défini.
           </p>
         </div>
       )}

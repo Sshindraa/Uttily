@@ -60,11 +60,11 @@ export function getBookingStatusPresentation(status: BookingStatus): StatusBadge
           color: '#15803d',
           borderColor: '#bbf7d0',
         },
-        icon: '🚲',
+        icon: '🧰',
       };
     case 'RETURNED':
       return {
-        label: 'Vélo restitué · À réceptionner',
+        label: 'Équipement restitué · À réceptionner',
         badgeStyle: {
           backgroundColor: '#fefce8',
           color: '#854d0e',
@@ -228,7 +228,7 @@ export function getInventoryStatusPresentation(
 }
 
 // ---------------------------------------------------------------------------
-// 4. Synthèse de publication d'un vélo (Cockpit Pro)
+// 4. Synthèse de publication d'un équipement (Cockpit Pro)
 // ---------------------------------------------------------------------------
 
 export type UnifiedBikeStatusSummary =

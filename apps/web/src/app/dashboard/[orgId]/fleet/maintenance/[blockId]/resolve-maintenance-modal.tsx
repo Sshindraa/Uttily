@@ -131,15 +131,15 @@ export function ResolveMaintenanceModal({
           </div>
 
           <p className={styles.modalSub}>
-            Validez les réparations effectuées pour lever le blocage et rendre ce vélo à nouveau
-            disponible à la location.
+            Validez les réparations effectuées pour lever le blocage et rendre cet équipement à
+            nouveau disponible à la location.
           </p>
 
           <form onSubmit={handleSubmit} className={styles.form}>
             {error && <div className={styles.formError}>{error}</div>}
 
             <div className={styles.formGroup}>
-              <label htmlFor="target-condition">Nouvel état physique du vélo :</label>
+              <label htmlFor="target-condition">Nouvel état physique de l’équipement :</label>
               <select
                 id="target-condition"
                 value={targetCondition}
@@ -160,7 +160,7 @@ export function ResolveMaintenanceModal({
               <textarea
                 id="intervention-notes"
                 rows={2}
-                placeholder="Ex : Plaquettes changées, chaîne lubrifiée, pression vérifiée"
+                placeholder="Ex : Accessoire remplacé, réglage effectué, contrôle terminé"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 disabled={loading}

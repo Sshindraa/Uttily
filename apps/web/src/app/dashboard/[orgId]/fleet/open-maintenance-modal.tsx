@@ -68,7 +68,7 @@ export function OpenMaintenanceModal({
         onClick={() => setIsOpen(true)}
         className={styles.maintenanceTriggerBtn}
       >
-        🔧 Mettre un vélo en maintenance
+        🔧 Mettre un équipement en maintenance
       </button>
     );
   }
@@ -82,7 +82,7 @@ export function OpenMaintenanceModal({
     >
       <div className={styles.modalContent}>
         <div className={styles.modalHeader}>
-          <h3 id="open-maintenance-title">🔧 Mettre un vélo en maintenance</h3>
+          <h3 id="open-maintenance-title">🔧 Mettre un équipement en maintenance</h3>
           <button
             type="button"
             onClick={() => setIsOpen(false)}
@@ -95,15 +95,15 @@ export function OpenMaintenanceModal({
         </div>
 
         <p className={styles.modalSub}>
-          Ce vélo sera immédiatement retiré des disponibilités de réservation jusqu'à sa remise en
-          service.
+          Cet équipement sera immédiatement retiré des disponibilités de réservation jusqu'à sa
+          remise en service.
         </p>
 
         <form onSubmit={handleSubmit} className={styles.form}>
           {error && <div className={styles.formError}>{error}</div>}
 
           <div className={styles.formGroup}>
-            <label htmlFor="select-item">Choisir le vélo :</label>
+            <label htmlFor="select-item">Choisir l’équipement :</label>
             <select
               id="select-item"
               value={selectedItemId}
@@ -125,7 +125,7 @@ export function OpenMaintenanceModal({
             <input
               id="reason-input"
               type="text"
-              placeholder="Ex : Révision des 500 km, purge frein arrière, changement pneu"
+              placeholder="Ex : Contrôle technique, accessoire manquant, nettoyage"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               disabled={loading}
