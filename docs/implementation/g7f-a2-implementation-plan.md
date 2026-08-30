@@ -13,6 +13,15 @@
   `searchPublicOffers` tant que G7F-A2 n'est pas terminé ; G7F-B (UI guidée,
   upload réel, CDN) dépend de G7F-A2
 
+> **Note rétrospective (2026-08-30)** : ce document décrit uniquement le
+> périmètre historique de G7F-A2 et ne constitue pas l’état courant de la
+> livraison photo. Depuis ce lot, G8B-1 a livré l’upload R2 réel et G8B-3B4 a
+> livré partiellement le Photo Coach, les slots contractuels, la persistance
+> `slot_type`, la checklist et les overlays. Le gate courant reste toutefois
+> générique (trois photos techniques distinctes) ; voir
+> `docs/implementation/g8b-3b-assisted-bike-onboarding.md` pour les écarts
+> restants.
+
 ## 1. Objet et périmètre
 
 G7F-A2 implémente les décisions de l'ADR-020 :
@@ -28,7 +37,7 @@ G7F-A2 implémente les décisions de l'ADR-020 :
 - Câblage du gate dans les appelants de `searchPublicOffers`.
 - Tests d'intégration PostgreSQL et tests unitaires.
 
-### Hors périmètre
+### Hors périmètre de G7F-A2 (état historique)
 
 - Aucun upload réel, appel R2, URL signée ou configuration fournisseur
   (G7F-B).

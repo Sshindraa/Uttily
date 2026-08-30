@@ -1,6 +1,6 @@
 # G8B-3B — Kit d'onboarding accompagné des loueurs vélo
 
-- **Statut** : kit livré ; G8B-3B1 établissement publiable livré
+- **Statut** : kit livré ; G8B-3B1/B2/B3 livrés ; G8B-3B4 Photo Coach partiellement livré
 - **Date** : 2026-08-27
 - **Cible** : deux loueurs professionnels, vingt vélos réels à Lyon
 - **Décision produit** : onboarding accompagné par Uttily pendant le pilote
@@ -62,7 +62,10 @@ Une fiche est remplie par modèle commercial :
 - variante : taille, type de cadre et caractéristiques utiles ;
 - accessoires inclus, par exemple antivol, casque ou chargeur ;
 - contraintes d'usage réellement appliquées par le loueur ;
-- trois photos distinctes minimum, conformes aux règles d'upload ;
+- trois photos distinctes minimum, conformes aux règles d'upload ; le Photo
+  Coach propose les slots `HERO_PROFILE`, `THREE_QUARTER_FRONT` et
+  `SECONDARY_VIEW`, mais le gate de publication n’exige pas encore la
+  couverture des trois slots ;
 - prix en EUR, durée couverte et éventuels paliers multi-jours.
 
 Une information absente n'est pas inventée. Les textes libres restent en
@@ -115,6 +118,8 @@ Un loueur est techniquement prêt uniquement si toutes les lignes sont vraies :
 - [ ] compte Stripe TEST `ENABLED` pour le smoke test ;
 - [ ] au moins un produit vélo avec variante active ;
 - [ ] au moins trois photos valides par produit publié ;
+- [ ] si le Photo Coach est utilisé, vérifier que les slots affichés correspondent
+      au contrat courant ; la vérification serveur par slot reste à finaliser ;
 - [ ] plan tarifaire EUR actif et compatible avec les horaires ;
 - [ ] exemplaires physiques `ACTIVE` en état publiable ;
 - [ ] offre visible dans la recherche Lyon aux dates réellement disponibles ;
@@ -133,9 +138,9 @@ organisation individuelle.
 | Organisation | création, rôles et invitations | édition du nom public à rendre explicite |
 | Établissement | formulaire complet, coordonnées PostGIS, horaires, retrait et publication fail-closed | validation fonctionnelle à faire avec un loueur pilote |
 | Catalogue | produit, catégorie, description, variantes | traduction du contenu libre non décidée |
-| Photos | upload R2, validation et suppression | aucun écart bloquant technique connu |
+| Photos | upload R2, validation, suppression, Photo Coach et slots persistés | l’allow-list serveur doit accepter les deux noms canoniques du Photo Coach ; le gate reste fondé sur trois checksums distincts, sans couverture obligatoire par slot |
 | Exemplaires | création, état, statut, lieu, transfert | aucun écart bloquant technique connu |
-| Tarification | moteur et schéma complets | aucune UI loueur pour créer et activer les plans tarifaires |
+| Tarification | moteur, schéma et UI loueur pour créer/activer les plans tarifaires | validation fonctionnelle à faire avec un loueur pilote |
 | Paiement | onboarding Stripe Connect et readiness | LIVE reste bloqué par finance/juridique |
 | Recherche | Lyon, disponibilité et alternatives 10/25/50 km | calibration à faire avec l'inventaire réel |
 
@@ -168,3 +173,17 @@ transparent `X / 7 étapes`, liens profonds contextuels et distinction entre con
 et activation Stripe. Ce read model observe les gates et ne modifie aucun invariant de publication.
 
 Les sous-lots G8B-3B1, G8B-3B2 et G8B-3B3 sont livrés et validés.
+
+### G8B-3B4 — standard visuel et confiance
+
+Le Photo Coach est livré en vertical slice technique : contrat partagé des slots,
+migration `0040`, persistance de `slot_type`, viseur caméra avec fallback fichier,
+overlays SVG, checklist, progression et intégration au dashboard produit. Les
+tests de contrat et de composant sont présents.
+
+Le lot n’est pas entièrement clôturé. L’action serveur n’autorise pas encore les
+deux noms canoniques `THREE_QUARTER_FRONT` et `SECONDARY_VIEW` utilisés par
+l’interface ; la publication contrôle donc toujours uniquement trois photos
+`AVAILABLE` distinctes. Le moteur de badge professionnel et son statut auditable
+(`eligible` / `ineligible` / `pending`) restent à concevoir puis implémenter.
+L’analyse d’image par IA est explicitement hors périmètre.

@@ -157,7 +157,11 @@ L'expérience utilisateur peut être aussi fluide et synthétique que possible, 
 2. **Exemplaires physiques unitaires (`InventoryItem`)** : Aucune réservation n'est créée sans allocation d'exemplaires physiques précis. Aucun concept de « stock flottant » approximatif.
 3. **Publication fail-closed** : Un vélo ne devient visible dans la recherche publique que si l'établissement est publiable, le tarif est `ACTIVE`, $\ge 3$ photos valides sont présentes, et $\ge 1$ exemplaire physique est disponible.
 4. **Immutabilité financière du prix (`PricingPlan`)** : Un tarif actif n'est jamais modifié par un `UPDATE` direct. Une nouvelle version est créée en brouillon (`DRAFT`) puis activée (`ACTIVE`), archivant l'ancienne en `RETIRED`.
-5. **Standard de confiance Photo Coach** : Les 3 photos obligatoires sont validées et dédupliquées par empreinte SHA-256 côté serveur.
+5. **Standard de confiance Photo Coach** : Le Photo Coach guide les trois vues
+   narratives et les photos sont validées techniquement puis dédupliquées par
+   empreinte SHA-256 côté serveur. Le gate de publication actuel exige trois
+   photos distinctes, mais ne vérifie pas encore la présence d’un slot de chaque
+   type ; le badge « loueur professionnel vérifié » n’est pas encore exposé.
 6. **Séquestre et Readiness Stripe** : Aucun encaissement réel n'est initié si le compte Stripe Connect n'est pas pleinement configuré (`charges_enabled = true`).
 
 ### 5.1. Séparation Stricte des 3 Niveaux de Readiness
@@ -169,6 +173,7 @@ L'expérience utilisateur peut être aussi fluide et synthétique que possible, 
 │    - Nom ≥ 2 car., description non vide                                     │
 │    - Catégorie active & variante active                                     │
 │    - Standard Photo : ≥ 3 photos valides (checksums SHA-256 distincts)      │
+│      + slots narratifs persistés quand fournis (enforcement par slot à venir)│
 │    (Aucun stock ni prix requis : un produit sans stock peut être publié)    │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ 2. BIKE OFFER READINESS (Disponibilité de l'Offre)                          │
