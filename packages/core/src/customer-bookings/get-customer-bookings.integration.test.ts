@@ -157,7 +157,7 @@ describe.skipIf(isSkipped)(
           ${org.id}, ${location.id}, ${customerA.id}, ${draft.id}, ${paymentA.id}, 'CONFIRMED',
           '2026-09-10 09:00:00+00', '2026-09-12 18:00:00+00',
           '2026-09-10 08:30:00+00', '2026-09-12 18:30:00+00', 'Europe/Paris', 30, 30, 'EUR',
-          7500, 0, ${marketplaceFeeSnapshot ? 8025 : 7500},
+          7500, 0, 7500, ${marketplaceFeeSnapshot ? 8025 : 7500},
           ${marketplaceFeeSnapshot ? rawSql.json(marketplaceFeeSnapshot) : null},
           'NOT_APPLICABLE', 0, 750, 'DAY', 2,
           ${rawSql.json({ policy_code: 'FLEXIBLE', policy_version: '1' })},

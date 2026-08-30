@@ -197,26 +197,82 @@ async function createHeldDraft(ids: BaseIds, keySuffix: string, quantity = 1): P
   return result.body.draftId;
 }
 
-async function clearMarketplaceFeeSnapshotsForLegacyFixture(
-  draftId: string,
-  paymentId: string,
-): Promise<void> {
+interface LegacyTaggedRefundFixture {
+  draftId: string;
+  paymentId: string;
+  paymentIntentId: string;
+  amount: number;
+}
+
+async function createLegacyTaggedRefundFixture(
+  ids: BaseIds,
+  keySuffix: string,
+): Promise<LegacyTaggedRefundFixture> {
   if (!rawSql) throw new Error('rawSql not initialized');
-  await rawSql`
-    UPDATE booking_drafts
-    SET marketplace_fee_snapshot = NULL
-    WHERE id = ${draftId}
+  const sql = rawSql;
+  const draft = await sql`
+    INSERT INTO booking_drafts (
+      organization_id, location_id, customer_user_id, status,
+      customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
+      timezone, prep_buffer_minutes, cleanup_buffer_minutes, currency,
+      subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
+      tax_status, tax_amount_minor, tax_rate_bps, commission_amount_minor,
+      billable_unit, billable_unit_count, cancellation_policy_snapshot
+    ) VALUES (
+      ${ids.orgId}, ${ids.locationId}, ${ids.userId}, 'CONVERTED',
+      ${STD_START}, ${STD_END},
+      ${new Date(STD_START.getTime() - 30 * 60 * 1000)},
+      ${new Date(STD_END.getTime() + 30 * 60 * 1000)},
+      'Europe/Paris', 30, 30, 'EUR',
+      10000, 0, 10000, 'NOT_APPLICABLE', 0, NULL, 500,
+      'DAY', 2, ${sql.json({ policy_code: 'FLEXIBLE', policy_version: '1', timezone: 'Europe/Paris' })}
+    ) RETURNING id
+  `.then((rows) => rows[0]!);
+  const payment = await sql`
+    INSERT INTO payments (
+      organization_id, draft_id, customer_user_id, status,
+      amount_minor, currency, tax_status, tax_amount_minor,
+      commission_amount_minor, financial_terms_version, legal_terms_version,
+      terms_acceptance_snapshot, connected_account_id, charge_model,
+      settlement_merchant_mode, environment, succeeded_at
+    ) VALUES (
+      ${ids.orgId}, ${draft.id}, ${ids.userId}, 'SUCCEEDED', 10000, 'EUR',
+      'NOT_APPLICABLE', 0, 500, 'v1', 'v1',
+      ${sql.json({ version: 'v1', user_id: ids.userId, accepted_at: '2026-01-01T00:00:00Z' })},
+      'acct_test_123', 'DESTINATION', 'CONNECTED_ACCOUNT', 'TEST'::payment_environment, now()
+    ) RETURNING id
+  `.then((rows) => rows[0]!);
+  const paymentIntentId = `pi_legacy_tagged_${keySuffix}`;
+  await sql`
+    INSERT INTO payment_attempts (
+      organization_id, payment_id, attempt_number, status,
+      provider_payment_intent_id, provider_idempotency_key, provider_status
+    ) VALUES (
+      ${ids.orgId}, ${payment.id}, 1, 'SUCCEEDED', ${paymentIntentId},
+      ${'attempt_legacy_tagged_' + keySuffix}, 'succeeded'
+    )
   `;
-  await rawSql`
-    UPDATE payments
-    SET marketplace_fee_snapshot = NULL
-    WHERE id = ${paymentId}
+  await sql`
+    INSERT INTO bookings (
+      organization_id, location_id, customer_user_id, draft_id, payment_id,
+      status, customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
+      timezone, prep_buffer_minutes, cleanup_buffer_minutes, currency,
+      subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
+      tax_status, tax_amount_minor, tax_rate_bps, commission_amount_minor,
+      billable_unit, billable_unit_count, cancellation_policy_snapshot,
+      terms_acceptance_snapshot, confirmed_at
+    ) VALUES (
+      ${ids.orgId}, ${ids.locationId}, ${ids.userId}, ${draft.id}, ${payment.id}, 'CONFIRMED',
+      ${STD_START}, ${STD_END},
+      ${new Date(STD_START.getTime() - 30 * 60 * 1000)},
+      ${new Date(STD_END.getTime() + 30 * 60 * 1000)},
+      'Europe/Paris', 30, 30, 'EUR',
+      10000, 0, 10000, 'NOT_APPLICABLE', 0, NULL, 500, 'DAY', 2,
+      ${sql.json({ policy_code: 'FLEXIBLE', policy_version: '1', timezone: 'Europe/Paris' })},
+      ${sql.json({ version: 'v1', user_id: ids.userId, accepted_at: '2026-01-01T00:00:00Z' })}, now()
+    )
   `;
-  await rawSql`
-    UPDATE bookings
-    SET marketplace_fee_snapshot = NULL
-    WHERE payment_id = ${paymentId}
-  `;
+  return { draftId: draft.id, paymentId: payment.id, paymentIntentId, amount: 10000 };
 }
 
 function makeFinancialTermsConfig(connectedAccountId = 'acct_test_123'): FinancialTermsConfig {
@@ -774,37 +830,47 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
     if (!db || !rawSql) throw new Error('DB non initialisée');
     const ids = await seedBaseData(suffix);
     await seedPaymentAccount(ids);
-    const draftId = await createHeldDraft(ids, `tagged-${suffix}`);
-    const initResult = await initiatePayment(
-      makeInitDeps(),
-      makeInitiateInput(ids, draftId, `tagged-${suffix}`),
-    );
-    expect(initResult.kind).toBe('SUCCESS');
-    if (initResult.kind !== 'SUCCESS') throw new Error('initiation de paiement impossible');
-    const paymentId = await getPaymentId(draftId);
-    const amount = await getPaymentAmount(draftId);
-    const paymentDeps = makeDeps();
-    const succeededBody = makeWebhookPayload(
-      'payment_intent.succeeded',
-      initResult.providerPaymentIntentId,
-      amount,
-      {
-        payment_id: initResult.paymentId,
-        payment_attempt_id: initResult.paymentAttemptId,
-        draft_id: draftId,
-        organization_id: ids.orgId,
-        protocol_version: 'v1',
-      },
-      'succeeded',
-      { eventId: `evt_tagged_payment_${suffix}` },
-    );
-    const paymentResult = await handleWebhook(
-      paymentDeps,
-      makeWebhookInput(succeededBody, paymentDeps.adapter),
-    );
-    expect(paymentResult.kind).toBe('SUCCESS');
-    if (!options.split) {
-      await clearMarketplaceFeeSnapshotsForLegacyFixture(draftId, paymentId);
+    let draftId: string;
+    let paymentId: string;
+    let paymentIntentId: string;
+    let amount: number;
+    if (options.split) {
+      draftId = await createHeldDraft(ids, `tagged-${suffix}`);
+      const initResult = await initiatePayment(
+        makeInitDeps(),
+        makeInitiateInput(ids, draftId, `tagged-${suffix}`),
+      );
+      expect(initResult.kind).toBe('SUCCESS');
+      if (initResult.kind !== 'SUCCESS') throw new Error('initiation de paiement impossible');
+      paymentId = await getPaymentId(draftId);
+      amount = await getPaymentAmount(draftId);
+      paymentIntentId = initResult.providerPaymentIntentId;
+      const paymentDeps = makeDeps();
+      const succeededBody = makeWebhookPayload(
+        'payment_intent.succeeded',
+        paymentIntentId,
+        amount,
+        {
+          payment_id: initResult.paymentId,
+          payment_attempt_id: initResult.paymentAttemptId,
+          draft_id: draftId,
+          organization_id: ids.orgId,
+          protocol_version: 'v1',
+        },
+        'succeeded',
+        { eventId: `evt_tagged_payment_${suffix}` },
+      );
+      const paymentResult = await handleWebhook(
+        paymentDeps,
+        makeWebhookInput(succeededBody, paymentDeps.adapter),
+      );
+      expect(paymentResult.kind).toBe('SUCCESS');
+    } else {
+      const legacyFixture = await createLegacyTaggedRefundFixture(ids, suffix);
+      draftId = legacyFixture.draftId;
+      paymentId = legacyFixture.paymentId;
+      paymentIntentId = legacyFixture.paymentIntentId;
+      amount = legacyFixture.amount;
     }
     const refundIds: string[] = [];
     for (let index = 0; index < count; index++) {
@@ -824,7 +890,7 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
       ids,
       deps: makeDeps(),
       paymentId,
-      paymentIntentId: initResult.providerPaymentIntentId,
+      paymentIntentId,
       amount,
       refundIds,
     };
@@ -2438,35 +2504,9 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
     if (!db || !rawSql) return;
     const ids = await seedBaseData('refund-tagged');
     await seedPaymentAccount(ids);
-    const draftId = await createHeldDraft(ids, 'refund-tagged');
-    const initDeps = makeInitDeps();
-    const initResult = await initiatePayment(
-      initDeps,
-      makeInitiateInput(ids, draftId, 'refund-tagged'),
-    );
-    expect(initResult.kind).toBe('SUCCESS');
-    if (initResult.kind !== 'SUCCESS') return;
-
-    const piId = initResult.providerPaymentIntentId;
-    const paymentId = await getPaymentId(draftId);
-    const amount = await getPaymentAmount(draftId);
+    const fixture = await createLegacyTaggedRefundFixture(ids, 'refund-tagged');
+    const { paymentIntentId: piId, paymentId, amount } = fixture;
     const deps = makeDeps();
-    const succeeded = makeWebhookPayload(
-      'payment_intent.succeeded',
-      piId,
-      amount,
-      {
-        payment_id: initResult.paymentId,
-        payment_attempt_id: initResult.paymentAttemptId,
-        draft_id: draftId,
-        organization_id: ids.orgId,
-        protocol_version: 'v1',
-      },
-      'succeeded',
-    );
-    const paymentResult = await handleWebhook(deps, makeWebhookInput(succeeded, deps.adapter));
-    expect(paymentResult.kind).toBe('SUCCESS');
-    await clearMarketplaceFeeSnapshotsForLegacyFixture(draftId, paymentId);
 
     const refundId = '77777777-7777-4777-8777-777777777777';
     await rawSql`
