@@ -18,7 +18,7 @@ type ProShellProps = {
 const navItems = [
   { label: 'Accueil', href: (orgId: string) => `/dashboard/${orgId}`, icon: 'home' as const },
   {
-    label: 'Mes vélos',
+    label: 'Mes équipements',
     href: (orgId: string) => `/dashboard/${orgId}/bikes`,
     icon: 'bike' as const,
   },

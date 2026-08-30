@@ -498,7 +498,7 @@ export async function getCustomerBooking(
     organizationName: booking.organizationName,
     status,
     rawStatus: booking.status,
-    productName: primaryProduct?.productName ?? 'Vélo réservé',
+    productName: primaryProduct?.productName ?? 'Équipement réservé',
     heroPhotoUrl,
     categoryName: primaryProduct?.categoryName ?? null,
     startAt: booking.customerStartAt,

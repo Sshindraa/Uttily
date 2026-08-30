@@ -430,8 +430,8 @@ export function FinancesHub({
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <input
               type="text"
-              aria-label="Rechercher par référence, vélo, client"
-              placeholder="Rechercher par référence, vélo, client..."
+              aria-label="Rechercher par référence, équipement, client"
+              placeholder="Rechercher par référence, équipement, client..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{

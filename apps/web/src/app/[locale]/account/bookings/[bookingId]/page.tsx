@@ -344,7 +344,7 @@ export default async function CustomerBookingDetailPage({
                 color: 'var(--ut-color-ink-strong)',
               }}
             >
-              🚲 Équipement réservé
+              🧰 Équipement réservé
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {booking.items.map((item, idx) => (

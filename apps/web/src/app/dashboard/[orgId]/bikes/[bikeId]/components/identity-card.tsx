@@ -21,7 +21,7 @@ export function BikeIdentityCard({
     <section className={styles.card} aria-labelledby="identity-title">
       <div className={styles.cardHeader}>
         <h2 id="identity-title" className={styles.cardTitle}>
-          <span>🚲</span> Identité commerciale & Modèle
+          <span>🧰</span> Identité commerciale & Modèle
         </h2>
         <IdentityDrawer
           organizationId={organizationId}
@@ -83,7 +83,7 @@ export function BikeIdentityCard({
               textTransform: 'uppercase',
             }}
           >
-            Taille
+            Version
           </span>
           <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>
             📐 {variant.name}

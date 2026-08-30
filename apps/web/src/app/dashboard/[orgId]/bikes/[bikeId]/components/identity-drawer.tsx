@@ -144,7 +144,7 @@ export function IdentityDrawer({
             disabled={isLoading}
             className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
           >
-            🚀 {isLoading ? 'Publication…' : 'Mettre en ligne mon vélo'}
+            🚀 {isLoading ? 'Publication…' : 'Mettre en ligne mon équipement'}
           </button>
         )}
 
@@ -167,7 +167,7 @@ export function IdentityDrawer({
             disabled={isLoading}
             className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
           >
-            {isLoading ? 'Restauration…' : 'Restaurer le vélo'}
+            {isLoading ? 'Restauration…' : 'Restaurer l’équipement'}
           </button>
         )}
       </div>
@@ -198,7 +198,7 @@ export function IdentityDrawer({
           >
             <div className={styles.drawerHeader}>
               <h3 id="identity-drawer-title" className={styles.drawerTitle}>
-                📝 Modifier l’identité du vélo
+                📝 Modifier l’identité de l’équipement
               </h3>
               <button
                 type="button"
@@ -217,7 +217,7 @@ export function IdentityDrawer({
             >
               <div className={styles.formGroup}>
                 <label htmlFor="edit-name" className={styles.formLabel}>
-                  Nom commercial du vélo :
+                  Nom commercial de l’équipement :
                 </label>
                 <input
                   id="edit-name"
@@ -232,7 +232,7 @@ export function IdentityDrawer({
 
               <div className={styles.formGroup}>
                 <label htmlFor="edit-category" className={styles.formLabel}>
-                  Catégorie de vélo :
+                  Catégorie d’équipement :
                 </label>
                 <select
                   id="edit-category"

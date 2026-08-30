@@ -39,7 +39,7 @@ interface BikeSetupWizardProps {
 }
 
 const STEPS: Array<{ key: SetupStep; num: number; label: string }> = [
-  { key: 'IDENTITY', num: 1, label: '1. Mon vélo' },
+  { key: 'IDENTITY', num: 1, label: '1. Mon équipement' },
   { key: 'PHOTOS', num: 2, label: '2. Mes photos' },
   { key: 'PRICING', num: 3, label: '3. Mon tarif' },
   { key: 'INVENTORY', num: 4, label: '4. Mes exemplaires' },
@@ -212,7 +212,7 @@ export function BikeSetupWizard({
       <div className={styles.topBar}>
         <nav aria-label="Fil d’Ariane" className={styles.breadcrumb}>
           <Link href={`/dashboard/${organizationId}/bikes`} className={styles.breadcrumbLink}>
-            ← Mes vélos
+            ← Mes équipements
           </Link>
           <span>/</span>
           <span>Configuration : {bike.name}</span>
@@ -261,9 +261,9 @@ export function BikeSetupWizard({
         <div className={styles.card}>
           <div className={styles.stepTitleArea}>
             <span className={styles.stepBadge}>Étape 1 sur 5</span>
-            <h2 className={styles.stepTitle}>🚲 Quel vélo proposez-vous ?</h2>
+            <h2 className={styles.stepTitle}>🧰 Quel équipement proposez-vous ?</h2>
             <p className={styles.stepSubtitle}>
-              Précisez le nom de marque, la catégorie et la description commerciale du vélo.
+              Précisez le nom de marque, la catégorie et la description commerciale de l’équipement.
             </p>
           </div>
 
@@ -363,7 +363,7 @@ export function BikeSetupWizard({
         <div className={styles.card}>
           <div className={styles.stepTitleArea}>
             <span className={styles.stepBadge}>Étape 2 sur 5</span>
-            <h2 className={styles.stepTitle}>📸 Montrez votre vélo (Standard Photo Coach)</h2>
+            <h2 className={styles.stepTitle}>📸 Montrez votre équipement (Standard Photo Coach)</h2>
             <p className={styles.stepSubtitle}>
               Prenez 3 photos normées avec le guide de cadrage interactif pour garantir la confiance
               des locataires.
@@ -667,8 +667,8 @@ export function BikeSetupWizard({
             <span className={styles.stepBadge}>Étape 4 sur 5</span>
             <h2 className={styles.stepTitle}>🚲 Combien d’exemplaires avez-vous en stock ?</h2>
             <p className={styles.stepSubtitle}>
-              Indiquez le nombre de vélos disponibles dans votre boutique. Chaque vélo sera suivi
-              individuellement.
+              Indiquez le nombre d’exemplaires disponibles dans votre boutique. Chaque exemplaire
+              sera suivi individuellement.
             </p>
           </div>
 
@@ -745,7 +745,9 @@ export function BikeSetupWizard({
         <div className={styles.card}>
           <div className={styles.stepTitleArea}>
             <span className={styles.stepBadge}>Étape 5 sur 5</span>
-            <h2 className={styles.stepTitle}>🎉 Votre vélo est prêt pour la mise en ligne !</h2>
+            <h2 className={styles.stepTitle}>
+              🎉 Votre équipement est prêt pour la mise en ligne !
+            </h2>
             <p className={styles.stepSubtitle}>
               Vérifiez les informations avant de publier votre annonce sur Uttily.
             </p>
@@ -776,7 +778,7 @@ export function BikeSetupWizard({
 
             <div className={styles.previewContent}>
               <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0284c7' }}>
-                {bike.categoryName} • Taille {bike.variantName}
+                {bike.categoryName} • Version {bike.variantName}
               </div>
               <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, color: '#0f172a' }}>
                 {bike.name}
@@ -788,7 +790,8 @@ export function BikeSetupWizard({
                 </span>
               </div>
               <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                📍 Disponible à {selectedLocation?.name ?? 'votre boutique'} ({fleetCount} vélos)
+                📍 Disponible à {selectedLocation?.name ?? 'votre boutique'} ({fleetCount}{' '}
+                exemplaires)
               </div>
             </div>
           </div>
@@ -871,7 +874,7 @@ export function BikeSetupWizard({
               className={styles.primaryActionBtn}
               style={{ background: '#059669', boxShadow: '0 2px 10px rgba(5, 150, 105, 0.3)' }}
             >
-              {isLoading ? 'Mise en ligne en cours…' : '🚀 Mettre en ligne mon vélo'}
+              {isLoading ? 'Mise en ligne en cours…' : '🚀 Mettre en ligne mon équipement'}
             </button>
           </div>
         </div>

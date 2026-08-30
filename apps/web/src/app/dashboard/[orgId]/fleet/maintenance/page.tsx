@@ -50,7 +50,7 @@ export default async function MaintenanceListPage({
             {activeCases.length}
           </span>
           <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
-            Vélos en cours d’intervention
+            Équipements en cours d’intervention
           </span>
         </Card>
         <Card

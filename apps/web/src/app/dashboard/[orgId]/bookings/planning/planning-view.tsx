@@ -59,7 +59,7 @@ export function PlanningView({
     return { pickUps, returns, maintenances };
   }
 
-  // Vérification de l'état d'un vélo pour une journée donnée (Vue Flotte)
+  // Vérification de l'état d'un exemplaire pour une journée donnée (Vue Flotte)
   function getItemDayStatus(itemId: string, dayDateStr: string) {
     const isMaintenance = planning.events.find((e) => {
       if (e.type !== 'MAINTENANCE' || e.inventoryItemId !== itemId) return false;
@@ -175,7 +175,7 @@ export function PlanningView({
           <span className={`${styles.statNumber} ${styles.statAmber}`}>
             🔧 {planning.stats.totalMaintenances}
           </span>
-          <span className={styles.statLabel}>Vélos en maintenance</span>
+          <span className={styles.statLabel}>Équipements en maintenance</span>
         </div>
       </div>
 

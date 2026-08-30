@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 /**
  * Route historique Catalogue (Chantier 3).
  *
- * Chantier 17 — IA Pro définitive : Catalogue a été unifié dans **Mes vélos**.
+ * Chantier 17 — IA Pro définitive : Catalogue a été unifié dans **Mes équipements**.
  * Cette route redirige proprement vers `/dashboard/${orgId}/bikes`.
  */
 export default async function LegacyCatalogRedirect({

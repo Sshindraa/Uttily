@@ -55,7 +55,7 @@ use-cases et de Next.js. Il ne contient pas encore de design system métier.
 La landing `/` est la référence Client U0 : elle démontre la marque, l'accès à
 la recherche, les informations de confiance et les primitives de carte, bouton
 et icône. Le cockpit `/dashboard/[orgId]` est la référence Pro : le shell pose
-la navigation canonique `Accueil / Mes vélos / Réservations / Flotte /
+la navigation canonique `Accueil / Mes équipements / Réservations / Flotte /
 Établissements / Revenus / Équipe / Paramètres`, avec section active, focus et
 menu mobile utilisable. Catalogue, Inventaire et Planning top-level restent
 des redirections de compatibilité et ne reviennent pas dans l'IA.
@@ -93,7 +93,7 @@ un endpoint opportuniste.
 2. Cockpit — PageHeader, Card, Badge, Alert, SectionHeader ; use-case existant.
 3. Réservations/planning — Tabs, Table shell, Badge, EmptyState.
 4. Retrait/retour — Field, Button, Dialog, Alert.
-5. Mes vélos — Card, Badge, PageHeader.
+5. Mes équipements — Card, Badge, PageHeader.
 6. Flotte — Card, Tabs, Alert, EmptyState.
 7. Établissements — Field, Card, SectionHeader.
 8. Revenus — Card, Table shell, Badge ; montants via helpers existants.

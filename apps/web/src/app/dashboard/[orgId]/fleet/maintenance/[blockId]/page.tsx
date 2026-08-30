@@ -165,7 +165,7 @@ export default async function MaintenanceCaseDetailPage({
           </div>
         </Card>
 
-        {/* Pilier 2 : Vélo concerné */}
+        {/* Pilier 2 : Équipement concerné */}
         <Card style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <h2
             style={{
@@ -175,7 +175,7 @@ export default async function MaintenanceCaseDetailPage({
               color: 'var(--ut-color-ink-strong)',
             }}
           >
-            🚲 Vélo concerné
+            🧰 Équipement concerné
           </h2>
 
           <div
@@ -191,7 +191,7 @@ export default async function MaintenanceCaseDetailPage({
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.85rem' }}>
-                Référence vélo :
+                Référence exemplaire :
               </span>
               <Link
                 href={`/dashboard/${organizationId}/fleet`}
