@@ -2,13 +2,10 @@
 
 ## État
 
-Le chemin Core C3 est implémenté localement au-dessus de G7M-C2. Le commit C3
-initial existe déjà ; les corrections et preuves PostgreSQL ajoutées dans cette
-revue restent locales et non commitées. Les suites ciblées unitaires, statiques
-et PostgreSQL réelles sont vertes. La validation Core globale reste pending CI.
-
-G7M-C4 (expiration et compensation tardive) et G7M-C5 (route cliente et
-Stripe Elements) restent hors périmètre.
+Le chemin Core C3 est livré au-dessus de G7M-C2. Les suites ciblées unitaires,
+statiques et PostgreSQL réelles sont vertes ; la validation globale a depuis
+été effectuée dans la CI post-merge. G7M-C4 et G7M-C5 ont été livrés dans les
+jalons suivants.
 
 ## Comportement livré
 
@@ -54,6 +51,6 @@ Stripe Elements) restent hors périmètre.
   92 PostgreSQL), 0 skip ; `get-effective-booking` : 34/34 ;
 - C2 `initiateSupplementPayment` : 13/13 tests PostgreSQL réels ;
 - le correctif de collision JSONB d’outbox et l’assainissement des logs sont
-  locaux, sans nouveau commit, staging, push ou PR ;
-- C4 (expiration/compensation), C5 (UI) et la validation Core globale restent
-  pending CI.
+  couverts par les changements livrés ensuite ;
+- C4 (expiration/compensation), C5 (UI) et la validation Core globale sont
+  désormais livrés ; voir la page d'état canonique et les rapports C4/C5.

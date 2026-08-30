@@ -88,6 +88,7 @@ Recherche publique (/[locale]/search)
 
 ## 4. Statut du Backlog
 
-Le pont de réservation publique vers le checkout initial est implémenté localement et validé par les tests locaux.
-La validation globale du workspace reste pending CI.
-Le lot **G7I** (Validation transversale globale du Lot 7) est la prochaine étape et n'est pas encore commencé.
+Le pont de réservation publique vers le checkout initial est livré et validé.
+La validation globale du workspace et le lot **G7I** ont depuis été exécutés ;
+la CI post-merge est verte. Les paragraphes de preuve ci-dessus correspondent
+au jalon de livraison de ce pont.

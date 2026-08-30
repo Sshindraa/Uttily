@@ -14,6 +14,14 @@ Avant toute tâche, lire dans cet ordre :
 6. [`docs/implementation/agent-context.md`](docs/implementation/agent-context.md)
 7. Le lot concerné dans [`docs/implementation/backlog.md`](docs/implementation/backlog.md)
 
+Pour une fonctionnalité déjà livrée, la branche et le commit actuellement
+checkoutés sont l'autorité de l'analyse. Vérifier le statut Git et le commit
+courant avant de conclure qu'un fichier ou un changement n'existe pas. Les
+mentions historiques `origin/main = ...` présentes dans des dossiers de
+préparation ne remplacent jamais cette vérification.
+
+Pour les frais marketplace, lire [`docs/operations/marketplace-fees-current-state.md`](docs/operations/marketplace-fees-current-state.md), puis [`docs/decisions/ADR-029-marketplace-fee-split-13-7.md`](docs/decisions/ADR-029-marketplace-fee-split-13-7.md). La règle technique `split-13-7-v1` est dans `packages/core/src/marketplace-fees/` ; son activation LIVE reste bloquée par `FIN-002` tant que Finance/Juridique n'ont pas signé.
+
 ## Choix verrouillés
 
 - Monolithe modulaire TypeScript au départ.

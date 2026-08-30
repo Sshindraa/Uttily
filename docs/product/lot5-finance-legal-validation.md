@@ -42,7 +42,8 @@ Valider par écrit :
 
 ## 3. Commission
 
-Le business plan évoque des fourchettes, pas une règle approuvée. Le code exige un
+Le business plan et l'ADR-029 documentent désormais le choix produit
+`split-13-7-v1`, mais aucune validation externe n'est présumée. Le code exige un
 montant déterminé et versionné avant paiement ; `null` ne sera jamais converti en
 zéro.
 

@@ -6,18 +6,19 @@ Ce dépôt démarre volontairement par la documentation d'architecture. Aucun ch
 
 ## Point de départ
 
-Avant de créer l'application, lire dans cet ordre :
+Avant toute tâche, lire `AGENTS.md`, puis dans cet ordre :
 
 1. [Périmètre MVP](docs/product/mvp-scope.md)
-2. [Business plan et stratégie](docs/product/business-plan.md)
-3. [Vision long terme](docs/product/long-term-vision.md)
-4. [Expérience loueur & fiche vélo unifiée](docs/product/loueur-experience-and-unified-bike.md)
+2. [Vue d'ensemble technique](docs/architecture/overview.md)
+3. [Réservations et disponibilité](docs/architecture/booking-and-availability.md)
+4. [Modèle de données](docs/architecture/data-model.md)
 5. [Contexte pour agents de développement](docs/implementation/agent-context.md)
 6. [Backlog de démarrage](docs/implementation/backlog.md)
-7. [Vue d'ensemble technique](docs/architecture/overview.md)
-8. [Réservations et disponibilité](docs/architecture/booking-and-availability.md)
-9. [Modèle de données](docs/architecture/data-model.md)
-10. [Décisions d'architecture](docs/decisions/)
+7. Le lot et les [décisions d'architecture](docs/decisions/)
+
+Pour les frais marketplace, consulter ensuite l'[état canonique du modèle
+13/7](docs/operations/marketplace-fees-current-state.md) puis
+[ADR-029](docs/decisions/ADR-029-marketplace-fee-split-13-7.md).
 
 ## Principes non négociables
 

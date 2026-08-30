@@ -33,6 +33,16 @@ Le premier produit Uttily permet à un client de rechercher, réserver, payer pu
 
 Le produit ne cherche pas encore à couvrir toutes les catégories, tous les pays ni la location entre particuliers.
 
+## Frais marketplace — source de vérité
+
+Pour toute question sur la commission ou le prix réellement payé, consulter
+[l'état canonique du modèle marketplace 13/7](../operations/marketplace-fees-current-state.md),
+puis [ADR-029](../decisions/ADR-029-marketplace-fee-split-13-7.md). La règle
+technique `split-13-7-v1` est portée par le registre serveur de
+`packages/core/src/marketplace-fees/`. Les réservations legacy restent
+compatibles et ne sont pas recalculées ; l'activation LIVE demeure bloquée par
+`FIN-002` jusqu'au sign-off Finance/Juridique.
+
 ## Personae et permissions
 
 | Persona | Peut faire |

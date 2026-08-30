@@ -2,7 +2,9 @@
 
 **Chantier :** 21-P0 — External Decision Preparation (matrice héritée du Chantier 20-C)
 **Branche :** `chantier/21-p0-external-decisions`
-**Base :** `origin/main = eb08f2830abad5fd6643978aee6056e6e59e7171`
+**Référence de version :** document vivant ; vérifier le commit courant du dépôt
+avant utilisation. Les anciennes baselines `origin/main = ...` sont historiques.
+**Dernière revue de cohérence :** 2026-08-30
 **Date d'établissement :** 2026-08-28
 **Mise à jour 21-P0 :** 2026-08-29
 
@@ -175,25 +177,26 @@ exige un « mécanisme de preuve de consentement ».
 mécanisme de consentement (case à cocher, journalisation, versionnement) est une
 décision juridique.
 
-### C3-F2 — Règle de remboursement exécutée mais non documentée (gravité : haute)
+### C3-F2 — Règle de remboursement à distinguer legacy/split (gravité : haute)
 
-Le code applique silencieusement l'option A de Lot 4, alors que Lot 4 déclare la
-base **non tranchée**.
+Le comportement de remboursement n'est pas identique pour les deux générations
+de réservation :
 
-- `packages/core/src/cancellations/preview-booking-cancellation.ts:113` :
-  `const paidAmountMinor = booking.totalAmountMinor;`
-- Ligne 190 : `refundAmountMinor = Math.round((paidAmountMinor * refundPercentage) / 100)`.
+- **legacy** : `packages/core/src/cancellations/preview-booking-cancellation.ts`
+  utilise `booking.totalAmountMinor` comme montant payé et applique le
+  pourcentage de remboursement historique ;
+- **split 13/7** : le parcours est bloqué avant toute création ou soumission de
+  refund avec `SPLIT_REFUND_UNRESOLVED`, car le traitement séparé de la base,
+  des 13 % loueur et des 7 % client n'est pas encore approuvé.
 
-La base est donc le **total TTC** (prix de location + options + frais
-obligatoires) = option A. Or `docs/product/lot4-legal-validation.md` §« Base de
-remboursement à valider » indique : « Le validateur doit trancher » entre A, B, C
-et D.
+La base legacy reste donc techniquement assimilable à l'option A « total TTC »,
+mais cette observation ne vaut pas validation juridique ou financière. Le
+traitement des composants split lors d'un remboursement total ou partiel reste
+à décider, tout comme les frais Stripe, le reverse transfer et le message client.
 
-La commission suit la même logique : restitution intégrale à 100 %, retenue
-intégrale à 0 %, prorata sinon (lignes 196-210). Ce traitement de la commission
-en remboursement partiel est également une question ouverte de Lot 5 décision B.
-
-**Décision requise :** juridique + finance. Ne pas modifier le code.
+**Décision requise :** juridique + finance. Ne pas modifier le code avant cette
+décision ; toute évolution split devra conserver un snapshot versionné et des
+tests d'invariance.
 
 ### C3-F3 — Émetteur de facture et statut fiscal incohérents avec Lot 5 (gravité : haute)
 

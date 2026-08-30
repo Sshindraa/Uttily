@@ -1,6 +1,8 @@
 # Finance decision pack — préparation de décision humaine
 
-**Base :** `origin/main = eb08f2830abad5fd6643978aee6056e6e59e7171`
+**Référence de version :** document vivant ; vérifier le commit courant du dépôt
+avant utilisation. Les anciennes baselines `origin/main = ...` sont historiques.
+**Dernière revue de cohérence :** 2026-08-30
 **Statut du pack :** `PASS` pour la préparation externe ; `SIGNOFF = BLOCKED`
 **Identifiants référencés :** uniquement `FIN-*`
 

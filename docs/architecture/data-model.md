@@ -176,8 +176,8 @@ NO_DEPOSIT
 
 ### Modifications financières append-only (ADR-023, conception approuvée)
 
-> ADR-023 (2026-08-10, Accepted — conception approuvée, implémentation non
-> commencée). Voir
+> ADR-023 (2026-08-10, Accepted — conception approuvée et implémentation
+> livrée). Voir
 > `docs/decisions/ADR-023-booking-financial-amendments.md`.
 
 Les modifications d'une réservation `CONFIRMED` sont tracées dans des tables

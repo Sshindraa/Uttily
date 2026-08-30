@@ -1,6 +1,8 @@
 # Registre canonique des décisions externes — 21-P0
 
-**Base de préparation :** `origin/main = eb08f2830abad5fd6643978aee6056e6e59e7171`
+**Référence de version :** document vivant ; vérifier le commit courant du dépôt
+avant utilisation. Les anciennes baselines `origin/main = ...` sont historiques.
+**Dernière revue de cohérence :** 2026-08-30
 **Statut :** `EXTERNAL_DECISION_READY = PASS`
 **Portée :** préparation des décisions humaines nécessaires au premier pilote réel.
 

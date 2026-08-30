@@ -1,6 +1,7 @@
 # G7M-C2 — Initiation du paiement du supplément
 
-- **Statut** : implémenté — validation ciblée PostgreSQL et régressions ciblées vertes ; validation Core globale pending CI
+- **Statut** : livré — validation PostgreSQL, régressions ciblées et validation
+  globale/CI post-merge vertes. Ce document conserve les preuves du jalon C2.
 - **ADR de référence** : [ADR-023](../decisions/ADR-023-booking-financial-amendments.md), §§8, 10, 12 et 15
 - **Migration** : aucune ; le schéma 0036 et ses transitions existantes sont suffisants
 
@@ -77,7 +78,7 @@ refund Finance/Juridique n'est pas signée.
 - module `booking-amendments` : 111/111 tests unitaires et 80/80 tests
   PostgreSQL d'intégration, soit 191/191 sur le périmètre module ;
 - régressions : payment-initiation 56/56, adapters Fake/Stripe 172/172,
-  lint, typecheck et build verts. La suite Core globale n'est pas revendiquée
-  comme verte localement : son gate final reste pending CI.
+  lint, typecheck et build verts au jalon C2. La validation globale a depuis été
+  effectuée dans la CI post-merge ; voir la référence d'état canonique.
 
 Voir également [G7M-C1](g7m-c1-supplement-local.md) et l'ADR-023.
