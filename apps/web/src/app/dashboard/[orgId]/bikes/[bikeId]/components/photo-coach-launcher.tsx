@@ -26,13 +26,13 @@ const SLOTS_CONFIG: Array<{
     icon: '🚲',
   },
   {
-    slotType: 'THREE_QUARTER',
+    slotType: 'THREE_QUARTER_FRONT',
     title: '3/4 Avant dynamique',
     subtitle: 'Guidon tourné, perspective valorisante',
     icon: '📐',
   },
   {
-    slotType: 'SIGNATURE_DETAIL',
+    slotType: 'SECONDARY_VIEW',
     title: 'Vue libre valorisante',
     subtitle: 'Transmission, poste de pilotage ou accessoire',
     icon: '✨',

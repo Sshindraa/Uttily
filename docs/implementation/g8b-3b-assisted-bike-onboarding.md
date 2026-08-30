@@ -138,7 +138,7 @@ organisation individuelle.
 | Organisation | création, rôles et invitations | édition du nom public à rendre explicite |
 | Établissement | formulaire complet, coordonnées PostGIS, horaires, retrait et publication fail-closed | validation fonctionnelle à faire avec un loueur pilote |
 | Catalogue | produit, catégorie, description, variantes | traduction du contenu libre non décidée |
-| Photos | upload R2, validation, suppression, Photo Coach et slots persistés | l’allow-list serveur doit accepter les deux noms canoniques du Photo Coach ; le gate reste fondé sur trois checksums distincts, sans couverture obligatoire par slot |
+| Photos | upload R2, validation, suppression, Photo Coach et slots persistés | l’allow-list serveur et les surfaces Photo Coach utilisent les noms canoniques ; le gate reste fondé sur trois checksums distincts, sans couverture obligatoire par slot |
 | Exemplaires | création, état, statut, lieu, transfert | aucun écart bloquant technique connu |
 | Tarification | moteur, schéma et UI loueur pour créer/activer les plans tarifaires | validation fonctionnelle à faire avec un loueur pilote |
 | Paiement | onboarding Stripe Connect et readiness | LIVE reste bloqué par finance/juridique |
@@ -181,9 +181,10 @@ migration `0040`, persistance de `slot_type`, viseur caméra avec fallback fichi
 overlays SVG, checklist, progression et intégration au dashboard produit. Les
 tests de contrat et de composant sont présents.
 
-Le lot n’est pas entièrement clôturé. L’action serveur n’autorise pas encore les
-deux noms canoniques `THREE_QUARTER_FRONT` et `SECONDARY_VIEW` utilisés par
-l’interface ; la publication contrôle donc toujours uniquement trois photos
-`AVAILABLE` distinctes. Le moteur de badge professionnel et son statut auditable
+Le lot n’est pas entièrement clôturé. L’action serveur et les surfaces Photo Coach
+utilisent désormais les deux noms canoniques `THREE_QUARTER_FRONT` et
+`SECONDARY_VIEW`, issus de la liste partagée du contrat. La publication contrôle
+donc toujours uniquement trois photos `AVAILABLE` distinctes, sans couverture
+obligatoire par slot. Le moteur de badge professionnel et son statut auditable
 (`eligible` / `ineligible` / `pending`) restent à concevoir puis implémenter.
 L’analyse d’image par IA est explicitement hors périmètre.

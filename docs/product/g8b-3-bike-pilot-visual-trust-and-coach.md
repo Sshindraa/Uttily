@@ -15,9 +15,9 @@ G8B-1 et son smoke test staging.
 
 Cette livraison ne vaut pas encore enforcement complet du standard sémantique :
 le gate PostgreSQL exige toujours trois photos `AVAILABLE` avec checksums
-distincts, sans exiger un slot de chaque type, et l’action serveur doit encore
-être alignée sur les deux noms canoniques `THREE_QUARTER_FRONT` et
-`SECONDARY_VIEW`. Le badge « loueur professionnel vérifié » reste une
+distincts, sans exiger un slot de chaque type. L’action serveur et l’ancienne
+surface « Mes vélos » utilisent désormais les noms canoniques
+`THREE_QUARTER_FRONT` et `SECONDARY_VIEW`. Le badge « loueur professionnel vérifié » reste une
 spécification ; aucun statut de vérification ni calcul auditable n’est encore
 implémenté. Aucune analyse d’image par IA n’est activée.
 
@@ -257,7 +257,7 @@ l'organisation. Une rupture temporaire de stock ne retire pas le badge de l'orga
 | Situation et données réelles | Affichage et formulation autorisés | Formulations et promesses strictement interdites |
 | :--- | :--- | :--- |
 | **3 photos valides techniquement** avec checksums distincts (gate actuel) | Galerie photo du produit, vue d'ensemble | « 3 vues contrôlées », « Standard visuel vérifié » |
-| **Slots sémantiques renseignés** (`HERO_PROFILE`, `THREE_QUARTER_FRONT`, `SECONDARY_VIEW`) dans le contrat et l’UI ; enforcement serveur en attente | Présentation guidée et détaillée des composants clés | Promesse d'analyse d'image automatisée par IA |
+| **Slots sémantiques renseignés** (`HERO_PROFILE`, `THREE_QUARTER_FRONT`, `SECONDARY_VIEW`) dans le contrat et l’UI ; enforcement serveur par slot en attente | Présentation guidée et détaillée des composants clés | Promesse d'analyse d'image automatisée par IA |
 | **Photos rattachées au `product`** (aucun `inventory_item` alloué) | Modèle et configuration générale illustrés | « Photo de votre vélo exact », « État d'usure contractuel » |
 | **`inventory_item` alloué** + rapport d'état contradictoire | Fiche d'état de l'exemplaire (retrait / retour) | Assimilation des photos catalogue comme preuve de dommage |
 | **Tous critères d'éligibilité satisfaits** (`eligible`) | Badge « Loueur professionnel vérifié » + explication | « Meilleur loueur », « Garantie zéro défaut » |
@@ -692,8 +692,9 @@ export const CAMERA_CONSTRAINTS: MediaStreamConstraints = {
    n’est pas un moteur de validation sémantique et l’analyse IA reste hors périmètre ;
 4. **Checklist & Progression — livré** : boucle d’auto-évaluation, progression
    et intégration dans le formulaire produit du dashboard ;
-5. **Enforcement serveur des slots — restant** : accepter les noms canoniques dans
-   l’action d’upload et décider puis appliquer le gate « un slot requis par vue » ;
+5. **Enforcement serveur des slots — partiellement livré** : l’action d’upload et
+   les surfaces Photo Coach utilisent la liste canonique partagée ; décider puis
+   appliquer le gate « un slot requis par vue » reste à faire ;
 6. **Calcul de confiance loueur — restant** : moteur auditable du badge professionnel
    (`eligible`, `ineligible`, `pending`) lié aux états d’organisation et Stripe ;
 7. **Enrichissement facultatif** : profils d’équipe et guides locaux post-onboarding.
