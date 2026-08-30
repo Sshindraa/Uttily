@@ -7,6 +7,11 @@
 
 export { PhotoError, type PhotoErrorCode } from './errors';
 export { PostgresPhotoPublicationGate } from './postgres-publication-gate';
+export {
+  BIKE_CATEGORY_SLUG,
+  REQUIRED_BIKE_PHOTO_SLOTS,
+  missingRequiredBikePhotoSlots,
+} from './photo-publication-rules';
 export { deleteProductPhoto } from './delete-product-photo';
 export { uploadProductPhoto, type UploadProductPhotoInput } from './upload-product-photo';
 export { replaceProductPhoto, type ReplaceProductPhotoInput } from './replace-product-photo';

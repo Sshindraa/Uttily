@@ -80,6 +80,9 @@ travaux engineering à déclencher autour de ce plan.
   redéploiement `main` vérifié prêt.
 - [x] Vocabulaire des écrans de réservation réaligné sur « équipement » après
   vérification d'une réservation de kayak dans le dashboard loueur.
+- [x] Standard photo du pilote vélo formalisé dans `ADR-031` et appliqué par
+  Core, PostgreSQL et la visibilité publique via la migration `0050` ; les
+  autres catégories restent sur le seuil générique.
 - [ ] Décisions humaines du `pilot-unblock-plan.md` clôturées.
 - [ ] Politique de refunds split approuvée par Finance/Juridique, rendue
   exécutable par le provider et implémentée.

@@ -24,9 +24,8 @@ Le MVP n'est **pas encore prêt pour une production commerciale réelle**. La co
 staging réelle (Vercel, Neon, Clerk, Stripe TEST, R2, Resend) et le smoke test photo
 G8B-1 sont désormais validés. Des blocages externes (juridique, partenaires pilotes,
 Stripe LIVE, fiscalité/RGPD et décisions commerciales) restent à lever avant tout
-lancement public commercial. Le Photo Coach vélo est livré comme vertical slice
-technique ; son enforcement sémantique complet et le badge professionnel restent
-à finaliser.
+lancement public commercial. Le Photo Coach vélo et son enforcement serveur par
+slots sont livrés ; le badge professionnel reste à finaliser.
 
 ## Matrice de readiness
 
@@ -41,7 +40,7 @@ technique ; son enforcement sémantique complet et le badge professionnel resten
 | Documents transactionnels | Implémenté (G5B–G5D) | Tests unitaires + PostgreSQL, CI verte | R2 staging bucket | Oui (R2 staging) | Oui (R2 production) |
 | Emails transactionnels | Implémenté (G5E, G5H) | 40 tests PostgreSQL, CI verte | Resend staging domaine | Oui (Resend staging) | Oui (Resend production) |
 | Analytics | Implémenté (G7H-A/B) | Migration 0035, tests Core, CI verte | Validation privacy PRODUCTION | Non (gate staging) | Oui (validation privacy) |
-| Photos et gating publication | Upload réel G8B-1 + gate PostgreSQL + Photo Coach partiel G8B-3B4 | Migrations 0039/0040, validation octets, slots persistés, R2 privé, routes contrôlées, tests PostgreSQL et composants | Photos réelles pour chaque offre pilote ; alignement de l’allow-list et gate sémantique restant | Non : smoke R2 staging validé | Oui (sans photos valides, pas de publication publique) |
+| Photos et gating publication | Upload réel G8B-1 + gate PostgreSQL + Photo Coach G8B-3B4 | Migrations 0039/0040/0050, validation octets, slots persistés, gate vélo par slots, R2 privé, routes contrôlées, tests PostgreSQL et composants | Photos réelles pour chaque offre pilote ; badge professionnel restant | Non : smoke R2 staging validé | Oui (sans photos valides ni slots vélo requis, pas de publication publique) |
 | Dashboard loueur | Implémenté (G7G) | Projection Core, UI, tests, CI verte | Aucune | Non | Non |
 | Multi-tenant et sécurité | Implémenté | Tests d'isolation PostgreSQL, sentinelles fail-closed, CI verte | Aucune | Non | Non |
 | Worker et outbox | Implémenté (G5F, G5H-C2C) | 441 tests worker, bundle smoke-testé, CI verte | Vercel Cron staging, R2/Resend staging | Oui (cron staging) | Oui (cron production) |
@@ -56,14 +55,14 @@ format/taille/dimensions, upload R2 réel, routes contrôlées et
 
 Le Photo Coach G8B-3B4 ajoute le contrat partagé des slots, la migration `0040`,
 la persistance du `slot_type`, le viseur caméra, les overlays, la checklist et la
-progression. À ce stade, le gate ne vérifie pas encore un slot requis de chaque
-type et l’action serveur doit encore accepter les deux noms canoniques utilisés
-par l’interface (`THREE_QUARTER_FRONT`, `SECONDARY_VIEW`). Le badge de loueur
-professionnel reste non implémenté.
+progression. L'ADR-031 et la migration `0050` ajoutent désormais l'enforcement
+du gate par slots pour la catégorie `bike` dans Core, PostgreSQL et la visibilité
+publique. Le badge de loueur professionnel reste non implémenté.
 
 **Une offre réelle ne peut être publiée que si elle possède trois photos valides
-distinctes.** La qualité sémantique des vues et le badge ne doivent pas être
-présentés comme vérifiés tant que leurs verrous serveur ne sont pas livrés.
+distinctes ; un vélo doit en plus couvrir les trois slots canoniques.** Le badge
+professionnel ne doit pas être présenté comme vérifié tant que son calcul
+auditable n'est pas livré.
 
 ## Travaux restants classés par priorité
 
@@ -89,7 +88,7 @@ minimale et rollback. La preuve détaillée est conservée dans
 
 ### P1 — Expérience pilote
 
-- Finalisation G8B-3B4 : enforcement sémantique des slots et badge professionnel.
+- Finalisation G8B-3B4 : badge professionnel auditable.
 - Calibration des seuils viewport avec données réelles.
 - Traduction du contenu libre des loueurs (FR+EN).
 
@@ -103,15 +102,12 @@ minimale et rollback. La preuve détaillée est conservée dans
 
 ### G8B-3B4 — Clôture du standard visuel et de la confiance
 
-**Périmètre proposé :**
+**Périmètre restant :**
 
-- Aligner l’allow-list de l’action serveur sur les slots canoniques utilisés par
-  l’interface.
-- Décider si le gate de publication exige un slot obligatoire de chaque type, puis
-  appliquer cette règle dans PostgreSQL/Core avec tests d’intégration.
 - Implémenter le statut du badge professionnel uniquement à partir de critères
   vérifiables, avec retrait fail-closed.
-- Mettre à jour les preuves de readiness et le parcours d’onboarding.
+- Mettre à jour les preuves de readiness et le parcours d’onboarding avec les
+  données réelles du pilote.
 
 **Limites explicites :**
 

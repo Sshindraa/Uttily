@@ -8,11 +8,11 @@ import { productPhotoFileState } from '../src/schema';
 
 /**
  * Tests d'intégration PostgreSQL du schéma G7F-A2 — métadonnées photo produit
- * et gate de publication (ADR-020, migration 0034).
+ * et gate de publication (ADR-020, migrations 0034 et 0050).
  *
  * Vérifie :
- * - La migration 0034 (enum, table product_photos, FK composite, contraintes
- *   CHECK, index, triggers, fonction de comptage).
+ * - Les migrations 0034 et 0050 (enum, table product_photos, FK composite,
+ *   contraintes CHECK, index, triggers et fonctions de comptage).
  * - Le rejeu idempotent et le rollback (DROP tout).
  * - L'alignement enum PostgreSQL / schéma Drizzle.
  * - Les états PENDING_UPLOAD, AVAILABLE, REJECTED, DELETED et leurs invariants.
@@ -24,7 +24,7 @@ import { productPhotoFileState } from '../src/schema';
  * - Le trigger de protection contre la suppression sous le seuil (court-circuit).
  * - La concurrence (deux connexions, 4→3 jamais 4→2).
  * - L'absence d'événement outbox photo_object_cleanup.
- * - Le journal de migrations (49 entrées).
+ * - Le journal de migrations (50 entrées).
  */
 
 const TEST_DB_NAME = 'uttily_test_g7f_a_photos';
@@ -105,16 +105,20 @@ interface BaseIds {
   productId: string;
 }
 
-async function seedBaseData(sql: postgres.Sql, slugSuffix?: string): Promise<BaseIds> {
+async function seedBaseData(
+  sql: postgres.Sql,
+  slugSuffix?: string,
+  categorySlug = 'equipment',
+): Promise<BaseIds> {
   const suffix = slugSuffix ?? Math.random().toString(36).slice(2, 10);
   const org = await sql`
     INSERT INTO "organizations" ("legal_name", "slug", "default_currency")
     VALUES (${'Test Org ' + suffix}, ${'org-' + suffix}, 'EUR')
     RETURNING "id"
   `.then((r) => r[0]!);
-  const category = await sql`SELECT "id" FROM "categories" WHERE "slug" = 'equipment' LIMIT 1`.then(
-    (r) => r[0]!,
-  );
+  const category = await sql`
+    SELECT "id" FROM "categories" WHERE "slug" = ${categorySlug} LIMIT 1
+  `.then((r) => r[0]!);
   const product = await sql`
     INSERT INTO "products" ("organization_id", "category_id", "name", "slug")
     VALUES (${org.id}, ${category.id}, 'Kayak', ${'kayak-' + suffix})
@@ -147,16 +151,19 @@ async function insertAvailablePhoto(
   productId: string,
   checksum: string,
   storageKeySuffix?: string,
+  slotType?: string,
 ): Promise<string> {
   const suffix = storageKeySuffix ?? Math.random().toString(36).slice(2, 10);
   const photo = await sql`
     INSERT INTO product_photos (
       organization_id, product_id, storage_key,
+      slot_type,
       content_type, byte_size, width_px, height_px, checksum_sha256,
       sort_order, file_state
     )
     VALUES (
       ${orgId}, ${productId}, ${'product-photos/' + suffix},
+      CAST(${slotType ?? null} AS product_photo_slot_type),
       'image/jpeg', 102400, 800, 600, ${checksum},
       0, 'AVAILABLE'
     )
@@ -244,6 +251,7 @@ describe.skipIf(shouldSkipIntegrationTests())('G7F-A2 — Photos et gate de publ
         await sql`DROP FUNCTION IF EXISTS guard_product_photo_immutability()`;
         await sql`DROP FUNCTION IF EXISTS guard_product_photo_deletion()`;
         await sql`DROP FUNCTION IF EXISTS check_product_publication_photos()`;
+        await sql`DROP FUNCTION IF EXISTS count_valid_product_photo_slots(uuid)`;
         await sql`DROP FUNCTION IF EXISTS count_valid_product_photos(uuid)`;
         await sql`DROP INDEX IF EXISTS product_photos_storage_key_unique`;
         await sql`DROP INDEX IF EXISTS product_photos_product_id_checksum_unique`;
@@ -297,17 +305,17 @@ describe.skipIf(shouldSkipIntegrationTests())('G7F-A2 — Photos et gate de publ
       ]);
     });
 
-    it('A5 — journal de migrations : __drizzle_migrations a 49 entrées, _journal.json a 49 entrées', async () => {
+    it('A5 — journal de migrations : __drizzle_migrations a 50 entrées, _journal.json a 50 entrées', async () => {
       if (!testUrl) return;
       const sql = postgres(testUrl, { max: 1 });
       try {
         const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-        expect(rows.length).toBe(49);
+        expect(rows.length).toBe(50);
 
         const __dirname = dirname(fileURLToPath(import.meta.url));
         const journalPath = join(__dirname, '..', 'drizzle', 'meta', '_journal.json');
         const journal = JSON.parse(readFileSync(journalPath, 'utf-8'));
-        expect(journal.entries.length).toBe(49);
+        expect(journal.entries.length).toBe(50);
         expect(journal.entries[33]!.tag).toBe('0034_g7f_a_product_photos');
         expect(journal.entries[33]!.idx).toBe(33);
       } finally {
@@ -835,6 +843,27 @@ describe.skipIf(shouldSkipIntegrationTests())('G7F-A2 — Photos et gate de publ
         await sql.end();
       }
     });
+
+    it('D6 — slot immuable après AVAILABLE', async () => {
+      if (!testUrl) return;
+      const sql = postgres(testUrl, { max: 1 });
+      try {
+        const ids = await seedBaseData(sql);
+        const photoId = await insertAvailablePhoto(
+          sql,
+          ids.orgId,
+          ids.productId,
+          fakeChecksum(116),
+          'd6-slot',
+          'HERO_PROFILE',
+        );
+        await expect(
+          sql`UPDATE product_photos SET slot_type = 'SECONDARY_VIEW' WHERE id = ${photoId}`,
+        ).rejects.toThrow(/immuables/);
+      } finally {
+        await sql.end();
+      }
+    });
   });
 
   // =========================================================================
@@ -1021,6 +1050,55 @@ describe.skipIf(shouldSkipIntegrationTests())('G7F-A2 — Photos et gate de publ
         await sql.end();
       }
     });
+
+    it('G6 — publication vélo : les trois slots canoniques sont requis', async () => {
+      if (!testUrl) return;
+      const sql = postgres(testUrl, { max: 1 });
+      try {
+        const complete = await seedBaseData(sql, 'g6-bike-complete', 'bike');
+        await insertAvailablePhoto(
+          sql,
+          complete.orgId,
+          complete.productId,
+          fakeChecksum(261),
+          'g6-bike-hero',
+          'HERO_PROFILE',
+        );
+        await insertAvailablePhoto(
+          sql,
+          complete.orgId,
+          complete.productId,
+          fakeChecksum(262),
+          'g6-bike-three-quarter',
+          'THREE_QUARTER_FRONT',
+        );
+        await insertAvailablePhoto(
+          sql,
+          complete.orgId,
+          complete.productId,
+          fakeChecksum(263),
+          'g6-bike-secondary',
+          'SECONDARY_VIEW',
+        );
+        await sql`UPDATE products SET publication_status = 'PUBLISHED' WHERE id = ${complete.productId}`;
+
+        const incomplete = await seedBaseData(sql, 'g6-bike-incomplete', 'bike');
+        for (let i = 0; i < 3; i++) {
+          await insertAvailablePhoto(
+            sql,
+            incomplete.orgId,
+            incomplete.productId,
+            fakeChecksum(271 + i),
+            `g6-bike-incomplete-${i}`,
+          );
+        }
+        await expect(
+          sql`UPDATE products SET publication_status = 'PUBLISHED' WHERE id = ${incomplete.productId}`,
+        ).rejects.toThrow(/slots photo canoniques/);
+      } finally {
+        await sql.end();
+      }
+    });
   });
 
   // =========================================================================
@@ -1087,6 +1165,38 @@ describe.skipIf(shouldSkipIntegrationTests())('G7F-A2 — Photos et gate de publ
           SELECT count_valid_product_photos(${ids.productId}) AS count
         `.then((r) => r[0]!.count);
         expect(Number(count)).toBe(3);
+      } finally {
+        await sql.end();
+      }
+    });
+
+    it('H2b — suppression du seul slot canonique vélo PUBLISHED → refusée', async () => {
+      if (!testUrl) return;
+      const sql = postgres(testUrl, { max: 1 });
+      try {
+        const ids = await seedBaseData(sql, 'h2b-bike', 'bike');
+        const photoIds: string[] = [];
+        const slots = ['HERO_PROFILE', 'THREE_QUARTER_FRONT', 'SECONDARY_VIEW'];
+        for (let i = 0; i < slots.length; i++) {
+          photoIds.push(
+            await insertAvailablePhoto(
+              sql,
+              ids.orgId,
+              ids.productId,
+              fakeChecksum(326 + i),
+              `h2b-bike-${i}`,
+              slots[i],
+            ),
+          );
+        }
+        await sql`UPDATE products SET publication_status = 'PUBLISHED' WHERE id = ${ids.productId}`;
+        await expect(
+          sql`
+            UPDATE product_photos
+            SET file_state = 'DELETED', deleted_at = now()
+            WHERE id = ${photoIds[0]!}
+          `,
+        ).rejects.toThrow(/slot photo canonique/);
       } finally {
         await sql.end();
       }

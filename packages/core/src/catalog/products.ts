@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, count, sql } from 'drizzle-orm';
 import type { DatabaseClient, DbExecutor } from '@uttily/database';
 import { categories, products, productVariants, productPhotos } from '@uttily/database';
+import { REQUIRED_BIKE_PHOTO_SLOTS } from '@uttily/contracts';
 import type {
   ProductRecord,
   CreateProductInput,
@@ -10,6 +11,7 @@ import type {
 import { isValidSlug, slugify } from '../identity/slug';
 import { AuthorizationError } from '../identity/permissions';
 import { CatalogError, isUniqueViolation } from './errors';
+import { missingRequiredBikePhotoSlots } from '../photos/photo-publication-rules';
 
 /**
  * Crée un produit et sa variante "Standard" atomiquement.
@@ -235,6 +237,7 @@ export async function updateProduct(
  * 3. catégorie active
  * 4. au moins une variante active
  * 5. au moins 3 photos valides (file_state = 'AVAILABLE', checksums distincts)
+ * 6. pour la catégorie `bike`, les trois slots canoniques d'ADR-031
  *
  * @returns tableau de messages d'erreur (vide si le produit est prêt à publier).
  *          ["Produit introuvable."] si le produit n'existe pas.
@@ -247,6 +250,7 @@ export async function updateProduct(
  * - Catégorie active
  * - Au moins 1 variante active
  * - Au moins 3 photos valides (checksums distincts)
+ * - Pour un vélo, `HERO_PROFILE`, `THREE_QUARTER_FRONT` et `SECONDARY_VIEW`
  */
 export async function collectPublicationFailuresBatch(
   tx: DbExecutor,
@@ -267,15 +271,18 @@ export async function collectPublicationFailuresBatch(
       description: products.description,
       categoryId: products.categoryId,
       categoryIsActive: categories.isActive,
+      categorySlug: categories.slug,
     })
     .from(products)
     .leftJoin(categories, eq(products.categoryId, categories.id))
     .where(and(inArray(products.id, productIds), isNull(products.deletedAt)));
 
   const foundIds = new Set<string>();
+  const categorySlugByProduct = new Map<string, string | null>();
 
   for (const row of productRows) {
     foundIds.add(row.id);
+    categorySlugByProduct.set(row.id, row.categorySlug);
     const failures: string[] = [];
     if (row.name.trim().length < 2) failures.push('Le nom doit faire au moins 2 caractères.');
     if (row.description.trim().length === 0) failures.push('La description est requise.');
@@ -339,11 +346,45 @@ export async function collectPublicationFailuresBatch(
     photoCounts.map((r) => [r.productId, Number(r.value)]),
   );
 
+  // Les vélos ont trois slots canoniques obligatoires (ADR-031). Les autres
+  // catégories restent soumises au minimum générique de trois checksums.
+  const requiredBikeSlotRows = await tx
+    .select({
+      productId: productPhotos.productId,
+      slotType: productPhotos.slotType,
+    })
+    .from(productPhotos)
+    .where(
+      and(
+        inArray(productPhotos.productId, productIds),
+        eq(productPhotos.fileState, 'AVAILABLE'),
+        isNull(productPhotos.deletedAt),
+        sql`${productPhotos.checksumSha256} IS NOT NULL`,
+        inArray(productPhotos.slotType, [...REQUIRED_BIKE_PHOTO_SLOTS]),
+      ),
+    )
+    .groupBy(productPhotos.productId, productPhotos.slotType);
+
+  const bikeSlotsByProduct = new Map<string, Set<string | null>>();
+  for (const row of requiredBikeSlotRows) {
+    const slots = bikeSlotsByProduct.get(row.productId) ?? new Set<string | null>();
+    slots.add(row.slotType);
+    bikeSlotsByProduct.set(row.productId, slots);
+  }
+
   for (const id of productIds) {
     if (foundIds.has(id)) {
       const pCount = distinctPhotosByProduct.get(id) ?? 0;
       if (pCount < 3) {
         result.get(id)?.push('Au moins 3 photos valides sont requises pour la publication.');
+      }
+
+      const missingBikeSlots = missingRequiredBikePhotoSlots(
+        categorySlugByProduct.get(id),
+        bikeSlotsByProduct.get(id) ?? new Set<string | null>(),
+      );
+      if (missingBikeSlots.length > 0) {
+        result.get(id)?.push(`Slots photo vélo manquants : ${missingBikeSlots.join(', ')}.`);
       }
     }
   }
@@ -371,6 +412,7 @@ export async function collectPublicationFailures(
  * - catégorie active (verrouillée pendant la transaction)
  * - au moins une variante active
  * - au moins 3 photos valides (file_state = 'AVAILABLE', checksums distincts)
+ * - pour un vélo, une photo disponible dans chacun des trois slots canoniques
  * Pas d'exemplaire requis : un produit publié sans stock est un état légitime.
  */
 export async function publishProduct(

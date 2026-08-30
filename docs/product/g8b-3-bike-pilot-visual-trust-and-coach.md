@@ -1,6 +1,6 @@
 # G8B-3 — Pilote Vélo Lyon, Confiance Publique & Spécification Photo Coach
 
-- **Statut** : spécification de référence validée ; implémentation Photo Coach partielle livrée
+- **Statut** : standard visuel vélo validé ; enforcement serveur livré ; badge professionnel restant
 - **Date** : 2026-08-27
 - **Périmètre** : Cadrage commercial Lyon (G8B-3A), Standard de confiance & vérité produit, Expérience & Moteur technique Photo Coach
 - **Relie à** : ADR-002, ADR-010, ADR-014, ADR-017, ADR-020, ADR-026, G8B-1, G8B-3B, G8B-3B1, G8B-3B4, `docs/product/mvp-scope.md`, `docs/product/lot5-finance-legal-validation.md`
@@ -13,13 +13,14 @@ les overlays SVG, la checklist, la progression et le fallback caméra sont livr�
 et testés. Le stockage et la livraison photo réelle sont couverts séparément par
 G8B-1 et son smoke test staging.
 
-Cette livraison ne vaut pas encore enforcement complet du standard sémantique :
-le gate PostgreSQL exige toujours trois photos `AVAILABLE` avec checksums
-distincts, sans exiger un slot de chaque type. L’action serveur et l’ancienne
-surface « Mes vélos » utilisent désormais les noms canoniques
-`THREE_QUARTER_FRONT` et `SECONDARY_VIEW`. Le badge « loueur professionnel vérifié » reste une
-spécification ; aucun statut de vérification ni calcul auditable n’est encore
-implémenté. Aucune analyse d’image par IA n’est activée.
+L'enforcement serveur du standard sémantique est livré par l'ADR-031 : pour la
+catégorie `bike`, le gate PostgreSQL, Core et la visibilité publique exigent les
+trois slots canoniques `HERO_PROFILE`, `THREE_QUARTER_FRONT` et
+`SECONDARY_VIEW`, en plus de trois checksums distincts. L’action serveur et
+l’ancienne surface « Mes vélos » utilisent les noms canoniques. Le badge
+« loueur professionnel vérifié » reste une spécification ; aucun statut de
+vérification ni calcul auditable n’est encore implémenté. Aucune analyse
+d’image par IA n’est activée.
 
 ---
 
@@ -692,9 +693,9 @@ export const CAMERA_CONSTRAINTS: MediaStreamConstraints = {
    n’est pas un moteur de validation sémantique et l’analyse IA reste hors périmètre ;
 4. **Checklist & Progression — livré** : boucle d’auto-évaluation, progression
    et intégration dans le formulaire produit du dashboard ;
-5. **Enforcement serveur des slots — partiellement livré** : l’action d’upload et
-   les surfaces Photo Coach utilisent la liste canonique partagée ; décider puis
-   appliquer le gate « un slot requis par vue » reste à faire ;
+5. **Enforcement serveur des slots — livré** : ADR-031 et migration `0050`
+   appliquent le gate « un slot canonique requis par vue » à la catégorie `bike`
+   dans Core, PostgreSQL et la visibilité publique ;
 6. **Calcul de confiance loueur — restant** : moteur auditable du badge professionnel
    (`eligible`, `ineligible`, `pending`) lié aux états d’organisation et Stripe ;
 7. **Enrichissement facultatif** : profils d’équipe et guides locaux post-onboarding.

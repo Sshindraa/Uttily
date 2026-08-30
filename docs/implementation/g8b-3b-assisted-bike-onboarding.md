@@ -64,8 +64,8 @@ Une fiche est remplie par modèle commercial :
 - contraintes d'usage réellement appliquées par le loueur ;
 - trois photos distinctes minimum, conformes aux règles d'upload ; le Photo
   Coach propose les slots `HERO_PROFILE`, `THREE_QUARTER_FRONT` et
-  `SECONDARY_VIEW`, mais le gate de publication n’exige pas encore la
-  couverture des trois slots ;
+  `SECONDARY_VIEW`, et l'ADR-031 impose désormais la couverture des trois
+  slots pour la catégorie `bike` ;
 - prix en EUR, durée couverte et éventuels paliers multi-jours.
 
 Une information absente n'est pas inventée. Les textes libres restent en
@@ -117,9 +117,11 @@ Un loueur est techniquement prêt uniquement si toutes les lignes sont vraies :
 - [ ] établissement public complet, géocodé, avec retrait et horaires ;
 - [ ] compte Stripe TEST `ENABLED` pour le smoke test ;
 - [ ] au moins un produit vélo avec variante active ;
-- [ ] au moins trois photos valides par produit publié ;
+- [ ] au moins trois photos valides par produit publié, dont
+      `HERO_PROFILE`, `THREE_QUARTER_FRONT` et `SECONDARY_VIEW` pour un vélo ;
 - [ ] si le Photo Coach est utilisé, vérifier que les slots affichés correspondent
-      au contrat courant ; la vérification serveur par slot reste à finaliser ;
+      au contrat courant ; la vérification serveur par slot est appliquée par
+      l'ADR-031 et la migration `0050` ;
 - [ ] plan tarifaire EUR actif et compatible avec les horaires ;
 - [ ] exemplaires physiques `ACTIVE` en état publiable ;
 - [ ] offre visible dans la recherche Lyon aux dates réellement disponibles ;
@@ -138,7 +140,7 @@ organisation individuelle.
 | Organisation | création, rôles et invitations | édition du nom public à rendre explicite |
 | Établissement | formulaire complet, coordonnées PostGIS, horaires, retrait et publication fail-closed | validation fonctionnelle à faire avec un loueur pilote |
 | Catalogue | produit, catégorie, description, variantes | traduction du contenu libre non décidée |
-| Photos | upload R2, validation, suppression, Photo Coach et slots persistés | l’allow-list serveur et les surfaces Photo Coach utilisent les noms canoniques ; le gate reste fondé sur trois checksums distincts, sans couverture obligatoire par slot |
+| Photos | upload R2, validation, suppression, Photo Coach et slots persistés | l’allow-list serveur, les surfaces Photo Coach et le gate par slots vélo utilisent les noms canoniques ; le badge professionnel reste à implémenter |
 | Exemplaires | création, état, statut, lieu, transfert | aucun écart bloquant technique connu |
 | Tarification | moteur, schéma et UI loueur pour créer/activer les plans tarifaires | validation fonctionnelle à faire avec un loueur pilote |
 | Paiement | onboarding Stripe Connect et readiness | LIVE reste bloqué par finance/juridique |

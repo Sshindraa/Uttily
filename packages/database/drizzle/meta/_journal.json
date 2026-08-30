@@ -344,6 +344,13 @@
       "when": 1786800000011,
       "tag": "0049_split_marketplace_fees",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1788107362000,
+      "tag": "0050_bike_photo_publication_gate",
+      "breakpoints": true
     }
   ]
 }

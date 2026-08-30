@@ -8,7 +8,9 @@
  * éligible si et seulement si :
  * - il n'est pas soft-deleted (`deleted_at IS NULL`) ;
  * - il possède au moins 3 photos valides distinctes (`file_state = 'AVAILABLE'`,
- *   `deleted_at IS NULL`, checksums distincts).
+ *   `deleted_at IS NULL`, checksums distincts) ;
+ * - s'il est de catégorie `bike`, il possède aussi les trois slots canoniques
+ *   d'ADR-031.
  *
  * Fail-closed : une panne PostgreSQL produit une erreur typée
  * `PUBLICATION_GATE_UNAVAILABLE`, jamais un `Set` vide silencieux.
@@ -19,6 +21,7 @@ import { sql } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import type { PublicProductPublicationGate } from '../public-search/types';
 import { PublicSearchError } from '../public-search/errors';
+import { REQUIRED_BIKE_PHOTO_SLOTS } from '@uttily/contracts';
 
 export class PostgresPhotoPublicationGate implements PublicProductPublicationGate {
   /**
@@ -49,12 +52,14 @@ export class PostgresPhotoPublicationGate implements PublicProductPublicationGat
 
       const result = await db.execute<{ id: string }>(
         // Une seule requête batch : compte les photos valides distinctes
-        // par produit et filtre ceux avec >= 3.
+        // par produit et filtre ceux avec >= 3. Pour les vélos, les trois slots
+        // canoniques doivent également être présents (ADR-031).
         // La jointure sur organization_id garantit la cohérence multi-tenant.
         // Voir ADR-020 §D.2 et plan §4.4.
         sql`
           SELECT p.id
           FROM products p
+          INNER JOIN categories c ON c.id = p.category_id
           WHERE p.id IN (${uuidList})
             AND p.deleted_at IS NULL
             AND (
@@ -66,6 +71,23 @@ export class PostgresPhotoPublicationGate implements PublicProductPublicationGat
                 AND pp.deleted_at IS NULL
                 AND pp.checksum_sha256 IS NOT NULL
             ) >= 3
+            AND (
+              c.slug <> 'bike'
+              OR (
+                SELECT COUNT(DISTINCT pp.slot_type)
+                FROM product_photos pp
+                WHERE pp.product_id = p.id
+                  AND pp.organization_id = p.organization_id
+                  AND pp.file_state = 'AVAILABLE'
+                  AND pp.deleted_at IS NULL
+                  AND pp.checksum_sha256 IS NOT NULL
+                  AND pp.slot_type IN (
+                    'HERO_PROFILE',
+                    'THREE_QUARTER_FRONT',
+                    'SECONDARY_VIEW'
+                  )
+              ) = ${REQUIRED_BIKE_PHOTO_SLOTS.length}
+            )
         `,
       );
 

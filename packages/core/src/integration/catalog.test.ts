@@ -113,6 +113,7 @@ async function createProductForOrg(
   organizationId: string,
   name: string,
   categoryIdOrSlug = 'surf',
+  photoSlots?: readonly string[],
 ): Promise<{
   product: ReturnType<typeof getProduct> extends Promise<infer T> ? NonNullable<T> : never;
   variantId: string;
@@ -143,11 +144,12 @@ async function createProductForOrg(
     await db.execute(sql`
       INSERT INTO product_photos (
         organization_id, product_id, storage_key,
-        content_type, byte_size, width_px, height_px, checksum_sha256,
+        slot_type, content_type, byte_size, width_px, height_px, checksum_sha256,
         sort_order, file_state
       )
       VALUES (
         ${organizationId}, ${product.id}, ${'product-photos/test-' + product.id + '-' + i},
+        CAST(${photoSlots?.[i] ?? null} AS product_photo_slot_type),
         'image/jpeg', 102400, 800, 600, ${('000' + i).repeat(16).slice(0, 64)},
         ${i}, 'AVAILABLE'
       )
@@ -316,6 +318,45 @@ describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-ten
     const { product } = await createProductForOrg(organizationId, 'Pub NoStock Product');
     const published = await publishProduct(db, organizationId, product.id);
     expect(published.publicationStatus).toBe('PUBLISHED');
+  });
+
+  it('publication vélo : les trois slots canoniques sont requis', async () => {
+    if (!ctx || !db) return;
+    const { organizationId: incompleteOrg } = await setupOrgWithLocation(
+      'pub-bike-incomplete@example.com',
+      'Pub Bike Incomplete Org',
+    );
+    const { product: incompleteBike } = await createProductForOrg(
+      incompleteOrg,
+      'Bike Incomplete Product',
+      'bike',
+      ['HERO_PROFILE', 'THREE_QUARTER_FRONT', 'FULL_BIKE'],
+    );
+    const incompleteReadiness = await getProductPublicationReadiness(
+      db,
+      incompleteOrg,
+      incompleteBike.id,
+    );
+    expect(incompleteReadiness).not.toBeNull();
+    expect(incompleteReadiness?.ready).toBe(false);
+    expect(incompleteReadiness?.failures.join('\n')).toContain('SECONDARY_VIEW');
+    await expect(publishProduct(db, incompleteOrg, incompleteBike.id)).rejects.toThrow(
+      /SECONDARY_VIEW/,
+    );
+
+    const { organizationId: completeOrg } = await setupOrgWithLocation(
+      'pub-bike-complete@example.com',
+      'Pub Bike Complete Org',
+    );
+    const { product: completeBike } = await createProductForOrg(
+      completeOrg,
+      'Bike Complete Product',
+      'bike',
+      ['HERO_PROFILE', 'THREE_QUARTER_FRONT', 'SECONDARY_VIEW'],
+    );
+    await expect(publishProduct(db, completeOrg, completeBike.id)).resolves.toMatchObject({
+      publicationStatus: 'PUBLISHED',
+    });
   });
 
   it('publication produit incomplet (pas de description) rejetée', async () => {
