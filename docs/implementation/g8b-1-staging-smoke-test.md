@@ -6,7 +6,7 @@
 - Déploiement : Vercel `uttily-staging`, commit `ae7ce01`
 - URL : `https://uttily-staging.vercel.app`
 - Base : Neon branche `staging`, migration `0039` appliquée ; journal Drizzle à
-  39 entrées
+  49 entrées
 - Stockage : bucket R2 privé EU `uttily-staging-photos`
 - Authentification : Clerk TEST, utilisateur
   `uttily-staging-e2e+clerk_test@example.com`, rôle `Admin` dans l'organisation

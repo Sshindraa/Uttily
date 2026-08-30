@@ -95,6 +95,23 @@ export default async function PublicOfferPage({
             <article className={styles.productCard}>
               <p className={styles.eyebrow}>{offer.organizationPublicDisplayName}</p>
               <h1 className={styles.productTitle}>{offer.productName}</h1>
+              {offer.price ? (
+                <p
+                  style={{
+                    margin: '0 0 1rem',
+                    color: 'var(--accent)',
+                    fontSize: '1.25rem',
+                    fontWeight: 800,
+                  }}
+                >
+                  {offer.price.publicLabel}{' '}
+                  {new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'en-GB', {
+                    style: 'currency',
+                    currency: offer.price.currency,
+                  }).format(offer.price.customerTotalAmountMinor / 100)}{' '}
+                  / jour
+                </p>
+              ) : null}
               {offer.photos.length > 0 ? (
                 <div
                   className={styles.photoGallery}

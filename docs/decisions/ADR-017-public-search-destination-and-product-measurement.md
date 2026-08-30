@@ -2,7 +2,7 @@
 
 - **Statut** : Accepted — réserves non bloquantes listées
 - **Date** : 2026-08-06
-- **Phase** : 11 / Lot 7 — G7B : gel documentaire complet ; G7C : implémentation provisoire dans le worktree (migration 0031 non commitée, à réviser en G7C-R3) ; G7C-R3 : migration 0031 alignée (pays, destinations i18n, traductions, locations renforcées)
+- **Phase** : 11 / Lot 7 — G7B : gel documentaire complet ; G7C-R3 : migration 0031 alignée (pays, destinations i18n, traductions, locations renforcées)
 - **Décideurs** : Porteur produit Uttily, engineering, juridique / privacy
 - **Relie à** : ADR-004, ADR-009, ADR-014, ADR-018 ; `docs/implementation/g7a-public-search-audit-and-delivery-plan.md` ; `docs/product/lot7-arbitrage.md`
 
@@ -19,6 +19,11 @@
 > Geoapify par une architecture de résolution local-first, Lyon comme première
 > ville produit et un benchmark local PostgreSQL/Photon/IGN avant le choix du
 > fournisseur final.
+
+> **Note historique** : les références à une migration 0031 non commitée dans
+> les anciennes sections décrivent l'état avant G7C-R3. La migration est
+> désormais suivie, alignée et validée ; la branche et le commit actuellement
+> checkoutés font foi pour l'état courant.
 
 ## 1. Contexte et portée du gel G7B
 

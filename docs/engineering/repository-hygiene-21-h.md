@@ -1,4 +1,8 @@
-# Repository hygiene — 21-H
+# Repository hygiene — 21-H (audit historique)
+
+> Ce document fige les constats de l'audit 21-H. Pour l'état courant, la
+> branche et le commit checkoutés font foi ; les usages apparus après cet audit
+> ne doivent pas être interprétés comme des suppressions à effectuer.
 
 ## Périmètre vérifié
 
@@ -28,10 +32,15 @@ contrat d'URL.
 ## Dépendances, exports et package UI
 
 Les manifests racine et workspaces ont été comparés aux imports applicatifs.
-Aucune dépendance ou export public n'a une preuve suffisante d'inutilité ; aucune
-mise à niveau n'est effectuée. `@uttily/ui` n'est pas encore consommé : il garde
-uniquement ses métadonnées, son `tsconfig` et `src/index.ts`. Le test vide de
-point d'entrée a été supprimé, car il ne protégeait aucun contrat.
+À la date de cet audit, aucune dépendance ou export public n'avait une preuve
+suffisante d'inutilité et aucune mise à niveau n'était effectuée. À cette date,
+`@uttily/ui` n'était pas encore consommé : il gardait uniquement ses métadonnées,
+son `tsconfig` et `src/index.ts`. Le test vide de point d'entrée avait été
+supprimé, car il ne protégeait aucun contrat.
+
+Depuis, la branche courante consomme `@uttily/ui` dans `apps/web` pour les
+primitives, les boutons, les cartes, les badges et les en-têtes. Le package est
+donc conservé et ne constitue pas un candidat de nettoyage.
 
 ## Documentation, dette et tests
 

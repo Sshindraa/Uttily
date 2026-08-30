@@ -1,6 +1,6 @@
 # ADR-023 — Modifications financières append-only des réservations avant retrait
 
-- **Statut** : Accepted (conception approuvée ; C1 livré, C2/C3 implémentés dans des commits locaux empilés, C4-S et C4-A committés localement dans la pile ; G7M-C4-B est implémenté et validé dans le worktree mais non commité ; rien de C2–C4 n'est encore fusionné sur main ; C5 reste pending ; validation Core globale pending CI)
+- **Statut** : Accepted — conception approuvée ; G7M C1–C5 livré, validé et fusionné sur `main` ; validation Core/Web/PostgreSQL et CI post-merge vertes. Les remboursements split restent volontairement bloqués tant que leur politique Finance/Juridique n'est pas signée.
 - **Date** : 2026-08-10
 - **Décideurs** : Porteur produit Uttily, engineering
 - **Relie à** : ADR-009, ADR-010, ADR-011, ADR-013, ADR-018 ; G7M/G7P-C
@@ -271,8 +271,8 @@ READY_TO_APPLY → FAILED
 
 La migration 0037 (`G7M-C4-S`) rend `READY_TO_APPLY → EXPIRED` explicite dans
 le trigger PostgreSQL tout en conservant l'immutabilité des états terminaux.
-Le code d'expiration C4-A qui décidera quand effectuer cette transition reste
-à implémenter.
+Le code d'expiration C4-A qui décide quand effectuer cette transition est
+implémenté dans `expireSupplementAmendmentsBatch`.
 
 **Par type** :
 

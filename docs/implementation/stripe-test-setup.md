@@ -60,7 +60,7 @@ suivantes. `pnpm dev` lance `next dev` depuis `apps/web/`, donc Next.js charge
 | Variable | Valeur attendue | Note |
 | --- | --- | --- |
 | `PUBLIC_APP_URL` | `http://localhost:3000` | URL absolue sans chemin ; HTTPS + hostname public en staging/production |
-| `PLATFORM_COMMISSION_RATE_BPS` | `1000` | 10 % dans cet exemple ; même `0` doit être explicite |
+| Frais marketplace | `split-13-7-v1` | Règle serveur fermée ; aucun taux dans `.env.local` |
 
 **Options facultatives (non bloquantes)** :
 
@@ -73,10 +73,10 @@ suivantes. `pnpm dev` lance `next dev` depuis `apps/web/`, donc Next.js charge
 > finance/juridique (ADR-010 §4) ne sont pas fermés. Un test ne peut **jamais**
 > contourner ce verrou.
 
-Le serveur refuse l'initiation si `PUBLIC_APP_URL` ou
-`PLATFORM_COMMISSION_RATE_BPS` est absente/invalide. Une commission nulle est
-également refusée en environnement Stripe LIVE ; aucune valeur de test ne peut
-donc passer silencieusement vers un paiement LIVE.
+Le serveur refuse l'initiation si `PUBLIC_APP_URL` est absente/invalide ou si le
+snapshot marketplace du draft est absent, falsifié ou inconnu. Le modèle
+`split-13-7-v1` est calculé côté serveur et ne peut pas être remplacé par une
+valeur de test ou une variable d'environnement.
 
 ## Création du fichier .env.local
 

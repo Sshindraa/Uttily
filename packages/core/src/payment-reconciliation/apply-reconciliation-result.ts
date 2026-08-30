@@ -124,7 +124,10 @@ export function validateProviderResultCompatibility(
       `PROVIDER_AUTHORITY_MISMATCH: Le connected_account_id du provider (${providerResult.connectedAccountId}) ne correspond pas au snapshot (${claimed.connectedAccountId}).`,
     );
   }
-  const expectedFee = claimed.commissionAmountMinor === 0 ? null : claimed.commissionAmountMinor;
+  const expectedFeeAmountMinor = claimed.marketplaceFeeSnapshot
+    ? claimed.marketplaceFeeSnapshot.platformApplicationFeeAmountMinor
+    : claimed.commissionAmountMinor;
+  const expectedFee = expectedFeeAmountMinor === 0 ? null : expectedFeeAmountMinor;
   if (providerResult.applicationFeeAmountMinor !== expectedFee) {
     throw new ReconciliationError(
       'PROVIDER_AUTHORITY_MISMATCH',

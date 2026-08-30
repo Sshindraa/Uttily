@@ -475,7 +475,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
   // -------------------------------------------------------------------------
   // 1. Migration from scratch — toutes les tables Lot 5 existent
   // -------------------------------------------------------------------------
-  it('crée les 9 tables Lot 5 et __drizzle_migrations a 39 entrées', async () => {
+  it('crée les 9 tables Lot 5 et __drizzle_migrations a 49 entrées', async () => {
     if (!testUrl) return;
     const sql = postgres(testUrl, { max: 1 });
     try {
@@ -491,7 +491,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
       expect(lot5Tables.length).toBe(9);
 
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(48);
+      expect(rows.length).toBe(49);
     } finally {
       await sql.end();
     }
@@ -506,7 +506,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
     const sql = postgres(testUrl, { max: 1 });
     try {
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(48);
+      expect(rows.length).toBe(49);
     } finally {
       await sql.end();
     }
@@ -2580,6 +2580,27 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 5 — contraintes Pos
         RETURNING "id"
       `.then((r) => r[0]!);
       expect(outbox).toBeDefined();
+    } finally {
+      await sql.end();
+    }
+  });
+
+  it('autorise une mise à jour non financière sur payments sans customer_total_amount_minor', async () => {
+    if (!testUrl) return;
+    const sql = postgres(testUrl, { max: 1 });
+    try {
+      const ids = await seedBaseData(sql);
+      const { draftId } = await seedHeldDraftWithLine(sql, ids);
+      const payment = await insertPayment(sql, ids, draftId, validPaymentPayload()).then(
+        (r) => r[0]!,
+      );
+
+      await sql`UPDATE "payments" SET "status" = 'FAILED' WHERE "id" = ${payment.id}`;
+
+      const updated = await sql`SELECT "status" FROM "payments" WHERE "id" = ${payment.id}`.then(
+        (r) => r[0]!,
+      );
+      expect(updated.status).toBe('FAILED');
     } finally {
       await sql.end();
     }

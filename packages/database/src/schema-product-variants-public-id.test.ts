@@ -158,11 +158,11 @@ describe.skipIf(shouldSkipIntegrationTests())(
       if (!testUrl) return;
       const sql = postgres(testUrl, { max: 1 });
       try {
-        expect(await migrationCount(sql)).toBe(48);
+        expect(await migrationCount(sql)).toBe(49);
         const rows = await sql`
         SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at
       `;
-        expect(rows).toHaveLength(48);
+        expect(rows).toHaveLength(49);
 
         const { readFileSync } = await import('node:fs');
         const { dirname, join } = await import('node:path');

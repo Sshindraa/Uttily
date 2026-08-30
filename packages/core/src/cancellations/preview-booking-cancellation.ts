@@ -65,11 +65,13 @@ export async function previewBookingCancellation(
       customerEndAt: bookings.customerEndAt,
       confirmedAt: bookings.confirmedAt,
       totalAmountMinor: bookings.totalAmountMinor,
+      customerTotalAmountMinor: bookings.customerTotalAmountMinor,
       commissionAmountMinor: bookings.commissionAmountMinor,
       cancellationPolicySnapshot: bookings.cancellationPolicySnapshot,
       paymentId: bookings.paymentId,
       paymentAmountMinor: payments.amountMinor,
       paymentCommissionMinor: payments.commissionAmountMinor,
+      marketplaceFeeSnapshot: bookings.marketplaceFeeSnapshot,
       locationTimeZone: locations.timeZone,
     })
     .from(bookings)
@@ -111,6 +113,35 @@ export async function previewBookingCancellation(
   const rawSnapshot = booking.cancellationPolicySnapshot as
     CancellationPolicySnapshot | null | undefined;
   const policyCode = (rawSnapshot?.policy_code ?? 'FLEXIBLE').toUpperCase();
+
+  // La politique de remboursement des deux composants split n'est pas encore
+  // validée Finance/Legal. Ne pas projeter silencieusement une décision globale
+  // avec reverseTransfer/refundApplicationFee : le chemin split est bloqué.
+  if (booking.marketplaceFeeSnapshot !== null && booking.marketplaceFeeSnapshot !== undefined) {
+    return {
+      allowed: false,
+      reasonDisallowed:
+        'SPLIT_REFUND_UNRESOLVED : la politique de remboursement des frais marketplace doit être validée par Finance/Legal.',
+      bookingId,
+      paidAmountMinor:
+        booking.paymentAmountMinor ?? booking.customerTotalAmountMinor ?? booking.totalAmountMinor,
+      refundAmountMinor: 0,
+      retainedAmountMinor: 0,
+      originalCommissionMinor: 0,
+      commissionRefundedMinor: 0,
+      finalCommissionMinor: 0,
+      finalMerchantRevenueMinor: 0,
+      currency: 'EUR',
+      policyCode,
+      explanationCode: 'SPLIT_REFUND_UNRESOLVED',
+      explanationLabel:
+        'Annulation bloquée jusqu’à résolution séparée du remboursement du prix marchand et des frais de service.',
+      inventoryWillBeReleased: false,
+      customerStartAt: booking.customerStartAt,
+      locationTimeZone: booking.locationTimeZone,
+      previewFingerprint: '',
+    };
+  }
   const paidAmountMinor = booking.totalAmountMinor;
   const originalCommissionMinor =
     booking.commissionAmountMinor ?? booking.paymentCommissionMinor ?? 0;

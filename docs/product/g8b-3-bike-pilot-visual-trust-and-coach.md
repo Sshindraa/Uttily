@@ -49,7 +49,7 @@
 │ Clientèle cible   : Particuliers (résidents ou visiteurs) en location courte│
 │ Matériel initial  : Vélos de ville & Vélos à assistance électrique (VAE)   │
 │ Cible d'inventaire: 20 vélos physiquement réservables sur 2 loueurs pro     │
-│ Modèle économique : 0 € abonnement · 0 € frais fixe · commission Stripe     │
+│ Modèle économique : 13 % loueur + 7 % client · 0 € fixe / mois             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -102,15 +102,18 @@ exemplaire physique restent strictement obligatoires pour la publication.
 ### 1.4 Modèle économique & proposition aux loueurs
 
 Le pilote ne facture **ni abonnement, ni frais fixe d'accès**, et n'impose **aucune
-exclusivité** au loueur. Uttily est rémunéré uniquement lorsqu'une réservation est
-confirmée et payée, au moyen de la commission versionnée intégrée au flux
-Stripe Connect.
+exclusivité** au loueur. PRODUCT DECISION : le modèle marketplace courant est
+`split-13-7-v1` : frais plateforme loueur de 13 % et frais de service client de
+7 %, tous deux calculés sur `subtotalAmountMinor + mandatoryFeesAmountMinor` et
+arrondis avec `HALF_UP_PER_COMPONENT`. L'application fee Stripe porte la somme
+des deux composants ; le total client inclut le seul frais de service client.
 
-Cette disposition ne fixe pas le taux, la base de calcul, la TVA sur la commission,
-la répartition des frais Stripe ni le traitement contractuel des remboursements.
-Ces valeurs restent bloquées par la validation finance/juridique décrite dans
+La décision produit ne vaut pas sign-off Finance/Juridique : la TVA, la
+facturation, la qualification comptable, les frais Stripe et le traitement
+contractuel des remboursements restent bloqués comme décrit dans
 `docs/product/lot5-finance-legal-validation.md`. Aucune valeur de démonstration
-ou de staging ne peut devenir une valeur LIVE implicite.
+ou de staging ne peut devenir une valeur LIVE implicite ; `FIN-002` reste
+`BLOCKED` avant activation LIVE.
 
 ### 1.5 État réel et critères de passage au Go Pilote
 

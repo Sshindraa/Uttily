@@ -1,3 +1,5 @@
+import type { MarketplaceFeeSnapshot } from '../marketplace-fees';
+
 /**
  * Snapshot figé des termes financiers avant initiation du paiement (ADR-010 §6).
  * Produit par le résolveur serveur, jamais par le navigateur.
@@ -8,8 +10,13 @@ export interface FinancialTermsSnapshot {
   version: string;
   /** Devise ISO 4217. Toujours 'EUR' au MVP. */
   currency: 'EUR';
-  /** Total en unités mineures. Doit être égal au total immuable du brouillon. */
+  /**
+   * Montant client/Stripe en unités mineures : customerTotalAmountMinor pour
+   * le split, total immuable du brouillon pour les transactions legacy.
+   */
   totalAmountMinor: number;
+  /** Snapshot marketplace split, absent pour les transactions legacy. */
+  marketplaceFeeSnapshot?: MarketplaceFeeSnapshot;
   /** Statut fiscal : jamais UNDETERMINED. */
   taxStatus: 'NOT_APPLICABLE' | 'APPLIED';
   /** Montant de taxe en unités mineures. Non null (0 si NOT_APPLICABLE). */
@@ -109,6 +116,8 @@ export interface FinancialTermsInput {
   draftTotalAmountMinor: number;
   /** Devise du brouillon. Doit être 'EUR'. */
   draftCurrency: string;
+  /** Base marchande du brouillon, validée contre le snapshot split si présent. */
+  draftMarketplaceFeeSnapshot?: MarketplaceFeeSnapshot;
 }
 
 /**

@@ -356,7 +356,7 @@ export function FinancesHub({
             {formatMoney(overview.sales.grossAmountMinor)}
           </span>
           <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
-            Volume brut réservations
+            Prix location
           </span>
         </Card>
 
@@ -367,7 +367,7 @@ export function FinancesHub({
             {formatMoney(overview.merchant.netAfterCommissionMinor)}
           </span>
           <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
-            Montant net versé
+            Net location (avant versement bancaire)
           </span>
         </Card>
 
@@ -380,7 +380,7 @@ export function FinancesHub({
             {formatMoney(overview.commissions.platformAmountMinor)}
           </span>
           <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
-            Commissions Uttily
+            Frais plateforme loueur
           </span>
         </Card>
 
@@ -560,7 +560,7 @@ export function FinancesHub({
                       color: 'var(--ut-color-ink-muted)',
                     }}
                   >
-                    Brut
+                    Prix location
                   </th>
                   <th
                     style={{
@@ -569,7 +569,7 @@ export function FinancesHub({
                       color: 'var(--ut-color-ink-muted)',
                     }}
                   >
-                    Commission
+                    Frais plateforme loueur
                   </th>
                   <th
                     style={{

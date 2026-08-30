@@ -91,6 +91,12 @@ const BOOKING_OPTIONAL_KEYS = [
   'pricingIntentSnapshot',
   'pricingResolvedLocale',
 ] as const;
+const BOOKING_MARKETPLACE_OPTIONAL_KEYS = [
+  'marketplaceFeeBaseAmountMinor',
+  'customerServiceFeeAmountMinor',
+  'customerTotalAmountMinor',
+  'marketplaceFeeRuleVersion',
+] as const;
 const PAYMENT_KEYS = [
   'id',
   'status',
@@ -420,13 +426,10 @@ export function parseDocumentRenderSnapshotV1(value: unknown): DocumentRenderSna
 
   // booking
   const booking = assertObject(root['booking'], 'snapshot.booking');
-  assertExactKeys(
-    booking,
-    BOOKING_KEYS,
-    'snapshot.booking',
-    FORBIDDEN_BOOKING_KEYS,
-    BOOKING_OPTIONAL_KEYS,
-  );
+  assertExactKeys(booking, BOOKING_KEYS, 'snapshot.booking', FORBIDDEN_BOOKING_KEYS, [
+    ...BOOKING_OPTIONAL_KEYS,
+    ...BOOKING_MARKETPLACE_OPTIONAL_KEYS,
+  ]);
   // G7P-B2-C Round 3 (P0-2) — strict flexible key validation.
   // Extract pricingSnapshotVersion early to validate optional keys.
   const bookingPricingSnapshotVersion =
@@ -499,6 +502,55 @@ export function parseDocumentRenderSnapshotV1(value: unknown): DocumentRenderSna
     'snapshot.booking.termsAcceptanceSnapshot',
   );
 
+  const marketplaceKeysPresent = BOOKING_MARKETPLACE_OPTIONAL_KEYS.filter((key) => key in booking);
+  let marketplaceFeeBaseAmountMinor: number | undefined;
+  let customerServiceFeeAmountMinor: number | undefined;
+  let customerTotalAmountMinor: number | undefined;
+  let marketplaceFeeRuleVersion: string | undefined;
+  if (marketplaceKeysPresent.length > 0) {
+    if (marketplaceKeysPresent.length !== BOOKING_MARKETPLACE_OPTIONAL_KEYS.length) {
+      invariant('snapshot.booking contient un snapshot marketplace incomplet');
+    }
+    marketplaceFeeBaseAmountMinor = assertNonNegSafeInt(
+      booking['marketplaceFeeBaseAmountMinor'],
+      'snapshot.booking.marketplaceFeeBaseAmountMinor',
+    );
+    customerServiceFeeAmountMinor = assertNonNegSafeInt(
+      booking['customerServiceFeeAmountMinor'],
+      'snapshot.booking.customerServiceFeeAmountMinor',
+    );
+    customerTotalAmountMinor = assertNonNegSafeInt(
+      booking['customerTotalAmountMinor'],
+      'snapshot.booking.customerTotalAmountMinor',
+    );
+    marketplaceFeeRuleVersion = assertNonEmptyString(
+      booking['marketplaceFeeRuleVersion'],
+      'snapshot.booking.marketplaceFeeRuleVersion',
+    );
+    if (
+      safeSumMinor([subtotalAmountMinor, mandatoryFeesAmountMinor]) !==
+      marketplaceFeeBaseAmountMinor
+    ) {
+      invariant('snapshot.booking marketplaceFeeBaseAmountMinor est incoherent');
+    }
+    if (
+      safeSumMinor([marketplaceFeeBaseAmountMinor, customerServiceFeeAmountMinor]) !==
+      customerTotalAmountMinor
+    ) {
+      invariant('snapshot.booking customerTotalAmountMinor est incoherent');
+    }
+  }
+
+  const marketplaceFields =
+    marketplaceFeeBaseAmountMinor === undefined
+      ? {}
+      : {
+          marketplaceFeeBaseAmountMinor,
+          customerServiceFeeAmountMinor: customerServiceFeeAmountMinor!,
+          customerTotalAmountMinor: customerTotalAmountMinor!,
+          marketplaceFeeRuleVersion: marketplaceFeeRuleVersion!,
+        };
+
   // payment
   const payment = assertObject(root['payment'], 'snapshot.payment');
   assertExactKeys(payment, PAYMENT_KEYS, 'snapshot.payment', FORBIDDEN_PAYMENT_KEYS);
@@ -512,6 +564,9 @@ export function parseDocumentRenderSnapshotV1(value: unknown): DocumentRenderSna
   const paymentCurrency = assertNonEmptyString(payment['currency'], 'snapshot.payment.currency');
   if (paymentCurrency !== bookingCurrency) {
     invariant('snapshot.payment.currency doit etre egal a snapshot.booking.currency');
+  }
+  if (customerTotalAmountMinor !== undefined && amountMinor !== customerTotalAmountMinor) {
+    invariant('snapshot.payment.amountMinor doit etre egal au customerTotalAmountMinor');
   }
   const financialTermsVersion = assertNonEmptyString(
     payment['financialTermsVersion'],
@@ -696,6 +751,7 @@ export function parseDocumentRenderSnapshotV1(value: unknown): DocumentRenderSna
       subtotalAmountMinor,
       mandatoryFeesAmountMinor,
       totalAmountMinor,
+      ...marketplaceFields,
       taxStatus: bTaxStatus,
       taxAmountMinor,
       taxRateBps,

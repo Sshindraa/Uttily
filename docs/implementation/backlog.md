@@ -182,7 +182,8 @@ Critères d'acceptation :
 - ADR-025 explicitement rejetée pour ce lot ; l'onboarding Stripe-hosted de
   l'ADR-024 reste la solution autorisée et testée ;
 - URL de retour Stripe issue de `PUBLIC_APP_URL`, validée par environnement ;
-  commission issue de `PLATFORM_COMMISSION_RATE_BPS`, sans défaut implicite ;
+  frais marketplace issus du registre serveur fermé `split-13-7-v1`, sans taux
+  fourni par l'environnement ou le navigateur ;
   compte connecté vérifié prêt avant création d'un paiement ;
 - PostgreSQL local démarré depuis une base vierge, migrations et suites Web,
   Core PostgreSQL et worker vertes ; le test d'intégration hors PostgreSQL est

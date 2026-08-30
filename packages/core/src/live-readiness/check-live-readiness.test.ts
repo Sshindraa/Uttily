@@ -23,7 +23,6 @@ function fakeLiveEnv(): Record<string, string> {
     STRIPE_CONNECT_WEBHOOK_SECRET: 'whsec_connect_fake_secret',
     STRIPE_WEBHOOK_IP_ALLOWLIST: '54.187.174.169,54.187.205.235',
     STRIPE_WEBHOOK_RATE_LIMIT_VERIFIED: 'true',
-    PLATFORM_COMMISSION_RATE_BPS: '1000',
     DATABASE_URL: 'postgresql://user:pass@host:5432/db',
     CLERK_SECRET_KEY: 'sk_live_fake_clerk_secret_key_sufficient_length',
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: 'pk_live_fake_clerk_publishable_key_sufficient_length',
@@ -98,15 +97,10 @@ describe('checkLiveReadiness', () => {
     expect(inv?.status).toBe('TOO_SHORT');
   });
 
-  it('PLATFORM_COMMISSION_RATE_BPS = 0 → NOT_POSITIVE_INT', () => {
-    const env = fakeLiveEnv();
-    env.PLATFORM_COMMISSION_RATE_BPS = '0';
-
-    const report = checkLiveReadiness(env);
-
-    expect(report.ready).toBe(false);
-    const comm = report.required.find((r) => r.name === 'PLATFORM_COMMISSION_RATE_BPS');
-    expect(comm?.status).toBe('NOT_POSITIVE_INT');
+  it('ne requiert plus de taux de commission dans l’environnement', () => {
+    expect(
+      REQUIRED_LIVE_VARIABLES.some((rule) => rule.name === 'PLATFORM_COMMISSION_RATE_BPS'),
+    ).toBe(false);
   });
 
   it('PUBLIC_APP_URL HTTP → NOT_HTTPS', () => {

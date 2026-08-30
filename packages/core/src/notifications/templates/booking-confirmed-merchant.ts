@@ -10,7 +10,9 @@ export interface BookingConfirmedMerchantData {
   customerEndAt: Date;
   locationName: string;
   timeZone: string;
-  netRevenueMinor: number;
+  merchantBaseAmountMinor: number;
+  merchantFeeAmountMinor: number;
+  merchantNetAmountMinor: number;
 }
 
 export function renderBookingConfirmedMerchant(data: BookingConfirmedMerchantData): RenderedEmail {
@@ -42,8 +44,16 @@ export function renderBookingConfirmedMerchant(data: BookingConfirmedMerchantDat
         <span class="metric-value">${escapeHtml(data.locationName)}</span>
       </div>
       <div class="metric-row" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
-        <span class="metric-label">Votre revenu net estimé :</span>
-        <span class="metric-value" style="color: #4f46e5; font-size: 16px;">${escapeHtml(formatEur(data.netRevenueMinor))}</span>
+        <span class="metric-label">Prix location :</span>
+        <span class="metric-value">${escapeHtml(formatEur(data.merchantBaseAmountMinor))}</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Frais plateforme loueur :</span>
+        <span class="metric-value">-${escapeHtml(formatEur(data.merchantFeeAmountMinor))}</span>
+      </div>
+      <div class="metric-row">
+        <span class="metric-label">Net location :</span>
+        <span class="metric-value" style="color: #4f46e5; font-size: 16px;">${escapeHtml(formatEur(data.merchantNetAmountMinor))}</span>
       </div>
     </div>
 
@@ -59,7 +69,9 @@ Client : ${data.customerEmail}
 Départ : ${formatDate(data.customerStartAt, data.timeZone)}
 Retour : ${formatDate(data.customerEndAt, data.timeZone)}
 Lieu : ${data.locationName}
-Revenu net estimé : ${formatEur(data.netRevenueMinor)}
+Prix location : ${formatEur(data.merchantBaseAmountMinor)}
+Frais plateforme loueur : -${formatEur(data.merchantFeeAmountMinor)}
+Net location : ${formatEur(data.merchantNetAmountMinor)}
 
 Le matériel a été bloqué dans votre planning opérationnel. Préparez l'équipement pour le départ du client.
 

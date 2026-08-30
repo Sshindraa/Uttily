@@ -45,6 +45,7 @@ describe('Chantier 11 — Domaine Finances & Revenus', () => {
       },
       commissions: {
         platformAmountMinor: 750,
+        platformApplicationFeeAmountMinor: 750,
       },
       merchant: {
         netAfterCommissionMinor: 6750,

@@ -1,6 +1,8 @@
 # Live operator checklist — préparation de configuration
 
-**Base :** `origin/main = eb08f2830abad5fd6643978aee6056e6e59e7171`
+**Référence de version :** document vivant ; vérifier le commit courant du dépôt
+avant exécution. Les anciennes baselines `origin/main = ...` sont historiques.
+**Dernière revue de cohérence :** 2026-08-30
 **Statut :** `READY_FOR_CONFIGURATION`
 **Secrets :** jamais inscrits dans ce document, les logs ou un commit
 **Analytics production :** `OFF`

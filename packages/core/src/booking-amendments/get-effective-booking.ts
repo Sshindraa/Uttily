@@ -34,6 +34,7 @@ import {
   refunds,
 } from '@uttily/database';
 import { EffectiveBookingError } from './errors';
+import { parseMarketplaceFeeSnapshot } from '../marketplace-fees';
 import type {
   AmendmentSummary,
   EffectiveAllocation,
@@ -198,7 +199,29 @@ export function parseFinancialSnapshot(raw: unknown, context: string): Financial
     );
   }
 
-  return { totalAmountMinor, currency };
+  let marketplaceFeeSnapshot: FinancialSnapshot['marketplaceFeeSnapshot'];
+  if (obj['marketplaceFeeSnapshot'] !== undefined && obj['marketplaceFeeSnapshot'] !== null) {
+    try {
+      marketplaceFeeSnapshot = parseMarketplaceFeeSnapshot(obj['marketplaceFeeSnapshot']);
+    } catch (error) {
+      throw new EffectiveBookingError(
+        'SNAPSHOT_INVALID',
+        `${context}: snapshot marketplace invalide (${error instanceof Error ? error.message : 'erreur inconnue'}).`,
+      );
+    }
+    if (marketplaceFeeSnapshot.customerTotalAmountMinor !== totalAmountMinor) {
+      throw new EffectiveBookingError(
+        'SNAPSHOT_INVALID',
+        `${context}: customerTotalAmountMinor ne correspond pas à totalAmountMinor.`,
+      );
+    }
+  }
+
+  return {
+    totalAmountMinor,
+    currency,
+    ...(marketplaceFeeSnapshot ? { marketplaceFeeSnapshot } : {}),
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -237,6 +260,8 @@ export async function getEffectiveBooking(
       blockedStartAt: bookings.blockedStartAt,
       blockedEndAt: bookings.blockedEndAt,
       totalAmountMinor: bookings.totalAmountMinor,
+      customerTotalAmountMinor: bookings.customerTotalAmountMinor,
+      marketplaceFeeSnapshot: bookings.marketplaceFeeSnapshot,
       currency: bookings.currency,
     })
     .from(bookings)
@@ -275,13 +300,37 @@ export async function getEffectiveBooking(
   // 3. Déterminer le total contractuel effectif et les dates effectives.
   let contractualTotalAmountMinor: number;
   let effectiveCurrency: string;
+  let effectiveMarketplaceFeeSnapshot: FinancialSnapshot['marketplaceFeeSnapshot'];
   let effectiveCustomerStartAt: Date;
   let effectiveCustomerEndAt: Date;
   let effectiveBlockedStartAt: Date;
   let effectiveBlockedEndAt: Date;
 
   if (appliedAmendments.length === 0) {
-    contractualTotalAmountMinor = booking.totalAmountMinor;
+    if (booking.marketplaceFeeSnapshot !== null) {
+      try {
+        effectiveMarketplaceFeeSnapshot = parseMarketplaceFeeSnapshot(
+          booking.marketplaceFeeSnapshot,
+        );
+      } catch (error) {
+        throw new EffectiveBookingError(
+          'SNAPSHOT_INVALID',
+          `booking ${booking.id}: snapshot marketplace invalide (${error instanceof Error ? error.message : 'erreur inconnue'}).`,
+        );
+      }
+      if (
+        booking.customerTotalAmountMinor !==
+        effectiveMarketplaceFeeSnapshot.customerTotalAmountMinor
+      ) {
+        throw new EffectiveBookingError(
+          'SNAPSHOT_INVALID',
+          `booking ${booking.id}: customerTotalAmountMinor divergent du snapshot marketplace.`,
+        );
+      }
+      contractualTotalAmountMinor = effectiveMarketplaceFeeSnapshot.customerTotalAmountMinor;
+    } else {
+      contractualTotalAmountMinor = booking.totalAmountMinor;
+    }
     effectiveCurrency = booking.currency;
     effectiveCustomerStartAt = booking.customerStartAt;
     effectiveCustomerEndAt = booking.customerEndAt;
@@ -294,6 +343,7 @@ export async function getEffectiveBooking(
       `amendment ${lastApplied.amendmentNumber}`,
     );
     contractualTotalAmountMinor = snapshot.totalAmountMinor;
+    effectiveMarketplaceFeeSnapshot = snapshot.marketplaceFeeSnapshot;
     effectiveCurrency = snapshot.currency;
     effectiveCustomerStartAt = lastApplied.newCustomerStartAt;
     effectiveCustomerEndAt = lastApplied.newCustomerEndAt;
@@ -341,6 +391,7 @@ export async function getEffectiveBooking(
       effectiveBlockedEndAt,
       effectiveTotalAmountMinor: contractualTotalAmountMinor,
       effectiveCurrency,
+      ...(effectiveMarketplaceFeeSnapshot ? { effectiveMarketplaceFeeSnapshot } : {}),
       financials,
       lines,
       allocations,

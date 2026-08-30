@@ -32,23 +32,6 @@ export function resolveStripeEnvironment(
   return value;
 }
 
-function parseCommissionRateBps(environment: NodeJS.ProcessEnv): number {
-  const rawValue = environment.PLATFORM_COMMISSION_RATE_BPS;
-  if (typeof rawValue !== 'string' || !/^\d+$/.test(rawValue)) {
-    throw new PaymentConfigurationError(
-      'PLATFORM_COMMISSION_RATE_BPS doit être configurée explicitement en points de base.',
-    );
-  }
-
-  const rateBps = Number(rawValue);
-  if (!Number.isSafeInteger(rateBps) || rateBps < 0 || rateBps > BASIS_POINTS) {
-    throw new PaymentConfigurationError(
-      'PLATFORM_COMMISSION_RATE_BPS doit être comprise entre 0 et 10000.',
-    );
-  }
-  return rateBps;
-}
-
 /** Arrondi half-up sans multiplication non sûre pour les montants maximums. */
 export function calculatePlatformCommissionAmountMinor(
   totalAmountMinor: number,
@@ -69,18 +52,11 @@ export function calculatePlatformCommissionAmountMinor(
  * de test ne passe en production par défaut.
  */
 export function loadFinancialTermsConfig(
-  totalAmountMinor: number,
+  _legacyTotalAmountMinor?: number,
   environment: NodeJS.ProcessEnv = process.env,
 ): FinancialTermsConfig {
-  const stripeEnvironment = resolveStripeEnvironment(environment);
-  const rateBps = parseCommissionRateBps(environment);
-  if (stripeEnvironment === 'LIVE' && rateBps === 0) {
-    throw new PaymentConfigurationError(
-      'Une commission LIVE strictement positive doit être configurée explicitement.',
-    );
-  }
+  resolveStripeEnvironment(environment);
 
-  const commissionAmountMinor = calculatePlatformCommissionAmountMinor(totalAmountMinor, rateBps);
   return {
     tax: {
       version: 'v1',
@@ -89,11 +65,10 @@ export function loadFinancialTermsConfig(
       rateBps: null,
       invoiceIssuer: 'Uttily',
     },
-    commission: {
-      version: 'v1',
-      basis: 'total_amount_minor_percentage',
-      amountMinor: commissionAmountMinor,
-    },
+    // Le modèle split est calculé depuis le snapshot serveur du draft. Une
+    // commission issue d'une variable d'environnement ne peut plus faire
+    // autorité sur un paiement.
+    commission: null,
     connectedAccount: null,
     legalTermsVersion: 'v1',
   };

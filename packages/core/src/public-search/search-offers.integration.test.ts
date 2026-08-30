@@ -408,7 +408,7 @@ describe.skipIf(shouldSkipIntegrationTests())('searchPublicOffers — intégrati
     expect(result.items[0]!.publicLocationId).toBe(ids.publicLocationId);
     expect(result.items[0]!.isAvailable).toBe(true);
     expect(result.items[0]!.price.currency).toBe('EUR');
-    expect(result.items[0]!.price.totalAmountMinor).toBe(5000);
+    expect(result.items[0]!.price.totalAmountMinor).toBe(5350);
     expect(result.items[0]!.price.planType).toBe('DAILY');
   });
 
@@ -507,7 +507,7 @@ describe.skipIf(shouldSkipIntegrationTests())('searchPublicOffers — intégrati
     const result = await testSearch(db, searchInput(ids.destinationPublicId, TIME_RANGE_9_11));
     expect(result.items.length).toBe(1);
     expect(result.items[0]!.price.planType).toBe('HOURLY');
-    expect(result.items[0]!.price.totalAmountMinor).toBe(5000);
+    expect(result.items[0]!.price.totalAmountMinor).toBe(5350);
     expect(result.items[0]!.price.billedDurationMinutes).toBe(120);
   });
 
@@ -530,7 +530,7 @@ describe.skipIf(shouldSkipIntegrationTests())('searchPublicOffers — intégrati
     const result = await testSearch(db, searchInput(ids.destinationPublicId, DAY_RANGE_10_12));
     expect(result.items.length).toBe(1);
     expect(result.items[0]!.price.planType).toBe('DAILY');
-    expect(result.items[0]!.price.totalAmountMinor).toBe(10000);
+    expect(result.items[0]!.price.totalAmountMinor).toBe(10700);
     expect(result.items[0]!.price.billedDays).toBe(2);
   });
 
@@ -558,7 +558,7 @@ describe.skipIf(shouldSkipIntegrationTests())('searchPublicOffers — intégrati
     };
     const result = await testSearch(db, searchInput(ids.destinationPublicId, dayRange4));
     expect(result.items.length).toBe(1);
-    expect(result.items[0]!.price.totalAmountMinor).toBe(18000);
+    expect(result.items[0]!.price.totalAmountMinor).toBe(19260);
     expect(result.items[0]!.price.billedDays).toBe(4);
     expect(result.items[0]!.price.discountPercent).toBe(10);
   });
@@ -1520,7 +1520,7 @@ describe.skipIf(shouldSkipIntegrationTests())('searchPublicOffers — intégrati
     expect(result.items.length).toBe(1);
     expect(result.items[0]!.publicProductId).toBe(publicProductId);
     expect(result.items[0]!.publicLocationId).toBe(publicLocationId);
-    expect(result.items[0]!.price.totalAmountMinor).toBe(4000);
+    expect(result.items[0]!.price.totalAmountMinor).toBe(4280);
   });
 
   it('P1-4 : pageSize respecté sur un volume de 5 groupes', async () => {

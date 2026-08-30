@@ -233,6 +233,8 @@ export interface RendererViewModel {
     readonly subtotalAmountMinor: number;
     readonly mandatoryFeesAmountMinor: number;
     readonly totalAmountMinor: number;
+    /** Total client affiché, avec repli legacy sur totalAmountMinor. */
+    readonly customerTotalAmountMinor: number;
     readonly taxStatus: string;
     readonly taxAmountMinor: number | null;
     readonly taxRateBps: number | null;
@@ -290,6 +292,9 @@ export function buildViewModel(
   templateKey: PdfLibTemplateKey,
   snapshot: DocumentRenderSnapshotV1,
 ): RendererViewModel {
+  const customerTotalAmountMinor =
+    snapshot.booking.customerTotalAmountMinor ?? snapshot.booking.totalAmountMinor;
+
   return {
     templateKey,
     capturedAt: snapshot.capturedAt,
@@ -327,6 +332,7 @@ export function buildViewModel(
       subtotalAmountMinor: snapshot.booking.subtotalAmountMinor,
       mandatoryFeesAmountMinor: snapshot.booking.mandatoryFeesAmountMinor,
       totalAmountMinor: snapshot.booking.totalAmountMinor,
+      customerTotalAmountMinor,
       taxStatus: snapshot.booking.taxStatus,
       taxAmountMinor: snapshot.booking.taxAmountMinor,
       taxRateBps: snapshot.booking.taxRateBps,
@@ -794,7 +800,10 @@ function renderBookingConfirmation(ctx: LayoutContext, vm: RendererViewModel): v
       label: 'Frais obligatoires',
       value: formatAmountMinor(vm.booking.mandatoryFeesAmountMinor, vm.booking.currency),
     },
-    { label: 'Total', value: formatAmountMinor(vm.booking.totalAmountMinor, vm.booking.currency) },
+    {
+      label: 'Total',
+      value: formatAmountMinor(vm.booking.customerTotalAmountMinor, vm.booking.currency),
+    },
   ]);
 
   if (vm.booking.taxAmountMinor !== null) {
@@ -867,7 +876,10 @@ function renderRentalContract(ctx: LayoutContext, vm: RendererViewModel): void {
   drawSpacer(ctx, 6);
   drawSubheading(ctx, 'Montant');
   drawKeyValueBlock(ctx, [
-    { label: 'Total', value: formatAmountMinor(vm.booking.totalAmountMinor, vm.booking.currency) },
+    {
+      label: 'Total',
+      value: formatAmountMinor(vm.booking.customerTotalAmountMinor, vm.booking.currency),
+    },
   ]);
 
   // Pas de clauses légales, pas de signature (document technique uniquement).

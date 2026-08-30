@@ -17,6 +17,7 @@ import { DocumentRenderError } from './errors';
 import { isRecursivelySerializable } from './opaque-json';
 import { isValidTimeZone } from '../identity/time-zone';
 import { BOOKING_STATUSES } from '../fulfillment/types';
+import { parseMarketplaceFeeSnapshot } from '../marketplace-fees';
 import type {
   LoadedDocumentRenderDataV1,
   SnapshotBooking,
@@ -230,6 +231,7 @@ export async function loadDocumentRenderData(
            prep_buffer_minutes, cleanup_buffer_minutes,
            currency, subtotal_amount_minor, mandatory_fees_amount_minor,
            total_amount_minor, tax_status, tax_amount_minor, tax_rate_bps,
+           customer_total_amount_minor, marketplace_fee_snapshot,
            cancellation_policy_snapshot,
            terms_acceptance_snapshot, confirmed_at,
            timezone, billable_unit, billable_unit_count,
@@ -531,6 +533,28 @@ export async function loadDocumentRenderData(
       booking['total_amount_minor'],
       'booking.total_amount_minor',
     ),
+    ...(booking['marketplace_fee_snapshot'] !== null &&
+    booking['marketplace_fee_snapshot'] !== undefined
+      ? (() => {
+          const feeSnapshot = parseMarketplaceFeeSnapshot(booking['marketplace_fee_snapshot']);
+          const customerTotalAmountMinor = assertNonNegativeSafeInteger(
+            booking['customer_total_amount_minor'],
+            'booking.customer_total_amount_minor',
+          );
+          if (feeSnapshot.customerTotalAmountMinor !== customerTotalAmountMinor) {
+            throw new DocumentRenderError(
+              'AUTHORITY_MISMATCH',
+              'booking marketplace snapshot et customer_total_amount_minor incoherents',
+            );
+          }
+          return {
+            marketplaceFeeBaseAmountMinor: feeSnapshot.marketplaceFeeBaseAmountMinor,
+            customerServiceFeeAmountMinor: feeSnapshot.customerServiceFeeAmountMinor,
+            customerTotalAmountMinor,
+            marketplaceFeeRuleVersion: feeSnapshot.ruleVersion,
+          };
+        })()
+      : {}),
     taxStatus: assertNonEmptyString(booking['tax_status'], 'booking.tax_status'),
     taxAmountMinor:
       booking['tax_amount_minor'] === null || booking['tax_amount_minor'] === undefined

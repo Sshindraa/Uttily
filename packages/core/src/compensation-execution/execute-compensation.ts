@@ -164,6 +164,13 @@ export async function executeCompensation(
 
     const payment = paymentRows[0]!;
 
+    if (payment.marketplaceFeeSnapshot !== null) {
+      throw new CompensationError(
+        'SPLIT_REFUND_UNRESOLVED',
+        'Le remboursement split est bloqué tant que la politique Finance/Legal des frais marketplace n’est pas résolue.',
+      );
+    }
+
     // P1-4 : On ne rembourse qu'un paiement réellement réussi.
     if (payment.status !== 'SUCCEEDED') {
       throw new CompensationError(

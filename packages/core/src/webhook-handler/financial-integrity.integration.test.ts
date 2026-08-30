@@ -183,7 +183,7 @@ function makeFinancialTermsConfig(accId: string): FinancialTermsConfig {
     commission: {
       version: 'v1',
       basis: 'percentage',
-      amountMinor: 500,
+      amountMinor: 260,
     },
     connectedAccount: {
       accountId: accId,
@@ -250,6 +250,12 @@ describe.skipIf(shouldSkipIntegrationTests())(
         const attemptId = initRes.paymentAttemptId;
         const providerPaymentIntentId = initRes.providerPaymentIntentId;
         const amount = await getPaymentAmount(draftId);
+        const feeRow = await rawSql!`
+          SELECT marketplace_fee_snapshot->>'platformApplicationFeeAmountMinor' AS application_fee_amount
+          FROM payments
+          WHERE id = ${initRes.paymentId}
+        `;
+        const applicationFeeAmount = Number(feeRow[0]!.application_fee_amount);
 
         // Simuler l'événement Stripe payment_intent.succeeded avec métadonnées conformes
         const eventId = `evt_test_race_${randomUUID()}`;
@@ -272,7 +278,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
                 protocol_version: 'v1',
               },
               transfer_data: { destination: connectedAccountId },
-              application_fee_amount: 500,
+              application_fee_amount: applicationFeeAmount,
               on_behalf_of: null,
             },
           },
@@ -335,6 +341,12 @@ describe.skipIf(shouldSkipIntegrationTests())(
         if (initRes.kind !== 'SUCCESS') throw new Error('Init failed');
 
         const amount = await getPaymentAmount(draftId);
+        const feeRow = await rawSql!`
+          SELECT marketplace_fee_snapshot->>'platformApplicationFeeAmountMinor' AS application_fee_amount
+          FROM payments
+          WHERE id = ${initRes.paymentId}
+        `;
+        const applicationFeeAmount = Number(feeRow[0]!.application_fee_amount);
 
         // 3. Envoyer un webhook reçu sur endpoint LIVE avec environnement LIVE
         const eventId = `evt_live_cross_${randomUUID()}`;
@@ -357,7 +369,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
                 protocol_version: 'v1',
               },
               transfer_data: { destination: connectedAccountId },
-              application_fee_amount: 500,
+              application_fee_amount: applicationFeeAmount,
               on_behalf_of: null,
             },
           },

@@ -4,6 +4,7 @@
 
 import type { DatabaseClient } from '@uttily/database';
 import type { PaymentProviderAdapter, StripeEnvironment } from '../payments/types';
+import type { MarketplaceFeeSnapshot } from '../marketplace-fees';
 
 /** Dépendances injectées pour le moteur de réconciliation. */
 export interface ReconciliationDependencies {
@@ -31,6 +32,7 @@ export interface ClaimedAttempt {
   currency: string;
   connectedAccountId: string;
   commissionAmountMinor: number;
+  marketplaceFeeSnapshot?: MarketplaceFeeSnapshot | null;
   onBehalfOfAccountId: string | null;
   processingDeadlineAt: Date;
   leaseUntil: Date;

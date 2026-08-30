@@ -305,7 +305,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
       expect(searchRes.items.length).toBe(1);
       const offer = searchRes.items[0]!;
       expect(offer.publicProductId).toBe(ids.publicProductId);
-      expect(offer.price.totalAmountMinor).toBe(20000); // 4 * 5000
+      expect(offer.price.totalAmountMinor).toBe(21400); // 4 * 5000 + 7 % frais de service
 
       // B. Checkout (createBookingDraftWithHold)
       const draftRes = await createBookingDraftWithHold(
@@ -315,7 +315,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
 
       expectSuccess(draftRes);
       expect(draftRes.body.totalAmountMinor).toBe(20000);
-      expect(draftRes.body.totalAmountMinor).toBe(offer.price.totalAmountMinor);
+      expect(draftRes.body.customerTotalAmountMinor).toBe(offer.price.totalAmountMinor);
     });
 
     it('2. CLOSED premier jour : Search exclut l’offre (0 item) et Checkout refuse la création du hold', async () => {
@@ -410,7 +410,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
         { publicationGate: realPublicationGate, cursorCodec: testCursorCodec },
       );
       expect(searchRes.items.length).toBe(1);
-      expect(searchRes.items[0]!.price.totalAmountMinor).toBe(20000);
+      expect(searchRes.items[0]!.price.totalAmountMinor).toBe(21400);
 
       // B. Checkout -> success
       const draftRes = await createBookingDraftWithHold(
@@ -480,7 +480,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
         { publicationGate: realPublicationGate, cursorCodec: testCursorCodec },
       );
       expect(searchRes.items.length).toBe(1);
-      expect(searchRes.items[0]!.price.totalAmountMinor).toBe(20000);
+      expect(searchRes.items[0]!.price.totalAmountMinor).toBe(21400);
 
       // B. Checkout -> success
       const draftRes = await createBookingDraftWithHold(

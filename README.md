@@ -6,18 +6,19 @@ Ce dépôt démarre volontairement par la documentation d'architecture. Aucun ch
 
 ## Point de départ
 
-Avant de créer l'application, lire dans cet ordre :
+Avant toute tâche, lire `AGENTS.md`, puis dans cet ordre :
 
 1. [Périmètre MVP](docs/product/mvp-scope.md)
-2. [Business plan et stratégie](docs/product/business-plan.md)
-3. [Vision long terme](docs/product/long-term-vision.md)
-4. [Expérience loueur & fiche vélo unifiée](docs/product/loueur-experience-and-unified-bike.md)
+2. [Vue d'ensemble technique](docs/architecture/overview.md)
+3. [Réservations et disponibilité](docs/architecture/booking-and-availability.md)
+4. [Modèle de données](docs/architecture/data-model.md)
 5. [Contexte pour agents de développement](docs/implementation/agent-context.md)
 6. [Backlog de démarrage](docs/implementation/backlog.md)
-7. [Vue d'ensemble technique](docs/architecture/overview.md)
-8. [Réservations et disponibilité](docs/architecture/booking-and-availability.md)
-9. [Modèle de données](docs/architecture/data-model.md)
-10. [Décisions d'architecture](docs/decisions/)
+7. Le lot et les [décisions d'architecture](docs/decisions/)
+
+Pour les frais marketplace, consulter ensuite l'[état canonique du modèle
+13/7](docs/operations/marketplace-fees-current-state.md) puis
+[ADR-029](docs/decisions/ADR-029-marketplace-fee-split-13-7.md).
 
 ## Principes non négociables
 
@@ -49,7 +50,7 @@ pnpm format           # formater
 pnpm typecheck        # vérifier les types sur tout le workspace
 pnpm test             # boucle rapide de développement, sans PostgreSQL ni tests lourds
 pnpm check:fast       # garde-fous locaux + tests rapides + types
-pnpm test:full        # toutes les suites ; réservé à la CI ou à une validation finale
+pnpm test:full        # toutes les suites Vitest des workspaces ; validation finale
 pnpm build            # builder tous les packages et apps
 pnpm dev              # démarrer apps/web en développement
 pnpm dev:full         # démarrer PostgreSQL, migrer, puis Web + worker fake
@@ -67,8 +68,11 @@ base d'environnement partagé ou réelle.
 
 La boucle normale de développement est `pnpm test` ou `pnpm check:fast`.
 Elle exclut explicitement les intégrations PostgreSQL, les parcours E2E et les
-tests de reproductibilité PDF. Ces suites restent obligatoires dans la matrice
-CI et sont disponibles localement avec `pnpm test:full`. Une modification
+tests de reproductibilité PDF. Les suites Vitest complètes sont disponibles
+localement avec `pnpm test:full`, mais les parcours spécialisés restent séparés
+(`pnpm --filter @uttily/web test:browser`, `pnpm test:recovery` et
+`pnpm --filter @uttily/worker smoke:verify`). Ces contrôles restent obligatoires
+dans la matrice CI ou la validation finale selon leur prérequis. Une modification
 ciblée peut aussi être validée directement avec le script `test:fast` du package
 concerné.
 

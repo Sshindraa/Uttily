@@ -7,9 +7,9 @@ export function exportFinancesCsv(overview: MerchantFinanceOverview): string {
     'Type',
     'Produit / Intitule',
     'Client',
-    'Montant Brut (EUR)',
-    'Commission Uttily (EUR)',
-    'Revenus Nets (EUR)',
+    'Prix location (EUR)',
+    'Frais plateforme loueur (EUR)',
+    'Net location (EUR)',
     'Statut',
   ];
 

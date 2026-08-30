@@ -17,6 +17,7 @@ import type {
   PublicOfferVariant,
   PublicProductPublicationGate,
 } from './types';
+import { calculateMarketplaceFeeSnapshot } from '../marketplace-fees';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -136,6 +137,8 @@ export async function getPublicOfferDetails(
     .select({
       publicVariantId: productVariants.publicId,
       name: productVariants.name,
+      dailyPriceAmountMinor: productVariants.dailyPriceAmountMinor,
+      currency: productVariants.currency,
     })
     .from(productVariants)
     .where(
@@ -166,6 +169,39 @@ export async function getPublicOfferDetails(
     publicVariantId: v.publicVariantId,
     name: v.name,
   }));
+
+  const dailyPrices = variantRows
+    .filter(
+      (v): v is typeof v & { dailyPriceAmountMinor: number } =>
+        v.dailyPriceAmountMinor !== null &&
+        Number.isSafeInteger(v.dailyPriceAmountMinor) &&
+        v.dailyPriceAmountMinor > 0 &&
+        v.currency === 'EUR',
+    )
+    .map((v) => v.dailyPriceAmountMinor);
+  const lowestDailyPrice = dailyPrices.length > 0 ? Math.min(...dailyPrices) : null;
+  const price =
+    lowestDailyPrice !== null
+      ? (() => {
+          const snapshot = calculateMarketplaceFeeSnapshot({
+            marketplaceFeeBaseAmountMinor: lowestDailyPrice,
+          });
+          return {
+            currency: 'EUR' as const,
+            marketplaceFeeBaseAmountMinor: snapshot.marketplaceFeeBaseAmountMinor,
+            customerServiceFeeAmountMinor: snapshot.customerServiceFeeAmountMinor,
+            customerTotalAmountMinor: snapshot.customerTotalAmountMinor,
+            marketplaceFeeRuleVersion: snapshot.ruleVersion,
+            totalAmountMinor: snapshot.customerTotalAmountMinor,
+            planType: 'DAILY' as const,
+            publicLabel: 'À partir de',
+            requestedDurationMinutes: null,
+            billedDurationMinutes: null,
+            billedDays: 1,
+            discountPercent: null,
+          };
+        })()
+      : undefined;
 
   const openingHours: PublicOfferOpeningHour[] = openingHourRows.map((h) => ({
     weekday: h.weekday,
@@ -220,6 +256,7 @@ export async function getPublicOfferDetails(
     city: r.city,
     postalCode: r.postalCode,
     countryCode: r.countryCode,
+    ...(price ? { price } : {}),
     variants,
     photos,
     openingHours,

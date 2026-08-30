@@ -42,11 +42,20 @@ Valider par écrit :
 
 ## 3. Commission
 
-Le business plan évoque des fourchettes, pas une règle approuvée. Le code exige un
+Le business plan et l'ADR-029 documentent désormais le choix produit
+`split-13-7-v1`, mais aucune validation externe n'est présumée. Le code exige un
 montant déterminé et versionné avant paiement ; `null` ne sera jamais converti en
 zéro.
 
 ### Décision attendue B — règle commerciale
+
+Le choix produit interne du Chantier 22-B0 est documenté dans `ADR-029` et
+implémenté sous la version serveur `split-13-7-v1` : base
+`subtotal_amount_minor + mandatory_fees_amount_minor`, 13 % de frais loueur,
+7 % de frais de service client, arrondi `HALF_UP_PER_COMPONENT`, aucun fixe.
+Ce choix reste une proposition technique : `FIN-002` demeure bloqué tant que
+Finance/Juridique n'ont pas signé la base, la date d'effet, la fiscalité, les
+frais Stripe et les règles de remboursement.
 
 Pour chaque offre pilote, fournir :
 

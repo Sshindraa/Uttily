@@ -1,6 +1,7 @@
 # G7M-C1 — Création locale durable du SUPPLEMENT
 
-- **Statut** : implémenté — validation ciblée C1/C2 verte, validation globale en attente
+- **Statut** : livré — validation ciblée et validation globale/CI post-merge
+  désormais vertes. Ce document conserve les preuves du jalon C1.
 - **ADR de référence** : [ADR-023](../decisions/ADR-023-booking-financial-amendments.md), §§7, 8, 10, 12 et 15
 - **Migration** : aucune ; le schéma 0036 est suffisant
 

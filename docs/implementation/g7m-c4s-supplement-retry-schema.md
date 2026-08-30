@@ -2,11 +2,9 @@
 
 ## Statut
 
-G7M-C4-S est implémenté localement dans le worktree C4-A comme prérequis
-PostgreSQL uniquement. C1 est livré ; les commits C2 et C3 sont empilés
-localement ; C4-A (expiration, retry métier et réconciliation), C4-B
-(compensation et wiring) et C5 (UI) restent pending. La validation Core globale
-reste pending CI.
+G7M-C4-S est livré comme prérequis PostgreSQL du cycle G7M. C1 à C5 sont
+désormais livrés et validés ; ce document conserve la preuve spécifique de la
+migration 0037 et du jalon C4-S.
 
 Cette phase ne livre aucun worker, cron, webhook, route, UI, migration de
 données, compensation ou orchestration de lifecycle.
@@ -43,9 +41,9 @@ deadlock, ainsi que l'upgrade réel 0036→0037. Le test d'upgrade vérifie la
 conservation d'une donnée historique, l'ajout du hash de 0037 une seule fois et
 l'absence de doublon après rejeu.
 
-Aucun résultat Core global ne sera déclaré localement ; sa validation reste
-pending CI. Les régressions ciblées C2/C3 passent également 433/433 tests
-(61 suites, PostgreSQL réel inclus) ; la suite Core globale n'a pas été lancée.
+Les résultats de validation globale sont conservés dans la CI post-merge. Les
+régressions ciblées C2/C3 du jalon passent également 433/433 tests (61 suites,
+PostgreSQL réel inclus).
 
 ## Périmètre exclu
 

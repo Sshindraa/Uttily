@@ -17,12 +17,15 @@ provider.
 La source unique des variables est
 `packages/core/src/live-readiness/live-config.ts`.
 
+Les frais marketplace ne sont pas une variable de readiness : la règle serveur
+fermée `split-13-7-v1` est définie dans `packages/core/src/marketplace-fees`.
+Son activation LIVE reste conditionnée au sign-off externe `FIN-002`.
+
 ## Variables REQUIRED_LIVE
 
 - Stripe : `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`,
   `STRIPE_ENVIRONMENT`, `PAYMENTS_LIVE_ENABLED`, les deux secrets webhook,
-  `STRIPE_WEBHOOK_IP_ALLOWLIST`, `STRIPE_WEBHOOK_RATE_LIMIT_VERIFIED`,
-  `PLATFORM_COMMISSION_RATE_BPS`.
+  `STRIPE_WEBHOOK_IP_ALLOWLIST`, `STRIPE_WEBHOOK_RATE_LIMIT_VERIFIED`.
 - Base : `DATABASE_URL` distant PostgreSQL (jamais localhost en LIVE).
 - Auth : `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`,
   `INVITATION_SECRET`.

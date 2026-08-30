@@ -1,6 +1,7 @@
 # G7M-C2 — Initiation du paiement du supplément
 
-- **Statut** : implémenté — validation ciblée PostgreSQL et régressions ciblées vertes ; validation Core globale pending CI
+- **Statut** : livré — validation PostgreSQL, régressions ciblées et validation
+  globale/CI post-merge vertes. Ce document conserve les preuves du jalon C2.
 - **ADR de référence** : [ADR-023](../decisions/ADR-023-booking-financial-amendments.md), §§8, 10, 12 et 15
 - **Migration** : aucune ; le schéma 0036 et ses transitions existantes sont suffisants
 
@@ -36,8 +37,8 @@ compensation C4, ni UI.
 
 ## Commission
 
-La commission du supplément est calculée en unités mineures avec arrondi
-half-up positif :
+Pour un supplément legacy, la commission historique est calculée en unités
+mineures avec arrondi half-up positif :
 
 ```text
 round_half_up(supplement * commission_original / total_original)
@@ -48,6 +49,12 @@ les montants originaux depuis `bookings` et le supplément depuis
 `amendment_payments`. Le cas `total_original = 0` est accepté uniquement avec
 une commission originale nulle. Le montant calculé est envoyé dans
 `application_fee_amount` et n'est jamais recalculé depuis le client.
+
+Pour un booking `split-13-7-v1`, ce calcul legacy n'est pas utilisé : le
+supplément conserve un snapshot `FINAL_STATE_DELTA_PER_COMPONENT` sous la règle
+du booking d'origine. L'application fee provider est la somme des deltas
+loueur et service client ; un delta négatif reste bloqué tant que la politique
+refund Finance/Juridique n'est pas signée.
 
 ## Preuve
 
@@ -71,7 +78,7 @@ une commission originale nulle. Le montant calculé est envoyé dans
 - module `booking-amendments` : 111/111 tests unitaires et 80/80 tests
   PostgreSQL d'intégration, soit 191/191 sur le périmètre module ;
 - régressions : payment-initiation 56/56, adapters Fake/Stripe 172/172,
-  lint, typecheck et build verts. La suite Core globale n'est pas revendiquée
-  comme verte localement : son gate final reste pending CI.
+  lint, typecheck et build verts au jalon C2. La validation globale a depuis été
+  effectuée dans la CI post-merge ; voir la référence d'état canonique.
 
 Voir également [G7M-C1](g7m-c1-supplement-local.md) et l'ADR-023.

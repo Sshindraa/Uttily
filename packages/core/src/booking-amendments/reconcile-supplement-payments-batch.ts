@@ -27,6 +27,8 @@ import type {
   StripeEnvironment,
 } from '../payments/types';
 import { calculateSupplementCommission } from './supplement-commission';
+import { parseMarketplaceFeeDeltaSnapshot } from '../marketplace-fees';
+import type { MarketplaceFeeDeltaSnapshot } from '../marketplace-fees';
 import { projectSupplementPaymentStatus } from './apply-supplement-amendment';
 
 const DEFAULT_BATCH_LIMIT = 10;
@@ -75,6 +77,7 @@ export interface ClaimedSupplementPaymentAttempt {
   readonly amountMinor: number;
   readonly originalTotalAmountMinor: number;
   readonly originalCommissionAmountMinor: number;
+  readonly marketplaceFeeDeltaSnapshot?: MarketplaceFeeDeltaSnapshot | null;
   readonly currency: string;
   readonly connectedAccountId: string;
   readonly onBehalfOfAccountId: string | null;
@@ -125,16 +128,24 @@ function randomLeaseToken(): string {
 }
 
 function buildCreateParams(claimed: ClaimedSupplementPaymentAttempt): CreatePaymentIntentParams {
-  const commission = calculateSupplementCommission(
-    claimed.amountMinor,
-    claimed.originalTotalAmountMinor,
-    claimed.originalCommissionAmountMinor,
-  );
+  if (
+    claimed.marketplaceFeeDeltaSnapshot &&
+    claimed.marketplaceFeeDeltaSnapshot.customerTotalDeltaAmountMinor !== claimed.amountMinor
+  ) {
+    throw new Error('INVARIANT_BROKEN');
+  }
+  const applicationFee =
+    claimed.marketplaceFeeDeltaSnapshot?.platformApplicationFeeDeltaAmountMinor ??
+    calculateSupplementCommission(
+      claimed.amountMinor,
+      claimed.originalTotalAmountMinor,
+      claimed.originalCommissionAmountMinor,
+    );
   return {
     amountMinor: claimed.amountMinor,
     currency: 'EUR',
     connectedAccountId: claimed.connectedAccountId,
-    applicationFeeAmountMinor: commission === 0 ? null : commission,
+    applicationFeeAmountMinor: applicationFee === 0 ? null : applicationFee,
     onBehalfOfAccountId: claimed.onBehalfOfAccountId,
     idempotencyKey: claimed.providerIdempotencyKey,
     metadata: {
@@ -174,6 +185,7 @@ export async function claimSupplementPaymentBatch(
         apa.reconcile_lease_until,
         ap.booking_id,
         ap.amount_minor,
+        ap.marketplace_fee_delta_snapshot,
         b.total_amount_minor AS original_total_amount_minor,
         b.commission_amount_minor AS original_commission_amount_minor,
         ap.currency,
@@ -216,6 +228,7 @@ export async function claimSupplementPaymentBatch(
       provider_idempotency_key: string;
       booking_id: string;
       amount_minor: number | string;
+      marketplace_fee_delta_snapshot: unknown;
       original_total_amount_minor: number | string;
       original_commission_amount_minor: number | string | null;
       currency: string;
@@ -258,6 +271,10 @@ export async function claimSupplementPaymentBatch(
         providerPaymentIntentId: row.provider_payment_intent_id,
         providerIdempotencyKey: row.provider_idempotency_key,
         amountMinor: Number(row.amount_minor),
+        marketplaceFeeDeltaSnapshot:
+          row.marketplace_fee_delta_snapshot === null
+            ? null
+            : parseMarketplaceFeeDeltaSnapshot(row.marketplace_fee_delta_snapshot),
         originalTotalAmountMinor: Number(row.original_total_amount_minor),
         originalCommissionAmountMinor: Number(row.original_commission_amount_minor ?? 0),
         currency: row.currency,
@@ -373,11 +390,19 @@ function validateProviderResult(
   result: PaymentIntentResult,
   claimed: ClaimedSupplementPaymentAttempt,
 ): void {
-  const expectedFee = calculateSupplementCommission(
-    claimed.amountMinor,
-    claimed.originalTotalAmountMinor,
-    claimed.originalCommissionAmountMinor,
-  );
+  if (
+    claimed.marketplaceFeeDeltaSnapshot &&
+    claimed.marketplaceFeeDeltaSnapshot.customerTotalDeltaAmountMinor !== claimed.amountMinor
+  ) {
+    throw new Error('PROVIDER_RESULT_INVALID');
+  }
+  const expectedFee =
+    claimed.marketplaceFeeDeltaSnapshot?.platformApplicationFeeDeltaAmountMinor ??
+    calculateSupplementCommission(
+      claimed.amountMinor,
+      claimed.originalTotalAmountMinor,
+      claimed.originalCommissionAmountMinor,
+    );
   if (
     result.id.trim() === '' ||
     result.amountMinor !== claimed.amountMinor ||

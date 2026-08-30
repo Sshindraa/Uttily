@@ -21,6 +21,7 @@ import type {
   PaymentIntentStatus,
 } from '../payments/types';
 import { PaymentInitiationError } from './errors';
+import { MarketplaceFeeError, parseMarketplaceFeeSnapshot } from '../marketplace-fees';
 import { computePaymentFingerprint } from './fingerprint';
 import type {
   InitiatePaymentDependencies,
@@ -157,6 +158,9 @@ function validateInput(input: InitiatePaymentInput): void {
  */
 function normalizeBusinessError(error: unknown): PaymentInitiationError | null {
   if (error instanceof PaymentInitiationError) return error;
+  if (error instanceof MarketplaceFeeError) {
+    return new PaymentInitiationError('VALIDATION', error.message, { statusCode: 400 });
+  }
   if (error instanceof FinancialTermsError) {
     if (error.code === 'FINANCIAL_TERMS_UNRESOLVED') {
       return new PaymentInitiationError('FINANCIAL_TERMS_UNRESOLVED', error.message, {
@@ -188,6 +192,7 @@ interface TransactionAResult {
   amountMinor: number;
   connectedAccountId: string;
   commissionAmountMinor: number;
+  platformApplicationFeeAmountMinor: number;
   onBehalfOfAccountId: string | null;
   processingDeadlineAt: Date;
 }
@@ -480,12 +485,20 @@ async function executeTakeover(
   let snapshot;
   if (draft.status === 'HELD') {
     try {
+      const financialInput = {
+        organizationId: draft.organizationId,
+        draftTotalAmountMinor: draft.totalAmountMinor,
+        draftCurrency: draft.currency,
+        ...(draft.marketplaceFeeSnapshot !== null
+          ? {
+              draftMarketplaceFeeSnapshot: parseMarketplaceFeeSnapshot(
+                draft.marketplaceFeeSnapshot,
+              ),
+            }
+          : {}),
+      };
       snapshot = resolveFinancialTerms(
-        {
-          organizationId: draft.organizationId,
-          draftTotalAmountMinor: draft.totalAmountMinor,
-          draftCurrency: draft.currency,
-        },
+        financialInput,
         input.financialTermsConfig,
         input.termsAcceptance,
       );
@@ -595,6 +608,7 @@ async function executeTakeover(
         taxRuleSnapshot: snapshot.taxRuleSnapshot,
         commissionAmountMinor: snapshot.commissionAmountMinor,
         commissionRuleSnapshot: snapshot.commissionRuleSnapshot,
+        marketplaceFeeSnapshot: snapshot.marketplaceFeeSnapshot ?? null,
         financialTermsVersion: snapshot.version,
         legalTermsVersion: snapshot.legalTermsVersion,
         termsAcceptanceSnapshot: input.termsAcceptance,
@@ -625,7 +639,10 @@ async function executeTakeover(
         existing.amountMinor !== snapshot.totalAmountMinor ||
         existing.currency !== 'EUR' ||
         existing.connectedAccountId !== snapshot.connectedAccountId ||
-        existing.commissionAmountMinor !== snapshot.commissionAmountMinor
+        existing.commissionAmountMinor !== snapshot.commissionAmountMinor ||
+        (snapshot.marketplaceFeeSnapshot !== undefined &&
+          JSON.stringify(existing.marketplaceFeeSnapshot) !==
+            JSON.stringify(snapshot.marketplaceFeeSnapshot))
       ) {
         throw new PaymentInitiationError(
           'PROVIDER_STATE_INCONSISTENT',
@@ -741,6 +758,10 @@ async function executeTakeover(
     amountMinor: payment.amountMinor,
     connectedAccountId: payment.connectedAccountId,
     commissionAmountMinor: payment.commissionAmountMinor,
+    platformApplicationFeeAmountMinor: payment.marketplaceFeeSnapshot
+      ? parseMarketplaceFeeSnapshot(payment.marketplaceFeeSnapshot)
+          .platformApplicationFeeAmountMinor
+      : payment.commissionAmountMinor,
     onBehalfOfAccountId: payment.onBehalfOfAccountId,
     processingDeadlineAt: payment.processingDeadlineAt!,
   };
@@ -915,14 +936,17 @@ async function executeProviderProjection(
     );
   }
   // Accepter null OU 0 lorsque la commission est 0 (Stripe peut retourner soit).
-  const expectedFee = txResult.commissionAmountMinor === 0 ? null : txResult.commissionAmountMinor;
+  const expectedFee =
+    txResult.platformApplicationFeeAmountMinor === 0
+      ? null
+      : txResult.platformApplicationFeeAmountMinor;
   if (
     providerResult.applicationFeeAmountMinor !== expectedFee &&
     !(expectedFee === null && providerResult.applicationFeeAmountMinor === 0)
   ) {
     throw new PaymentInitiationError(
       'PROVIDER_STATE_INCONSISTENT',
-      'La commission du PaymentIntent ne correspond pas au payment persisté.',
+      "L'application fee du PaymentIntent ne correspond pas au snapshot marketplace persisté.",
       { statusCode: 500 },
     );
   }
@@ -1225,7 +1249,9 @@ export async function initiatePayment(
     currency: 'EUR',
     connectedAccountId: txResult.connectedAccountId,
     applicationFeeAmountMinor:
-      txResult.commissionAmountMinor === 0 ? null : txResult.commissionAmountMinor,
+      txResult.platformApplicationFeeAmountMinor === 0
+        ? null
+        : txResult.platformApplicationFeeAmountMinor,
     onBehalfOfAccountId: txResult.onBehalfOfAccountId,
     idempotencyKey: txResult.providerIdempotencyKey,
     metadata: {

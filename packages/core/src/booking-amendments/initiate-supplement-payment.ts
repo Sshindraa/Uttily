@@ -16,6 +16,12 @@ import {
   calculateSupplementCommission,
   SupplementCommissionCalculationError,
 } from './supplement-commission';
+import {
+  parseMarketplaceFeeDeltaSnapshot,
+  parseMarketplaceFeeSnapshot,
+  MarketplaceFeeError,
+} from '../marketplace-fees';
+import type { MarketplaceFeeDeltaSnapshot } from '../marketplace-fees';
 import type {
   InitiateSupplementPaymentDependencies,
   InitiateSupplementPaymentInput,
@@ -136,6 +142,8 @@ interface LocalTakeover {
   readonly amountMinor: number;
   readonly totalOriginalMinor: number;
   readonly commissionOriginalMinor: number;
+  readonly marketplaceFeeDeltaSnapshot: MarketplaceFeeDeltaSnapshot | null;
+  readonly platformApplicationFeeDeltaAmountMinor: number;
   readonly connectedAccountId: string;
   readonly onBehalfOfAccountId: string | null;
   readonly environment: 'TEST' | 'LIVE';
@@ -342,13 +350,29 @@ async function executeTransactionA(
   }
 
   try {
-    calculateSupplementCommission(
-      payment.amountMinor,
-      booking.totalAmountMinor,
-      booking.commissionAmountMinor,
-    );
+    if (booking.marketplaceFeeSnapshot !== null) {
+      const bookingSnapshot = parseMarketplaceFeeSnapshot(booking.marketplaceFeeSnapshot);
+      const deltaSnapshot = parseMarketplaceFeeDeltaSnapshot(payment.marketplaceFeeDeltaSnapshot);
+      if (
+        deltaSnapshot.old.ruleVersion !== bookingSnapshot.ruleVersion ||
+        deltaSnapshot.old.customerTotalAmountMinor !== bookingSnapshot.customerTotalAmountMinor ||
+        deltaSnapshot.next.customerTotalAmountMinor - deltaSnapshot.old.customerTotalAmountMinor !==
+          payment.amountMinor
+      ) {
+        return { kind: 'INVALID_STATE' };
+      }
+    } else {
+      calculateSupplementCommission(
+        payment.amountMinor,
+        booking.totalAmountMinor,
+        booking.commissionAmountMinor,
+      );
+    }
   } catch (error) {
-    if (error instanceof SupplementCommissionCalculationError) {
+    if (
+      error instanceof SupplementCommissionCalculationError ||
+      error instanceof MarketplaceFeeError
+    ) {
       return { kind: 'INVALID_STATE' };
     }
     throw error;
@@ -414,6 +438,19 @@ async function executeTransactionA(
     amountMinor: payment.amountMinor,
     totalOriginalMinor: booking.totalAmountMinor,
     commissionOriginalMinor: booking.commissionAmountMinor,
+    marketplaceFeeDeltaSnapshot:
+      booking.marketplaceFeeSnapshot === null
+        ? null
+        : parseMarketplaceFeeDeltaSnapshot(payment.marketplaceFeeDeltaSnapshot),
+    platformApplicationFeeDeltaAmountMinor:
+      booking.marketplaceFeeSnapshot === null
+        ? calculateSupplementCommission(
+            payment.amountMinor,
+            booking.totalAmountMinor,
+            booking.commissionAmountMinor,
+          )
+        : parseMarketplaceFeeDeltaSnapshot(payment.marketplaceFeeDeltaSnapshot)
+            .platformApplicationFeeDeltaAmountMinor,
     connectedAccountId: payment.connectedAccountId,
     onBehalfOfAccountId: payment.onBehalfOfAccountId,
     environment: payment.environment,
@@ -421,16 +458,15 @@ async function executeTransactionA(
   };
 }
 
-function buildCreateParams(
-  txResult: LocalTakeover,
-  commissionSupplementMinor: number,
-): CreatePaymentIntentParams {
+function buildCreateParams(txResult: LocalTakeover): CreatePaymentIntentParams {
   return {
     amountMinor: txResult.amountMinor,
     currency: 'EUR',
     connectedAccountId: txResult.connectedAccountId,
     onBehalfOfAccountId: txResult.onBehalfOfAccountId,
-    applicationFeeAmountMinor: expectedApplicationFee(commissionSupplementMinor),
+    applicationFeeAmountMinor: expectedApplicationFee(
+      txResult.platformApplicationFeeDeltaAmountMinor,
+    ),
     idempotencyKey: txResult.providerIdempotencyKey,
     metadata: {
       payment_type: 'AMENDMENT',
@@ -485,7 +521,10 @@ async function executeTransactionB(
     payment.currency !== 'EUR' ||
     payment.connectedAccountId !== txResult.connectedAccountId ||
     payment.onBehalfOfAccountId !== txResult.onBehalfOfAccountId ||
-    !validatePersistedPaymentShape(booking, amendment, payment, attempt, true)
+    !validatePersistedPaymentShape(booking, amendment, payment, attempt, true) ||
+    (txResult.marketplaceFeeDeltaSnapshot !== null &&
+      JSON.stringify(payment.marketplaceFeeDeltaSnapshot) !==
+        JSON.stringify(txResult.marketplaceFeeDeltaSnapshot))
   ) {
     return { kind: 'PROVIDER_STATE_INCONSISTENT' };
   }
@@ -500,11 +539,7 @@ async function executeTransactionB(
     providerResult.connectedAccountId !== payment.connectedAccountId ||
     !providerFeeMatches(
       providerResult.applicationFeeAmountMinor,
-      calculateSupplementCommission(
-        payment.amountMinor,
-        booking.totalAmountMinor,
-        booking.commissionAmountMinor,
-      ),
+      txResult.platformApplicationFeeDeltaAmountMinor,
     ) ||
     providerResult.onBehalfOfAccountId !== payment.onBehalfOfAccountId ||
     !isNonEmptyString(providerResult.clientSecret)
@@ -581,26 +616,12 @@ export async function initiateSupplementPayment(
   );
   if (transactionA.kind !== 'TAKEOVER') return transactionA;
 
-  let commissionSupplementMinor: number;
-  try {
-    commissionSupplementMinor = calculateSupplementCommission(
-      transactionA.amountMinor,
-      transactionA.totalOriginalMinor,
-      transactionA.commissionOriginalMinor,
-    );
-  } catch (error) {
-    if (!(error instanceof SupplementCommissionCalculationError)) throw error;
-    return { kind: 'INVALID_STATE' };
-  }
-
   let providerResult: PaymentIntentResult;
   try {
     if (transactionA.providerPaymentIntentId !== null) {
       providerResult = await provider.retrievePaymentIntent(transactionA.providerPaymentIntentId);
     } else {
-      providerResult = await provider.createPaymentIntent(
-        buildCreateParams(transactionA, commissionSupplementMinor),
-      );
+      providerResult = await provider.createPaymentIntent(buildCreateParams(transactionA));
     }
   } catch {
     // Les erreurs provider sont volontairement fermées. La prise de contrôle

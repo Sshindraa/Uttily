@@ -31,6 +31,7 @@ import {
   REFUND_REQUESTED_EVENT_VERSION,
   parseRefundRequestedV1Event,
 } from '@uttily/contracts';
+import { CompensationError } from '../compensation-execution/errors';
 
 export interface CompensateAmendmentPaymentInput {
   readonly organizationId: string;
@@ -158,6 +159,16 @@ export async function compensateAmendmentPayment(
   }
   if (payment.currency !== 'EUR') {
     throw new Error('Devise du paiement de supplément non supportée.');
+  }
+
+  // La politique de remboursement séparé des composants split n'est pas
+  // résolue. Bloquer avant toute lecture/création de refund ou d'outbox ; le
+  // chemin legacy conserve son comportement historique.
+  if (booking.marketplaceFeeSnapshot !== null || payment.marketplaceFeeDeltaSnapshot !== null) {
+    throw new CompensationError(
+      'SPLIT_REFUND_UNRESOLVED',
+      'Le remboursement split du supplément est bloqué tant que la politique Finance/Legal des frais marketplace n’est pas résolue.',
+    );
   }
 
   // 2. Vérifier si un refund AMENDMENT_COMPENSATION existe déjà pour cet amendment_payment

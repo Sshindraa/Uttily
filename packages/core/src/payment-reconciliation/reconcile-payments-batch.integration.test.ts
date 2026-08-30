@@ -220,7 +220,7 @@ function makeFinancialTermsConfig(connectedAccountId = 'acct_test_123'): Financi
     commission: {
       version: 'v1',
       basis: 'percentage',
-      amountMinor: 500,
+      amountMinor: 260,
     },
     connectedAccount: {
       accountId: connectedAccountId,
@@ -338,6 +338,67 @@ async function seedReconciliationData(
   }
 
   return { draftId, paymentId, attemptId, providerPaymentIntentId, adapter };
+}
+
+async function seedLegacyReconciliationData(
+  ids: BaseIds,
+  keySuffix: string,
+  adapter: FakeStripeAdapter,
+): Promise<{
+  draftId: string;
+  paymentId: string;
+  attemptId: string;
+  providerPaymentIntentId: string;
+}> {
+  if (!rawSql) throw new Error('not initialized');
+  const amountMinor = 10000;
+  const draftId = await createHeldDraft(ids, keySuffix);
+  const paymentId = randomUUID();
+  const attemptId = randomUUID();
+  const providerIntent = await adapter.createPaymentIntent({
+    amountMinor,
+    currency: 'EUR',
+    connectedAccountId: 'acct_test_123',
+    applicationFeeAmountMinor: 500,
+    onBehalfOfAccountId: null,
+    idempotencyKey: `legacy-${keySuffix}`,
+    metadata: {
+      payment_id: paymentId,
+      payment_attempt_id: attemptId,
+      draft_id: draftId,
+      organization_id: ids.orgId,
+      protocol_version: PAYMENT_PROTOCOL_VERSION,
+    },
+  });
+
+  await rawSql`
+    INSERT INTO "payments" (
+      "id", "organization_id", "draft_id", "customer_user_id", "status",
+      "amount_minor", "currency", "tax_status", "commission_amount_minor",
+      "commission_rule_snapshot", "financial_terms_version", "legal_terms_version",
+      "terms_acceptance_snapshot", "connected_account_id", "charge_model",
+      "settlement_merchant_mode", "environment", "processing_deadline_at"
+    ) VALUES (
+      ${paymentId}, ${ids.orgId}, ${draftId}, ${ids.userId}, 'PENDING_PROVIDER',
+      ${amountMinor}, 'EUR', 'NOT_APPLICABLE', 500,
+      ${rawSql.json({ version: 'v1', basis: 'percentage', amountMinor: 500 })}, 'v1', 'v1',
+      ${rawSql.json({ termsVersion: 'v1', userId: ids.userId, acceptedAt: new Date().toISOString() })},
+      'acct_test_123', 'DESTINATION', 'PLATFORM', 'TEST', now() + interval '1 hour'
+    )
+  `;
+  await rawSql`
+    INSERT INTO "payment_attempts" (
+      "id", "organization_id", "payment_id", "attempt_number", "status",
+      "provider_payment_intent_id", "provider_idempotency_key", "provider_status",
+      "reconcile_after"
+    ) VALUES (
+      ${attemptId}, ${ids.orgId}, ${paymentId}, 1, 'PENDING_PROVIDER',
+      ${providerIntent.id}, ${'legacy-attempt-' + keySuffix}, 'requires_payment_method',
+      now() - interval '1 hour'
+    )
+  `;
+
+  return { draftId, paymentId, attemptId, providerPaymentIntentId: providerIntent.id };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -989,10 +1050,10 @@ describe.skipIf(shouldSkipIntegrationTests())(
       const ids = await seedBaseData();
       await seedPaymentAccount(ids);
       const adapter = new FakeStripeAdapter({ environment: 'TEST' });
-      const { draftId, paymentId, providerPaymentIntentId } = await seedReconciliationData(
+      const { draftId, paymentId, providerPaymentIntentId } = await seedLegacyReconciliationData(
         ids,
         'late',
-        { adapter },
+        adapter,
       );
 
       // Expirer le draft (le rendre terminal).

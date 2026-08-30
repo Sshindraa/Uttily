@@ -8,8 +8,10 @@
 > mentions historiques ci-dessous décrivent la baseline du 2026-08-15.
 
 **Date d'établissement :** 2026-08-15
-**Baseline :** `origin/main = 19653fac63a47845b904075f9dc3fabdb40ff872`
-**Branche :** `codex/mvp-pilot-readiness-baseline`
+**Référence de version :** document de readiness vivant ; vérifier la branche et
+le commit courants du dépôt avant utilisation. Les baselines et branches
+mentionnées dans les archives de préparation sont historiques.
+**Dernière revue de cohérence :** 2026-08-30
 
 ## Résumé exécutif
 

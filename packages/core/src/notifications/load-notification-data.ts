@@ -15,6 +15,7 @@ import {
 } from '@uttily/database';
 import { createSignedInvitationToken } from '../identity/invitations';
 import { getPublicAppUrl } from '../identity/public-app-url';
+import { parseMarketplaceFeeSnapshot } from '../marketplace-fees';
 import type { RenderedEmail } from './types';
 import {
   renderBookingCancelledCustomer,
@@ -41,7 +42,11 @@ export async function renderNotificationRecord(
           bookingId: bookings.id,
           customerStartAt: bookings.customerStartAt,
           customerEndAt: bookings.customerEndAt,
+          subtotalAmountMinor: bookings.subtotalAmountMinor,
+          mandatoryFeesAmountMinor: bookings.mandatoryFeesAmountMinor,
           totalAmountMinor: bookings.totalAmountMinor,
+          customerTotalAmountMinor: bookings.customerTotalAmountMinor,
+          marketplaceFeeSnapshot: bookings.marketplaceFeeSnapshot,
           organizationName: organizations.legalName,
           locationName: locations.name,
           locationAddress: locations.slug,
@@ -68,7 +73,7 @@ export async function renderNotificationRecord(
         customerEndAt: row.customerEndAt,
         locationName: row.locationName,
         timeZone: row.timeZone,
-        totalAmountMinor: row.totalAmountMinor,
+        totalAmountMinor: row.customerTotalAmountMinor ?? row.totalAmountMinor,
       });
     }
 
@@ -80,8 +85,11 @@ export async function renderNotificationRecord(
           bookingId: bookings.id,
           customerStartAt: bookings.customerStartAt,
           customerEndAt: bookings.customerEndAt,
+          subtotalAmountMinor: bookings.subtotalAmountMinor,
+          mandatoryFeesAmountMinor: bookings.mandatoryFeesAmountMinor,
           totalAmountMinor: bookings.totalAmountMinor,
           commissionAmountMinor: bookings.commissionAmountMinor,
+          marketplaceFeeSnapshot: bookings.marketplaceFeeSnapshot,
           customerEmail: users.email,
           organizationName: organizations.legalName,
           locationName: locations.name,
@@ -100,8 +108,14 @@ export async function renderNotificationRecord(
 
       if (rows.length === 0) throw new Error(`Réservation ${notification.bookingId} introuvable`);
       const row = rows[0]!;
-      const commission = row.commissionAmountMinor ?? 0;
-      const netRevenueMinor = row.totalAmountMinor - commission;
+      const marketplaceFeeSnapshot = row.marketplaceFeeSnapshot
+        ? parseMarketplaceFeeSnapshot(row.marketplaceFeeSnapshot)
+        : null;
+      const merchantFeeAmountMinor =
+        marketplaceFeeSnapshot?.merchantFeeAmountMinor ?? row.commissionAmountMinor ?? 0;
+      const merchantBaseAmountMinor =
+        marketplaceFeeSnapshot?.marketplaceFeeBaseAmountMinor ?? row.totalAmountMinor;
+      const merchantNetAmountMinor = merchantBaseAmountMinor - merchantFeeAmountMinor;
 
       return renderBookingConfirmedMerchant({
         bookingId: row.bookingId,
@@ -112,7 +126,9 @@ export async function renderNotificationRecord(
         customerEmail: row.customerEmail,
         locationName: row.locationName,
         timeZone: row.timeZone,
-        netRevenueMinor,
+        merchantBaseAmountMinor,
+        merchantFeeAmountMinor,
+        merchantNetAmountMinor,
       });
     }
 

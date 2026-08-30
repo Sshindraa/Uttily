@@ -1,6 +1,8 @@
 # Plan de déblocage du premier pilote — 21-P0
 
-**Base :** `origin/main = eb08f2830abad5fd6643978aee6056e6e59e7171`
+**Référence de version :** document vivant ; vérifier le commit courant du dépôt
+avant utilisation. Les anciennes baselines `origin/main = ...` sont historiques.
+**Dernière revue de cohérence :** 2026-08-30
 **Statut :** préparation externe complète ; aucune décision humaine n'est prise dans ce document.
 
 Ce plan reprend les **31 sujets** marqués `Bloque pilote = Oui` dans
@@ -25,7 +27,7 @@ une décision approuvée.
 | `C2A-10` | Responsabilité | `LEGAL-002`, `LEGAL-003` | Juridique | `READY_FOR_HUMAN_DECISION` | Aucun mécanisme technique ne tranche responsabilité, limitation ou transfert. | Attribuer contractuellement les responsabilités et exclusions du pilote. | Oui |
 | `C2A-11` | Caution / dépôt de garantie | `FIN-007`, `LEGAL-002` | Finance + juridique + produit | `READY_FOR_HUMAN_DECISION` | Le modèle liste six stratégies ; ADR-010 exclut la caution du PaymentIntent ; aucune stratégie n'est choisie. | Choisir une stratégie ou confirmer `NO_DEPOSIT`/exclusion pilote, avec montant, durée et responsabilité. | Oui |
 | `C2B-01` | Merchant / settlement | `FIN-001`, `LEGAL-007` | Finance + juridique | `READY_FOR_HUMAN_DECISION` | Destination charge ; code `PLATFORM`, `onBehalfOfAccountId: null`; Lot 5-A non rendu. | Répondre aux six questions de responsabilité et confirmer le modèle contractuel. | Oui |
-| `C2B-02` | Commission commerciale | `FIN-002` | Finance + porteur produit | `READY_FOR_HUMAN_DECISION` | Taux configuré en BPS, calcul half-up ; `1000` = 10 % dans la configuration documentée, non approuvé LIVE. | Fournir taux/base/frais/TVA/min-max/refund/date/version par offre pilote. | Oui |
+| `C2B-02` | Frais marketplace | `FIN-002` | Finance + porteur produit | `READY_FOR_HUMAN_DECISION` | Décision produit enregistrée dans `ADR-029` : `split-13-7-v1`, base `subtotal + mandatory fees`, frais loueur 13 % + frais service client 7 %, `HALF_UP_PER_COMPONENT`, sans fixe. Non approuvé LIVE. | Valider base fiscale, date d'effet, TVA, frais Stripe, refunds, chargebacks, litiges, soldes négatifs et responsabilités. | Oui |
 | `C2B-03` | Statut fiscal / TVA | `FIN-003` | Expert-comptable + juridique | `READY_FOR_HUMAN_DECISION` | **CURRENT CODE BEHAVIOR :** `NOT_APPLICABLE`, montant et taux null ; la valeur est hard-codée. | Répondre `APPLIED` ou `NOT_APPLICABLE`, avec règle, taux, entité et date d'effet. | Oui |
 | `C2B-04` | Émetteur de facture | `FIN-004` | Expert-comptable + juridique | `READY_FOR_HUMAN_DECISION` | **CURRENT CODE BEHAVIOR :** `invoiceIssuer: 'Uttily'` est propagé aux snapshots. | Confirmer l'émetteur juridiquement habilité et les mentions associées. | Oui |
 | `C2B-05` | Reçus / factures / documents financiers | `FIN-004`, `FIN-005` | Finance + juridique | `READY_FOR_HUMAN_DECISION` | Pipeline de documents, snapshots et outbox présents ; contenu et mentions obligatoires non validés. | Valider le catalogue par événement, destinataire, version et conservation. | Oui |

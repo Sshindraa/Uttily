@@ -14,6 +14,7 @@ import { type DatabaseClient } from '@uttily/database';
 import type { StripeEnvironment } from '../payments/types';
 import { LEASE_INTERVAL } from './scheduling';
 import type { ClaimedAttempt } from './types';
+import { parseMarketplaceFeeSnapshot } from '../marketplace-fees';
 
 /**
  * Revendique un batch de tentatives à réconcilier.
@@ -56,6 +57,7 @@ export async function claimReconciliationBatch(
         p.currency,
         p.connected_account_id,
         p.commission_amount_minor,
+        p.marketplace_fee_snapshot,
         p.on_behalf_of_account_id,
         p.processing_deadline_at,
         p.environment,
@@ -86,6 +88,7 @@ export async function claimReconciliationBatch(
       currency: string;
       connected_account_id: string;
       commission_amount_minor: number;
+      marketplace_fee_snapshot: unknown;
       on_behalf_of_account_id: string | null;
       processing_deadline_at: Date;
       environment: string;
@@ -159,6 +162,10 @@ export async function claimReconciliationBatch(
         currency: r.currency,
         connectedAccountId: r.connected_account_id,
         commissionAmountMinor: Number(r.commission_amount_minor),
+        marketplaceFeeSnapshot:
+          r.marketplace_fee_snapshot === null
+            ? null
+            : parseMarketplaceFeeSnapshot(r.marketplace_fee_snapshot),
         onBehalfOfAccountId: r.on_behalf_of_account_id,
         processingDeadlineAt: new Date(r.processing_deadline_at),
         leaseUntil,

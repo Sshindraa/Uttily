@@ -176,8 +176,8 @@ NO_DEPOSIT
 
 ### Modifications financières append-only (ADR-023, conception approuvée)
 
-> ADR-023 (2026-08-10, Accepted — conception approuvée, implémentation non
-> commencée). Voir
+> ADR-023 (2026-08-10, Accepted — conception approuvée et implémentation
+> livrée). Voir
 > `docs/decisions/ADR-023-booking-financial-amendments.md`.
 
 Les modifications d'une réservation `CONFIRMED` sont tracées dans des tables
@@ -394,6 +394,10 @@ autorités PostgreSQL, sans jamais truster le payload outbox.
   `subtotalAmountMinor`, `mandatoryFeesAmountMinor`, `totalAmountMinor`,
   `taxStatus`, `taxAmountMinor`, `taxRateBps`,
   `cancellationPolicySnapshot`, `termsAcceptanceSnapshot`.
+  Pour un booking split, les champs publics `marketplaceFeeBaseAmountMinor`,
+  `customerServiceFeeAmountMinor`, `customerTotalAmountMinor` et
+  `marketplaceFeeRuleVersion` sont également exposés dans le snapshot client ;
+  le détail loueur et l'application fee technique restent hors de ce snapshot.
   **Champs internes exclus** : `commissionAmountMinor`,
   `commissionRuleSnapshot`, `taxRuleSnapshot` (données internes de calcul,
   non pertinentes pour le rendu client).

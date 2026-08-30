@@ -35,6 +35,7 @@ import {
 } from '../pricing-plans/local-to-utc';
 import { getEffectiveBooking } from './get-effective-booking';
 import { calculateSupplementCommission } from './supplement-commission';
+import { calculateMarketplaceFeeDelta } from '../marketplace-fees';
 import {
   BusinessSignal,
   classifyDelta,
@@ -471,7 +472,17 @@ export async function previewBookingAmendment(
 
   // 12. Calculs financiers et commission fail-closed
   const previousContractualTotalAmountMinor = effectiveBooking.effectiveTotalAmountMinor;
-  const nextContractualTotalAmountMinor = quoteResult.totalAmountMinor;
+  const marketplaceFeeDelta = effectiveBooking.effectiveMarketplaceFeeSnapshot
+    ? calculateMarketplaceFeeDelta({
+        oldBaseAmountMinor:
+          effectiveBooking.effectiveMarketplaceFeeSnapshot.marketplaceFeeBaseAmountMinor,
+        nextBaseAmountMinor: quoteResult.totalAmountMinor,
+        ruleVersion: effectiveBooking.effectiveMarketplaceFeeSnapshot.ruleVersion,
+      })
+    : null;
+  const nextMarketplaceFeeSnapshot = marketplaceFeeDelta?.next;
+  const nextContractualTotalAmountMinor =
+    nextMarketplaceFeeSnapshot?.customerTotalAmountMinor ?? quoteResult.totalAmountMinor;
   const deltaAmountMinor = nextContractualTotalAmountMinor - previousContractualTotalAmountMinor;
   const classification = classifyDelta(deltaAmountMinor);
 
@@ -479,29 +490,34 @@ export async function previewBookingAmendment(
   let supplementNetAmountMinor: number | null = null;
 
   if (classification === 'SUPPLEMENT') {
-    const origBookingRows = await db
-      .select({
-        totalAmountMinor: bookings.totalAmountMinor,
-        commissionAmountMinor: bookings.commissionAmountMinor,
-      })
-      .from(bookings)
-      .where(and(eq(bookings.id, command.bookingId), eq(bookings.organizationId, organizationId)))
-      .limit(1);
+    if (marketplaceFeeDelta) {
+      supplementCommissionAmountMinor = marketplaceFeeDelta.merchantFeeDeltaAmountMinor;
+      supplementNetAmountMinor = marketplaceFeeDelta.merchantNetDeltaAmountMinor;
+    } else {
+      const origBookingRows = await db
+        .select({
+          totalAmountMinor: bookings.totalAmountMinor,
+          commissionAmountMinor: bookings.commissionAmountMinor,
+        })
+        .from(bookings)
+        .where(and(eq(bookings.id, command.bookingId), eq(bookings.organizationId, organizationId)))
+        .limit(1);
 
-    if (origBookingRows.length === 0) {
-      return {
-        kind: 'INVALID_INPUT',
-        message: 'Réservation source introuvable pour le calcul de commission.',
-      };
+      if (origBookingRows.length === 0) {
+        return {
+          kind: 'INVALID_INPUT',
+          message: 'Réservation source introuvable pour le calcul de commission.',
+        };
+      }
+
+      const origBooking = origBookingRows[0]!;
+      supplementCommissionAmountMinor = calculateSupplementCommission(
+        deltaAmountMinor,
+        origBooking.totalAmountMinor,
+        origBooking.commissionAmountMinor,
+      );
+      supplementNetAmountMinor = deltaAmountMinor - supplementCommissionAmountMinor;
     }
-
-    const origBooking = origBookingRows[0]!;
-    supplementCommissionAmountMinor = calculateSupplementCommission(
-      deltaAmountMinor,
-      origBooking.totalAmountMinor,
-      origBooking.commissionAmountMinor,
-    );
-    supplementNetAmountMinor = deltaAmountMinor - supplementCommissionAmountMinor;
   }
 
   // 13. Construction du diff ordonné avec libellés publics sûrs
@@ -552,6 +568,18 @@ export async function previewBookingAmendment(
     currency: 'EUR',
     supplementCommissionAmountMinor,
     supplementNetAmountMinor,
+    ...(marketplaceFeeDelta
+      ? {
+          previousMarketplaceFeeSnapshot: marketplaceFeeDelta.old,
+          nextMarketplaceFeeSnapshot: marketplaceFeeDelta.next,
+          merchantFeeDeltaAmountMinor: marketplaceFeeDelta.merchantFeeDeltaAmountMinor,
+          customerServiceFeeDeltaAmountMinor:
+            marketplaceFeeDelta.customerServiceFeeDeltaAmountMinor,
+          customerTotalDeltaAmountMinor: marketplaceFeeDelta.customerTotalDeltaAmountMinor,
+          platformApplicationFeeDeltaAmountMinor:
+            marketplaceFeeDelta.platformApplicationFeeDeltaAmountMinor,
+        }
+      : {}),
     lines: previewLines,
   };
 }

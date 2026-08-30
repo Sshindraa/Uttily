@@ -12,7 +12,10 @@ export interface MerchantFinancePayments {
 }
 
 export interface MerchantFinanceCommissions {
+  /** Frais plateforme imputables au loueur (legacy compatibility projection). */
   platformAmountMinor: number;
+  /** Application fee technique Stripe, distinct du frais loueur en split. */
+  platformApplicationFeeAmountMinor: number;
 }
 
 export interface MerchantFinanceMerchant {
@@ -52,6 +55,12 @@ export interface MerchantFinanceActivityItem {
   customerEmail?: string | undefined;
   grossAmountMinor: number;
   commissionAmountMinor: number;
+  marketplaceFeeBaseAmountMinor?: number | undefined;
+  merchantFeeAmountMinor?: number | undefined;
+  customerServiceFeeAmountMinor?: number | undefined;
+  customerTotalAmountMinor?: number | undefined;
+  merchantNetAmountMinor?: number | undefined;
+  platformApplicationFeeAmountMinor?: number | undefined;
   netAmountMinor: number;
   currency: string;
   status: string;

@@ -49,6 +49,7 @@ import {
 } from './execute-booking-amendment-internal';
 import { getEffectiveBooking } from './get-effective-booking';
 import { subtractHalfOpenSegments } from './delta-segments';
+import { calculateMarketplaceFeeDelta } from '../marketplace-fees';
 import type { SupplementAmendmentCommand, SupplementAmendmentResult } from './types-amendment';
 import { SupplementAmendmentError } from './types-amendment';
 
@@ -366,11 +367,24 @@ async function persistSupplement(
   }
   const blockedStartAt = new Date(customerStartAt.getTime() - location.prepBufferMinutes * 60_000);
   const blockedEndAt = new Date(customerEndAt.getTime() + location.cleanupBufferMinutes * 60_000);
+  const marketplaceFeeDelta = effective.effectiveMarketplaceFeeSnapshot
+    ? calculateMarketplaceFeeDelta({
+        oldBaseAmountMinor: effective.effectiveMarketplaceFeeSnapshot.marketplaceFeeBaseAmountMinor,
+        nextBaseAmountMinor: quoteResult.totalAmountMinor,
+        ruleVersion: effective.effectiveMarketplaceFeeSnapshot.ruleVersion,
+      })
+    : null;
   const before = {
     totalAmountMinor: effective.effectiveTotalAmountMinor,
     currency: 'EUR' as const,
+    ...(marketplaceFeeDelta ? { marketplaceFeeSnapshot: marketplaceFeeDelta.old } : {}),
   };
-  const after = { totalAmountMinor: quoteResult.totalAmountMinor, currency: 'EUR' as const };
+  const after = {
+    totalAmountMinor:
+      marketplaceFeeDelta?.next.customerTotalAmountMinor ?? quoteResult.totalAmountMinor,
+    currency: 'EUR' as const,
+    ...(marketplaceFeeDelta ? { marketplaceFeeSnapshot: marketplaceFeeDelta.next } : {}),
+  };
   const delta = after.totalAmountMinor - before.totalAmountMinor;
   if (delta <= 0) {
     throw new BusinessSignal({
@@ -616,6 +630,7 @@ async function persistSupplement(
       amendmentId,
       customerUserId: booking.customerUserId,
       amountMinor: delta,
+      marketplaceFeeDeltaSnapshot: marketplaceFeeDelta,
       currency: sourcePayment.currency,
       environment: sourcePayment.environment,
       connectedAccountId: sourcePayment.connectedAccountId,

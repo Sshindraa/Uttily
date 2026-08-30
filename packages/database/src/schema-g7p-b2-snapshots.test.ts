@@ -27,7 +27,7 @@ import { runMigrations, assertLocalhost } from '../src/index';
  * - La retraite plan sans effet sur le snapshot.
  * - Les transitions de statut autorisées.
  * - La concurrence (insertion de brouillon vs retraite de plan).
- * - Le journal de migrations (39 entrées).
+ * - Le journal de migrations (49 entrées).
  */
 
 const TEST_DB_NAME = 'uttily_test_g7p_b2_snapshots';
@@ -1238,6 +1238,12 @@ describe.skipIf(shouldSkipIntegrationTests())('G7P-B2-A — Pricing snapshot fou
         sql`UPDATE "bookings" SET "cancellation_policy_snapshot" = '"corrupted"'::jsonb WHERE "id" = ${bookingId}`,
       ).rejects.toThrow(/immutable/);
 
+      // UPDATE du snapshot marketplace ajouté par la migration 0049 → rejeté
+      // par le trigger dédié, tout en conservant l'immutabilité après son ajout.
+      await expect(
+        sql`UPDATE "bookings" SET "marketplace_fee_snapshot" = '{}'::jsonb WHERE "id" = ${bookingId}`,
+      ).rejects.toThrow(/marketplace fee snapshot is immutable/);
+
       // UPDATE du status sur booking → autorisé (fulfillment transitions)
       await sql`UPDATE "bookings" SET "status" = 'READY_FOR_PICKUP' WHERE "id" = ${bookingId}`;
       const booking = await sql`SELECT "status" FROM "bookings" WHERE "id" = ${bookingId}`.then(
@@ -1466,18 +1472,18 @@ describe.skipIf(shouldSkipIntegrationTests())('G7P-B2-A — Pricing snapshot fou
 
   // J. Migration journal
 
-  it('J1 — journal de migrations : __drizzle_migrations a 39 entrées, _journal.json a 39 entrées', async () => {
+  it('J1 — journal de migrations : __drizzle_migrations a 49 entrées, _journal.json a 49 entrées', async () => {
     if (!testUrl) return;
     const sql = postgres(testUrl, { max: 1 });
     try {
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(48);
+      expect(rows.length).toBe(49);
 
       // Vérifier le _journal.json
       const __dirname = dirname(fileURLToPath(import.meta.url));
       const journalPath = join(__dirname, '..', 'drizzle', 'meta', '_journal.json');
       const journal = JSON.parse(readFileSync(journalPath, 'utf-8'));
-      expect(journal.entries.length).toBe(48);
+      expect(journal.entries.length).toBe(49);
       expect(journal.entries[32]!.tag).toBe('0033_g7p_b2_pricing_snapshots');
       expect(journal.entries[32]!.idx).toBe(32);
     } finally {

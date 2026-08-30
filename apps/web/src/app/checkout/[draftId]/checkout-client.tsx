@@ -17,7 +17,10 @@ interface DraftLine {
 interface CheckoutClientProps {
   draftId: string;
   returnUrl: string;
-  totalAmountMinor: number;
+  baseAmountMinor: number;
+  customerServiceFeeAmountMinor: number;
+  customerTotalAmountMinor: number;
+  hasMarketplaceFeeSnapshot: boolean;
   currency: string;
   lines: DraftLine[];
   renterName: string;
@@ -171,7 +174,10 @@ function PaymentForm({
 export function CheckoutClient({
   draftId,
   returnUrl,
-  totalAmountMinor,
+  baseAmountMinor,
+  customerServiceFeeAmountMinor,
+  customerTotalAmountMinor,
+  hasMarketplaceFeeSnapshot,
   currency,
   lines,
   renterName,
@@ -216,7 +222,7 @@ export function CheckoutClient({
     }
   }, [draftId]);
 
-  const totalLabel = formatAmount(totalAmountMinor, currency);
+  const totalLabel = formatAmount(customerTotalAmountMinor, currency);
 
   if (phase === 'success') {
     return (
@@ -305,12 +311,31 @@ export function CheckoutClient({
           ))}
         </ul>
 
-        <div style={totalRowStyle}>
-          <span>Total à régler</span>
-          <strong style={{ color: 'var(--ut-color-primary)', fontSize: '1.25rem' }}>
-            {totalLabel}
-          </strong>
-        </div>
+        {hasMarketplaceFeeSnapshot ? (
+          <div style={breakdownStyle}>
+            <div style={breakdownRowStyle}>
+              <span>Location</span>
+              <span>{formatAmount(baseAmountMinor, currency)}</span>
+            </div>
+            <div style={breakdownRowStyle}>
+              <span>Frais de service</span>
+              <span>{formatAmount(customerServiceFeeAmountMinor, currency)}</span>
+            </div>
+            <div style={totalRowStyle}>
+              <span>Total à régler</span>
+              <strong style={{ color: 'var(--ut-color-primary)', fontSize: '1.25rem' }}>
+                {totalLabel}
+              </strong>
+            </div>
+          </div>
+        ) : (
+          <div style={totalRowStyle}>
+            <span>Total à régler</span>
+            <strong style={{ color: 'var(--ut-color-primary)', fontSize: '1.25rem' }}>
+              {totalLabel}
+            </strong>
+          </div>
+        )}
 
         {expiresAt && (
           <p style={mutedStyle}>
@@ -436,6 +461,19 @@ const totalRowStyle: CSSProperties = {
   borderTop: 'var(--ut-border-thin)',
   fontSize: '1.1rem',
   fontWeight: 'bold',
+};
+
+const breakdownStyle: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '0.5rem',
+};
+
+const breakdownRowStyle: CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  color: 'var(--ut-color-ink-muted)',
+  fontSize: '0.95rem',
 };
 
 const submitButtonStyle: CSSProperties = {

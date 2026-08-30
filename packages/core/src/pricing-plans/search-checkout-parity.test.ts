@@ -95,7 +95,10 @@ describe('Search & Checkout decision parity for DAY_RANGE and schedule exception
 
     expect(searchResult).not.toBeNull();
     expect(quoteResult.totalAmountMinor).toBe(16000); // 4 * 4000
-    expect(searchResult!.price.totalAmountMinor).toBe(quoteResult.totalAmountMinor);
+    expect(searchResult!.price.marketplaceFeeBaseAmountMinor).toBe(quoteResult.totalAmountMinor);
+    expect(searchResult!.price.customerServiceFeeAmountMinor).toBe(1120);
+    expect(searchResult!.price.totalAmountMinor).toBe(17120);
+    expect(searchResult!.price.customerTotalAmountMinor).toBe(17120);
     expect(searchResult!.best.plan.id).toBe(quoteResult.lines[0]!.pricingPlanId);
   });
 
@@ -248,7 +251,7 @@ describe('Search & Checkout decision parity for DAY_RANGE and schedule exception
 
     expect(searchResult).not.toBeNull();
     expect(quoteResult.totalAmountMinor).toBe(16000);
-    expect(searchResult!.price.totalAmountMinor).toBe(quoteResult.totalAmountMinor);
+    expect(searchResult!.price.totalAmountMinor).toBe(17120);
   });
 
   it('7. Jour intermédiaire CLOSED : Search et Checkout acceptent tous les deux', () => {
@@ -278,7 +281,7 @@ describe('Search & Checkout decision parity for DAY_RANGE and schedule exception
 
     expect(searchResult).not.toBeNull();
     expect(quoteResult.totalAmountMinor).toBe(16000);
-    expect(searchResult!.price.totalAmountMinor).toBe(quoteResult.totalAmountMinor);
+    expect(searchResult!.price.totalAmountMinor).toBe(17120);
   });
 
   it('8. Multiples candidats : le candidat compatible est sélectionné sans rejet arbitraire (Requirement 10)', () => {
@@ -350,7 +353,7 @@ describe('Search & Checkout decision parity for DAY_RANGE and schedule exception
     const searchResult = computePriceForCandidate(ctx, VARIANT_ID);
     expect(searchResult).not.toBeNull();
     expect(searchResult!.best.plan.id).toBe('plan-special-daily');
-    expect(searchResult!.price.totalAmountMinor).toBe(5000);
+    expect(searchResult!.price.totalAmountMinor).toBe(5350);
   });
 
   it('9. Régression : horaires hebdo 09:00–18:00 + OPEN_INTERVAL 08:00–20:00 + fenêtre DAILY 08:00–20:00 => succès Search & Checkout', () => {
@@ -411,7 +414,7 @@ describe('Search & Checkout decision parity for DAY_RANGE and schedule exception
     // Search doit également trouver et pricer l'offre
     const searchResult = computePriceForCandidate(ctx, VARIANT_ID);
     expect(searchResult).not.toBeNull();
-    expect(searchResult!.price.totalAmountMinor).toBe(4000);
+    expect(searchResult!.price.totalAmountMinor).toBe(4280);
     expect(searchResult!.best.plan.id).toBe('plan-extended-daily');
   });
 
@@ -483,7 +486,7 @@ describe('Search & Checkout decision parity for DAY_RANGE and schedule exception
     // Search fait exactement la même sélection
     const searchResult = computePriceForCandidate(ctx, VARIANT_ID);
     expect(searchResult).not.toBeNull();
-    expect(searchResult!.price.totalAmountMinor).toBe(4000);
+    expect(searchResult!.price.totalAmountMinor).toBe(4280);
     expect(searchResult!.best.plan.id).toBe('plan-multi-win-daily');
   });
 });

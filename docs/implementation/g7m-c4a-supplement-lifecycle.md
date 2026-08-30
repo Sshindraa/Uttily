@@ -2,13 +2,10 @@
 
 ## Statut
 
-G7M-C4-A est implémenté localement dans Core (`packages/core/src/booking-amendments/`).
-C1 est livré ; C2/C3 sont empilés localement ; C4-S est committé localement
-(migration 0037 et suite database séparée de 9 tests) ; G7M-C4-A (expiration,
-retry N+1 et réconciliation) est implémenté et validé par 17/17 tests PostgreSQL
-réels. Le module Core `booking-amendments` passe 14 suites et 230/230 tests
-séquentiels (C1 à C4-A). C4-B (compensation et wiring) et C5 (UI) restent
-pending. La validation Core globale reste pending CI.
+G7M-C4-A est livré dans Core (`packages/core/src/booking-amendments/`).
+C1 à C4-A sont validés par leurs suites dédiées ; C4-B (compensation et
+wiring), C5 (UI) et la validation globale ont été livrés et validés dans les
+jalons suivants et la CI post-merge.
 
 Cette phase ne livre aucun worker, cron, webhook, route, UI, migration de
 données, compensation automatique ou wiring d'orchestration externe.
@@ -105,10 +102,10 @@ lifecycle suivantes :
 - **230/230 tests du module `booking-amendments`** : 14 suites unitaires et
   d'intégration réelles couvrant l'ensemble du module Core de C1 à C4-A à 100%
   sans régression. (La suite C4-S est une suite database distincte de 9 tests).
-- **Validation Core globale** : non lancée localement, reste pending CI.
+- **Validation Core globale** : validée depuis dans la CI post-merge ; ce rapport
+  conserve la preuve ciblée du jalon C4-A.
 
-## Périmètre exclu / Pending
+## Périmètre exclu au jalon C4-A
 
-- C4-B (compensation automatique en cas de paiement tardif, wiring worker/cron et
-  webhooks) reste pending.
-- C5 (UI et expérience utilisateur) reste pending.
+- C4-B et C5 étaient exclus de ce jalon et sont documentés dans leurs rapports
+  de livraison respectifs.

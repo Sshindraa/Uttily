@@ -32,6 +32,7 @@ import { lockWebhookEvent } from '../webhook-handler/dedupe-event';
 import { withInvariantHandling } from '../webhook-handler/with-invariant-handling';
 import { lockOrganization } from '@uttily/database';
 import { calculateSupplementCommission } from './supplement-commission';
+import { parseMarketplaceFeeDeltaSnapshot } from '../marketplace-fees';
 import { compensateAmendmentPayment } from './compensate-amendment-payment';
 import { rescheduleBookingReminders } from '../notifications/scheduling';
 
@@ -338,24 +339,39 @@ function assertProviderAuthority(
   ) {
     throw invariant('La commission du PaymentIntent de supplément est négative.');
   }
-  let expectedSupplementCommission: number;
+  let expectedApplicationFee: number;
   try {
-    expectedSupplementCommission = calculateSupplementCommission(
-      payment.amountMinor,
-      rows.booking.totalAmountMinor,
-      rows.booking.commissionAmountMinor,
-    );
+    if (
+      rows.payment.marketplaceFeeDeltaSnapshot !== null &&
+      rows.payment.marketplaceFeeDeltaSnapshot !== undefined
+    ) {
+      const deltaSnapshot = parseMarketplaceFeeDeltaSnapshot(
+        rows.payment.marketplaceFeeDeltaSnapshot,
+      );
+      if (deltaSnapshot.customerTotalDeltaAmountMinor !== payment.amountMinor) {
+        throw new Error('Le montant du paiement ne correspond pas au delta client du snapshot.');
+      }
+      expectedApplicationFee = deltaSnapshot.platformApplicationFeeDeltaAmountMinor;
+    } else {
+      expectedApplicationFee = calculateSupplementCommission(
+        payment.amountMinor,
+        rows.booking.totalAmountMinor,
+        rows.booking.commissionAmountMinor,
+      );
+    }
   } catch {
-    throw invariant('La commission du supplément est incohérente avec les snapshots locaux.');
+    throw invariant(
+      'Le snapshot marketplace du supplément est incohérent avec les données locales.',
+    );
   }
-  const expectedFee = expectedSupplementCommission === 0 ? null : expectedSupplementCommission;
+  const expectedFee = expectedApplicationFee === 0 ? null : expectedApplicationFee;
   if (
     piData.applicationFeeAmount !== expectedFee &&
     !(expectedFee === null && piData.applicationFeeAmount === 0)
   ) {
     throw new WebhookHandlerError(
       'WEBHOOK_INVARIANT_BROKEN',
-      'La commission du PaymentIntent de supplément ne correspond pas au snapshot local.',
+      "L'application fee du PaymentIntent de supplément ne correspond pas au snapshot local.",
       { statusCode: 500 },
     );
   }

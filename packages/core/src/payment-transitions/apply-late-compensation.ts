@@ -20,6 +20,7 @@ import {
   type DatabaseTransaction,
 } from '@uttily/database';
 import type { PaymentIntentEventData, ResolvedAttempt } from '../webhook-handler/types';
+import { WebhookHandlerError } from '../webhook-handler/errors';
 import { validateWebhookAuthority } from '../webhook-handler/validate-authority';
 import type { LockedPaymentRows } from './types';
 
@@ -69,6 +70,16 @@ export async function applyLateCompensation(
 
   if (existingBookings.length > 0) {
     return false;
+  }
+
+  // La politique de remboursement des composants split n'est pas encore
+  // validée Finance/Legal. Ne jamais créer un refund global qui masquerait
+  // cette décision ou appliquerait silencieusement les flags Stripe legacy.
+  if (payment.marketplaceFeeSnapshot !== null) {
+    throw new WebhookHandlerError(
+      'WEBHOOK_INVARIANT_BROKEN',
+      'Remboursement split bloqué : la politique Finance/Legal des frais marketplace est non résolue.',
+    );
   }
 
   const now = sql`transaction_timestamp()`;

@@ -34,6 +34,7 @@ import {
   type ResolvedAnalyticsEnvironment,
 } from '../product-analytics';
 import { scheduleBookingConfirmedNotifications } from '../notifications/scheduling';
+import { MarketplaceFeeError, parseMarketplaceFeeSnapshot } from '../marketplace-fees';
 import type { LockedBusinessRows } from './types';
 
 /** Résultat de la confirmation. */
@@ -239,6 +240,31 @@ export async function applyBookingConfirmation(
     environment,
   );
 
+  // Pour split, le payment est l'autorité de confirmation et doit reprendre
+  // exactement le snapshot du draft. Toute corruption ou divergence est
+  // bloquante : aucun recalcul depuis la règle courante.
+  if (payment.marketplaceFeeSnapshot !== null) {
+    try {
+      const paymentFeeSnapshot = parseMarketplaceFeeSnapshot(payment.marketplaceFeeSnapshot);
+      const draftFeeSnapshot = parseMarketplaceFeeSnapshot(draft.marketplaceFeeSnapshot);
+      if (
+        JSON.stringify(paymentFeeSnapshot) !== JSON.stringify(draftFeeSnapshot) ||
+        payment.amountMinor !== paymentFeeSnapshot.customerTotalAmountMinor
+      ) {
+        throw new MarketplaceFeeError(
+          'INVARIANT_VIOLATION',
+          'Le snapshot marketplace du payment ne correspond pas au draft.',
+        );
+      }
+    } catch (error) {
+      throw new WebhookHandlerError(
+        'WEBHOOK_INVARIANT_BROKEN',
+        `Snapshot marketplace invalide ou divergent : ${error instanceof Error ? error.message : 'erreur inconnue'}`,
+        { statusCode: 500 },
+      );
+    }
+  }
+
   // 6g. Vérifier que la tentative n'est pas déjà terminale (idempotence).
   if (attemptRow.status === 'SUCCEEDED') {
     throw new WebhookHandlerError(
@@ -293,6 +319,9 @@ export async function applyBookingConfirmation(
       commissionAmountMinor: payment.commissionAmountMinor,
       commissionRuleSnapshot: payment.commissionRuleSnapshot,
       totalAmountMinor: draft.totalAmountMinor,
+      customerTotalAmountMinor:
+        payment.marketplaceFeeSnapshot === null ? null : payment.amountMinor,
+      marketplaceFeeSnapshot: payment.marketplaceFeeSnapshot,
       billableUnit: draft.billableUnit,
       billableUnitCount: draft.billableUnitCount,
       cancellationPolicySnapshot: draft.cancellationPolicySnapshot,

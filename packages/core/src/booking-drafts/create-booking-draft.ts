@@ -34,6 +34,7 @@ import { calculateBillableCivilDays } from '../pricing/civil-days';
 import { calculatePrice } from '../pricing/calculate-price';
 import { PricingError } from '../pricing/errors';
 import type { PricingLineInput, VariantPricingSnapshot } from '../pricing/types';
+import { calculateMarketplaceFeeSnapshotFromPricing } from '../marketplace-fees';
 import { quoteFlexiblePricing } from '../pricing-plans/quote-flexible-pricing';
 import { isWithinOpeningHours } from '../pricing-plans/opening-hours';
 import { FlexiblePricingError } from '../pricing-plans/errors';
@@ -1014,6 +1015,10 @@ async function executeBusinessLogic(
     };
   });
   const pricingResult = calculatePrice(pricingLines, billableDayCount);
+  const marketplaceFeeSnapshot = calculateMarketplaceFeeSnapshotFromPricing({
+    subtotalAmountMinor: pricingResult.subtotalAmountMinor,
+    mandatoryFeesAmountMinor: pricingResult.mandatoryFeesAmountMinor,
+  });
 
   // 7. Calculer la période bloquée puis sélectionner/verrouiller tous les
   // exemplaires avant de créer la moindre ressource métier (ADR-009).
@@ -1109,6 +1114,8 @@ async function executeBusinessLogic(
       subtotalAmountMinor: pricingResult.subtotalAmountMinor,
       mandatoryFeesAmountMinor: pricingResult.mandatoryFeesAmountMinor,
       totalAmountMinor: pricingResult.totalAmountMinor,
+      customerTotalAmountMinor: marketplaceFeeSnapshot.customerTotalAmountMinor,
+      marketplaceFeeSnapshot,
       taxStatus: 'UNDETERMINED',
       taxAmountMinor: null,
       taxRateBps: null,
@@ -1197,6 +1204,11 @@ async function executeBusinessLogic(
     subtotalAmountMinor: pricingResult.subtotalAmountMinor,
     mandatoryFeesAmountMinor: pricingResult.mandatoryFeesAmountMinor,
     totalAmountMinor: pricingResult.totalAmountMinor,
+    marketplaceFeeBaseAmountMinor: marketplaceFeeSnapshot.marketplaceFeeBaseAmountMinor,
+    customerServiceFeeAmountMinor: marketplaceFeeSnapshot.customerServiceFeeAmountMinor,
+    customerTotalAmountMinor: marketplaceFeeSnapshot.customerTotalAmountMinor,
+    marketplaceFeeRuleVersion: marketplaceFeeSnapshot.ruleVersion,
+    marketplaceFeeSnapshot,
     taxStatus: 'UNDETERMINED',
     taxAmountMinor: null,
     taxRateBps: null,
@@ -1299,6 +1311,10 @@ async function executeFlexibleBusinessLogic(
     locale: input.locale,
     intent: input.intent,
     lines: aggregatedLines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
+  });
+  const marketplaceFeeSnapshot = calculateMarketplaceFeeSnapshotFromPricing({
+    subtotalAmountMinor: quoteResult.subtotalAmountMinor,
+    mandatoryFeesAmountMinor: 0,
   });
 
   // 5. Dériver customer_start_at / customer_end_at depuis l'intent et le devis.
@@ -1506,6 +1522,8 @@ async function executeFlexibleBusinessLogic(
       subtotalAmountMinor: quoteResult.subtotalAmountMinor,
       mandatoryFeesAmountMinor: 0,
       totalAmountMinor: quoteResult.totalAmountMinor,
+      customerTotalAmountMinor: marketplaceFeeSnapshot.customerTotalAmountMinor,
+      marketplaceFeeSnapshot,
       // G7P-B2-C Round 3 (P0-2) — financial terms are UNDETERMINED at draft stage
       // per ADR-010 §6. They are resolved at payment initiation by
       // resolveFinancialTerms and persisted on `payments`. The confirmed booking
@@ -1641,6 +1659,11 @@ async function executeFlexibleBusinessLogic(
     subtotalAmountMinor: quoteResult.subtotalAmountMinor,
     mandatoryFeesAmountMinor: 0,
     totalAmountMinor: quoteResult.totalAmountMinor,
+    marketplaceFeeBaseAmountMinor: marketplaceFeeSnapshot.marketplaceFeeBaseAmountMinor,
+    customerServiceFeeAmountMinor: marketplaceFeeSnapshot.customerServiceFeeAmountMinor,
+    customerTotalAmountMinor: marketplaceFeeSnapshot.customerTotalAmountMinor,
+    marketplaceFeeRuleVersion: marketplaceFeeSnapshot.ruleVersion,
+    marketplaceFeeSnapshot,
     // G7P-B2-C Round 3 (P0-2) — financial terms are UNDETERMINED at draft stage
     // per ADR-010 §6. Resolved at payment initiation, copied from `payments`
     // during confirmation.

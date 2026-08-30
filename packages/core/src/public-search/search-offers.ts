@@ -110,6 +110,7 @@ import {
 } from '../pricing-plans/opening-hours';
 import { resolveLocale, getTranslation } from '../pricing-plans/locale-resolver';
 import { FlexiblePricingError } from '../pricing-plans/errors';
+import { calculateMarketplaceFeeSnapshotFromPricing } from '../marketplace-fees';
 import {
   LocalToUtcError,
   localDateTimeStringToUtc,
@@ -1747,6 +1748,10 @@ export function computePriceForCandidate(
   const availableLocales = collectAvailableLocales(context.translations);
   const resolvedLocale = resolveLocale(context.locale, availableLocales);
   const publicLabel = getTranslation(best.plan.id, resolvedLocale, context.translations);
+  const marketplaceFeeSnapshot = calculateMarketplaceFeeSnapshotFromPricing({
+    subtotalAmountMinor: best.lineTotalAmountMinor,
+    mandatoryFeesAmountMinor: 0,
+  });
 
   // Calculer la durée demandée en minutes.
   // Pour DAY_RANGE, la durée en minutes n'a pas de sens métier ; on l'omet.
@@ -1758,7 +1763,11 @@ export function computePriceForCandidate(
     case 'HOURLY':
       price = {
         currency: 'EUR',
-        totalAmountMinor: best.lineTotalAmountMinor,
+        marketplaceFeeBaseAmountMinor: marketplaceFeeSnapshot.marketplaceFeeBaseAmountMinor,
+        customerServiceFeeAmountMinor: marketplaceFeeSnapshot.customerServiceFeeAmountMinor,
+        customerTotalAmountMinor: marketplaceFeeSnapshot.customerTotalAmountMinor,
+        marketplaceFeeRuleVersion: marketplaceFeeSnapshot.ruleVersion,
+        totalAmountMinor: marketplaceFeeSnapshot.customerTotalAmountMinor,
         planType: 'HOURLY',
         publicLabel,
         requestedDurationMinutes,
@@ -1770,7 +1779,11 @@ export function computePriceForCandidate(
     case 'FIXED_DURATION':
       price = {
         currency: 'EUR',
-        totalAmountMinor: best.lineTotalAmountMinor,
+        marketplaceFeeBaseAmountMinor: marketplaceFeeSnapshot.marketplaceFeeBaseAmountMinor,
+        customerServiceFeeAmountMinor: marketplaceFeeSnapshot.customerServiceFeeAmountMinor,
+        customerTotalAmountMinor: marketplaceFeeSnapshot.customerTotalAmountMinor,
+        marketplaceFeeRuleVersion: marketplaceFeeSnapshot.ruleVersion,
+        totalAmountMinor: marketplaceFeeSnapshot.customerTotalAmountMinor,
         planType: 'FIXED_DURATION',
         publicLabel,
         requestedDurationMinutes,
@@ -1782,7 +1795,11 @@ export function computePriceForCandidate(
     case 'DAILY':
       price = {
         currency: 'EUR',
-        totalAmountMinor: best.lineTotalAmountMinor,
+        marketplaceFeeBaseAmountMinor: marketplaceFeeSnapshot.marketplaceFeeBaseAmountMinor,
+        customerServiceFeeAmountMinor: marketplaceFeeSnapshot.customerServiceFeeAmountMinor,
+        customerTotalAmountMinor: marketplaceFeeSnapshot.customerTotalAmountMinor,
+        marketplaceFeeRuleVersion: marketplaceFeeSnapshot.ruleVersion,
+        totalAmountMinor: marketplaceFeeSnapshot.customerTotalAmountMinor,
         planType: 'DAILY',
         publicLabel,
         requestedDurationMinutes,
