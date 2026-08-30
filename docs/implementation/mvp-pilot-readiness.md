@@ -21,9 +21,12 @@ suppléments) est fusionné et validé ; le pont recherche publique → checkout
 La CI post-merge (15 jobs parallèles) est verte en qualité, tests et build.
 
 Le MVP n'est **pas encore prêt pour une production commerciale réelle**. La configuration
-staging réelle (Vercel, Neon, Clerk, Stripe TEST, R2, Resend) n'est pas effectuée. Des
-blocages externes (juridique, choix ville pilote, Stripe LIVE, analytics PRODUCTION,
-géocodage réel, photos réelles) restent à lever avant tout lancement public commercial.
+staging réelle (Vercel, Neon, Clerk, Stripe TEST, R2, Resend) et le smoke test photo
+G8B-1 sont désormais validés. Des blocages externes (juridique, partenaires pilotes,
+Stripe LIVE, fiscalité/RGPD et décisions commerciales) restent à lever avant tout
+lancement public commercial. Le Photo Coach vélo est livré comme vertical slice
+technique ; son enforcement sémantique complet et le badge professionnel restent
+à finaliser.
 
 ## Matrice de readiness
 
@@ -38,36 +41,39 @@ géocodage réel, photos réelles) restent à lever avant tout lancement public 
 | Documents transactionnels | Implémenté (G5B–G5D) | Tests unitaires + PostgreSQL, CI verte | R2 staging bucket | Oui (R2 staging) | Oui (R2 production) |
 | Emails transactionnels | Implémenté (G5E, G5H) | 40 tests PostgreSQL, CI verte | Resend staging domaine | Oui (Resend staging) | Oui (Resend production) |
 | Analytics | Implémenté (G7H-A/B) | Migration 0035, tests Core, CI verte | Validation privacy PRODUCTION | Non (gate staging) | Oui (validation privacy) |
-| Photos et gating publication | Upload réel G8B-1 + gate PostgreSQL | Migration 0039, validation octets, R2 privé, routes contrôlées, tests PostgreSQL | Bucket R2 photo staging et trois photos réelles | Oui pour le smoke photo staging | Oui (sans photos valides, pas de publication publique) |
+| Photos et gating publication | Upload réel G8B-1 + gate PostgreSQL + Photo Coach partiel G8B-3B4 | Migrations 0039/0040, validation octets, slots persistés, R2 privé, routes contrôlées, tests PostgreSQL et composants | Photos réelles pour chaque offre pilote ; alignement de l’allow-list et gate sémantique restant | Non : smoke R2 staging validé | Oui (sans photos valides, pas de publication publique) |
 | Dashboard loueur | Implémenté (G7G) | Projection Core, UI, tests, CI verte | Aucune | Non | Non |
 | Multi-tenant et sécurité | Implémenté | Tests d'isolation PostgreSQL, sentinelles fail-closed, CI verte | Aucune | Non | Non |
 | Worker et outbox | Implémenté (G5F, G5H-C2C) | 441 tests worker, bundle smoke-testé, CI verte | Vercel Cron staging, R2/Resend staging | Oui (cron staging) | Oui (cron production) |
 | CI/CD | Configurée (15 jobs parallèles) | CI post-merge verte | Vercel staging project | Non | Oui (Vercel production) |
 
-## Conséquence du report photo
+## État actuel des photos et du Photo Coach
 
-Le code et le gate des trois photos obligatoires existent (G7F-A2 : table `product_photos`,
-contraintes CHECK sur format/taille/dimensions, `PostgresPhotoPublicationGate` bloquant la
-publication publique sans trois photos valides).
+Le socle photo est livré : table `product_photos`, contraintes CHECK sur
+format/taille/dimensions, upload R2 réel, routes contrôlées et
+`PostgresPhotoPublicationGate` bloquant la publication publique sans trois photos
+`AVAILABLE` distinctes. Le smoke test staging G8B-1 a été validé le 2026-08-27.
 
-**Sans upload/CDN et photos valides, une offre réelle ne peut pas être publiée publiquement.**
+Le Photo Coach G8B-3B4 ajoute le contrat partagé des slots, la migration `0040`,
+la persistance du `slot_type`, le viseur caméra, les overlays, la checklist et la
+progression. À ce stade, le gate ne vérifie pas encore un slot requis de chaque
+type et l’action serveur doit encore accepter les deux noms canoniques utilisés
+par l’interface (`THREE_QUARTER_FRONT`, `SECONDARY_VIEW`). Le badge de loueur
+professionnel reste non implémenté.
 
-- Cela **ne bloque pas** un staging technique avec fixtures contrôlées (photos de test
-  injectées directement en base).
-- Cela **bloque** un lancement public commercial réel : aucune offre ne peut atteindre le
-  statut `PUBLISHED` visible publiquement sans photos valides uploadées via un CDN réel.
+**Une offre réelle ne peut être publiée que si elle possède trois photos valides
+distinctes.** La qualité sémantique des vues et le badge ne doivent pas être
+présentés comme vérifiés tant que leurs verrous serveur ne sont pas livrés.
 
 ## Travaux restants classés par priorité
 
-### P0 — Staging technique
+### P0 — Staging technique — clôturé
 
-- Audit des variables d'environnement (sans afficher de secrets).
-- Configuration staging Vercel, Neon, Clerk, Stripe TEST, R2, Resend.
-- Migrations staging appliquées.
-- Smoke tests : recherche → hold → paiement TEST → confirmation.
-- Smoke test dashboard loueur.
-- Validation des crons et du worker avec providers de staging.
-- Observabilité et rollback minimal.
+Le staging G8A est déployé et validé : configuration Vercel, Neon, Clerk TEST,
+Stripe TEST, R2, Resend, migrations, smoke test authentifié recherche → hold →
+paiement TEST → confirmation, worker, documents, emails, crons, observabilité
+minimale et rollback. La preuve détaillée est conservée dans
+`docs/implementation/g8a-web-staging-deployment.md`.
 
 ### P0 — Production / légal externe
 
@@ -76,12 +82,14 @@ publication publique sans trois photos valides).
 - Validation juridique : annulations, taxes, facturation, documents, RGPD.
 - Activation Stripe LIVE.
 - Activation analytics PRODUCTION soumise à validation privacy.
-- Géocodage réel (choix fournisseur, validation contractuelle/privacy).
-- Upload/CDN photo réel et photos valides pour publication publique.
+- Enrichissement géocodage par fournisseur externe (facultatif) : le runtime
+  canonique PostgreSQL/PostGIS est livré ; les droits, l'hébergement et le cache
+  restent à valider avant toute ingestion Photon/IGN.
+- Photos valides et contenu réel pour chaque offre publiée.
 
 ### P1 — Expérience pilote
 
-- Photos réelles : G8B-1 implémenté ; smoke test R2 staging encore requis.
+- Finalisation G8B-3B4 : enforcement sémantique des slots et badge professionnel.
 - Calibration des seuils viewport avec données réelles.
 - Traduction du contenu libre des loueurs (FR+EN).
 
@@ -93,22 +101,23 @@ publication publique sans trois photos valides).
 
 ## Prochaine étape recommandée
 
-### G8A — Staging Technical Readiness
+### G8B-3B4 — Clôture du standard visuel et de la confiance
 
 **Périmètre proposé :**
 
-- Audit des variables d'environnement sans afficher de secrets.
-- Configuration staging Vercel / Neon / Clerk / Stripe TEST.
-- Migrations staging.
-- Smoke test recherche → hold → paiement TEST → confirmation.
-- Smoke test dashboard loueur.
-- Validation des crons et du worker avec providers de staging.
-- Observabilité et rollback minimal.
+- Aligner l’allow-list de l’action serveur sur les slots canoniques utilisés par
+  l’interface.
+- Décider si le gate de publication exige un slot obligatoire de chaque type, puis
+  appliquer cette règle dans PostgreSQL/Core avec tests d’intégration.
+- Implémenter le statut du badge professionnel uniquement à partir de critères
+  vérifiables, avec retrait fail-closed.
+- Mettre à jour les preuves de readiness et le parcours d’onboarding.
 
 **Limites explicites :**
 
-- Aucune activation Stripe LIVE.
-- Aucun upload photo réel.
-- Aucune décision juridique implicite.
+- Aucune analyse d’image par IA.
+- Aucun badge professionnel affiché sans calcul et preuve auditable.
+- Aucune activation Stripe LIVE ni décision juridique implicite.
 
-G8A n'est pas implémenté dans cette baseline. Il définit le prochain lot technique.
+Le staging G8A et l’upload réel G8B-1 sont déjà validés ; ce travail est donc un
+correctif de cohérence et de clôture, pas une réimplémentation du Photo Coach.

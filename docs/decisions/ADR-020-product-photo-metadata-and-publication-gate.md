@@ -1,20 +1,25 @@
 # ADR-020 — Métadonnées photo produit et gate de publication publique
 
-- **Statut** : Accepted — conception uniquement, implémentation en G7F-A2
+- **Statut** : Accepted — conception et implémentation G7F-A2 livrées ; extensions
+  G8B-1 et G8B-3B4 partiellement livrées
 - **Date** : 2026-08-08
 - **Phase** : 11 / Lot 7 — G7F-A1 : décision et conception ; G7F-A2 : implémentation
-  (migration, schéma Drizzle, triggers, gate PostgreSQL, tests)
+  (migration, schéma Drizzle, triggers, gate PostgreSQL, tests) ; G8B-1/G8B-3B4 :
+  upload réel et Photo Coach hors périmètre initial
 - **Décideurs** : Porteur produit Uttily, engineering
 - **Relie à** : ADR-014, ADR-017, ADR-018 ;
   `docs/product/lot7-arbitrage.md` ;
   `docs/implementation/g7f-a2-implementation-plan.md`
 
-> **Note de révision (2026-08-27)** : le standard produit vélo et la direction
+> **Note de révision (2026-08-30)** : le standard produit vélo et la direction
 > de confiance publique sont précisés dans
 > `docs/product/g8b-3-bike-pilot-visual-trust-and-coach.md`. Le gate actuellement livré
 > reste exclusivement technique : il ne reconnaît ni l'angle, ni le cadrage, ni
-> la netteté. Toute validation serveur de slots visuels exige une évolution
-> dédiée ; cette note ne prétend pas qu'elle est déjà implémentée.
+> la netteté. Le Photo Coach, ses slots contractuels et sa persistance sont
+> désormais livrés en vertical slice, mais l'enforcement serveur par slot et le
+> badge professionnel ne le sont pas encore. Toute validation serveur de slots
+> visuels exige une évolution dédiée ; cette note ne prétend pas qu'elle est déjà
+> implémentée.
 
 ## 1. Contexte
 
@@ -58,11 +63,12 @@ incohérence entre l'état métier (`PUBLISHED`) et la visibilité publique.
 
 ### 1.4 Périmètre de cet ADR
 
-Cet ADR est une décision de conception uniquement. Il ne crée aucune
-migration, aucun schéma Drizzle, aucun trigger, aucun code logique, aucun
-appel R2, aucune URL signée et aucune UI. L'implémentation est spécifiée dans
-`docs/implementation/g7f-a2-implementation-plan.md` et sera exécutée en
-G7F-A2.
+Cet ADR documente la conception initiale ; à sa date de rédaction, il ne créait
+aucune migration, aucun schéma Drizzle, aucun trigger, aucun code logique,
+aucun appel R2, aucune URL signée et aucune UI. L'implémentation G7F-A2 est
+désormais livrée ; les extensions ultérieures sont décrites dans
+`docs/implementation/g8b-1-product-photo-upload.md` et
+`docs/implementation/g8b-3b-assisted-bike-onboarding.md`.
 
 ## 2. Décisions
 
@@ -417,10 +423,13 @@ catégorie et l'appliquer.
 **Ne pas inventer maintenant de taxonomie rigide de vues** — la conception est
 extensible mais le MVP reste 3 photos génériques.
 
-#### E.3 G7F-B
+#### E.3 G7F-B / G8B-3B4
 
-G7F-B traitera les consignes/slots propres aux catégories, l'UI guidée et le
-tutoriel d'upload.
+G7F-B/G8B-3B4 traite désormais les consignes/slots vélo, l'UI guidée et le
+tutoriel d'upload. Le contrat `BIKE_PHOTO_SLOTS`, la migration `0040`, la
+persistance de `slot_type`, le Photo Coach et ses overlays sont livrés. Le gate
+de publication reste volontairement celui du MVP (trois photos techniques
+distinctes) jusqu'à une évolution approuvée et testée par catégorie.
 
 ### F. Sécurité et limites techniques
 

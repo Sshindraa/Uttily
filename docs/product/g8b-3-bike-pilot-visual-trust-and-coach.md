@@ -1,9 +1,25 @@
 # G8B-3 — Pilote Vélo Lyon, Confiance Publique & Spécification Photo Coach
 
-- **Statut** : spécification de référence validée (prête pour implémentation)
+- **Statut** : spécification de référence validée ; implémentation Photo Coach partielle livrée
 - **Date** : 2026-08-27
 - **Périmètre** : Cadrage commercial Lyon (G8B-3A), Standard de confiance & vérité produit, Expérience & Moteur technique Photo Coach
-- **Relie à** : ADR-002, ADR-010, ADR-014, ADR-017, ADR-020, ADR-026, G8B-1, G8B-3B, G8B-3B1, `docs/product/mvp-scope.md`, `docs/product/lot5-finance-legal-validation.md`
+- **Relie à** : ADR-002, ADR-010, ADR-014, ADR-017, ADR-020, ADR-026, G8B-1, G8B-3B, G8B-3B1, G8B-3B4, `docs/product/mvp-scope.md`, `docs/product/lot5-finance-legal-validation.md`
+
+### État d’implémentation vérifié le 2026-08-30
+
+Le contrat des slots (`BIKE_PHOTO_SLOTS`), la migration `0040` ajoutant
+`product_photos.slot_type`, la persistance du slot, le Photo Coach du dashboard,
+les overlays SVG, la checklist, la progression et le fallback caméra sont livrés
+et testés. Le stockage et la livraison photo réelle sont couverts séparément par
+G8B-1 et son smoke test staging.
+
+Cette livraison ne vaut pas encore enforcement complet du standard sémantique :
+le gate PostgreSQL exige toujours trois photos `AVAILABLE` avec checksums
+distincts, sans exiger un slot de chaque type, et l’action serveur doit encore
+être alignée sur les deux noms canoniques `THREE_QUARTER_FRONT` et
+`SECONDARY_VIEW`. Le badge « loueur professionnel vérifié » reste une
+spécification ; aucun statut de vérification ni calcul auditable n’est encore
+implémenté. Aucune analyse d’image par IA n’est activée.
 
 ---
 
@@ -240,8 +256,8 @@ l'organisation. Une rupture temporaire de stock ne retire pas le badge de l'orga
 
 | Situation et données réelles | Affichage et formulation autorisés | Formulations et promesses strictement interdites |
 | :--- | :--- | :--- |
-| **3 photos valides techniquement** (gate actuel, pas de slots typés) | Galerie photo du produit, vue d'ensemble | « 3 vues contrôlées », « Standard visuel vérifié » |
-| **Slots sémantiques renseignés** (`HERO_PROFILE`, `THREE_QUARTER`, `SIGNATURE_DETAIL`) | Présentation guidée et détaillée des composants clés | Promesse d'analyse d'image automatisée par IA |
+| **3 photos valides techniquement** avec checksums distincts (gate actuel) | Galerie photo du produit, vue d'ensemble | « 3 vues contrôlées », « Standard visuel vérifié » |
+| **Slots sémantiques renseignés** (`HERO_PROFILE`, `THREE_QUARTER_FRONT`, `SECONDARY_VIEW`) dans le contrat et l’UI ; enforcement serveur en attente | Présentation guidée et détaillée des composants clés | Promesse d'analyse d'image automatisée par IA |
 | **Photos rattachées au `product`** (aucun `inventory_item` alloué) | Modèle et configuration générale illustrés | « Photo de votre vélo exact », « État d'usure contractuel » |
 | **`inventory_item` alloué** + rapport d'état contradictoire | Fiche d'état de l'exemplaire (retrait / retour) | Assimilation des photos catalogue comme preuve de dommage |
 | **Tous critères d'éligibilité satisfaits** (`eligible`) | Badge « Loueur professionnel vérifié » + explication | « Meilleur loueur », « Garantie zéro défaut » |
@@ -667,19 +683,20 @@ export const CAMERA_CONSTRAINTS: MediaStreamConstraints = {
 
 ### 6.1 Séquencement d'implémentation
 
-1. **Socle & Typage Core** : Définition des types `PhotoSlotType`, `PhotoSlotDefinition`
-   et ajout du champ `slot_type` (nullable au début) dans la table `product_photos` ;
-2. **Composants Viseur & Ghost Overlay** : Implémentation du composant React `CameraViewfinder`
-   avec support `getUserMedia` et calques SVG `GhostOverlay` ;
-3. **Moteur d'Animation Guide** : Intégration du composant d'animation vectorielle
-   piloté par machine à états ;
-4. **Tunnel de Checklist & Progression** : Intégration de la boucle d'auto-évaluation
-   et de l'illustration filaire progressive Uttily dans le formulaire produit du dashboard ;
-5. **Calcul de confiance loueur** : Moteur d'évaluation du badge professionnel (`eligible`,
-   `ineligible`, `pending`) lié aux états Stripe (`stripe_account_operational_for_rental`)
-   et d'organisation ;
-6. **Enrichissement facultatif** : Activation des profils d'équipe et guides locaux
-   post-onboarding pilote.
+1. **Socle & Typage Core — livré** : types `PhotoSlotType`, `PhotoSlotDefinition`
+   et champ `slot_type` nullable dans `product_photos` (migration `0040`) ;
+2. **Composants Viseur & Ghost Overlay — livré** : `CameraViewfinder`, support
+   `getUserMedia`, fallback fichier et calques SVG ;
+3. **Guide visuel — livré partiellement** : adapter des overlays, transitions et
+   animations CSS de présentation livrés ; le fichier Rive déclaré par l’adapter
+   n’est pas un moteur de validation sémantique et l’analyse IA reste hors périmètre ;
+4. **Checklist & Progression — livré** : boucle d’auto-évaluation, progression
+   et intégration dans le formulaire produit du dashboard ;
+5. **Enforcement serveur des slots — restant** : accepter les noms canoniques dans
+   l’action d’upload et décider puis appliquer le gate « un slot requis par vue » ;
+6. **Calcul de confiance loueur — restant** : moteur auditable du badge professionnel
+   (`eligible`, `ineligible`, `pending`) lié aux états d’organisation et Stripe ;
+7. **Enrichissement facultatif** : profils d’équipe et guides locaux post-onboarding.
 
 ### 6.2 Références d'inspiration
 

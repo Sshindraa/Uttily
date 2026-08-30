@@ -203,7 +203,13 @@ Une tâche est terminée lorsque :
   idempotence, aucun outbox event).
   `collectPublicationFailures` étendu (seuil 3 photos valides distincts).
   69 tests (47 schéma, 9 gate, 7 delete, 3 concurrence, 3 collect) tous passing.
-  Aucun R2, aucun worker, aucun outbox photo, aucune UI, aucun G7E.
+  Cette livraison G7F-A2 ne couvrait pas encore R2, le worker ou l'UI ; ces
+  extensions ont depuis été livrées par G8B-1 et G8B-3B4 : upload R2 réel,
+  routes dashboard/publiques contrôlées, galerie loueur, contrat
+  `BIKE_PHOTO_SLOTS`, migration `0040`, persistance `slot_type`, Photo Coach,
+  overlays, checklist et progression. Le gate courant reste le seuil générique
+  de trois checksums distincts ; il n'impose pas encore les trois slots
+  sémantiques et le badge professionnel n'est pas implémenté.
 - G7E-A (Web public sans fournisseur externe) : implémenté le 2026-08-09 ;
   G7E-B (carte et viewport) implémenté dans son prolongement.
   Route `/{locale}/search` (`fr`/`en`), formulaire `DAY_RANGE`/`TIME_RANGE`,
