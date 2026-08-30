@@ -1,8 +1,24 @@
 # G8A — Déploiement Web staging et smoke test complet
 
-**Date** : 2026-08-27  
-**Statut** : livré et validé en staging  
+**Date** : 2026-08-27 — rapport historique
+**Statut** : preuve historique conservée ; état courant ajouté ci-dessous
 **Périmètre** : Vercel, Neon, Clerk TEST, Stripe TEST, worker, R2, Resend et scheduler
+
+> Les éléments détaillés de ce rapport correspondent au smoke test connecté du
+> 27 août 2026. Ils ne doivent pas être lus comme une photographie actuelle de
+> staging sans consulter la section suivante.
+
+## État courant vérifié le 30 août 2026
+
+- Vercel `uttily-staging` sert le commit de merge `df6549b` sur
+  `https://uttily-staging.vercel.app`.
+- Neon `Uttily-dev`, branche `staging` : journal Drizzle à 49 migrations ; les
+  migrations `0040` à `0049` ont été appliquées le 30 août 2026.
+- Le parcours public recherche → résultat → page d’offre a été vérifié sur
+  Annecy pour la période du 10 au 11 juin 2030 ; une offre est retournée et sa
+  page est accessible.
+- Le parcours authentifié Clerk/Stripe/worker/R2/Resend n’a pas été rejoué dans
+  cette remise à niveau. Aucun fournisseur LIVE n’a été activé.
 
 Ce document clôt le déploiement Web staging après le ticket R2/Resend/worker
 décrit dans `g8a-staging-r2-resend-worker-smoke-test.md`. Aucun fournisseur LIVE,
@@ -13,8 +29,10 @@ utilisés.
 
 - **Web** : projet Vercel `uttily-staging`, branche `main`, domaine
   `https://uttily-staging.vercel.app`, build prêt sur le commit `bb5384d`.
-- **Neon** : projet `Uttily-dev`, branche `staging`, région Frankfurt, 38
-  migrations présentes ; l'application et le worker utilisent l'endpoint pooled.
+- **Neon** : preuve historique du 27 août sur le projet `Uttily-dev`, branche
+  `staging`, région Frankfurt, avec 38 migrations alors présentes ;
+  l'application et le worker utilisent l'endpoint pooled. L’état courant est
+  celui décrit dans la section précédente.
 - **Paiement** : `STRIPE_ENVIRONMENT=TEST`, `PAYMENTS_LIVE_ENABLED=false`,
   `PUBLIC_APP_URL` égal au domaine staging. Depuis `22-B0`, les nouveaux
   paiements utilisent la règle serveur fermée `split-13-7-v1`; aucune variable
