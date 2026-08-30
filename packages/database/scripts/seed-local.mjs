@@ -24,7 +24,7 @@ export function assertLocalSeedEnvironment(environment = process.env) {
   }
 }
 
-function resolveLocalDatabaseUrl() {
+export function resolveLocalDatabaseUrl() {
   const configuredUrl = process.env.DATABASE_URL;
   const databaseUrl = configuredUrl === undefined ? LOCAL_DATABASE_URL : configuredUrl;
 

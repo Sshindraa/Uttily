@@ -54,7 +54,8 @@ pnpm test:full        # toutes les suites Vitest des workspaces ; validation fin
 pnpm build            # builder tous les packages et apps
 pnpm dev              # démarrer apps/web en développement
 pnpm dev:full         # démarrer PostgreSQL, migrer, puis Web + worker fake
-pnpm db:seed          # appliquer la fixture publique locale idempotente
+pnpm db:seed          # appliquer la fixture locale/dev-only idempotente (brouillon)
+pnpm db:seed:browser  # fixture publique synthétique réservée à la CI E2E
 pnpm benchmark:destination # mesurer le registre local ; ajouter --network pour Photon/IGN
 pnpm test:dev-local   # tester les garde-fous du workflow local
 pnpm recovery:restore-drill # drill restore local TEST éphémère, jamais une base distante
@@ -137,6 +138,12 @@ réservation ou paiement. Elle prépare les données de démonstration `lyon-dev
 publication publique reste volontairement bloquée jusqu'à l'upload de trois
 photos réelles via l'interface, car le stockage R2 est neutralisé en local.
 Elle n'appelle aucun service externe et ne supprime aucune ligne.
+
+La CI des parcours navigateur utilise séparément `pnpm db:seed:browser`. Cette
+commande exige les marqueurs CI et E2E dédiés, réutilise la base éphémère du job,
+ajoute uniquement les métadonnées photo synthétiques nécessaires au parcours
+public, puis publie l'offre de test. Elle ne modifie pas le comportement du seed
+local et ne doit pas être utilisée pour préparer des données réelles.
 
 Pour protéger strictement le Web local contre une configuration héritée, `dev:full`
 refuse toute clé Stripe non-TEST, accepte une chaîne vide comme absence, impose

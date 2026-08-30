@@ -27,6 +27,11 @@ et via le fournisseur d'hébergement (Vercel / Neon) pour staging et production.
     `KAY-DEV-001`) en brouillon, sans photo R2 fictive et sans supprimer de
     ligne. La publication publique nécessite ensuite trois photos réelles
     uploadées via l'interface ; R2 est neutralisé dans le workflow local.
+  - La CI des parcours navigateur n'utilise pas cette fixture brouillon : elle
+    appelle `pnpm db:seed:browser` avec `CI` et `UTTILY_BROWSER_E2E=1`. Cette
+    commande ajoute dans la base éphémère du job uniquement trois métadonnées
+    photo synthétiques pour publier l'offre de test public ; elle est refusée
+    hors CI et ne doit jamais servir à préparer des données locales ou réelles.
   - `Ctrl+C` arrête Web et le worker proprement ; PostgreSQL reste actif et
     n'est jamais arrêté ou supprimé automatiquement. La garantie d'arrêt complet
     des descendants est validée et supportée sur macOS/Linux (POSIX) : toutes les

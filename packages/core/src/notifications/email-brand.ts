@@ -53,9 +53,7 @@ export function getEmailBrandConfig(
   const supportEmail = supportEmailRaw?.trim() || DEFAULT_EMAIL_BRAND.supportEmail;
 
   if (!EMAIL_PATTERN.test(supportEmail)) {
-    throw new EmailBrandConfigurationError(
-      'SUPPORT_EMAIL doit contenir une adresse email valide.',
-    );
+    throw new EmailBrandConfigurationError('SUPPORT_EMAIL doit contenir une adresse email valide.');
   }
 
   return { publicAppUrl, supportEmail };

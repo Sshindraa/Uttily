@@ -7,11 +7,7 @@ const SKU_TOKEN_LENGTH = 12;
  * système ni du nombre d'éléments déjà présents en base. L'unicité finale
  * reste garantie par l'index PostgreSQL de l'organisation.
  */
-export function buildInventorySku(
-  prefix: string,
-  ordinal: number,
-  batchId: string,
-): string {
+export function buildInventorySku(prefix: string, ordinal: number, batchId: string): string {
   if (!Number.isSafeInteger(ordinal) || ordinal < 1) {
     throw new Error('ordinal doit être un entier strictement positif.');
   }

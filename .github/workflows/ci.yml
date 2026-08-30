@@ -231,8 +231,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://uttily:uttily@localhost:5432/uttily
 
-      - name: Seed deterministic public demo
-        run: pnpm db:seed
+      - name: Seed deterministic browser fixture
+        run: pnpm db:seed:browser
         env:
           DATABASE_URL: postgresql://uttily:uttily@localhost:5432/uttily
 

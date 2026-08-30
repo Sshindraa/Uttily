@@ -271,13 +271,18 @@ describe.skipIf(shouldSkip)('getPublicOfferDetails — intégration PostgreSQL',
       )
       VALUES (
         ${f.orgId}, ${f.variant1Id}, NULL, 'HOURLY', 'EUR', 1200,
-        60, 600, 60, 1, 'ACTIVE'
+        60, 600, 60, 1, 'DRAFT'
       )
       RETURNING "id"
     `.then((r) => r[0]!);
     await rawSql`
       INSERT INTO "pricing_plan_translations" ("pricing_plan_id", "locale", "public_label")
       VALUES (${plan.id}, 'fr', 'Tarif horaire'), (${plan.id}, 'en', 'Hourly rate')
+    `;
+    await rawSql`
+      UPDATE "pricing_plans"
+      SET "lifecycle_state" = 'ACTIVE'
+      WHERE "id" = ${plan.id}
     `;
 
     const res = await getPublicOfferDetails(db, {
