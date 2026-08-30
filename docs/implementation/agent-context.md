@@ -207,9 +207,10 @@ Une tâche est terminée lorsque :
   extensions ont depuis été livrées par G8B-1 et G8B-3B4 : upload R2 réel,
   routes dashboard/publiques contrôlées, galerie loueur, contrat
   `BIKE_PHOTO_SLOTS`, migration `0040`, persistance `slot_type`, Photo Coach,
-  overlays, checklist et progression. Le gate courant reste le seuil générique
-  de trois checksums distincts ; il n'impose pas encore les trois slots
-  sémantiques et le badge professionnel n'est pas implémenté.
+  overlays, checklist et progression. ADR-031 et la migration `0050` imposent
+  désormais les trois slots sémantiques aux produits de catégorie `bike` dans
+  Core, PostgreSQL et la recherche publique ; le badge professionnel n'est pas
+  implémenté.
 - G7E-A (Web public sans fournisseur externe) : implémenté le 2026-08-09 ;
   G7E-B (carte et viewport) implémenté dans son prolongement.
   Route `/{locale}/search` (`fr`/`en`), formulaire `DAY_RANGE`/`TIME_RANGE`,

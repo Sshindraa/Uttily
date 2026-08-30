@@ -20,6 +20,7 @@
 | [ADR-003](decisions/ADR-003-reservation-flow.md) | Allocation immédiate et hold temporaire. |
 | [ADR-019](decisions/ADR-019-ai-native-global-rental-infrastructure.md) | Direction stratégique AI-native et garde-fous durables. |
 | [ADR-030](decisions/ADR-030-split-refund-policy.md) | Politique proposée de remboursement split, soumise à validation Finance/Juridique. |
+| [ADR-031](decisions/ADR-031-category-photo-requirements-and-publication-gate.md) | Slots photo obligatoires du pilote vélo ; règle générique conservée pour les autres catégories. |
 
 ## Règle de maintenance
 

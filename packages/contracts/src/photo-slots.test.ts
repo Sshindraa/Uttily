@@ -1,9 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { BIKE_PHOTO_SLOTS, PHOTO_SLOT_TYPES, type PhotoSlotType } from './photo-slots';
+import {
+  BIKE_PHOTO_SLOTS,
+  PHOTO_SLOT_TYPES,
+  REQUIRED_BIKE_PHOTO_SLOTS,
+  type PhotoSlotType,
+} from './photo-slots';
 
 describe('BIKE_PHOTO_SLOTS — Narration désirabilité & confiance', () => {
   it('expose une liste canonique alignée avec toutes les définitions de slots', () => {
     expect(Object.keys(BIKE_PHOTO_SLOTS)).toEqual([...PHOTO_SLOT_TYPES]);
+  });
+
+  it('déclare les trois slots canoniques obligatoires du pilote vélo', () => {
+    expect([...REQUIRED_BIKE_PHOTO_SLOTS]).toEqual([
+      'HERO_PROFILE',
+      'THREE_QUARTER_FRONT',
+      'SECONDARY_VIEW',
+    ]);
   });
 
   it('définit les trois slots obligatoires de la narration en 3 vues', () => {

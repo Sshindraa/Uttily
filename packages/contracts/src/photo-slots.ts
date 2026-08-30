@@ -24,6 +24,15 @@ export const PHOTO_SLOT_TYPES = [
 
 export type PhotoSlotType = (typeof PHOTO_SLOT_TYPES)[number];
 
+/** Slots canoniques obligatoires pour la publication d'un vélo (ADR-031). */
+export const REQUIRED_BIKE_PHOTO_SLOTS = [
+  'HERO_PROFILE',
+  'THREE_QUARTER_FRONT',
+  'SECONDARY_VIEW',
+] as const satisfies readonly PhotoSlotType[];
+
+export type RequiredBikePhotoSlot = (typeof REQUIRED_BIKE_PHOTO_SLOTS)[number];
+
 export interface PhotoSlotDefinition {
   type: PhotoSlotType;
   title: string;

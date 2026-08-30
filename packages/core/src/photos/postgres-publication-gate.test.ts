@@ -94,16 +94,20 @@ interface BaseIds {
   productId: string;
 }
 
-async function seedBaseData(sql: postgres.Sql, slugSuffix?: string): Promise<BaseIds> {
+async function seedBaseData(
+  sql: postgres.Sql,
+  slugSuffix?: string,
+  categorySlug = 'equipment',
+): Promise<BaseIds> {
   const suffix = slugSuffix ?? Math.random().toString(36).slice(2, 10);
   const org = await sql`
     INSERT INTO "organizations" ("legal_name", "slug", "default_currency")
     VALUES (${'Test Org ' + suffix}, ${'org-' + suffix}, 'EUR')
     RETURNING "id"
   `.then((r) => r[0]!);
-  const category = await sql`SELECT "id" FROM "categories" WHERE "slug" = 'equipment' LIMIT 1`.then(
-    (r) => r[0]!,
-  );
+  const category = await sql`
+    SELECT "id" FROM "categories" WHERE "slug" = ${categorySlug} LIMIT 1
+  `.then((r) => r[0]!);
   const product = await sql`
     INSERT INTO "products" ("organization_id", "category_id", "name", "slug")
     VALUES (${org.id}, ${category.id}, 'Kayak', ${'kayak-' + suffix})
@@ -141,16 +145,19 @@ async function insertAvailablePhoto(
   productId: string,
   checksum: string,
   storageKeySuffix?: string,
+  slotType?: string,
 ): Promise<string> {
   const suffix = storageKeySuffix ?? Math.random().toString(36).slice(2, 10);
   const photo = await sql`
     INSERT INTO product_photos (
       organization_id, product_id, storage_key,
+      slot_type,
       content_type, byte_size, width_px, height_px, checksum_sha256,
       sort_order, file_state
     )
     VALUES (
       ${orgId}, ${productId}, ${'product-photos/' + suffix},
+      CAST(${slotType ?? null} AS product_photo_slot_type),
       'image/jpeg', 102400, 800, 600, ${checksum},
       0, 'AVAILABLE'
     )
@@ -247,6 +254,64 @@ describe.skipIf(shouldSkipIntegrationTests())('PostgresPhotoPublicationGate', ()
         const gate = new PostgresPhotoPublicationGate();
         const eligible = await gate.filterEligibleProductIds(db, [ids.productId]);
         expect(eligible.has(ids.productId)).toBe(false);
+      } finally {
+        await db.$client.end();
+      }
+    } finally {
+      await sql.end();
+    }
+  });
+
+  it('gate vélo : exige les trois slots canoniques', async () => {
+    if (!testUrl) return;
+    const sql = postgres(testUrl, { max: 1 });
+    try {
+      const complete = await seedBaseData(sql, 'gate-bike-complete', 'bike');
+      await insertAvailablePhoto(
+        sql,
+        complete.orgId,
+        complete.productId,
+        fakeChecksum(801),
+        'gate-bike-complete-hero',
+        'HERO_PROFILE',
+      );
+      await insertAvailablePhoto(
+        sql,
+        complete.orgId,
+        complete.productId,
+        fakeChecksum(802),
+        'gate-bike-complete-three-quarter',
+        'THREE_QUARTER_FRONT',
+      );
+      await insertAvailablePhoto(
+        sql,
+        complete.orgId,
+        complete.productId,
+        fakeChecksum(803),
+        'gate-bike-complete-secondary',
+        'SECONDARY_VIEW',
+      );
+
+      const legacy = await seedBaseData(sql, 'gate-bike-legacy', 'bike');
+      for (let i = 0; i < 3; i++) {
+        await insertAvailablePhoto(
+          sql,
+          legacy.orgId,
+          legacy.productId,
+          fakeChecksum(811 + i),
+          `gate-bike-legacy-${i}`,
+        );
+      }
+
+      const db = createDatabase(testUrl);
+      try {
+        const gate = new PostgresPhotoPublicationGate();
+        const eligible = await gate.filterEligibleProductIds(db, [
+          complete.productId,
+          legacy.productId,
+        ]);
+        expect(eligible.has(complete.productId)).toBe(true);
+        expect(eligible.has(legacy.productId)).toBe(false);
       } finally {
         await db.$client.end();
       }

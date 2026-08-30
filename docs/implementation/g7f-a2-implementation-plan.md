@@ -17,8 +17,8 @@
 > périmètre historique de G7F-A2 et ne constitue pas l’état courant de la
 > livraison photo. Depuis ce lot, G8B-1 a livré l’upload R2 réel et G8B-3B4 a
 > livré partiellement le Photo Coach, les slots contractuels, la persistance
-> `slot_type`, la checklist et les overlays. Le gate courant reste toutefois
-> générique (trois photos techniques distinctes) ; voir
+> `slot_type`, la checklist et les overlays. ADR-031 et la migration `0050`
+> ajoutent depuis un gate par slots pour la catégorie `bike` ; voir
 > `docs/implementation/g8b-3b-assisted-bike-onboarding.md` pour les écarts
 > restants.
 

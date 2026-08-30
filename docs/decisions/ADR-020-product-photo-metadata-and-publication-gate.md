@@ -423,13 +423,15 @@ catégorie et l'appliquer.
 **Ne pas inventer maintenant de taxonomie rigide de vues** — la conception est
 extensible mais le MVP reste 3 photos génériques.
 
-#### E.3 G7F-B / G8B-3B4
+#### E.3 G7F-B / G8B-3B4 / ADR-031
 
 G7F-B/G8B-3B4 traite désormais les consignes/slots vélo, l'UI guidée et le
 tutoriel d'upload. Le contrat `BIKE_PHOTO_SLOTS`, la migration `0040`, la
-persistance de `slot_type`, le Photo Coach et ses overlays sont livrés. Le gate
-de publication reste volontairement celui du MVP (trois photos techniques
-distinctes) jusqu'à une évolution approuvée et testée par catégorie.
+persistance de `slot_type`, le Photo Coach et ses overlays sont livrés. ADR-031
+approuve l'évolution limitée au pilote vélo : la catégorie `bike` doit posséder
+`HERO_PROFILE`, `THREE_QUARTER_FRONT` et `SECONDARY_VIEW`, en plus des trois
+checksums distincts. Les autres catégories restent sur la règle générique du
+MVP jusqu'à l'adoption d'une règle dédiée.
 
 ### F. Sécurité et limites techniques
 
