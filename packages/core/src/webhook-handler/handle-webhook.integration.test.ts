@@ -197,59 +197,26 @@ async function createHeldDraft(ids: BaseIds, keySuffix: string, quantity = 1): P
   return result.body.draftId;
 }
 
-async function createLegacyHeldDraft(ids: BaseIds): Promise<string> {
+async function clearMarketplaceFeeSnapshotsForLegacyFixture(
+  draftId: string,
+  paymentId: string,
+): Promise<void> {
   if (!rawSql) throw new Error('rawSql not initialized');
-  const sql = rawSql;
-  const draft = await sql`
-    INSERT INTO booking_drafts (
-      organization_id, location_id, customer_user_id, status,
-      customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
-      timezone, prep_buffer_minutes, cleanup_buffer_minutes, currency,
-      subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
-      tax_status, tax_amount_minor, tax_rate_bps, commission_amount_minor,
-      billable_unit, billable_unit_count, cancellation_policy_snapshot
-    ) VALUES (
-      ${ids.orgId}, ${ids.locationId}, ${ids.userId}, 'DRAFT',
-      ${STD_START}, ${STD_END},
-      ${new Date(STD_START.getTime() - 30 * 60 * 1000)},
-      ${new Date(STD_END.getTime() + 30 * 60 * 1000)},
-      'Europe/Paris', 30, 30, 'EUR',
-      10000, 0, 10000, 'NOT_APPLICABLE', 0, NULL, 500,
-      'DAY', 2, ${sql.json({ policy_code: 'FLEXIBLE', policy_version: '1', timezone: 'Europe/Paris' })}
-    ) RETURNING id
-  `.then((rows) => rows[0]!);
-  await sql`
+  await rawSql`
     UPDATE booking_drafts
-    SET status = 'HELD', expires_at = now() + interval '10 minutes'
-    WHERE id = ${draft.id}
+    SET marketplace_fee_snapshot = NULL
+    WHERE id = ${draftId}
   `;
-  const draftLine = await sql`
-    INSERT INTO booking_draft_lines (
-      draft_id, variant_id, quantity, unit_price_amount_minor,
-      billable_unit_count, line_total_amount_minor, variant_snapshot
-    ) VALUES (
-      ${draft.id}, ${ids.variantId}, 1, 5000, 2, 10000,
-      ${sql.json({ name: 'Standard' })}
-    ) RETURNING id
-  `.then((rows) => rows[0]!);
-  const hold = await sql`
-    INSERT INTO inventory_blocks (
-      organization_id, inventory_item_id, type, status,
-      customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
-      expires_at, source_id
-    ) VALUES (
-      ${ids.orgId}, ${ids.itemIds[0]!}, 'HOLD', 'ACTIVE',
-      ${STD_START}, ${STD_END},
-      ${new Date(STD_START.getTime() - 30 * 60 * 1000)},
-      ${new Date(STD_END.getTime() + 30 * 60 * 1000)},
-      now() + interval '10 minutes', ${draft.id}
-    ) RETURNING id
-  `.then((rows) => rows[0]!);
-  await sql`
-    INSERT INTO allocations (draft_line_id, inventory_block_id)
-    VALUES (${draftLine.id}, ${hold.id})
+  await rawSql`
+    UPDATE payments
+    SET marketplace_fee_snapshot = NULL
+    WHERE id = ${paymentId}
   `;
-  return draft.id;
+  await rawSql`
+    UPDATE bookings
+    SET marketplace_fee_snapshot = NULL
+    WHERE payment_id = ${paymentId}
+  `;
 }
 
 function makeFinancialTermsConfig(connectedAccountId = 'acct_test_123'): FinancialTermsConfig {
@@ -807,9 +774,7 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
     if (!db || !rawSql) throw new Error('DB non initialisée');
     const ids = await seedBaseData(suffix);
     await seedPaymentAccount(ids);
-    const draftId = options.split
-      ? await createHeldDraft(ids, `tagged-${suffix}`)
-      : await createLegacyHeldDraft(ids);
+    const draftId = await createHeldDraft(ids, `tagged-${suffix}`);
     const initResult = await initiatePayment(
       makeInitDeps(),
       makeInitiateInput(ids, draftId, `tagged-${suffix}`),
@@ -831,13 +796,16 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
         protocol_version: 'v1',
       },
       'succeeded',
-      { eventId: `evt_tagged_payment_${suffix}`, applicationFeeAmount: 260 },
+      { eventId: `evt_tagged_payment_${suffix}` },
     );
     const paymentResult = await handleWebhook(
       paymentDeps,
       makeWebhookInput(succeededBody, paymentDeps.adapter),
     );
     expect(paymentResult.kind).toBe('SUCCESS');
+    if (!options.split) {
+      await clearMarketplaceFeeSnapshotsForLegacyFixture(draftId, paymentId);
+    }
     const refundIds: string[] = [];
     for (let index = 0; index < count; index++) {
       const refundId = randomUUID();
@@ -2470,7 +2438,7 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
     if (!db || !rawSql) return;
     const ids = await seedBaseData('refund-tagged');
     await seedPaymentAccount(ids);
-    const draftId = await createLegacyHeldDraft(ids);
+    const draftId = await createHeldDraft(ids, 'refund-tagged');
     const initDeps = makeInitDeps();
     const initResult = await initiatePayment(
       initDeps,
@@ -2495,9 +2463,10 @@ describe.skipIf(shouldSkipIntegrationTests())('handleWebhook — intégration Po
         protocol_version: 'v1',
       },
       'succeeded',
-      { applicationFeeAmount: 260 },
     );
-    await handleWebhook(deps, makeWebhookInput(succeeded, deps.adapter));
+    const paymentResult = await handleWebhook(deps, makeWebhookInput(succeeded, deps.adapter));
+    expect(paymentResult.kind).toBe('SUCCESS');
+    await clearMarketplaceFeeSnapshotsForLegacyFixture(draftId, paymentId);
 
     const refundId = '77777777-7777-4777-8777-777777777777';
     await rawSql`
