@@ -90,7 +90,7 @@ et le drill local ne valent pas une approbation humaine ou commerciale.
 | Snapshot d'acceptation | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique | `{ termsVersion, userId, acceptedAt }` persisté (`packages/database/src/schema.ts:1133-1134`, `1312`). Le snapshot est une tautologie : il prouve l'acceptation d'un document inexistant. Voir C3-F1. | **Oui** |
 | Conditions Pro (contrat loueur) | `BLOCKED` | `BLOCKED` | Juridique + Porteur produit | Aucun mécanisme d'acceptation des conditions Pro, aucun texte. Aucune occurrence détectée. | **Oui** |
 | Annulation — politiques | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique | Implémentation conforme aux tableaux Lot 4 : `FLEXIBLE` / `MODERATE` / `FIRM` dans `packages/core/src/cancellations/preview-booking-cancellation.ts:139-178`, fenêtre de grâce `GRACE_WINDOW_24H` (≥ 7 j d'avance, ≤ 24 h après confirmation) lignes 134-138, fuseau IANA du lieu de retrait. Document de validation `docs/product/lot4-legal-validation.md` — statut « en attente de validation juridique ». | **Oui** |
-| Remboursement — base de calcul | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique + Finance | Le code applique l'**option A** (total TTC) : `paidAmountMinor = booking.totalAmountMinor` (`preview-booking-cancellation.ts:113`) puis `refundAmountMinor = round(paidAmountMinor * pct / 100)` (ligne 190). Or Lot 4 déclare la base **non tranchée** (options A/B/C/D). Voir C3-F2. | **Oui** |
+| Remboursement — base de calcul | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique + Finance | Le legacy conserve l'option A historique (total TTC) dans `preview-booking-cancellation.ts`. Pour le split 13/7, le parcours est fail-closed ; la proposition de delta entre états effectifs, composant par composant, est formalisée dans `ADR-030` et reste soumise au sign-off. Voir C3-F2. | **Oui** |
 | Annulation — fenêtre horaire 30 min | `BLOCKED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique + Produit | Non implémentée. Question ouverte G7B-R3 : « Règles juridiques exactes des annulations horaires (30 min) — Ouvert — bloque activation production ». `docs/implementation/open-questions.md`. | **Oui** (location horaire) |
 | Dommages / dégâts matériels | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique | Table `damageReports` et `maintenanceCases` exposées dans le back-office (ADR-028 §3). Aucune règle contractuelle de responsabilité ni barème documenté. | **Oui** |
 | Pickup / return (retrait / restitution) | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique + Produit | Machine à états de fulfillment (ADR-011, ADR-012) : `READY_FOR_PICKUP` → retrait → restitution/clôture. Aucune clause contractuelle sur les retards, l'état des lieux ou la contestation. | **Oui** |
@@ -106,8 +106,8 @@ et le drill local ne valent pas une approbation humaine ou commerciale.
 | TVA / fiscalité — statut de taxe | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Expert-comptable + Juridique | **`status: 'NOT_APPLICABLE'` codé en dur** avec `amountMinor: null` et `rateBps: null` (`apps/web/src/lib/payment-config.ts`). Or Lot 5 décision C demande explicitement au validateur de trancher « si la taxe est `APPLIED` ou `NOT_APPLICABLE` ». Le code pré-décide. Voir C3-F3. | **Oui** |
 | Invoice issuer (émetteur de facture) | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Expert-comptable + Juridique | **`invoiceIssuer: 'Uttily'` codé en dur** (`apps/web/src/lib/payment-config.ts`) et propagé dans `TaxRuleSnapshot`. Lot 5 décision C-2 demande « qui émet la facture ou le reçu de location ». Voir C3-F3. | **Oui** |
 | Reçus / factures (documents) | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Expert-comptable + Juridique | Pipeline de documents transactionnels livré (ADR-013, ADR-015) : génération PDF, snapshot immuable, `tax_status` / `tax_amount_minor` / `tax_rate_bps` transportés (`load-document-render-data.ts:232`, `534`). Mentions légales obligatoires non définies (Lot 5 §4 point 7). | **Oui** |
-| Refunds (exécution) | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Finance + Juridique | Worker et cron d'exécution des remboursements (G7M B2B2 / B2B2B) ; compensation intégrale des paiements tardifs (`docs/implementation/g7m-b2b2a-refund-execution.md`, `g7m-c4b-supplement-compensation.md`). Délai de remboursement annoncé au client et message contractuel non définis (Lot 5 décision E). | **Oui** |
-| Amendements financiers — mentions légales | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique + Finance | ADR-023 acceptée, G7M C1–C5 implémentés et fusionnés. Restent à valider, explicitement : mentions légales des documents amendés, politique fiscale des suppléments et remboursements, délai et message client en cas de refund échoué (`docs/implementation/open-questions.md`). | **Oui** |
+| Refunds (exécution) | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Finance + Juridique | Worker et cron d'exécution des remboursements (G7M B2B2 / B2B2B) ; compensation intégrale des paiements tardifs (`docs/implementation/g7m-b2b2a-refund-execution.md`, `g7m-c4b-supplement-compensation.md`). `ADR-030` propose le délai, les messages et la résolution manuelle ; l'exécution split par composant reste à construire et valider. | **Oui** |
+| Amendements financiers — mentions légales | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique + Finance | ADR-023 acceptée, G7M C1–C5 implémentés et fusionnés. `ADR-030` propose la base split et les états d'échec ; restent à valider explicitement les mentions légales des documents amendés, la fiscalité des suppléments/remboursements et le délai/message client. | **Oui** |
 | Stripe Connect terms | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique + Finance | Destination charge (ADR-010), onboarding Express France (ADR-024) et embarqué (ADR-025). Acceptation par le partenaire des conditions Stripe Connect non tracée dans la matrice Uttily. | **Oui** |
 | Fiscalité hors France | `NOT_APPLICABLE` | `NOT_APPLICABLE` | — | Périmètre pilote = France / Lyon, EUR uniquement (`docs/implementation/mvp-pilot-readiness.md`). Question ouverte G7B-R3 « Fiscalité par pays » reste fermée pour le pilote. | Non |
 
@@ -186,13 +186,16 @@ de réservation :
   utilise `booking.totalAmountMinor` comme montant payé et applique le
   pourcentage de remboursement historique ;
 - **split 13/7** : le parcours est bloqué avant toute création ou soumission de
-  refund avec `SPLIT_REFUND_UNRESOLVED`, car le traitement séparé de la base,
-  des 13 % loueur et des 7 % client n'est pas encore approuvé.
+  refund avec `SPLIT_REFUND_UNRESOLVED`. La politique proposée (delta entre
+  états effectifs, calcul par composant, frais Stripe séparés et escalade
+  manuelle) est formalisée dans `ADR-030`, mais n'est pas encore approuvée ni
+  exécutable par le provider.
 
 La base legacy reste donc techniquement assimilable à l'option A « total TTC »,
-mais cette observation ne vaut pas validation juridique ou financière. Le
-traitement des composants split lors d'un remboursement total ou partiel reste
-à décider, tout comme les frais Stripe, le reverse transfer et le message client.
+mais cette observation ne vaut pas validation juridique ou financière. Pour le
+split, le traitement des composants est proposé par ADR-030 ; les frais Stripe,
+le reverse transfer, le règlement hors plateforme et le message client restent
+à valider.
 
 **Décision requise :** juridique + finance. Ne pas modifier le code avant cette
 décision ; toute évolution split devra conserver un snapshot versionné et des

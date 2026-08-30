@@ -3,7 +3,7 @@
 - **Statut** : Accepted
 - **Date** : 2026-08-17
 - **Décideurs** : Porteur produit Uttily, engineering
-- **Relie à** : [ADR-010 — Stripe Connect, paiement, confirmation et réconciliation](./ADR-010-stripe-connect-payment-confirmation-and-reconciliation.md), [ADR-014 — Fournisseurs de production et déploiement du worker](./ADR-014-production-providers-and-worker-deployment.md)
+- **Relie à** : [ADR-010 — Stripe Connect, paiement, confirmation et réconciliation](./ADR-010-stripe-connect-payment-confirmation-and-reconciliation.md), [ADR-014 — Fournisseurs de production et déploiement du worker](./ADR-014-production-providers-and-worker-deployment.md), [ADR-029 — Split des frais marketplace](./ADR-029-marketplace-fee-split-13-7.md), [ADR-030 — Politique proposée de remboursement split](./ADR-030-split-refund-policy.md)
 
 ## 1. Contexte
 
@@ -42,10 +42,11 @@ via l'API Accounts v1 et ses controller properties. Elle ne réintroduit pas les
 types legacy `Express` ou `Custom` comme contrat interne.
 
 Les destination charges restent inchangées : le PaymentIntent est créé sur la
-plateforme, `transfer_data.destination` désigne le compte du loueur et
-`application_fee_amount` porte la commission figée lorsqu'elle est strictement
-positive. L'onboarding reste Stripe-hosted, avec les liens de rafraîchissement et
-de retour existants ; Uttily ne collecte ni ne persiste le KYC.
+plateforme et `transfer_data.destination` désigne le compte du loueur. Sur le
+chemin legacy, `application_fee_amount` porte la commission figée ; sur le
+chemin split, il porte l'application fee issue du snapshot 13/7 conformément à
+l'ADR-029. L'onboarding reste Stripe-hosted, avec les liens de rafraîchissement
+et de retour existants ; Uttily ne collecte ni ne persiste le KYC.
 
 ### Relation avec ADR-010
 
@@ -91,8 +92,9 @@ pour le parcours France. Cette capsule ne modifie pas l'ADR-010.
   Express ; Uttily évite de construire et de maintenir un parcours KYC.
 - La décision réutilise le contrat local Accounts v1, les champs de readiness et
   le flux `account.updated` déjà prévus par l'ADR-010.
-- Les destination charges, la commission de plateforme et la responsabilité
-  financière déjà choisie pour le MVP ne changent pas.
+- Les destination charges et la responsabilité financière déjà choisie pour le
+  MVP ne changent pas ; les composants de frais split et leur remboursement
+  restent régis respectivement par ADR-029 et la proposition ADR-030.
 
 ### 4.2 Conséquences négatives
 

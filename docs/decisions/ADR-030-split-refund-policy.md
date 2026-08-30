@@ -24,6 +24,12 @@ et les 7 % client avec les seuls paramètres agrégés
 
 ## Décision proposée
 
+Cette politique couvre les baisses d'amendement, les remboursements totaux ou
+partiels et les compensations tardives d'un paiement split. Une annulation
+après amendement doit d'abord obtenir son droit à remboursement selon la
+politique juridique applicable ; une fois ce montant déterminé, elle réutilise
+le même allocateur par composant sans changer la règle d'éligibilité.
+
 ### 1. Base du remboursement
 
 Pour chaque amendement qui réduit la réservation, le montant est calculé entre
@@ -87,6 +93,16 @@ transfert qui ne l'est pas. Les flags Stripe agrégés ne suffisent pas à eux
 seuls. Tant que ce chemin n'est pas validé et testé, les remboursements split
 restent bloqués par `SPLIT_REFUND_UNRESOLVED`.
 
+Lorsque le transfert Stripe a déjà été effectué, l'opération provider peut
+nécessiter un remboursement client brut égal au total client, une reprise du
+transfert et une restitution de l'application fee. Le résultat économique
+attendu côté loueur est alors la seule baisse du net loueur ; la restitution de
+l'application fee ne doit pas être comptée deux fois. Si le transfert n'a pas
+encore été effectué, le rapprochement doit ajuster le règlement à venir plutôt
+que créer une reprise fictive. Les montants effectivement exécutés et les
+écarts éventuels doivent être persistés et réconciliés avant tout statut
+`SUCCEEDED`.
+
 ### 3. Calcul impossible, échec ou désaccord
 
 Trois états sont distingués :
@@ -98,9 +114,10 @@ Trois états sont distingués :
    effacée rétroactivement. Sa résolution manuelle est auditée et peut aboutir
    à `SETTLED_OFF_PLATFORM` conformément à l'ADR-023.
 3. **Désaccord commercial** : le dossier passe en traitement manuel. Le loueur
-   fournit les éléments, mais seul le support Uttily peut clôturer le dossier
-   financièrement ou déclarer un règlement hors plateforme avec une preuve
-   d'audit.
+   fournit les éléments, mais seul le support Uttily doit pouvoir clôturer le
+   dossier financièrement ou déclarer un règlement hors plateforme avec une
+   preuve d'audit. Cette capacité n'est pas une action automatisée du
+   back-office V1 (ADR-028) tant que la présente ADR n'est pas approuvée.
 
 Le SLA proposé est : prise en charge sous un jour ouvré, décision et émission
 du remboursement sous cinq jours ouvrés maximum, puis affichage bancaire

@@ -1,6 +1,6 @@
 # ADR-018 — Tarification flexible par duree, recherche temporelle et modifications de reservation
 
-- **Statut** : Accepted — G7P-A Round 2 (schema) implante, G7P-B1 (moteur de calcul read-only) implante, G7P-B2-A Round 4 (snapshot, contraintes, tests, corrections fail-closed) implante, G7P-B2-B (integration dans createBookingDraftWithHold) Round 2 termine et valide, G7P-B2-C (migration des flux existants) implante
+- **Statut** : Accepted — G7P-A Round 2 (schema) implante, G7P-B1 (moteur de calcul read-only) implante, G7P-B2-A Round 4 (snapshot, contraintes, tests, corrections fail-closed) implante, G7P-B2-B (integration dans createBookingDraftWithHold) Round 2 termine et valide, G7P-B2-C (migration des flux existants) implante. Les modifications financieres sont concues et livrees par ADR-023/G7M C1-C5 ; la politique de remboursement split reste proposee par ADR-030.
   (sujets juridiques et de paiement explicitement reserves)
 - **Date** : 2026-08-07
 - **Phase** : 11 / Lot 7 — G7B-R3 : arbitrage produit et conception ; G7P-A Round 2 : schema implante (migration 0032, tables pricing_plans/pricing_plan_windows/multi_day_discount_tiers/pricing_plan_translations, enum pricing_lifecycle_state, locations.operating_currency, backfill DAILY avec traductions FR+EN)
@@ -525,12 +525,12 @@ ce cycle.
 - Idempotence obligatoire.
 - Aucun etat partiel.
 - Aucun changement silencieux du snapshot financier.
-- Si le prix change, le traitement paiement/remboursement exige une conception
-  separee avant implementation. Ces modifications de reservation avec
-  variation financiere sont separees dans un groupe futur dedie (G7M ou
-  G7P-C), car elles dependent d'une conception paiement/remboursement encore
-  ouverte.
-- Les modifications de reservation ne sont pas implementees dans ce cycle.
+- Si le prix change, le traitement paiement/remboursement suit la conception
+  d'ADR-023 et le flux livre G7M C1-C5. Les baisses split restent toutefois
+  soumises a la politique proposee d'ADR-030 et au fail-closed tant que
+  Finance/Juridique et le provider ne l'ont pas validee.
+- Les modifications financieres sont donc implementees pour le perimetre
+  approuve d'ADR-023 ; cette ADR ne rouvre pas ce chantier.
 
 ## 14. Strategie de migration/backfill a concevoir
 
@@ -631,9 +631,8 @@ Les questions suivantes restent ouvertes et sont referencees dans
   calibration) — bloque G7D calibration.
 - Regles juridiques exactes des annulations horaires (30 min) — bloque
   activation production G7P-B/G7D.
-- Modification d'une reservation entraînant un changement de prix — bloque
-  G7M/G7P-C modifications financieres (conception paiement/remboursement
-  requise au prealable).
+- Politique de remboursement split et execution provider — bloque l'activation
+  LIVE et les refunds split jusqu'a validation d'ADR-030 et de `FIN-002`.
 - Futures devises et conversion — bloque activation pays hors EUR.
 - Fiscalite par pays — bloque activation pays hors France.
 - Limites et traitement technique des images — bloque G7F-A/G7F-B.
@@ -659,10 +658,10 @@ Les questions suivantes restent ouvertes et sont referencees dans
 L'implementation actuelle reste en place tant que la migration tarifaire future
 n'est pas livree. ADR-009 n'est pas reecrit ; son historique est preserve. Une
 section « Relation avec ADR-018 » est ajoutee a la fin d'ADR-009. La migration
-tarifaire est planifiee dans les groupes G7P-A, G7P-B (moteur de calcul et
-selection deterministe sans modifications financieres) et G7M/G7P-C
-(modifications de reservation avec variation financiere, conception
-paiement/remboursement requise au prealable) du decoupage revise du Lot 7.
+tarifaire est planifiee dans les groupes G7P-A et G7P-B (moteur de calcul et
+selection deterministe). Le groupe G7M/G7P-C de modifications financieres est
+couvert par ADR-023 ; les refunds split et leur execution provider restent
+suivis par ADR-030.
 
 > **Note G7P-A Round 2 (2026-08-07)** : G7P-A Round 2 (schema uniquement) est termine. La
 > migration 0032 (corrigée en place) cree les tables `pricing_plans`,

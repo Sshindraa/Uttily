@@ -19,13 +19,17 @@ Permettre à un client de trouver et réserver un équipement réellement dispon
 4. Prix par durée et périodes de blocage opérationnel (modèle journalier initial, plans horaires/forfaits préparés par ADR-018).
 5. Recherche par destination, dates et catégorie avec carte interactive (bilingue FR/EN dès l'activation d'une destination, ADR-017/ADR-021).
 6. Allocation d'exemplaires réels, hold temporaire (10 min) et réservation confirmée sans surbooking.
-7. Paiement pour un seul loueur par panier via Stripe Connect (*destination charges* avec commission plateforme `application_fee_amount`).
+7. Paiement pour un seul loueur par panier via Stripe Connect (*destination
+   charges* avec `application_fee_amount` calculé depuis le snapshot financier
+   — commission legacy ou split 13/7 d'ADR-029).
 8. Confirmation, contrat simple et emails transactionnels via outbox worker.
 9. Retrait, retour, état du matériel et signalement de dommages.
 10. Modifications financières d'une réservation confirmée avant retrait
     (amendements append-only : changement de dates, durée, quantité, variantes
-    et allocations ; supplément via Stripe Elements, remboursement sur le moyen
-    d'origine ; ADR-023, conception approuvée, implémentation terminée et fusionnée sur main).
+    et allocations ; supplément via Stripe Elements, remboursement legacy sur le
+    moyen d'origine ; les baisses portant un snapshot split restent fail-closed
+    selon ADR-029/ADR-030 ; ADR-023, conception approuvée, implémentation
+    terminée et fusionnée sur main).
 
 ## Explicitement hors MVP
 
