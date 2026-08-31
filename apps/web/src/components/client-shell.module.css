@@ -50,6 +50,8 @@
   align-items: center;
   display: flex;
   gap: var(--ut-space-2);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .navLink {
@@ -113,7 +115,15 @@
 
   .nav {
     flex-basis: 100%;
+    flex-wrap: wrap;
     justify-content: flex-end;
+    max-width: 100%;
+    min-width: 0;
+    row-gap: var(--ut-space-2);
+  }
+
+  .nav > * {
+    min-width: 0;
   }
 
   .navLink:nth-child(2) {
