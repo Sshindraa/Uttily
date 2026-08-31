@@ -102,7 +102,7 @@ async function expectNoGlobalHorizontalOverflow(page: Page): Promise<void> {
 
 async function findOrganizationId(page: Page): Promise<string> {
   await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-  const dashboardHeading = page.getByRole('heading', { name: 'Tableau de bord' });
+  const dashboardHeading = page.getByRole('heading', { name: 'Vos organisations' });
   if (!(await dashboardHeading.isVisible().catch(() => false))) {
     const email = process.env.E2E_CLERK_USER_EMAIL;
     if (!email) throw new Error('Clerk TEST browser credentials are not configured.');
@@ -112,7 +112,7 @@ async function findOrganizationId(page: Page): Promise<string> {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
   }
   await expect(dashboardHeading).toBeVisible();
-  const organizationRow = page.getByRole('listitem').filter({ hasText: 'test-org-dev' });
+  const organizationRow = page.getByRole('article').filter({ hasText: 'test-org-dev' });
   const organizationLink = organizationRow.getByRole('link');
   await expect(organizationRow).toBeVisible();
   await expect(organizationLink).toBeVisible();

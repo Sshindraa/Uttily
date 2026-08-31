@@ -74,7 +74,14 @@ async function seedBrowserE2E() {
             SELECT 1
             FROM "product_photos"
             WHERE "product_id" = ${product.id}
-              AND "storage_key" = ${photo.storageKey}
+              AND (
+                "storage_key" = ${photo.storageKey}
+                OR (
+                  "file_state" = 'AVAILABLE'
+                  AND "deleted_at" IS NULL
+                  AND "checksum_sha256" = ${photo.checksumSha256}
+                )
+              )
           )
         `;
       }
