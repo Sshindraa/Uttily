@@ -10,6 +10,7 @@
   --danger-border: var(--ut-color-danger-soft);
   --danger-text: var(--ut-color-danger);
   min-height: auto;
+  min-width: 0;
   color: var(--ink);
   background: var(--paper);
 }
@@ -42,6 +43,10 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 2rem;
+  min-width: 0;
+}
+
+.grid > aside {
   min-width: 0;
 }
 
@@ -178,6 +183,11 @@
   top: 2rem;
 }
 
+.bookingCard > * {
+  max-width: 100%;
+  min-width: 0;
+}
+
 .bookingCardTitle {
   font-size: 1.35rem;
   font-weight: 800;
@@ -189,6 +199,8 @@
   flex-direction: column;
   gap: 0.5rem;
   margin-bottom: 1.25rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .label {
@@ -201,6 +213,20 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.durationToggle {
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.durationToggle > button {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .variantOption {
@@ -235,6 +261,8 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .inputRow > * {
@@ -305,7 +333,15 @@
 }
 
 @media (max-width: 640px) {
+  .page {
+    overflow-x: clip;
+  }
+
   .inputRow {
     grid-template-columns: 1fr;
+  }
+
+  .durationToggle {
+    flex-wrap: wrap;
   }
 }

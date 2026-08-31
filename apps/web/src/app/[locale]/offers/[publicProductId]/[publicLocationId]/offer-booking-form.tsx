@@ -240,7 +240,7 @@ export function OfferBookingForm({
 
       <div className={styles.formGroup}>
         <span className={styles.label}>{fr ? 'Type de durée' : 'Duration type'}</span>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <div className={styles.durationToggle}>
           <button
             type="button"
             className={styles.input}
