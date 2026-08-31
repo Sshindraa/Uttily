@@ -4,7 +4,7 @@
 }
 
 .header {
-  background: rgb(255 255 255 / 0.88);
+  background: var(--ut-color-surface-translucent);
   border-bottom: var(--ut-border-thin);
   position: sticky;
   top: 0;
@@ -37,7 +37,7 @@
   align-items: center;
   background: var(--ut-color-primary);
   border-radius: var(--ut-radius-md);
-  color: white;
+  color: var(--ut-color-ink-on-dark);
   display: inline-flex;
   font-size: 1rem;
   height: 2rem;
@@ -50,6 +50,8 @@
   align-items: center;
   display: flex;
   gap: var(--ut-space-2);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .navLink {
@@ -113,7 +115,15 @@
 
   .nav {
     flex-basis: 100%;
+    flex-wrap: wrap;
     justify-content: flex-end;
+    max-width: 100%;
+    min-width: 0;
+    row-gap: var(--ut-space-2);
+  }
+
+  .nav > * {
+    min-width: 0;
   }
 
   .navLink:nth-child(2) {

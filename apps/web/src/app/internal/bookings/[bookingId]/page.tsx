@@ -46,7 +46,7 @@ export default async function BookingSupportPage({
           <Link
             href="/internal"
             style={{
-              color: '#38bdf8',
+              color: 'var(--ut-color-support-link)',
               fontSize: '0.85rem',
               textDecoration: 'none',
               marginBottom: '0.5rem',
@@ -62,7 +62,7 @@ export default async function BookingSupportPage({
               <strong>Organisation :</strong>{' '}
               <Link
                 href={`/internal/organizations/${booking.organizationId}`}
-                style={{ color: '#38bdf8' }}
+                style={{ color: 'var(--ut-color-support-link)' }}
               >
                 {booking.organizationName}
               </Link>
@@ -126,7 +126,12 @@ export default async function BookingSupportPage({
             <div className={styles.infoLabel}>Total remboursé :</div>
             <div
               className={styles.infoVal}
-              style={{ color: booking.financial.refundTotalMinor > 0 ? '#f87171' : undefined }}
+              style={{
+                color:
+                  booking.financial.refundTotalMinor > 0
+                    ? 'var(--ut-color-support-danger)'
+                    : undefined,
+              }}
             >
               -{(booking.financial.refundTotalMinor / 100).toFixed(2)} {booking.financial.currency}
             </div>
@@ -145,7 +150,7 @@ export default async function BookingSupportPage({
             </div>
 
             <div className={styles.infoLabel}>Revenu net loueur :</div>
-            <div className={styles.infoVal} style={{ color: '#4ade80' }}>
+            <div className={styles.infoVal} style={{ color: 'var(--ut-color-support-success)' }}>
               <strong>
                 {(booking.financial.finalMerchantRevenueMinor / 100).toFixed(2)}{' '}
                 {booking.financial.currency}
@@ -157,7 +162,7 @@ export default async function BookingSupportPage({
             <div
               style={{
                 marginTop: '0.75rem',
-                borderTop: '1px solid #1f2937',
+                borderTop: '1px solid var(--ut-color-support-border)',
                 paddingTop: '0.75rem',
                 fontSize: '0.85rem',
               }}
@@ -206,10 +211,10 @@ export default async function BookingSupportPage({
             <div
               style={{
                 marginTop: '0.75rem',
-                borderTop: '1px solid #ef4444',
+                borderTop: '1px solid var(--ut-color-support-danger-strong)',
                 paddingTop: '0.75rem',
                 fontSize: '0.85rem',
-                color: '#fca5a5',
+                color: 'var(--ut-color-support-danger-soft)',
               }}
             >
               <p>
@@ -274,7 +279,11 @@ export default async function BookingSupportPage({
                     </td>
                     <td className={styles.td}>{line.variantName}</td>
                     <td className={styles.td}>{line.quantity}</td>
-                    <td className={styles.td} colSpan={4} style={{ color: '#fbbf24' }}>
+                    <td
+                      className={styles.td}
+                      colSpan={4}
+                      style={{ color: 'var(--ut-color-support-warning)' }}
+                    >
                       Aucun exemplaire physique alloué
                     </td>
                   </tr>
@@ -313,7 +322,7 @@ export default async function BookingSupportPage({
           <span>🔔 Notifications Transactionnelles ({booking.notifications.length})</span>
         </h2>
         {booking.notifications.length === 0 ? (
-          <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
+          <p style={{ color: 'var(--ut-color-support-subtle)', fontSize: '0.9rem' }}>
             Aucune notification enregistrée pour cette réservation.
           </p>
         ) : (

@@ -87,10 +87,10 @@ Sur le corpus Lyon versionné dans
 `docs/implementation/g8b-2b-lyon-corpus.json`, le benchmark du 2026-08-27 a
 mesuré 12/12 top-1 pour Photon (p50 40,5 ms), 11/12 pour IGN (p50 258,4 ms) et
 2/12 pour PostgreSQL local (p50 0,6 ms). Ce dernier résultat n'est pas un échec
-de recherche : la fixture ne contient volontairement qu'une destination
-canonique active, Lyon, et les dix autres requêtes testent des quartiers,
-points d'intérêt ou villes hors registre. Les détails et limites sont dans
-`docs/implementation/g8b-2b-geocoding-benchmark.md`.
+de recherche : au moment du benchmark, la fixture ne contenait volontairement
+qu'une destination canonique active, Lyon, et les dix autres requêtes testaient
+des quartiers, points d'intérêt ou villes hors registre. Les détails et limites
+sont dans `docs/implementation/g8b-2b-geocoding-benchmark.md`.
 
 ## 5. Livraison incrémentale
 
@@ -103,6 +103,12 @@ points d'intérêt ou villes hors registre. Les détails et limites sont dans
   90 jours.
 - **G8B-2D** : livré le 2026-08-27 — élargissements PostGIS 10/25/50 km,
   présentation explicite des alternatives, curseur v3 et tests PostgreSQL/Web.
+
+La fixture de développement locale contient désormais aussi Annecy afin de
+tester les parcours multi-destinations et de reproduire le cas observé sur le
+staging. Cette présence locale ne constitue pas une activation commerciale :
+le produit de démonstration reste en brouillon tant que ses photos réelles ne
+sont pas déposées et validées.
 
 ## 6. Conséquences
 

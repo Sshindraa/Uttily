@@ -14,8 +14,10 @@ import {
   upsertLocationScheduleExceptionAction,
   deleteLocationScheduleExceptionAction,
 } from '@/app/actions/locations';
+import { Badge, Button, Card, Input, PageHeader, Select } from '@uttily/ui';
 import { LocationFormFields } from '../location-form-fields';
 import { parseLocationFormData } from '../location-form';
+import styles from './location-detail.module.css';
 
 export default async function EditLocationPage({
   params,
@@ -72,133 +74,123 @@ export default async function EditLocationPage({
   }
 
   return (
-    <div style={containerStyle}>
-      <header style={headerStyle}>
-        <div>
-          <h1 style={titleStyle}>{location.name}</h1>
-          <p style={subtitleStyle}>
-            Configurez les informations, coordonnées et horaires d’ouverture de cet établissement.
-          </p>
-        </div>
-      </header>
+    <div className={styles.page}>
+      <PageHeader
+        eyebrow="Points de vente & ateliers"
+        title={location.name}
+        description="Configurez les informations, coordonnées et horaires d’ouverture de cet établissement."
+      />
 
-      <div style={gridStyle}>
+      <div className={styles.grid}>
         {/* Formulaire principal */}
-        <section aria-labelledby="general-heading" style={cardStyle}>
-          <h2 id="general-heading" style={cardTitleStyle}>
+        <Card as="section" aria-labelledby="general-heading" className={styles.card}>
+          <h2 id="general-heading" className={styles.sectionTitle}>
             Informations et horaires habituels
           </h2>
           {canManage ? (
-            <form action={updateLocation} style={formStyle}>
+            <form action={updateLocation} className={styles.form}>
               <LocationFormFields location={location} openingHours={openingHours} />
-              <div style={submitRowStyle}>
-                <button type="submit" style={primaryButtonStyle}>
-                  Enregistrer les modifications
-                </button>
+              <div className={styles.submitRow}>
+                <Button type="submit">Enregistrer les modifications</Button>
               </div>
             </form>
           ) : (
-            <p style={mutedTextStyle}>
+            <p className={styles.mutedText}>
               Lecture seule. Rôle insuffisant pour modifier cet établissement.
             </p>
           )}
-        </section>
+        </Card>
 
         {/* Colonne latérale : Fermetures & Horaires exceptionnels */}
-        <aside style={sideColumnStyle}>
-          <section aria-labelledby="exceptions-heading" style={cardStyle}>
-            <h2 id="exceptions-heading" style={cardTitleStyle}>
+        <aside className={styles.sideColumn}>
+          <Card as="section" aria-labelledby="exceptions-heading" className={styles.card}>
+            <h2 id="exceptions-heading" className={styles.sectionTitle}>
               Fermetures et horaires exceptionnels
             </h2>
-            <p style={helpTextStyle}>
+            <p className={styles.helpText}>
               Ces exceptions remplacent les horaires habituels pour la date indiquée. Elles bloquent
               ou ajustent les nouvelles réservations sans altérer les réservations confirmées
               existantes.
             </p>
 
             {canManage && (
-              <form action={addException} style={exceptionFormStyle}>
-                <div style={formGroupStyle}>
-                  <label htmlFor="localDate" style={labelStyle}>
-                    Date (AAAA-MM-JJ)
-                  </label>
-                  <input id="localDate" name="localDate" type="date" required style={inputStyle} />
+              <form action={addException} className={styles.exceptionForm}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="localDate">Date (AAAA-MM-JJ)</label>
+                  <Input id="localDate" name="localDate" type="date" required />
                 </div>
 
-                <div style={formGroupStyle}>
-                  <label htmlFor="kind" style={labelStyle}>
-                    Type d’exception
-                  </label>
-                  <select id="kind" name="kind" defaultValue="CLOSED" style={inputStyle}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="kind">Type d’exception</label>
+                  <Select id="kind" name="kind" defaultValue="CLOSED">
                     <option value="CLOSED">Fermé toute la journée</option>
                     <option value="OPEN_INTERVAL">Horaires spéciaux</option>
-                  </select>
+                  </Select>
                 </div>
 
-                <div style={hoursRowStyle}>
-                  <div style={formGroupStyle}>
-                    <label htmlFor="openTime" style={labelStyle}>
-                      Ouverture
-                    </label>
-                    <input id="openTime" name="openTime" type="time" style={inputStyle} />
+                <div className={styles.hoursRow}>
+                  <div className={styles.formGroup}>
+                    <label htmlFor="openTime">Ouverture</label>
+                    <Input id="openTime" name="openTime" type="time" />
                   </div>
-                  <div style={formGroupStyle}>
-                    <label htmlFor="closeTime" style={labelStyle}>
-                      Fermeture
-                    </label>
-                    <input id="closeTime" name="closeTime" type="time" style={inputStyle} />
+                  <div className={styles.formGroup}>
+                    <label htmlFor="closeTime">Fermeture</label>
+                    <Input id="closeTime" name="closeTime" type="time" />
                   </div>
                 </div>
 
-                <div style={formGroupStyle}>
-                  <label htmlFor="reason" style={labelStyle}>
-                    Motif (facultatif)
-                  </label>
-                  <input
+                <div className={styles.formGroup}>
+                  <label htmlFor="reason">Motif (facultatif)</label>
+                  <Input
                     id="reason"
                     name="reason"
                     type="text"
                     placeholder="ex : Jour férié, inventaire, fermeture annuelle"
-                    style={inputStyle}
                   />
                 </div>
 
-                <button type="submit" style={secondaryButtonStyle}>
+                <Button type="submit" variant="secondary" size="sm">
                   Ajouter l’exception
-                </button>
+                </Button>
               </form>
             )}
 
-            <div style={exceptionsListContainerStyle}>
-              <h3 style={subheadingStyle}>Exceptions enregistrées ({exceptions.length})</h3>
+            <div className={styles.exceptionListContainer}>
+              <h3 className={styles.subheading}>Exceptions enregistrées ({exceptions.length})</h3>
               {exceptions.length === 0 ? (
-                <p style={mutedTextStyle}>Aucune exception de calendrier configurée.</p>
+                <p className={styles.mutedText}>Aucune exception de calendrier configurée.</p>
               ) : (
-                <div style={exceptionsListStyle}>
+                <div className={styles.exceptionsList}>
                   {exceptions.map((ex) => (
-                    <div key={ex.id} style={exceptionCardStyle}>
-                      <div style={exceptionInfoStyle}>
-                        <div style={exceptionHeaderStyle}>
-                          <strong style={exceptionDateStyle}>{ex.localDate}</strong>
-                          <span style={ex.kind === 'CLOSED' ? closedBadgeStyle : openBadgeStyle}>
+                    <div key={ex.id} className={styles.exceptionCard}>
+                      <div className={styles.exceptionInfo}>
+                        <div className={styles.exceptionHeader}>
+                          <strong className={styles.exceptionDate}>{ex.localDate}</strong>
+                          <Badge tone={ex.kind === 'CLOSED' ? 'danger' : 'info'}>
                             {ex.kind === 'CLOSED'
                               ? 'Fermé'
                               : `${ex.openTime?.slice(0, 5)} - ${ex.closeTime?.slice(0, 5)}`}
-                          </span>
+                          </Badge>
                         </div>
-                        {ex.reason && <p style={exceptionReasonStyle}>{ex.reason}</p>}
+                        {ex.reason && <p className={styles.exceptionReason}>{ex.reason}</p>}
                       </div>
 
                       {canManage && (
                         <form action={deleteException}>
                           <input type="hidden" name="exceptionId" value={ex.id} />
-                          <button
+                          <Button
                             type="submit"
-                            style={deleteBtnStyle}
+                            variant="quiet"
+                            size="sm"
+                            style={{
+                              color: 'var(--ut-color-danger)',
+                              minHeight: '36px',
+                              paddingInline: 'var(--ut-space-2)',
+                            }}
                             aria-label={`Supprimer l'exception du ${ex.localDate}`}
                           >
                             ✕
-                          </button>
+                          </Button>
                         </form>
                       )}
                     </div>
@@ -206,222 +198,9 @@ export default async function EditLocationPage({
                 </div>
               )}
             </div>
-          </section>
+          </Card>
         </aside>
       </div>
     </div>
   );
 }
-
-const containerStyle: React.CSSProperties = {
-  maxWidth: '1200px',
-  margin: '0 auto',
-  padding: '1.5rem',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1.5rem',
-};
-
-const headerStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'flex-start',
-};
-
-const titleStyle: React.CSSProperties = {
-  fontSize: '1.75rem',
-  fontWeight: 700,
-  color: '#0f172a',
-  margin: 0,
-};
-
-const subtitleStyle: React.CSSProperties = {
-  fontSize: '0.95rem',
-  color: '#64748b',
-  margin: '0.25rem 0 0',
-};
-
-const gridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '1fr 380px',
-  gap: '1.5rem',
-  alignItems: 'start',
-};
-
-const sideColumnStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1.5rem',
-};
-
-const cardStyle: React.CSSProperties = {
-  backgroundColor: '#ffffff',
-  borderRadius: '12px',
-  border: '1px solid #e2e8f0',
-  padding: '1.5rem',
-  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
-};
-
-const cardTitleStyle: React.CSSProperties = {
-  fontSize: '1.1rem',
-  fontWeight: 600,
-  color: '#0f172a',
-  margin: '0 0 1rem',
-};
-
-const subheadingStyle: React.CSSProperties = {
-  fontSize: '0.9rem',
-  fontWeight: 600,
-  color: '#334155',
-  margin: '1rem 0 0.5rem',
-};
-
-const helpTextStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
-  color: '#64748b',
-  margin: '0 0 1rem',
-  lineHeight: 1.4,
-};
-
-const formStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1.25rem',
-};
-
-const exceptionFormStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.75rem',
-  padding: '1rem',
-  backgroundColor: '#f8fafc',
-  borderRadius: '8px',
-  border: '1px solid #e2e8f0',
-};
-
-const formGroupStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.25rem',
-};
-
-const hoursRowStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
-  gap: '0.5rem',
-};
-
-const labelStyle: React.CSSProperties = {
-  fontSize: '0.8rem',
-  fontWeight: 600,
-  color: '#334155',
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: '0.45rem 0.65rem',
-  borderRadius: '6px',
-  border: '1px solid #cbd5e1',
-  fontSize: '0.85rem',
-};
-
-const submitRowStyle: React.CSSProperties = {
-  marginTop: '1rem',
-};
-
-const primaryButtonStyle: React.CSSProperties = {
-  padding: '0.6rem 1.25rem',
-  backgroundColor: '#2563eb',
-  color: '#ffffff',
-  border: 'none',
-  borderRadius: '6px',
-  fontSize: '0.9rem',
-  fontWeight: 600,
-  cursor: 'pointer',
-};
-
-const secondaryButtonStyle: React.CSSProperties = {
-  padding: '0.5rem 0.75rem',
-  backgroundColor: '#ffffff',
-  color: '#334155',
-  border: '1px solid #cbd5e1',
-  borderRadius: '6px',
-  fontSize: '0.85rem',
-  fontWeight: 500,
-  cursor: 'pointer',
-};
-
-const mutedTextStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
-  color: '#64748b',
-  margin: 0,
-};
-
-const exceptionsListContainerStyle: React.CSSProperties = {
-  marginTop: '1.25rem',
-};
-
-const exceptionsListStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.5rem',
-};
-
-const exceptionCardStyle: React.CSSProperties = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '0.6rem 0.75rem',
-  backgroundColor: '#f8fafc',
-  borderRadius: '6px',
-  border: '1px solid #f1f5f9',
-};
-
-const exceptionInfoStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.2rem',
-};
-
-const exceptionHeaderStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '0.5rem',
-};
-
-const exceptionDateStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
-  color: '#0f172a',
-};
-
-const exceptionReasonStyle: React.CSSProperties = {
-  fontSize: '0.75rem',
-  color: '#64748b',
-  margin: 0,
-};
-
-const closedBadgeStyle: React.CSSProperties = {
-  padding: '0.1rem 0.4rem',
-  borderRadius: '9999px',
-  fontSize: '0.7rem',
-  fontWeight: 600,
-  backgroundColor: '#fee2e2',
-  color: '#991b1b',
-};
-
-const openBadgeStyle: React.CSSProperties = {
-  padding: '0.1rem 0.4rem',
-  borderRadius: '9999px',
-  fontSize: '0.7rem',
-  fontWeight: 600,
-  backgroundColor: '#e0f2fe',
-  color: '#0369a1',
-};
-
-const deleteBtnStyle: React.CSSProperties = {
-  backgroundColor: 'transparent',
-  border: 'none',
-  color: '#94a3b8',
-  cursor: 'pointer',
-  padding: '0.2rem 0.4rem',
-  fontSize: '0.9rem',
-};

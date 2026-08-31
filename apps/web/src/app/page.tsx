@@ -30,7 +30,7 @@ export default function HomePage(): React.ReactElement {
             style={{
               background: 'var(--ut-color-ink-strong)',
               border: 0,
-              color: 'white',
+              color: 'var(--ut-color-ink-on-dark)',
               padding: 'var(--ut-space-8)',
             }}
           >

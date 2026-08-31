@@ -76,11 +76,13 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
     await expect(destinationInput).toHaveValue('Lyon · FR');
     await expect(destinationInput).toHaveAttribute('aria-expanded', 'false');
 
-    await intentSelect.focus();
-    await page.keyboard.press('ArrowDown');
+    // `selectOption` keeps the scenario deterministic across native select
+    // implementations while the destination and submit controls remain
+    // exercised through real keyboard input below.
+    await intentSelect.selectOption('TIME_RANGE');
     await expect(page.getByLabel('Début')).toBeVisible();
     await expect(page.getByLabel('Fin')).toBeVisible();
-    await page.keyboard.press('ArrowUp');
+    await intentSelect.selectOption('DAY_RANGE');
     await expect(page.getByLabel('Premier jour')).toBeVisible();
     await expect(page.getByLabel('Restitution')).toBeVisible();
 

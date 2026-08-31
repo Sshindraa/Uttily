@@ -1,5 +1,3 @@
-import Link from 'next/link';
-import { currentUser } from '@clerk/nextjs/server';
 import { notFound } from 'next/navigation';
 import { listPublicSearchFilterOptions, PublicSearchError } from '@uttily/core';
 import { getDb } from '@/lib/db';
@@ -10,6 +8,7 @@ import {
 } from '@/lib/public-search';
 import { SearchForm } from './search-form';
 import { SearchResults } from './search-results';
+import { ClientShell } from '@/components/client-shell';
 import styles from './search.module.css';
 
 interface SearchPageProps {
@@ -50,78 +49,65 @@ export default async function PublicSearchPage({
   }
 
   const otherLocale = fr ? 'en' : 'fr';
-  const isAuthenticated = (await currentUser()) !== null;
-  const currentSearchPath = `/${locale}/search${urlParams.toString() ? `?${urlParams.toString()}` : ''}`;
   const selectedDestination =
     filters.destinations.find(
       (destination) => destination.publicId === parsed.values.destinationPublicId,
     ) ?? null;
   return (
-    <main className={styles.page} lang={locale}>
-      <header className={styles.header}>
-        <Link href={`/${locale}/search`} className={styles.brand} aria-label="Uttily, accueil">
-          Uttily
-        </Link>
-        <nav aria-label={fr ? 'Navigation et langue' : 'Navigation and language'}>
-          <Link href={`/${locale}/account/bookings`}>{fr ? 'Mes locations' : 'My bookings'}</Link>
-          <Link href={`/${otherLocale}/search`} hrefLang={otherLocale}>
-            {fr ? 'English' : 'Français'}
-          </Link>
-          {!isAuthenticated ? (
-            <Link href={`/sign-in?redirect_url=${encodeURIComponent(currentSearchPath)}`}>
-              {fr ? 'Espace loueur' : 'Renter portal'}
-            </Link>
-          ) : null}
-        </nav>
-      </header>
-
-      <section className={styles.hero}>
-        <p className={styles.eyebrow}>
-          {fr ? 'Location locale · Stock réel' : 'Local rental · Verified stock'}
-        </p>
-        <h1>
-          {fr
-            ? 'Trouvez le bon équipement, au bon endroit.'
-            : 'Find the right equipment, in the right place.'}
-        </h1>
-        <p>
-          {fr
-            ? 'Les disponibilités et les tarifs sont calculés pour votre période. Votre équipement est bloqué lors de votre réservation.'
-            : 'Availability and pricing are calculated for your dates. Your equipment is held upon booking.'}
-        </p>
-      </section>
-
-      <section className={styles.searchPanel} aria-labelledby="search-heading">
-        <h2 id="search-heading" className={styles.srOnly}>
-          {fr ? 'Critères de recherche' : 'Search criteria'}
-        </h2>
-        <SearchForm
-          locale={locale}
-          destinations={filters.destinations}
-          categories={filters.categories}
-          values={parsed.values}
-          {...(parsed.kind === 'INVALID' ? { fieldErrors: parsed.fieldErrors } : {})}
-        />
-        {filters.destinations.length === 0 ? (
-          <p role="status" className={styles.notice}>
-            {fr
-              ? "Aucune destination n'est activée pour le moment."
-              : 'No destination is currently active.'}
+    <ClientShell
+      localeOverride={locale}
+      alternateHref={`/${otherLocale}/search`}
+      alternateLabel={fr ? 'English' : 'Français'}
+    >
+      <main className={styles.page} lang={locale}>
+        <section className={styles.hero}>
+          <p className={styles.eyebrow}>
+            {fr ? 'Location locale · Stock réel' : 'Local rental · Verified stock'}
           </p>
-        ) : null}
-      </section>
+          <h1>
+            {fr
+              ? 'Trouvez le bon équipement, au bon endroit.'
+              : 'Find the right equipment, in the right place.'}
+          </h1>
+          <p>
+            {fr
+              ? 'Les disponibilités et les tarifs sont calculés pour votre période. Votre équipement est bloqué lors de votre réservation.'
+              : 'Availability and pricing are calculated for your dates. Your equipment is held upon booking.'}
+          </p>
+        </section>
 
-      <SearchResults
-        locale={locale}
-        result={result}
-        searchError={searchError}
-        criteriaInvalid={parsed.kind === 'INVALID'}
-        initialSearchParams={urlParams.toString()}
-        destination={selectedDestination}
-        canSearchMap={parsed.kind === 'VALID'}
-        initialViewport={parsed.kind === 'VALID' ? parsed.input.viewport : undefined}
-      />
-    </main>
+        <section className={styles.searchPanel} aria-labelledby="search-heading">
+          <h2 id="search-heading" className={styles.srOnly}>
+            {fr ? 'Critères de recherche' : 'Search criteria'}
+          </h2>
+          <SearchForm
+            locale={locale}
+            destinations={filters.destinations}
+            categories={filters.categories}
+            values={parsed.values}
+            {...(parsed.kind === 'INVALID' ? { fieldErrors: parsed.fieldErrors } : {})}
+          />
+          {filters.destinations.length === 0 ? (
+            <p role="status" className={styles.notice}>
+              {fr
+                ? "Aucune destination n'est activée pour le moment."
+                : 'No destination is currently active.'}
+            </p>
+          ) : null}
+        </section>
+
+        <SearchResults
+          locale={locale}
+          result={result}
+          searchError={searchError}
+          criteriaInvalid={parsed.kind === 'INVALID'}
+          initialSearchParams={urlParams.toString()}
+          destination={selectedDestination}
+          canSearchMap={parsed.kind === 'VALID'}
+          initialViewport={parsed.kind === 'VALID' ? parsed.input.viewport : undefined}
+        />
+      </main>
+    </ClientShell>
   );
 }
 

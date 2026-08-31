@@ -5,6 +5,7 @@ import { getPublicOfferDetails, PostgresPhotoPublicationGate } from '@uttily/cor
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import type { PublicUiLocale } from '@/lib/public-search';
+import { ClientShell } from '@/components/client-shell';
 import { OfferBookingForm } from './offer-booking-form';
 import styles from './offer.module.css';
 
@@ -83,143 +84,129 @@ export default async function PublicOfferPage({
   const weekdayNames = fr ? WEEKDAY_NAMES_FR : WEEKDAY_NAMES_EN;
 
   return (
-    <main className={styles.page} lang={locale}>
-      <header className={styles.header}>
-        <Link href={`/${locale}/search`} className={styles.brand}>
-          Uttily
-        </Link>
-        <nav aria-label={fr ? 'Langue' : 'Language'}>
-          <Link href={otherLocaleUrl} hrefLang={otherLocale}>
-            {fr ? 'English' : 'Français'}
-          </Link>
-          {user ? (
-            <Link href={`/${locale}/account/bookings`}>{fr ? 'Mes locations' : 'My bookings'}</Link>
-          ) : (
-            <Link
-              href={`/sign-in?redirect_url=${encodeURIComponent(
-                `/${locale}/offers/${publicProductId}/${publicLocationId}${searchUrlParams.toString() ? `?${searchUrlParams.toString()}` : ''}`,
-              )}`}
-            >
-              {fr ? 'Espace loueur' : 'Renter portal'}
+    <ClientShell
+      localeOverride={locale}
+      alternateHref={otherLocaleUrl}
+      alternateLabel={fr ? 'English' : 'Français'}
+    >
+      <main className={styles.page} lang={locale}>
+        <div className={styles.container}>
+          <div className={styles.breadcrumbNav}>
+            <Link href={backToSearchUrl} className={styles.backLink}>
+              ← {fr ? 'Retour aux résultats de recherche' : 'Back to search results'}
             </Link>
-          )}
-        </nav>
-      </header>
-
-      <div className={styles.container}>
-        <div className={styles.breadcrumbNav}>
-          <Link href={backToSearchUrl} className={styles.backLink}>
-            ← {fr ? 'Retour aux résultats de recherche' : 'Back to search results'}
-          </Link>
-        </div>
-
-        <div className={styles.grid}>
-          <div className={styles.detailsSection}>
-            <article className={styles.productCard}>
-              <p className={styles.eyebrow}>{offer.organizationPublicDisplayName}</p>
-              <h1 className={styles.productTitle}>{offer.productName}</h1>
-              {offer.price ? (
-                <p
-                  style={{
-                    margin: '0 0 1rem',
-                    color: 'var(--accent)',
-                    fontSize: '1.25rem',
-                    fontWeight: 800,
-                  }}
-                >
-                  {offer.price.publicLabel}{' '}
-                  {new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'en-GB', {
-                    style: 'currency',
-                    currency: offer.price.currency,
-                  }).format(offer.price.customerTotalAmountMinor / 100)}
-                </p>
-              ) : null}
-              {offer.price ? (
-                <p className={styles.priceHint}>
-                  {fr
-                    ? 'Prix indicatif selon les critères actuels. Le montant final sera recalculé lors de la réservation.'
-                    : 'Indicative price for the current criteria. The final amount is recalculated when booking.'}
-                </p>
-              ) : null}
-              {offer.photos.length > 0 ? (
-                <div
-                  className={styles.photoGallery}
-                  aria-label={fr ? 'Photos du produit' : 'Product photos'}
-                >
-                  {offer.photos.map((photo, index) => (
-                    <img
-                      key={photo.publicPhotoId}
-                      src={`/api/public/product-photos/${photo.publicPhotoId}`}
-                      alt={
-                        fr
-                          ? `Photo ${index + 1} de ${offer.productName}`
-                          : `Photo ${index + 1} of ${offer.productName}`
-                      }
-                      className={styles.productPhoto}
-                    />
-                  ))}
-                </div>
-              ) : null}
-              {offer.productDescription ? (
-                <p className={styles.productDescription}>{offer.productDescription}</p>
-              ) : null}
-            </article>
-
-            <section className={styles.infoSection} aria-labelledby="location-heading">
-              <h2 id="location-heading" className={styles.sectionTitle}>
-                {fr ? 'Lieu de retrait et restitution' : 'Pickup & return location'}
-              </h2>
-              <p className={styles.infoText}>
-                <strong>{offer.locationName}</strong>
-                <br />
-                {offer.addressLine1}
-                {offer.addressLine2 ? `, ${offer.addressLine2}` : ''}
-                <br />
-                {offer.postalCode ? `${offer.postalCode} ` : ''}
-                {offer.city}, {offer.countryCode}
-              </p>
-              <p className={styles.infoText}>
-                <small>
-                  {fr ? 'Fuseau horaire du lieu :' : 'Location timezone:'} {offer.timeZone}
-                </small>
-              </p>
-            </section>
-
-            {offer.openingHours.length > 0 ? (
-              <section className={styles.infoSection} aria-labelledby="hours-heading">
-                <h2 id="hours-heading" className={styles.sectionTitle}>
-                  {fr ? 'Horaires d’ouverture' : 'Opening hours'}
-                </h2>
-                <ul className={styles.hoursList}>
-                  {offer.openingHours.map((h, i) => (
-                    <li key={i} className={styles.hourItem}>
-                      <span className={styles.hourDay}>{weekdayNames[h.weekday] ?? h.weekday}</span>
-                      <span className={styles.hourTime}>
-                        {h.openTime.slice(0, 5)} - {h.closeTime.slice(0, 5)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
           </div>
 
-          <aside>
-            <OfferBookingForm
-              offer={offer}
-              locale={locale}
-              initialIntent={initialIntent}
-              initialStartDate={initialStartDate}
-              initialEndDateExclusive={initialEndDateExclusive}
-              initialStartAt={initialStartAt}
-              initialEndAt={initialEndAt}
-              initialVariantId={initialVariantId}
-              isAuthenticated={user !== null}
-            />
-          </aside>
+          <div className={styles.grid}>
+            <div className={styles.detailsSection}>
+              <article className={styles.productCard}>
+                <p className={styles.eyebrow}>{offer.organizationPublicDisplayName}</p>
+                <h1 className={styles.productTitle}>{offer.productName}</h1>
+                {offer.price ? (
+                  <p
+                    style={{
+                      margin: '0 0 1rem',
+                      color: 'var(--accent)',
+                      fontSize: '1.25rem',
+                      fontWeight: 800,
+                    }}
+                  >
+                    {offer.price.publicLabel}{' '}
+                    {new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'en-GB', {
+                      style: 'currency',
+                      currency: offer.price.currency,
+                    }).format(offer.price.customerTotalAmountMinor / 100)}
+                  </p>
+                ) : null}
+                {offer.price ? (
+                  <p className={styles.priceHint}>
+                    {fr
+                      ? 'Prix indicatif selon les critères actuels. Le montant final sera recalculé lors de la réservation.'
+                      : 'Indicative price for the current criteria. The final amount is recalculated when booking.'}
+                  </p>
+                ) : null}
+                {offer.photos.length > 0 ? (
+                  <div
+                    className={styles.photoGallery}
+                    aria-label={fr ? 'Photos du produit' : 'Product photos'}
+                  >
+                    {offer.photos.map((photo, index) => (
+                      <img
+                        key={photo.publicPhotoId}
+                        src={`/api/public/product-photos/${photo.publicPhotoId}`}
+                        alt={
+                          fr
+                            ? `Photo ${index + 1} de ${offer.productName}`
+                            : `Photo ${index + 1} of ${offer.productName}`
+                        }
+                        className={styles.productPhoto}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+                {offer.productDescription ? (
+                  <p className={styles.productDescription}>{offer.productDescription}</p>
+                ) : null}
+              </article>
+
+              <section className={styles.infoSection} aria-labelledby="location-heading">
+                <h2 id="location-heading" className={styles.sectionTitle}>
+                  {fr ? 'Lieu de retrait et restitution' : 'Pickup & return location'}
+                </h2>
+                <p className={styles.infoText}>
+                  <strong>{offer.locationName}</strong>
+                  <br />
+                  {offer.addressLine1}
+                  {offer.addressLine2 ? `, ${offer.addressLine2}` : ''}
+                  <br />
+                  {offer.postalCode ? `${offer.postalCode} ` : ''}
+                  {offer.city}, {offer.countryCode}
+                </p>
+                <p className={styles.infoText}>
+                  <small>
+                    {fr ? 'Fuseau horaire du lieu :' : 'Location timezone:'} {offer.timeZone}
+                  </small>
+                </p>
+              </section>
+
+              {offer.openingHours.length > 0 ? (
+                <section className={styles.infoSection} aria-labelledby="hours-heading">
+                  <h2 id="hours-heading" className={styles.sectionTitle}>
+                    {fr ? 'Horaires d’ouverture' : 'Opening hours'}
+                  </h2>
+                  <ul className={styles.hoursList}>
+                    {offer.openingHours.map((h, i) => (
+                      <li key={i} className={styles.hourItem}>
+                        <span className={styles.hourDay}>
+                          {weekdayNames[h.weekday] ?? h.weekday}
+                        </span>
+                        <span className={styles.hourTime}>
+                          {h.openTime.slice(0, 5)} - {h.closeTime.slice(0, 5)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+            </div>
+
+            <aside>
+              <OfferBookingForm
+                offer={offer}
+                locale={locale}
+                initialIntent={initialIntent}
+                initialStartDate={initialStartDate}
+                initialEndDateExclusive={initialEndDateExclusive}
+                initialStartAt={initialStartAt}
+                initialEndAt={initialEndAt}
+                initialVariantId={initialVariantId}
+                isAuthenticated={user !== null}
+              />
+            </aside>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </ClientShell>
   );
 }
 

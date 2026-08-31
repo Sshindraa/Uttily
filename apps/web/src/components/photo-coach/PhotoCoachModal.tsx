@@ -170,7 +170,13 @@ export function PhotoCoachModal({
         <div className={styles.header}>
           <div id="photo-coach-title" className={styles.headerTitle}>
             <span>Photo Coach Uttily</span>
-            <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>
+            <span
+              style={{
+                fontSize: '0.85rem',
+                color: 'var(--ut-color-ink-muted)',
+                fontWeight: 500,
+              }}
+            >
               — {slot.title}
             </span>
           </div>

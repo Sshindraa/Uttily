@@ -39,7 +39,14 @@ export function ReconcilePaymentButton({ paymentId }: { paymentId: string }) {
         {loading ? 'Programmation...' : '⚡ Forcer réconciliation'}
       </button>
       {msg && (
-        <span style={{ fontSize: '0.75rem', color: msg.startsWith('✅') ? '#4ade80' : '#f87171' }}>
+        <span
+          style={{
+            fontSize: '0.75rem',
+            color: msg.startsWith('✅')
+              ? 'var(--ut-color-support-success)'
+              : 'var(--ut-color-support-danger)',
+          }}
+        >
           {msg}
         </span>
       )}

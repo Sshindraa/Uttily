@@ -21,13 +21,19 @@ export default async function InternalLayout({
         style={{
           padding: '3rem 1.5rem',
           textAlign: 'center',
-          background: '#0b0f19',
+          background: 'var(--ut-color-support-background)',
           minHeight: '100vh',
-          color: '#f87171',
+          color: 'var(--ut-color-support-danger)',
         }}
       >
         <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>⛔ Accès Interne Refusé</h1>
-        <p style={{ color: '#94a3b8', maxWidth: '500px', margin: '0 auto 1.5rem' }}>
+        <p
+          style={{
+            color: 'var(--ut-color-support-muted)',
+            maxWidth: '500px',
+            margin: '0 auto 1.5rem',
+          }}
+        >
           Cette zone est strictement réservée à l’équipe support et administration interne d’Uttily.
         </p>
         <Link
@@ -35,8 +41,8 @@ export default async function InternalLayout({
           style={{
             display: 'inline-block',
             padding: '0.6rem 1.2rem',
-            background: '#1e293b',
-            color: '#38bdf8',
+            background: 'var(--ut-color-support-elevated)',
+            color: 'var(--ut-color-support-link)',
             borderRadius: '6px',
             textDecoration: 'none',
             fontWeight: 500,
@@ -67,10 +73,10 @@ export default async function InternalLayout({
               href="/dashboard"
               style={{
                 marginLeft: '1rem',
-                color: '#38bdf8',
+                color: 'var(--ut-color-support-link)',
                 fontSize: '0.8rem',
                 textDecoration: 'none',
-                border: '1px solid #1e293b',
+                border: '1px solid var(--ut-color-support-elevated)',
                 padding: '0.25rem 0.6rem',
                 borderRadius: '4px',
               }}

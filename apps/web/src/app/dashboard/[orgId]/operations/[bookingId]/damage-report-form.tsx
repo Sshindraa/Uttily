@@ -22,8 +22,8 @@ function SubmitButton(): React.ReactElement {
         padding: '0.75rem 1rem',
         fontSize: '1rem',
         fontWeight: 600,
-        color: '#fff',
-        background: '#dc2626',
+        color: 'var(--ut-color-surface)',
+        background: 'var(--ut-color-danger)',
         border: 'none',
         borderRadius: 8,
         cursor: pending ? 'not-allowed' : 'pointer',
@@ -96,13 +96,16 @@ export function DamageReportForm({
             display: 'block',
             width: '100%',
             padding: '0.5rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--ut-color-border)',
             borderRadius: 6,
             minHeight: 100,
             boxSizing: 'border-box',
           }}
         />
-        <p id={`${formId}-description-help`} style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+        <p
+          id={`${formId}-description-help`}
+          style={{ fontSize: '0.875rem', color: 'var(--ut-color-ink-muted)' }}
+        >
           Description obligatoire. Maximum {MAX_DESCRIPTION_LENGTH} caractères.
         </p>
         {fieldErrors.description && (
@@ -110,7 +113,7 @@ export function DamageReportForm({
             id={`${formId}-description-error`}
             role="alert"
             aria-live="polite"
-            style={{ color: '#dc2626', fontSize: '0.875rem' }}
+            style={{ color: 'var(--ut-color-danger)', fontSize: '0.875rem' }}
           >
             {fieldErrors.description}
           </p>
@@ -119,10 +122,10 @@ export function DamageReportForm({
 
       <div aria-live="polite" role="status">
         {state.ok && state.data && (
-          <p style={{ color: '#16a34a' }}>Déclaration enregistrée avec succès.</p>
+          <p style={{ color: 'var(--ut-color-success)' }}>Déclaration enregistrée avec succès.</p>
         )}
         {!state.ok && state.code !== 'VALIDATION' && (
-          <p role="alert" style={{ color: '#dc2626' }}>
+          <p role="alert" style={{ color: 'var(--ut-color-danger)' }}>
             {state.message}
           </p>
         )}

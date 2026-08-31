@@ -75,7 +75,7 @@
 }
 
 .cardEyebrow {
-  color: #99f6e4;
+  color: var(--ut-color-primary-soft);
   margin-bottom: 0;
 }
 
@@ -86,7 +86,7 @@
 
 .searchPreview > div {
   align-items: center;
-  border-bottom: 1px solid rgb(255 255 255 / 0.14);
+  border-bottom: 1px solid var(--ut-color-border-on-dark);
   display: grid;
   gap: 0 var(--ut-space-3);
   grid-template-columns: auto 1fr;
@@ -102,7 +102,7 @@
 }
 
 .searchPreview span {
-  color: #99f6e4;
+  color: var(--ut-color-primary-soft);
   font-size: var(--ut-text-xs);
   font-weight: var(--ut-weight-semibold);
   text-transform: uppercase;
@@ -147,7 +147,7 @@
   align-items: center;
   background: var(--ut-color-primary);
   border-radius: var(--ut-radius-pill);
-  color: white;
+  color: var(--ut-color-ink-on-dark);
   display: inline-flex;
   font-size: var(--ut-text-sm);
   font-weight: var(--ut-weight-bold);

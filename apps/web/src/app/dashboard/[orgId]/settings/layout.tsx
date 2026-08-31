@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { getMembership, requireMembership } from '@uttily/core';
+import { PageHeader } from '@uttily/ui';
 
 export default async function SettingsLayout({
   children,
@@ -21,21 +22,20 @@ export default async function SettingsLayout({
 
   return (
     <div style={layoutContainerStyle}>
-      <header style={headerStyle}>
-        <h1 style={titleStyle}>Paramètres</h1>
-        <p style={subtitleStyle}>
-          Gérez l’identité commerciale de votre entreprise et vos politiques de service.
-        </p>
+      <PageHeader
+        eyebrow="Organisation"
+        title="Paramètres"
+        description="Gérez l’identité commerciale de votre entreprise et vos politiques de service."
+      />
 
-        <nav aria-label="Sous-navigation Paramètres" style={navStyle}>
-          <Link href={`/dashboard/${orgId}/settings/company`} style={tabLinkStyle}>
-            Entreprise
-          </Link>
-          <Link href={`/dashboard/${orgId}/settings/policies`} style={tabLinkStyle}>
-            Politiques
-          </Link>
-        </nav>
-      </header>
+      <nav aria-label="Sous-navigation Paramètres" style={navStyle}>
+        <Link href={`/dashboard/${orgId}/settings/company`} style={tabLinkStyle}>
+          Entreprise
+        </Link>
+        <Link href={`/dashboard/${orgId}/settings/policies`} style={tabLinkStyle}>
+          Politiques
+        </Link>
+      </nav>
 
       <main>{children}</main>
     </div>
@@ -48,40 +48,20 @@ const layoutContainerStyle: React.CSSProperties = {
   padding: '1.5rem',
   display: 'flex',
   flexDirection: 'column',
-  gap: '1.5rem',
-};
-
-const headerStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '0.5rem',
-  borderBottom: '1px solid #e2e8f0',
-  paddingBottom: '1rem',
-};
-
-const titleStyle: React.CSSProperties = {
-  fontSize: '1.75rem',
-  fontWeight: 700,
-  color: '#0f172a',
-  margin: 0,
-};
-
-const subtitleStyle: React.CSSProperties = {
-  fontSize: '0.95rem',
-  color: '#64748b',
-  margin: 0,
+  gap: 'var(--ut-space-8)',
 };
 
 const navStyle: React.CSSProperties = {
   display: 'flex',
-  gap: '1.5rem',
-  marginTop: '0.75rem',
+  gap: 'var(--ut-space-2)',
+  borderBottom: 'var(--ut-border-thin)',
 };
 
 const tabLinkStyle: React.CSSProperties = {
-  fontSize: '0.95rem',
-  fontWeight: 600,
-  color: '#2563eb',
+  fontSize: 'var(--ut-text-sm)',
+  fontWeight: 'var(--ut-weight-semibold)',
+  color: 'var(--ut-color-primary-strong)',
   textDecoration: 'none',
-  paddingBottom: '0.25rem',
+  padding: 'var(--ut-space-3) var(--ut-space-3) var(--ut-space-2)',
+  borderBottom: '2px solid transparent',
 };

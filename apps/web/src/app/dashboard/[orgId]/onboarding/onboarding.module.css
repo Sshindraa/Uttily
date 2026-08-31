@@ -14,7 +14,7 @@
 }
 
 .backLink {
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   font-size: 0.9rem;
   font-weight: 600;
   text-decoration: none;
@@ -23,27 +23,27 @@
 }
 
 .backLink:hover {
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
 }
 
 .title {
   font-size: 2rem;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   margin: 0;
   letter-spacing: -0.02em;
 }
 
 .subtitle {
   font-size: 1rem;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   margin: 0;
 }
 
 /* Stepper Navigation */
 .stepperNav {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
   border-radius: 16px;
   padding: 20px 24px;
 }
@@ -76,36 +76,36 @@
 }
 
 .stepCircleDone {
-  background: #10b981;
-  color: #ffffff;
+  background: var(--ut-color-success);
+  color: var(--ut-color-surface);
 }
 
 .stepCircleCurrent {
-  background: #0284c7;
-  color: #ffffff;
-  box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.2);
+  background: var(--ut-color-primary);
+  color: var(--ut-color-surface);
+  box-shadow: 0 0 0 4px var(--ut-color-focus-ring);
 }
 
 .stepCirclePending {
-  background: #f1f5f9;
-  color: #94a3b8;
-  border: 1.5px solid #cbd5e1;
+  background: var(--ut-color-surface-soft);
+  color: var(--ut-color-ink-subtle);
+  border: 1.5px solid var(--ut-color-border-strong);
 }
 
 .stepLabel {
   font-size: 0.82rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   text-align: center;
 }
 
 .stepLabelDone {
-  color: #059669;
+  color: var(--ut-color-success);
   font-weight: 700;
 }
 
 .stepLabelCurrent {
-  color: #0284c7;
+  color: var(--ut-color-primary);
   font-weight: 800;
 }
 
@@ -115,21 +115,21 @@
   left: 50%;
   width: 100%;
   height: 3px;
-  background: #e2e8f0;
+  background: var(--ut-color-border);
   z-index: 1;
 }
 
 .stepConnectorDone {
-  background: #10b981;
+  background: var(--ut-color-success);
 }
 
 /* Carte étape courante */
 .currentStepCard {
-  background: #ffffff;
-  border: 1.5px solid #0284c7;
+  background: var(--ut-color-surface);
+  border: 1.5px solid var(--ut-color-primary);
   border-radius: 20px;
   padding: 32px;
-  box-shadow: 0 8px 30px rgba(2, 132, 199, 0.08);
+  box-shadow: var(--ut-shadow-md);
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -147,9 +147,9 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #0284c7;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
+  color: var(--ut-color-primary);
+  background: var(--ut-color-primary-soft);
+  border: 1px solid var(--ut-color-primary-soft);
   padding: 4px 12px;
   border-radius: 9999px;
   width: fit-content;
@@ -158,13 +158,13 @@
 .stepTitle {
   font-size: 1.5rem;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   margin: 0;
 }
 
 .stepDesc {
   font-size: 1rem;
-  color: #475569;
+  color: var(--ut-color-ink-muted);
   margin: 0;
   line-height: 1.5;
 }
@@ -174,8 +174,8 @@
   align-items: center;
   gap: 14px;
   padding: 16px;
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
+  background: var(--ut-color-primary-soft);
+  border: 1px solid var(--ut-color-primary-soft);
   border-radius: 14px;
 }
 
@@ -183,7 +183,7 @@
   display: flex;
   justify-content: flex-end;
   padding-top: 12px;
-  border-top: 1px solid #f1f5f9;
+  border-top: 1px solid var(--ut-color-surface-soft);
 }
 
 .primaryCtaBtn {
@@ -192,29 +192,33 @@
   justify-content: center;
   gap: 8px;
   padding: 14px 28px;
-  background: #0284c7;
-  color: #ffffff;
+  background: var(--ut-color-primary);
+  color: var(--ut-color-surface);
   border-radius: 12px;
   font-weight: 800;
   font-size: 1rem;
   text-decoration: none;
-  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+  box-shadow: var(--ut-shadow-primary-subtle);
   transition: all 0.15s ease;
 }
 
 .primaryCtaBtn:hover {
-  background: #0369a1;
+  background: var(--ut-color-primary-strong);
   transform: translateY(-1px);
 }
 
 /* Success Card */
 .successCard {
-  background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%);
-  border: 2px solid #86efac;
+  background: linear-gradient(
+    135deg,
+    var(--ut-color-surface) 0%,
+    var(--ut-color-success-soft) 100%
+  );
+  border: 2px solid var(--ut-color-success-soft);
   border-radius: 24px;
   padding: 40px;
   text-align: center;
-  box-shadow: 0 12px 40px rgba(16, 185, 129, 0.1);
+  box-shadow: var(--ut-shadow-success);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -224,13 +228,13 @@
 .successTitle {
   font-size: 2rem;
   font-weight: 900;
-  color: #166534;
+  color: var(--ut-color-success);
   margin: 0;
 }
 
 .successSubtitle {
   font-size: 1.05rem;
-  color: #15803d;
+  color: var(--ut-color-success);
   max-width: 550px;
   margin: 0;
 }
@@ -249,8 +253,8 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  background: #ffffff;
-  border: 1px solid #bbf7d0;
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-success-soft);
   border-radius: 14px;
   padding: 14px 18px;
 }
@@ -258,7 +262,7 @@
 .wowItem p {
   margin: 2px 0 0 0;
   font-size: 0.85rem;
-  color: #475569;
+  color: var(--ut-color-ink-muted);
 }
 
 .wowIcon {

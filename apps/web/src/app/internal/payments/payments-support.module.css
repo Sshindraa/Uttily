@@ -5,8 +5,12 @@
 }
 
 .header {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  border: 1px solid #334155;
+  background: linear-gradient(
+    135deg,
+    var(--ut-color-support-elevated) 0%,
+    var(--ut-color-support-footer) 100%
+  );
+  border: 1px solid var(--ut-color-support-border-muted);
   border-radius: 12px;
   padding: 1.75rem;
 }
@@ -14,12 +18,12 @@
 .title {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--ut-color-support-ink-strong);
   margin-bottom: 0.5rem;
 }
 
 .subtitle {
-  color: #94a3b8;
+  color: var(--ut-color-support-muted);
   font-size: 0.95rem;
 }
 
@@ -37,26 +41,26 @@
   font-size: 0.85rem;
   font-weight: 600;
   text-decoration: none;
-  background: #111827;
-  color: #94a3b8;
-  border: 1px solid #1f2937;
+  background: var(--ut-color-support-surface);
+  color: var(--ut-color-support-muted);
+  border: 1px solid var(--ut-color-support-border);
   transition: all 0.15s ease;
 }
 
 .filterLink:hover {
-  background: #1e293b;
-  color: #f8fafc;
+  background: var(--ut-color-support-elevated);
+  color: var(--ut-color-support-ink-strong);
 }
 
 .filterLinkActive {
-  background: #0284c7;
-  color: #ffffff;
-  border-color: #0284c7;
+  background: var(--ut-color-support-primary);
+  color: var(--ut-color-support-ink-strong);
+  border-color: var(--ut-color-support-primary);
 }
 
 .tableWrapper {
-  background: #111827;
-  border: 1px solid #1f2937;
+  background: var(--ut-color-support-surface);
+  border: 1px solid var(--ut-color-support-border);
   border-radius: 8px;
   overflow-x: auto;
 }
@@ -68,17 +72,17 @@
 }
 
 .th {
-  background: #162032;
-  color: #94a3b8;
+  background: var(--ut-color-support-navigation-alt);
+  color: var(--ut-color-support-muted);
   padding: 0.75rem 1rem;
   text-align: left;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--ut-color-support-border);
 }
 
 .td {
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #1f2937;
-  color: #cbd5e1;
+  border-bottom: 1px solid var(--ut-color-support-border);
+  color: var(--ut-color-support-ink-soft);
 }
 
 .statusBadge {
@@ -91,22 +95,22 @@
 }
 
 .statusSucceeded {
-  background: rgba(34, 197, 94, 0.15);
-  color: #4ade80;
+  background: var(--ut-color-support-success-bg);
+  color: var(--ut-color-support-success);
 }
 
 .statusFailed {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
+  background: var(--ut-color-support-danger-bg);
+  color: var(--ut-color-support-danger);
 }
 
 .statusPending {
-  background: rgba(245, 158, 11, 0.15);
-  color: #fbbf24;
+  background: var(--ut-color-support-warning-bg);
+  color: var(--ut-color-support-warning);
 }
 
 .actionBtn {
-  background: #0284c7;
+  background: var(--ut-color-support-primary);
   color: white;
   border: none;
   border-radius: 4px;
@@ -117,5 +121,5 @@
 }
 
 .actionBtn:hover {
-  background: #0369a1;
+  background: var(--ut-color-support-primary-strong);
 }

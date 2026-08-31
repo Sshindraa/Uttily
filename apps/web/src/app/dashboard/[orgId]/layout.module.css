@@ -1,12 +1,12 @@
 .wrapper {
   min-height: 100vh;
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--ut-color-surface-raised);
+  color: var(--ut-color-ink-strong);
 }
 
 .topBar {
-  background: #ffffff;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--ut-color-surface);
+  border-bottom: 1px solid var(--ut-color-border);
   position: sticky;
   top: 0;
   z-index: 40;
@@ -31,7 +31,7 @@
 .brandLogo {
   font-size: 1.15rem;
   font-weight: 900;
-  color: #0284c7;
+  color: var(--ut-color-primary);
   text-decoration: none;
   display: flex;
   align-items: center;
@@ -40,7 +40,7 @@
 }
 
 .brandDivider {
-  color: #cbd5e1;
+  color: var(--ut-color-border-strong);
   font-weight: 300;
 }
 
@@ -49,32 +49,32 @@
   align-items: center;
   gap: 8px;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--ut-color-ink);
   font-size: 0.95rem;
   text-decoration: none;
   padding: 4px 10px;
   border-radius: 8px;
-  background: #f1f5f9;
+  background: var(--ut-color-surface-soft);
   transition: background 0.15s ease;
 }
 
 .orgSelector:hover {
-  background: #e2e8f0;
+  background: var(--ut-color-border);
 }
 
 .roleBadge {
   font-size: 0.75rem;
   font-weight: 700;
   padding: 2px 8px;
-  background: #e0f2fe;
-  color: #0369a1;
+  background: var(--ut-color-primary-soft);
+  color: var(--ut-color-primary-strong);
   border-radius: 9999px;
   text-transform: uppercase;
 }
 
 .navBar {
-  background: #ffffff;
-  border-bottom: 1px solid #f1f5f9;
+  background: var(--ut-color-surface);
+  border-bottom: 1px solid var(--ut-color-surface-soft);
 }
 
 .navInner {
@@ -96,7 +96,7 @@
   padding: 12px 14px;
   font-size: 0.9rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   text-decoration: none;
   white-space: nowrap;
   border-bottom: 2px solid transparent;
@@ -107,14 +107,14 @@
 }
 
 .navLink:hover {
-  color: #0f172a;
-  border-bottom-color: #cbd5e1;
+  color: var(--ut-color-ink-strong);
+  border-bottom-color: var(--ut-color-border-strong);
 }
 
 .navSeparator {
   width: 1px;
   height: 20px;
-  background: #e2e8f0;
+  background: var(--ut-color-border);
   margin: 0 4px;
 }
 

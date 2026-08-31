@@ -19,18 +19,18 @@ export default function OperationsListLoading(): React.ReactElement {
           <li
             key={i}
             style={{
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--ut-color-border)',
               borderRadius: 8,
               padding: '1rem',
               minHeight: 120,
-              background: '#f9fafb',
+              background: 'var(--ut-color-surface-raised)',
             }}
           >
             <div
               style={{
                 height: '1.25rem',
                 width: '60%',
-                background: '#e5e7eb',
+                background: 'var(--ut-color-border)',
                 borderRadius: 4,
                 marginBottom: '0.5rem',
               }}
@@ -39,12 +39,19 @@ export default function OperationsListLoading(): React.ReactElement {
               style={{
                 height: '1rem',
                 width: '40%',
-                background: '#e5e7eb',
+                background: 'var(--ut-color-border)',
                 borderRadius: 4,
                 marginBottom: '0.25rem',
               }}
             />
-            <div style={{ height: '1rem', width: '50%', background: '#e5e7eb', borderRadius: 4 }} />
+            <div
+              style={{
+                height: '1rem',
+                width: '50%',
+                background: 'var(--ut-color-border)',
+                borderRadius: 4,
+              }}
+            />
           </li>
         ))}
       </ul>

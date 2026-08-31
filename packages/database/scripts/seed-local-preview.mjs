@@ -9,34 +9,34 @@ import {
 
 const DEMO_ORGANIZATION_SLUG = 'test-org-dev';
 const DEMO_PRODUCT_SLUG = 'kayak-dev';
-const E2E_PHOTOS = [
+const LOCAL_PREVIEW_MARKER = '1';
+const PREVIEW_PHOTOS = [
   {
-    storageKey: 'product-photos/e2e-kayak-dev-0',
+    storageKey: 'product-photos/local-preview-kayak-dev-0',
     sortOrder: 0,
     checksumSha256: '0'.repeat(64),
   },
   {
-    storageKey: 'product-photos/e2e-kayak-dev-1',
+    storageKey: 'product-photos/local-preview-kayak-dev-1',
     sortOrder: 1,
     checksumSha256: '1'.repeat(64),
   },
   {
-    storageKey: 'product-photos/e2e-kayak-dev-2',
+    storageKey: 'product-photos/local-preview-kayak-dev-2',
     sortOrder: 2,
     checksumSha256: '2'.repeat(64),
   },
 ];
 
-export function assertBrowserE2ESeedEnvironment(environment = process.env) {
+export function assertLocalPreviewSeedEnvironment(environment = process.env) {
   assertLocalSeedEnvironment(environment);
-  const isCi = environment.CI === '1' || environment.CI === 'true';
-  if (!isCi || environment.UTTILY_BROWSER_E2E !== '1') {
-    throw new Error('Le seed browser E2E exige CI et le marqueur UTTILY_BROWSER_E2E=1 explicites.');
+  if (environment?.UTTILY_LOCAL_PREVIEW !== LOCAL_PREVIEW_MARKER) {
+    throw new Error('La preview locale exige le marqueur UTTILY_LOCAL_PREVIEW=1.');
   }
 }
 
-async function seedBrowserE2E() {
-  assertBrowserE2ESeedEnvironment();
+async function seedLocalPreview() {
+  assertLocalPreviewSeedEnvironment();
   await seedLocalDemo();
 
   const sql = postgres(resolveLocalDatabaseUrl(), { max: 1 });
@@ -47,7 +47,7 @@ async function seedBrowserE2E() {
       const products = await tx`
         SELECT p."id", p."organization_id"
         FROM "products" p
-        JOIN "organizations" o ON o."id" = p."organization_id"
+        INNER JOIN "organizations" o ON o."id" = p."organization_id"
         WHERE o."slug" = ${DEMO_ORGANIZATION_SLUG}
           AND p."slug" = ${DEMO_PRODUCT_SLUG}
           AND o."deleted_at" IS NULL
@@ -56,11 +56,11 @@ async function seedBrowserE2E() {
         FOR UPDATE
       `;
       if (products.length !== 1) {
-        throw new Error('La fixture produit browser E2E est introuvable.');
+        throw new Error('La fixture produit de preview locale est introuvable.');
       }
 
       const product = products[0];
-      for (const photo of E2E_PHOTOS) {
+      for (const photo of PREVIEW_PHOTOS) {
         await tx`
           INSERT INTO "product_photos" (
             "organization_id", "product_id", "storage_key", "content_type",
@@ -74,14 +74,7 @@ async function seedBrowserE2E() {
             SELECT 1
             FROM "product_photos"
             WHERE "product_id" = ${product.id}
-              AND (
-                "storage_key" = ${photo.storageKey}
-                OR (
-                  "file_state" = 'AVAILABLE'
-                  AND "deleted_at" IS NULL
-                  AND "checksum_sha256" = ${photo.checksumSha256}
-                )
-              )
+              AND "storage_key" = ${photo.storageKey}
           )
         `;
       }
@@ -104,12 +97,14 @@ function isMainModule() {
 }
 
 if (isMainModule()) {
-  seedBrowserE2E()
+  seedLocalPreview()
     .then(() => {
-      console.log('Browser E2E fixture applied: product=kayak-dev (published test fixture)');
+      console.log(
+        'Local preview seed applied: destinations=lyon-dev,annecy-dev product=kayak-dev (published with synthetic photo metadata)',
+      );
     })
     .catch((error) => {
-      console.error(error instanceof Error ? error.message : 'Browser E2E seed failed.');
+      console.error(error instanceof Error ? error.message : 'Local preview seed failed.');
       process.exitCode = 1;
     });
 }

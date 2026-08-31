@@ -25,8 +25,8 @@ function SubmitButton({ label }: { label: string }): React.ReactElement {
         padding: '0.75rem 1rem',
         fontSize: '1rem',
         fontWeight: 600,
-        color: '#fff',
-        background: '#2563eb',
+        color: 'var(--ut-color-surface)',
+        background: 'var(--ut-color-primary)',
         border: 'none',
         borderRadius: 8,
         cursor: pending ? 'not-allowed' : 'pointer',
@@ -87,14 +87,14 @@ export function TransitionAction({
 
       <div aria-live="polite" role="status">
         {state.ok && state.data && (
-          <p style={{ color: '#16a34a' }}>
+          <p style={{ color: 'var(--ut-color-success)' }}>
             {state.data.kind === 'APPLIED'
               ? 'Transition effectuée avec succès.'
               : 'Aucun changement nécessaire (déjà dans cet état).'}
           </p>
         )}
         {!state.ok && (
-          <p role="alert" style={{ color: '#dc2626' }}>
+          <p role="alert" style={{ color: 'var(--ut-color-danger)' }}>
             {state.message}
           </p>
         )}

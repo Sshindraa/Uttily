@@ -22,6 +22,12 @@ vi.mock('@/lib/db', () => ({
   getDb: vi.fn(() => ({})),
 }));
 
+vi.mock('@clerk/nextjs', () => ({
+  SignedIn: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  SignedOut: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  UserButton: () => null,
+}));
+
 vi.mock('@uttily/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@uttily/core')>();
   return {
@@ -32,6 +38,7 @@ vi.mock('@uttily/core', async (importOriginal) => {
 
 const mockRedirect = vi.fn();
 vi.mock('next/navigation', () => ({
+  usePathname: () => '/checkout/amendment/test-amendment',
   redirect: (url: string) => {
     mockRedirect(url);
     throw new Error(`REDIRECT:${url}`);

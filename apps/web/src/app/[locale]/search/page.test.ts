@@ -11,10 +11,10 @@ describe('PublicSearchPage', () => {
     expect(pageSource).toContain("getPublicErrorMessage('SEARCH_UNAVAILABLE', locale)");
   });
 
-  it('préserve la locale et ne propose pas une connexion aveugle', () => {
-    expect(pageSource).toContain('currentUser()');
-    expect(pageSource).toContain('`/${locale}/account/bookings`');
-    expect(pageSource).toContain('redirect_url=');
-    expect(pageSource).not.toContain('href="/fr/account/bookings"');
+  it('délègue le shell public et le changement de langue à la base partagée', () => {
+    expect(pageSource).toContain('<ClientShell');
+    expect(pageSource).toContain('localeOverride={locale}');
+    expect(pageSource).toContain('alternateHref={`/${otherLocale}/search`}');
+    expect(pageSource).not.toContain('<header');
   });
 });

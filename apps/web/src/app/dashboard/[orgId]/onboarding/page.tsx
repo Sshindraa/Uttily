@@ -138,7 +138,13 @@ export default async function UnifiedOnboardingPage({
                 <span style={{ fontSize: '1.5rem' }}>🧰</span>
                 <div>
                   <strong>{progress.firstBike.name}</strong>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '0.85rem', color: '#0369a1' }}>
+                  <p
+                    style={{
+                      margin: '2px 0 0 0',
+                      fontSize: '0.85rem',
+                      color: 'var(--ut-color-primary-strong)',
+                    }}
+                  >
                     {progress.firstBike.photosCount}/3 photos •{' '}
                     {progress.firstBike.hasPrice ? 'Tarif OK' : 'Tarif à définir'} •{' '}
                     {progress.firstBike.inventoryCount} exemplaire(s)

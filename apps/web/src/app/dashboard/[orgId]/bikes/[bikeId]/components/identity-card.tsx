@@ -47,13 +47,20 @@ export function BikeIdentityCard({
             style={{
               fontSize: '0.8rem',
               fontWeight: 700,
-              color: '#64748b',
+              color: 'var(--ut-color-ink-muted)',
               textTransform: 'uppercase',
             }}
           >
             Nom commercial
           </span>
-          <div style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+          <div
+            style={{
+              fontSize: '1.05rem',
+              fontWeight: 800,
+              color: 'var(--ut-color-ink-strong)',
+              marginTop: '2px',
+            }}
+          >
             {product.name}
           </div>
         </div>
@@ -63,13 +70,20 @@ export function BikeIdentityCard({
             style={{
               fontSize: '0.8rem',
               fontWeight: 700,
-              color: '#64748b',
+              color: 'var(--ut-color-ink-muted)',
               textTransform: 'uppercase',
             }}
           >
             Catégorie
           </span>
-          <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>
+          <div
+            style={{
+              fontSize: '1rem',
+              fontWeight: 700,
+              color: 'var(--ut-color-ink-strong)',
+              marginTop: '2px',
+            }}
+          >
             🏷️ {product.categoryName}
           </div>
         </div>
@@ -79,32 +93,46 @@ export function BikeIdentityCard({
             style={{
               fontSize: '0.8rem',
               fontWeight: 700,
-              color: '#64748b',
+              color: 'var(--ut-color-ink-muted)',
               textTransform: 'uppercase',
             }}
           >
             Version
           </span>
-          <div style={{ fontSize: '1rem', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>
+          <div
+            style={{
+              fontSize: '1rem',
+              fontWeight: 700,
+              color: 'var(--ut-color-ink-strong)',
+              marginTop: '2px',
+            }}
+          >
             📐 {variant.name}
           </div>
         </div>
       </div>
 
-      <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px' }}>
+      <div style={{ borderTop: '1px solid var(--ut-color-surface-soft)', paddingTop: '14px' }}>
         <span
           style={{
             fontSize: '0.8rem',
             fontWeight: 700,
-            color: '#64748b',
+            color: 'var(--ut-color-ink-muted)',
             textTransform: 'uppercase',
           }}
         >
           Description pour les locataires
         </span>
-        <p style={{ margin: '4px 0 0 0', fontSize: '0.92rem', color: '#334155', lineHeight: 1.5 }}>
+        <p
+          style={{
+            margin: '4px 0 0 0',
+            fontSize: '0.92rem',
+            color: 'var(--ut-color-ink)',
+            lineHeight: 1.5,
+          }}
+        >
           {product.description || (
-            <em style={{ color: '#94a3b8' }}>Aucune description renseignée.</em>
+            <em style={{ color: 'var(--ut-color-ink-subtle)' }}>Aucune description renseignée.</em>
           )}
         </p>
       </div>

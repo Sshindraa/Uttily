@@ -1,50 +1,18 @@
 .page {
-  --ink: #17221c;
-  --muted: #5d6a62;
-  --paper: #f7f4ed;
-  --surface: #fffdf8;
-  --accent: #186748;
-  --accent-hover: #124e37;
-  --line: #d8ddd7;
-  --danger-surface: #fdf2f2;
-  --danger-border: #f8b4b4;
-  --danger-text: #9b1c1c;
-  min-height: 100vh;
+  --ink: var(--ut-color-ink-strong);
+  --muted: var(--ut-color-ink-muted);
+  --paper: var(--ut-color-surface-raised);
+  --surface: var(--ut-color-surface);
+  --accent: var(--ut-color-primary);
+  --accent-hover: var(--ut-color-primary-strong);
+  --line: var(--ut-color-border);
+  --danger-surface: var(--ut-color-danger-soft);
+  --danger-border: var(--ut-color-danger-soft);
+  --danger-text: var(--ut-color-danger);
+  min-height: auto;
+  min-width: 0;
   color: var(--ink);
-  background:
-    radial-gradient(circle at 10% 0%, rgb(219 235 220 / 70%), transparent 32rem), var(--paper);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 1.25rem 1.5rem;
-}
-
-.header nav {
-  display: flex;
-  gap: 1.25rem;
-}
-
-.header a {
-  color: inherit;
-  font-weight: 500;
-  text-decoration: none;
-}
-
-.header a:hover {
-  text-decoration: underline;
-}
-
-.brand {
-  font-size: 1.35rem;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  text-decoration: none;
+  background: var(--paper);
 }
 
 .container {
@@ -75,6 +43,11 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 2rem;
+  min-width: 0;
+}
+
+.grid > aside {
+  min-width: 0;
 }
 
 @media (min-width: 860px) {
@@ -88,14 +61,17 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-width: 0;
 }
 
 .productCard {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 1rem;
+  box-sizing: border-box;
+  max-width: 100%;
   padding: 2rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--ut-shadow-card-subtle);
 }
 
 .eyebrow {
@@ -148,8 +124,10 @@
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 1rem;
+  box-sizing: border-box;
+  max-width: 100%;
   padding: 1.75rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--ut-shadow-card-subtle);
 }
 
 .sectionTitle {
@@ -196,10 +174,18 @@
   background: var(--surface);
   border: 2px solid var(--accent);
   border-radius: 1rem;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
   padding: 2rem;
-  box-shadow: 0 8px 24px rgba(24, 103, 72, 0.08);
+  box-shadow: var(--ut-shadow-primary-subtle);
   position: sticky;
   top: 2rem;
+}
+
+.bookingCard > * {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .bookingCardTitle {
@@ -213,6 +199,8 @@
   flex-direction: column;
   gap: 0.5rem;
   margin-bottom: 1.25rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .label {
@@ -225,6 +213,20 @@
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.durationToggle {
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.durationToggle > button {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .variantOption {
@@ -247,7 +249,7 @@
 
 .variantOptionSelected {
   border-color: var(--accent);
-  background: rgba(24, 103, 72, 0.06);
+  background: var(--ut-color-primary-translucent);
   font-weight: 600;
 }
 
@@ -259,6 +261,12 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.inputRow > * {
+  min-width: 0;
 }
 
 .input {
@@ -267,7 +275,7 @@
   border: 1px solid var(--line);
   border-radius: 0.5rem;
   font-size: 1rem;
-  background: #fff;
+  background: var(--ut-color-surface);
   color: var(--ink);
   box-sizing: border-box;
 }
@@ -275,7 +283,7 @@
 .input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(24, 103, 72, 0.15);
+  box-shadow: var(--ut-shadow-primary-ring);
 }
 
 .alert {
@@ -292,7 +300,7 @@
   width: 100%;
   padding: 1rem;
   background: var(--accent);
-  color: #fff;
+  color: var(--ut-color-ink-on-dark);
   border: none;
   border-radius: 0.5rem;
   font-size: 1.1rem;
@@ -325,7 +333,15 @@
 }
 
 @media (max-width: 640px) {
+  .page {
+    overflow-x: clip;
+  }
+
   .inputRow {
     grid-template-columns: 1fr;
+  }
+
+  .durationToggle {
+    flex-wrap: wrap;
   }
 }

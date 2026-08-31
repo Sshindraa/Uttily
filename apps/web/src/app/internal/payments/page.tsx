@@ -43,7 +43,9 @@ export default async function PaymentsSupportPage({
         </p>
 
         <div className={styles.filtersBar}>
-          <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Filtrer par statut :</span>
+          <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-support-muted)' }}>
+            Filtrer par statut :
+          </span>
           <Link
             href="/internal/payments"
             className={`${styles.filterLink} ${!validStatus ? styles.filterLinkActive : ''}`}
@@ -89,7 +91,14 @@ export default async function PaymentsSupportPage({
           <tbody>
             {payments.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ padding: '2rem', textAlign: 'center', color: '#64748b' }}>
+                <td
+                  colSpan={9}
+                  style={{
+                    padding: '2rem',
+                    textAlign: 'center',
+                    color: 'var(--ut-color-support-subtle)',
+                  }}
+                >
                   Aucun paiement trouvé pour ce filtre.
                 </td>
               </tr>
@@ -101,7 +110,10 @@ export default async function PaymentsSupportPage({
                   </td>
                   <td className={styles.td}>
                     {p.bookingId ? (
-                      <Link href={`/internal/bookings/${p.bookingId}`} style={{ color: '#38bdf8' }}>
+                      <Link
+                        href={`/internal/bookings/${p.bookingId}`}
+                        style={{ color: 'var(--ut-color-support-link)' }}
+                      >
                         <code>{p.id.slice(0, 8)}...</code>
                       </Link>
                     ) : (
@@ -111,7 +123,7 @@ export default async function PaymentsSupportPage({
                   <td className={styles.td}>
                     <Link
                       href={`/internal/organizations/${p.organizationId}`}
-                      style={{ color: '#cbd5e1' }}
+                      style={{ color: 'var(--ut-color-support-ink-soft)' }}
                     >
                       {p.organizationName}
                     </Link>
@@ -128,7 +140,14 @@ export default async function PaymentsSupportPage({
                       {(p.amountMinor / 100).toFixed(2)} {p.currency}
                     </strong>
                   </td>
-                  <td className={styles.td} style={{ color: p.lastError ? '#f87171' : '#64748b' }}>
+                  <td
+                    className={styles.td}
+                    style={{
+                      color: p.lastError
+                        ? 'var(--ut-color-support-danger)'
+                        : 'var(--ut-color-support-subtle)',
+                    }}
+                  >
                     {p.lastError ?? '—'}
                   </td>
                   <td className={styles.td}>

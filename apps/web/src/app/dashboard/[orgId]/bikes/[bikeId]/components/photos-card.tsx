@@ -23,14 +23,14 @@ export function BikePhotosCard({
           style={{
             fontSize: '0.88rem',
             fontWeight: 700,
-            color: photos.isComplete ? '#059669' : '#d97706',
+            color: photos.isComplete ? 'var(--ut-color-success)' : 'var(--ut-color-warning)',
           }}
         >
           {photos.isComplete ? '✓ 3/3 vues conformes' : `${photos.count}/3 vues requises`}
         </div>
       </div>
 
-      <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748b' }}>
+      <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--ut-color-ink-muted)' }}>
         Le Photo Coach guide vos prises de vue pour garantir la conformité au standard visuel de
         confiance.
       </p>

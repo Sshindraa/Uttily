@@ -6,11 +6,11 @@
 }
 
 .heroCard {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
   border-radius: 20px;
   padding: 28px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--ut-shadow-card-subtle);
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -33,7 +33,7 @@
 .bikeTitle {
   font-size: 1.85rem;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   margin: 0;
   letter-spacing: -0.02em;
 }
@@ -43,15 +43,15 @@
   align-items: center;
   gap: 10px;
   font-size: 0.95rem;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
 }
 
 .categoryTag {
   padding: 3px 10px;
-  background: #f1f5f9;
+  background: var(--ut-color-surface-soft);
   border-radius: 6px;
   font-weight: 700;
-  color: #334155;
+  color: var(--ut-color-ink);
   font-size: 0.85rem;
 }
 
@@ -60,9 +60,9 @@
   align-items: center;
   gap: 6px;
   padding: 6px 16px;
-  background: #ecfdf5;
-  border: 1.5px solid #a7f3d0;
-  color: #059669;
+  background: var(--ut-color-success-soft);
+  border: 1.5px solid var(--ut-color-success-soft);
+  color: var(--ut-color-success);
   border-radius: 9999px;
   font-weight: 800;
   font-size: 0.95rem;
@@ -73,9 +73,9 @@
   align-items: center;
   gap: 6px;
   padding: 6px 16px;
-  background: #f0fdf4;
-  border: 1.5px solid #86efac;
-  color: #166534;
+  background: var(--ut-color-success-soft);
+  border: 1.5px solid var(--ut-color-success-soft);
+  color: var(--ut-color-success-strong);
   border-radius: 9999px;
   font-weight: 800;
   font-size: 0.95rem;
@@ -86,9 +86,9 @@
   align-items: center;
   gap: 6px;
   padding: 6px 16px;
-  background: #fffbeb;
-  border: 1.5px solid #fde68a;
-  color: #d97706;
+  background: var(--ut-color-warning-soft);
+  border: 1.5px solid var(--ut-color-warning-soft);
+  color: var(--ut-color-warning);
   border-radius: 9999px;
   font-weight: 800;
   font-size: 0.95rem;
@@ -99,8 +99,8 @@
   align-items: center;
   gap: 16px;
   padding: 14px 20px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface-raised);
+  border: 1px solid var(--ut-color-border);
   border-radius: 12px;
   flex-wrap: wrap;
 }
@@ -111,16 +111,16 @@
   gap: 8px;
   font-weight: 700;
   font-size: 0.95rem;
-  color: #1e293b;
+  color: var(--ut-color-ink);
 }
 
 .summaryItemInactive {
-  color: #94a3b8;
+  color: var(--ut-color-ink-subtle);
   font-weight: 600;
 }
 
 .summaryDivider {
-  color: #cbd5e1;
+  color: var(--ut-color-border-strong);
 }
 
 /* Grille des 4 Piliers */
@@ -131,28 +131,28 @@
 }
 
 .pillarCard {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
   border-radius: 18px;
   padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--ut-shadow-sm);
 }
 
 .pillarHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--ut-color-surface-soft);
   padding-bottom: 12px;
 }
 
 .pillarTitle {
   font-size: 1.15rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   margin: 0;
   display: flex;
   align-items: center;
@@ -162,7 +162,7 @@
 .pillarActionLink {
   font-size: 0.85rem;
   font-weight: 700;
-  color: #0284c7;
+  color: var(--ut-color-primary);
   text-decoration: none;
 }
 
@@ -179,15 +179,15 @@
 
 .photoThumbnail {
   aspect-ratio: 4/3;
-  background: #f1f5f9;
-  border: 1.5px dashed #cbd5e1;
+  background: var(--ut-color-surface-soft);
+  border: 1.5px dashed var(--ut-color-border-strong);
   border-radius: 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   font-size: 0.8rem;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   font-weight: 600;
   text-align: center;
   padding: 8px;
@@ -195,9 +195,9 @@
 
 .photoThumbnailFilled {
   border-style: solid;
-  border-color: #10b981;
-  background: #ecfdf5;
-  color: #065f46;
+  border-color: var(--ut-color-success);
+  background: var(--ut-color-success-soft);
+  color: var(--ut-color-success-strong);
 }
 
 /* Pricing Display */
@@ -210,13 +210,13 @@
 .priceAmount {
   font-size: 2rem;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
 }
 
 .priceUnit {
   font-size: 1.05rem;
   font-weight: 600;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
 }
 
 .tiersList {
@@ -224,7 +224,7 @@
   flex-direction: column;
   gap: 6px;
   font-size: 0.9rem;
-  color: #475569;
+  color: var(--ut-color-ink-muted);
 }
 
 /* Inventory Display */
@@ -237,7 +237,7 @@
 .countBadge {
   font-size: 1.75rem;
   font-weight: 900;
-  color: #0284c7;
+  color: var(--ut-color-primary);
 }
 
 .itemsList {
@@ -254,8 +254,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  background: #f8fafc;
+  background: var(--ut-color-surface-raised);
   border-radius: 8px;
   font-size: 0.88rem;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--ut-color-border);
 }

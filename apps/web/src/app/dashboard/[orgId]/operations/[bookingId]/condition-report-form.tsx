@@ -22,8 +22,8 @@ function SubmitButton(): React.ReactElement {
         padding: '0.75rem 1rem',
         fontSize: '1rem',
         fontWeight: 600,
-        color: '#fff',
-        background: '#2563eb',
+        color: 'var(--ut-color-surface)',
+        background: 'var(--ut-color-primary)',
         border: 'none',
         borderRadius: 8,
         cursor: pending ? 'not-allowed' : 'pointer',
@@ -101,7 +101,7 @@ export function ConditionReportForm({
             display: 'block',
             width: '100%',
             padding: '0.5rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--ut-color-border)',
             borderRadius: 6,
             boxSizing: 'border-box',
           }}
@@ -120,7 +120,7 @@ export function ConditionReportForm({
             id={`${formId}-condition-error`}
             role="alert"
             aria-live="polite"
-            style={{ color: '#dc2626', fontSize: '0.875rem' }}
+            style={{ color: 'var(--ut-color-danger)', fontSize: '0.875rem' }}
           >
             {fieldErrors.condition}
           </p>
@@ -138,13 +138,16 @@ export function ConditionReportForm({
             display: 'block',
             width: '100%',
             padding: '0.5rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--ut-color-border)',
             borderRadius: 6,
             minHeight: 80,
             boxSizing: 'border-box',
           }}
         />
-        <p id={`${formId}-notes-help`} style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+        <p
+          id={`${formId}-notes-help`}
+          style={{ fontSize: '0.875rem', color: 'var(--ut-color-ink-muted)' }}
+        >
           Maximum {MAX_NOTES_LENGTH} caractères.
         </p>
         {fieldErrors.notes && (
@@ -152,7 +155,7 @@ export function ConditionReportForm({
             id={`${formId}-notes-error`}
             role="alert"
             aria-live="polite"
-            style={{ color: '#dc2626', fontSize: '0.875rem' }}
+            style={{ color: 'var(--ut-color-danger)', fontSize: '0.875rem' }}
           >
             {fieldErrors.notes}
           </p>
@@ -161,10 +164,10 @@ export function ConditionReportForm({
 
       <div aria-live="polite" role="status">
         {state.ok && state.data && (
-          <p style={{ color: '#16a34a' }}>Rapport enregistré avec succès.</p>
+          <p style={{ color: 'var(--ut-color-success)' }}>Rapport enregistré avec succès.</p>
         )}
         {!state.ok && state.code !== 'VALIDATION' && (
-          <p role="alert" style={{ color: '#dc2626' }}>
+          <p role="alert" style={{ color: 'var(--ut-color-danger)' }}>
             {state.message}
           </p>
         )}

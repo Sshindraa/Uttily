@@ -55,6 +55,7 @@ pnpm build            # builder tous les packages et apps
 pnpm dev              # démarrer Web seul (base déjà migrée requise)
 pnpm dev:full         # démarrer PostgreSQL, migrer, puis Web + worker fake
 pnpm db:seed          # appliquer la fixture locale/dev-only idempotente (brouillon)
+pnpm db:seed:preview  # publier une fixture synthétique locale pour tester la recherche
 pnpm db:seed:browser  # fixture publique synthétique réservée à la CI E2E
 pnpm benchmark:destination # mesurer le registre local ; ajouter --network pour Photon/IGN
 pnpm test:dev-local   # tester les garde-fous du workflow local
@@ -139,10 +140,17 @@ explicitement ce marqueur, et `dev:full -- --seed` l'injecte dans son
 environnement enfant ; aucun de ces chemins ne révèle l'URL de base ou un secret.
 La fixture reste idempotente et sans utilisateur Clerk, provider réel, Stripe,
 réservation ou paiement. Elle prépare les données de démonstration `lyon-dev`,
-`test-org-dev`, `lyon-shop-dev`, `kayak-dev` et `KAY-DEV-001` en brouillon. La
-publication publique reste volontairement bloquée jusqu'à l'upload de trois
-photos réelles via l'interface, car le stockage R2 est neutralisé en local.
-Elle n'appelle aucun service externe et ne supprime aucune ligne.
+`annecy-dev`, `test-org-dev`, `lyon-shop-dev`, `annecy-shop-dev`, `kayak-dev` et
+leurs exemplaires en brouillon. La publication publique reste volontairement
+bloquée jusqu'à l'upload de trois photos réelles via l'interface, car le
+stockage R2 est neutralisé en local. Elle n'appelle aucun service externe et ne
+supprime aucune ligne.
+
+Pour tester uniquement le rendu d'une offre publique en local, utiliser
+`pnpm db:seed:preview`. Cette commande exige les marqueurs local/dev et ajoute
+trois métadonnées photo synthétiques avant de publier `kayak-dev`. Elle ne crée
+aucun objet R2 réel et ne doit jamais être utilisée avec une base staging ou
+production ; le seed normal remet ensuite le produit en brouillon.
 
 La CI des parcours navigateur utilise séparément `pnpm db:seed:browser`. Cette
 commande exige les marqueurs CI et E2E dédiés, réutilise la base éphémère du job,

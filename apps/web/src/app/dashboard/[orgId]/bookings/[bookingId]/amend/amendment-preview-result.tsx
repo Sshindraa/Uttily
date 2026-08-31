@@ -29,13 +29,25 @@ export function actionLabel(action: PreviewLineDiffEntry['action']): {
 } {
   switch (action) {
     case 'UNCHANGED':
-      return { text: 'Inchangé', bg: '#f3f4f6', color: '#374151' };
+      return {
+        text: 'Inchangé',
+        bg: 'var(--ut-color-surface-raised)',
+        color: 'var(--ut-color-ink)',
+      };
     case 'MODIFY':
-      return { text: 'Modifié', bg: '#eff6ff', color: '#1d4ed8' };
+      return {
+        text: 'Modifié',
+        bg: 'var(--ut-color-primary-soft)',
+        color: 'var(--ut-color-primary-strong)',
+      };
     case 'ADD':
-      return { text: 'Ajouté', bg: '#ecfdf5', color: '#047857' };
+      return {
+        text: 'Ajouté',
+        bg: 'var(--ut-color-success-soft)',
+        color: 'var(--ut-color-success)',
+      };
     case 'REMOVE':
-      return { text: 'Retiré', bg: '#fef2f2', color: '#b91c1c' };
+      return { text: 'Retiré', bg: 'var(--ut-color-danger-soft)', color: 'var(--ut-color-danger)' };
   }
 }
 
@@ -53,8 +65,8 @@ export function AmendmentPreviewResult({
       aria-labelledby="preview-heading"
       aria-live="polite"
       style={{
-        backgroundColor: '#ffffff',
-        border: '1px solid #d1d5db',
+        backgroundColor: 'var(--ut-color-surface)',
+        border: '1px solid var(--ut-color-border)',
         borderRadius: '0.5rem',
         padding: '1.5rem',
         display: 'flex',
@@ -89,16 +101,16 @@ export function AmendmentPreviewResult({
             fontWeight: 600,
             backgroundColor:
               preview.classification === 'NEUTRAL'
-                ? '#eff6ff'
+                ? 'var(--ut-color-primary-soft)'
                 : preview.classification === 'REFUND'
-                  ? '#fef3c7'
-                  : '#ecfdf5',
+                  ? 'var(--ut-color-warning-soft)'
+                  : 'var(--ut-color-success-soft)',
             color:
               preview.classification === 'NEUTRAL'
-                ? '#1d4ed8'
+                ? 'var(--ut-color-primary-strong)'
                 : preview.classification === 'REFUND'
-                  ? '#b45309'
-                  : '#047857',
+                  ? 'var(--ut-color-warning)'
+                  : 'var(--ut-color-success)',
           }}
         >
           {preview.classification === 'NEUTRAL' && 'Modification neutre (0 €)'}
@@ -115,8 +127,22 @@ export function AmendmentPreviewResult({
           gap: '1rem',
         }}
       >
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: '0.375rem', padding: '1rem' }}>
-          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.925rem', color: '#6b7280' }}>Avant</h3>
+        <div
+          style={{
+            border: '1px solid var(--ut-color-border)',
+            borderRadius: '0.375rem',
+            padding: '1rem',
+          }}
+        >
+          <h3
+            style={{
+              margin: '0 0 0.5rem 0',
+              fontSize: '0.925rem',
+              color: 'var(--ut-color-ink-muted)',
+            }}
+          >
+            Avant
+          </h3>
           <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.875rem' }}>
             <strong>Dates :</strong>{' '}
             {formatDisplayDate(preview.previousCustomerStartAt, preview.locationTimeZone)} →{' '}
@@ -129,13 +155,21 @@ export function AmendmentPreviewResult({
 
         <div
           style={{
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--ut-color-border)',
             borderRadius: '0.375rem',
             padding: '1rem',
-            backgroundColor: '#fafafa',
+            backgroundColor: 'var(--ut-color-surface-raised)',
           }}
         >
-          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.925rem', color: '#1d4ed8' }}>Après</h3>
+          <h3
+            style={{
+              margin: '0 0 0.5rem 0',
+              fontSize: '0.925rem',
+              color: 'var(--ut-color-primary-strong)',
+            }}
+          >
+            Après
+          </h3>
           <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.875rem' }}>
             <strong>Dates :</strong>{' '}
             {formatDisplayDate(preview.nextCustomerStartAt, preview.locationTimeZone)} →{' '}
@@ -173,16 +207,25 @@ export function AmendmentPreviewResult({
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   padding: '0.75rem',
-                  border: '1px solid #f3f4f6',
+                  border: '1px solid var(--ut-color-surface-raised)',
                   borderRadius: '0.375rem',
-                  backgroundColor: l.action === 'REMOVE' ? '#fff5f5' : '#ffffff',
+                  backgroundColor:
+                    l.action === 'REMOVE'
+                      ? 'var(--ut-color-surface)5f5'
+                      : 'var(--ut-color-surface)',
                 }}
               >
                 <div>
                   <p style={{ margin: 0, fontWeight: 500, fontSize: '0.875rem' }}>
                     {l.productName} — {l.variantName}
                   </p>
-                  <p style={{ margin: '0.25rem 0 0 0', color: '#6b7280', fontSize: '0.75rem' }}>
+                  <p
+                    style={{
+                      margin: '0.25rem 0 0 0',
+                      color: 'var(--ut-color-ink-muted)',
+                      fontSize: '0.75rem',
+                    }}
+                  >
                     Quantité : {l.beforeQuantity} → {l.afterQuantity}
                   </p>
                 </div>
@@ -192,7 +235,10 @@ export function AmendmentPreviewResult({
                     style={{
                       fontSize: '0.875rem',
                       fontWeight: 500,
-                      color: l.action === 'REMOVE' ? '#9ca3af' : '#111827',
+                      color:
+                        l.action === 'REMOVE'
+                          ? 'var(--ut-color-ink-subtle)'
+                          : 'var(--ut-color-ink-strong)',
                     }}
                   >
                     {formatEuros(l.afterLineTotalAmountMinor)}
@@ -220,9 +266,9 @@ export function AmendmentPreviewResult({
       <div
         style={{
           padding: '1rem',
-          backgroundColor: '#f9fafb',
+          backgroundColor: 'var(--ut-color-surface-raised)',
           borderRadius: '0.375rem',
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--ut-color-border)',
         }}
       >
         <h3 style={{ fontSize: '0.925rem', fontWeight: 600, margin: '0 0 0.5rem 0' }}>
@@ -258,7 +304,7 @@ export function AmendmentPreviewResult({
             justifyContent: 'space-between',
             fontSize: '0.925rem',
             fontWeight: 600,
-            borderTop: '1px solid #e5e7eb',
+            borderTop: '1px solid var(--ut-color-border)',
             paddingTop: '0.5rem',
             marginTop: '0.5rem',
           }}
@@ -269,10 +315,10 @@ export function AmendmentPreviewResult({
             style={{
               color:
                 preview.deltaAmountMinor > 0
-                  ? '#047857'
+                  ? 'var(--ut-color-success)'
                   : preview.deltaAmountMinor < 0
-                    ? '#b45309'
-                    : '#374151',
+                    ? 'var(--ut-color-warning)'
+                    : 'var(--ut-color-ink)',
             }}
           >
             {preview.deltaAmountMinor > 0 ? '+' : ''}
@@ -286,9 +332,9 @@ export function AmendmentPreviewResult({
             style={{
               marginTop: '0.5rem',
               paddingTop: '0.5rem',
-              borderTop: '1px dashed #d1d5db',
+              borderTop: '1px dashed var(--ut-color-border)',
               fontSize: '0.8125rem',
-              color: '#4b5563',
+              color: 'var(--ut-color-ink)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -306,12 +352,12 @@ export function AmendmentPreviewResult({
       {/* Explications et avertissements */}
       <div
         style={{
-          backgroundColor: '#f0fdf4',
-          border: '1px solid #bbf7d0',
+          backgroundColor: 'var(--ut-color-success-soft)',
+          border: '1px solid var(--ut-color-success-soft)',
           borderRadius: '0.375rem',
           padding: '0.875rem',
           fontSize: '0.875rem',
-          color: '#166534',
+          color: 'var(--ut-color-success-strong)',
         }}
       >
         {preview.classification === 'NEUTRAL' && (
@@ -333,7 +379,9 @@ export function AmendmentPreviewResult({
             temporaire de 10 minutes sera posé sur les articles supplémentaires dès l'initiation.
           </p>
         )}
-        <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.75rem', color: '#15803d' }}>
+        <p
+          style={{ margin: '0.5rem 0 0 0', fontSize: '0.75rem', color: 'var(--ut-color-success)' }}
+        >
           ℹ️ La disponibilité physique indiquée ici est prévisionnelle et sera vérifiée à nouveau et
           verrouillée lors de la confirmation.
         </p>

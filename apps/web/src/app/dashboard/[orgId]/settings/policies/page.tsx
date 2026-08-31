@@ -10,6 +10,7 @@ import {
   type CancellationPolicyCode,
 } from '@uttily/core';
 import { updateCancellationPolicyAction } from '@/app/actions/settings';
+import { Button, Card } from '@uttily/ui';
 
 export default async function PoliciesSettingsPage({
   params,
@@ -41,7 +42,11 @@ export default async function PoliciesSettingsPage({
 
   return (
     <div style={containerStyle}>
-      <section aria-labelledby="policy-heading" style={cardStyle}>
+      <Card
+        as="section"
+        aria-labelledby="policy-heading"
+        style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ut-space-5)' }}
+      >
         <h2 id="policy-heading" style={cardTitleStyle}>
           Politique d’annulation par défaut
         </h2>
@@ -95,9 +100,7 @@ export default async function PoliciesSettingsPage({
             </div>
 
             <div style={submitRowStyle}>
-              <button type="submit" style={primaryButtonStyle}>
-                Enregistrer la politique d’annulation
-              </button>
+              <Button type="submit">Enregistrer la politique d’annulation</Button>
             </div>
           </form>
         ) : (
@@ -126,7 +129,7 @@ export default async function PoliciesSettingsPage({
             })}
           </div>
         )}
-      </section>
+      </Card>
     </div>
   );
 }
@@ -134,27 +137,19 @@ export default async function PoliciesSettingsPage({
 const containerStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '1.5rem',
-};
-
-const cardStyle: React.CSSProperties = {
-  backgroundColor: '#ffffff',
-  borderRadius: '12px',
-  border: '1px solid #e2e8f0',
-  padding: '1.5rem',
-  boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+  gap: 'var(--ut-space-6)',
 };
 
 const cardTitleStyle: React.CSSProperties = {
   fontSize: '1.15rem',
   fontWeight: 600,
-  color: '#0f172a',
+  color: 'var(--ut-color-ink-strong)',
   margin: '0 0 0.5rem',
 };
 
 const helpTextStyle: React.CSSProperties = {
   fontSize: '0.85rem',
-  color: '#64748b',
+  color: 'var(--ut-color-ink-muted)',
   margin: '0 0 1rem',
   lineHeight: 1.4,
 };
@@ -163,9 +158,9 @@ const warningBannerStyle: React.CSSProperties = {
   display: 'flex',
   gap: '0.75rem',
   padding: '1rem',
-  backgroundColor: '#eff6ff',
+  backgroundColor: 'var(--ut-color-primary-soft)',
   borderRadius: '8px',
-  border: '1px solid #bfdbfe',
+  border: '1px solid var(--ut-color-primary-soft)',
   marginBottom: '1.5rem',
 };
 
@@ -175,7 +170,7 @@ const warningIconStyle: React.CSSProperties = {
 
 const warningTextStyle: React.CSSProperties = {
   fontSize: '0.85rem',
-  color: '#1e40af',
+  color: 'var(--ut-color-primary-strong)',
   margin: 0,
   lineHeight: 1.4,
 };
@@ -198,8 +193,8 @@ const policyCardStyle: React.CSSProperties = {
   gap: '0.75rem',
   padding: '1.25rem',
   borderRadius: '8px',
-  border: '1px solid #e2e8f0',
-  backgroundColor: '#f8fafc',
+  border: '1px solid var(--ut-color-border)',
+  backgroundColor: 'var(--ut-color-surface-raised)',
   cursor: 'pointer',
 };
 
@@ -209,8 +204,8 @@ const selectedPolicyCardStyle: React.CSSProperties = {
   gap: '0.75rem',
   padding: '1.25rem',
   borderRadius: '8px',
-  border: '2px solid #2563eb',
-  backgroundColor: '#f0f7ff',
+  border: '2px solid var(--ut-color-primary)',
+  backgroundColor: 'var(--ut-color-primary-soft)',
   cursor: 'pointer',
 };
 
@@ -227,12 +222,12 @@ const radioInputStyle: React.CSSProperties = {
 
 const policyTitleStyle: React.CSSProperties = {
   fontSize: '1rem',
-  color: '#0f172a',
+  color: 'var(--ut-color-ink-strong)',
 };
 
 const policySummaryStyle: React.CSSProperties = {
   fontSize: '0.85rem',
-  color: '#475569',
+  color: 'var(--ut-color-ink-muted)',
   margin: '0.15rem 0 0',
 };
 
@@ -240,7 +235,7 @@ const rulesListStyle: React.CSSProperties = {
   margin: 0,
   paddingLeft: '2.25rem',
   fontSize: '0.8rem',
-  color: '#64748b',
+  color: 'var(--ut-color-ink-muted)',
   display: 'flex',
   flexDirection: 'column',
   gap: '0.25rem',
@@ -254,22 +249,11 @@ const submitRowStyle: React.CSSProperties = {
   marginTop: '0.5rem',
 };
 
-const primaryButtonStyle: React.CSSProperties = {
-  padding: '0.6rem 1.25rem',
-  backgroundColor: '#2563eb',
-  color: '#ffffff',
-  border: 'none',
-  borderRadius: '6px',
-  fontSize: '0.9rem',
-  fontWeight: 600,
-  cursor: 'pointer',
-};
-
 const activeDotStyle: React.CSSProperties = {
   width: '10px',
   height: '10px',
   borderRadius: '50%',
-  backgroundColor: '#2563eb',
+  backgroundColor: 'var(--ut-color-primary)',
   marginTop: '0.4rem',
 };
 
@@ -277,6 +261,6 @@ const inactiveDotStyle: React.CSSProperties = {
   width: '10px',
   height: '10px',
   borderRadius: '50%',
-  backgroundColor: '#cbd5e1',
+  backgroundColor: 'var(--ut-color-border-strong)',
   marginTop: '0.4rem',
 };

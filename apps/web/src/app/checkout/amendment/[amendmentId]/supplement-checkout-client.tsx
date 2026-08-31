@@ -269,7 +269,10 @@ export function SupplementCheckoutClient({
         style={cardStyle}
         data-testid="supplement-expired-section"
       >
-        <h2 id="expired-heading" style={{ fontSize: '1.25rem', margin: 0, color: '#b91c1c' }}>
+        <h2
+          id="expired-heading"
+          style={{ fontSize: '1.25rem', margin: 0, color: 'var(--ut-color-danger)' }}
+        >
           Délai de paiement expiré
         </h2>
         <p role="alert" style={errorStyle} data-testid="supplement-expired-message">
@@ -293,11 +296,11 @@ export function SupplementCheckoutClient({
               width: '2.5rem',
               height: '2.5rem',
               borderRadius: '9999px',
-              backgroundColor: '#ecfdf5',
+              backgroundColor: 'var(--ut-color-success-soft)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#059669',
+              color: 'var(--ut-color-success)',
               fontSize: '1.25rem',
             }}
           >
@@ -314,7 +317,14 @@ export function SupplementCheckoutClient({
             </h2>
           </div>
         </div>
-        <p style={{ margin: 0, color: '#166534', fontSize: '0.95rem', lineHeight: 1.5 }}>
+        <p
+          style={{
+            margin: 0,
+            color: 'var(--ut-color-success-strong)',
+            fontSize: '0.95rem',
+            lineHeight: 1.5,
+          }}
+        >
           Paiement soumis. La modification sera appliquée automatiquement après confirmation du
           paiement.
         </p>
@@ -329,7 +339,10 @@ export function SupplementCheckoutClient({
         style={cardStyle}
         data-testid="supplement-error-section"
       >
-        <h2 id="error-heading" style={{ fontSize: '1.25rem', margin: 0, color: '#b91c1c' }}>
+        <h2
+          id="error-heading"
+          style={{ fontSize: '1.25rem', margin: 0, color: 'var(--ut-color-danger)' }}
+        >
           Erreur
         </h2>
         <p
@@ -365,10 +378,19 @@ export function SupplementCheckoutClient({
 
       <div style={summaryBoxStyle}>
         <div style={rowStyle}>
-          <span style={{ color: '#4b5563' }}>Montant du supplément</span>
-          <strong style={{ fontSize: '1.25rem', color: '#111827' }}>{totalLabel}</strong>
+          <span style={{ color: 'var(--ut-color-ink)' }}>Montant du supplément</span>
+          <strong style={{ fontSize: '1.25rem', color: 'var(--ut-color-ink-strong)' }}>
+            {totalLabel}
+          </strong>
         </div>
-        <div style={{ ...rowStyle, marginTop: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+        <div
+          style={{
+            ...rowStyle,
+            marginTop: '0.75rem',
+            fontSize: '0.875rem',
+            color: 'var(--ut-color-ink-muted)',
+          }}
+        >
           <span>Échéance de réservation</span>
           <span>
             Avant {formattedDeadline} ({timeZone})
@@ -377,7 +399,11 @@ export function SupplementCheckoutClient({
       </div>
 
       {phase === 'initializing' && (
-        <p aria-busy="true" role="status" style={{ textAlign: 'center', color: '#4b5563' }}>
+        <p
+          aria-busy="true"
+          role="status"
+          style={{ textAlign: 'center', color: 'var(--ut-color-ink)' }}
+        >
           Préparation du paiement sécurisé…
         </p>
       )}
@@ -385,7 +411,11 @@ export function SupplementCheckoutClient({
       {phase === 'ready' && (
         <>
           {stripe === undefined ? (
-            <p role="status" aria-busy="true" style={{ textAlign: 'center', color: '#4b5563' }}>
+            <p
+              role="status"
+              aria-busy="true"
+              style={{ textAlign: 'center', color: 'var(--ut-color-ink)' }}
+            >
               Chargement de Stripe…
             </p>
           ) : stripe === null ? (
@@ -428,17 +458,17 @@ const cardStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '1.25rem',
-  backgroundColor: '#ffffff',
-  border: '1px solid #e5e7eb',
+  backgroundColor: 'var(--ut-color-surface)',
+  border: '1px solid var(--ut-color-border)',
   borderRadius: '0.5rem',
   padding: '1.5rem',
-  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+  boxShadow: 'var(--ut-shadow-sm)',
 };
 
 const summaryBoxStyle: React.CSSProperties = {
   padding: '1rem',
-  backgroundColor: '#f9fafb',
-  border: '1px solid #e5e7eb',
+  backgroundColor: 'var(--ut-color-surface-raised)',
+  border: '1px solid var(--ut-color-border)',
   borderRadius: '0.375rem',
 };
 
@@ -453,15 +483,15 @@ const submitButtonStyle: React.CSSProperties = {
   padding: '0.75rem 1rem',
   fontSize: '1rem',
   fontWeight: 600,
-  color: '#ffffff',
-  backgroundColor: '#2563eb',
+  color: 'var(--ut-color-surface)',
+  backgroundColor: 'var(--ut-color-primary)',
   border: 'none',
   borderRadius: '0.375rem',
   cursor: 'pointer',
 };
 
 const errorStyle: React.CSSProperties = {
-  color: '#b91c1c',
+  color: 'var(--ut-color-danger)',
   margin: 0,
   fontSize: '0.875rem',
   outline: 'none',

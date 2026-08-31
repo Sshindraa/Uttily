@@ -1,5 +1,5 @@
 .page {
-  min-height: 100vh;
+  min-height: calc(100vh - 8rem);
   display: grid;
   place-items: center;
   padding: var(--ut-space-8) var(--ut-space-4);
@@ -147,7 +147,7 @@
   border: 0;
   border-radius: var(--ut-radius-md);
   background: var(--ut-color-primary);
-  color: white;
+  color: var(--ut-color-ink-on-dark);
   cursor: pointer;
   font: inherit;
   font-weight: var(--ut-weight-bold);

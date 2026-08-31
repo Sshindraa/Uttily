@@ -5,8 +5,12 @@
 }
 
 .header {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  border: 1px solid #334155;
+  background: linear-gradient(
+    135deg,
+    var(--ut-color-support-elevated) 0%,
+    var(--ut-color-support-footer) 100%
+  );
+  border: 1px solid var(--ut-color-support-border-muted);
   border-radius: 12px;
   padding: 1.75rem;
 }
@@ -14,18 +18,18 @@
 .title {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--ut-color-support-ink-strong);
   margin-bottom: 0.5rem;
 }
 
 .subtitle {
-  color: #94a3b8;
+  color: var(--ut-color-support-muted);
   font-size: 0.95rem;
 }
 
 .tableWrapper {
-  background: #111827;
-  border: 1px solid #1f2937;
+  background: var(--ut-color-support-surface);
+  border: 1px solid var(--ut-color-support-border);
   border-radius: 8px;
   overflow-x: auto;
 }
@@ -37,17 +41,17 @@
 }
 
 .th {
-  background: #162032;
-  color: #94a3b8;
+  background: var(--ut-color-support-navigation-alt);
+  color: var(--ut-color-support-muted);
   padding: 0.75rem 1rem;
   text-align: left;
-  border-bottom: 1px solid #1f2937;
+  border-bottom: 1px solid var(--ut-color-support-border);
 }
 
 .td {
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid #1f2937;
-  color: #cbd5e1;
+  border-bottom: 1px solid var(--ut-color-support-border);
+  color: var(--ut-color-support-ink-soft);
 }
 
 .actionBadge {
@@ -56,7 +60,7 @@
   font-weight: 700;
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
-  background: #1e293b;
-  color: #38bdf8;
-  border: 1px solid #334155;
+  background: var(--ut-color-support-elevated);
+  color: var(--ut-color-support-link);
+  border: 1px solid var(--ut-color-support-border-muted);
 }

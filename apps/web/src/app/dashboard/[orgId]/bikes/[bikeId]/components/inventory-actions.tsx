@@ -121,9 +121,9 @@ export function InventoryActions({
         <div
           style={{
             padding: '10px',
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            color: '#b91c1c',
+            background: 'var(--ut-color-danger-soft)',
+            border: '1px solid var(--ut-color-danger-soft)',
+            color: 'var(--ut-color-danger)',
             borderRadius: '8px',
             fontSize: '0.85rem',
           }}
@@ -147,7 +147,7 @@ export function InventoryActions({
             {items.map((item) => (
               <tr key={item.id}>
                 <td style={{ fontWeight: 700 }}>{item.sku || '—'}</td>
-                <td style={{ color: '#64748b' }}>{item.serialNumber || '—'}</td>
+                <td style={{ color: 'var(--ut-color-ink-muted)' }}>{item.serialNumber || '—'}</td>
                 <td>
                   {item.status === 'ACTIVE' && (
                     <span className={`${styles.fleetCountBadge} ${styles.fleetBadgeActive}`}>
@@ -184,7 +184,11 @@ export function InventoryActions({
                         onClick={() => handleChangeStatus(item.id, 'ACTIVE')}
                         disabled={isLoading}
                         className={styles.actionBtn}
-                        style={{ fontSize: '0.78rem', padding: '4px 8px', color: '#059669' }}
+                        style={{
+                          fontSize: '0.78rem',
+                          padding: '4px 8px',
+                          color: 'var(--ut-color-success)',
+                        }}
                       >
                         Remettre en service
                       </button>
@@ -195,7 +199,11 @@ export function InventoryActions({
                         onClick={() => handleChangeStatus(item.id, 'RETIRED')}
                         disabled={isLoading}
                         className={styles.actionBtn}
-                        style={{ fontSize: '0.78rem', padding: '4px 8px', color: '#dc2626' }}
+                        style={{
+                          fontSize: '0.78rem',
+                          padding: '4px 8px',
+                          color: 'var(--ut-color-danger)',
+                        }}
                       >
                         Retirer
                       </button>
@@ -210,13 +218,13 @@ export function InventoryActions({
         <div
           style={{
             padding: '16px',
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
+            background: 'var(--ut-color-surface-raised)',
+            border: '1px solid var(--ut-color-border)',
             borderRadius: '12px',
             textAlign: 'center',
           }}
         >
-          <p style={{ margin: 0, fontSize: '0.9rem', color: '#64748b' }}>
+          <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--ut-color-ink-muted)' }}>
             Aucun exemplaire enregistré. Cliquez sur « Ajouter un exemplaire » pour renseigner vos
             premiers équipements en boutique.
           </p>

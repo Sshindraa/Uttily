@@ -67,7 +67,7 @@ export function BikePricingCard({
                 style={{
                   fontSize: '0.85rem',
                   fontWeight: 700,
-                  color: '#64748b',
+                  color: 'var(--ut-color-ink-muted)',
                   marginBottom: '6px',
                 }}
               >
@@ -82,14 +82,14 @@ export function BikePricingCard({
               </div>
             </div>
           ) : (
-            <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748b' }}>
+            <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--ut-color-ink-muted)' }}>
               {activePlan.planType === 'DAILY'
                 ? 'Tarif unique sans palier de remise.'
                 : 'Ce plan est calculé par le moteur de tarification flexible.'}
             </p>
           )}
           {!canEditWithDailyEditor && (
-            <p style={{ margin: 0, fontSize: '0.88rem', color: '#92400e' }}>
+            <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--ut-color-warning)' }}>
               Cet écran ne modifie que les tarifs journaliers. Le plan actif reste inchangé.
             </p>
           )}
@@ -98,15 +98,15 @@ export function BikePricingCard({
         <div
           style={{
             padding: '16px',
-            background: '#fffbeb',
-            border: '1px solid #fde68a',
+            background: 'var(--ut-color-surface)beb',
+            border: '1px solid var(--ut-color-warning-soft)',
             borderRadius: '12px',
           }}
         >
-          <strong style={{ color: '#b45309', fontSize: '0.9rem' }}>
+          <strong style={{ color: 'var(--ut-color-warning)', fontSize: '0.9rem' }}>
             ⚠️ {pricing.draftPlan ? 'Brouillon tarifaire non activé' : 'Aucun plan tarifaire actif'}
           </strong>
-          <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#92400e' }}>
+          <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--ut-color-warning)' }}>
             {pricing.draftPlan
               ? `Le ${getPricingPlanTypeLabel(pricing.draftPlan.planType).toLowerCase()} doit être activé avant la mise en ligne.`
               : 'Cet équipement ne peut pas être proposé à la réservation tant qu’un plan tarifaire valide n’est pas défini.'}

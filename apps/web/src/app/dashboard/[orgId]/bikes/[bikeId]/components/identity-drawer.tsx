@@ -154,7 +154,7 @@ export function IdentityDrawer({
             onClick={handleArchive}
             disabled={isLoading}
             className={styles.actionBtn}
-            style={{ color: '#dc2626' }}
+            style={{ color: 'var(--ut-color-danger)' }}
           >
             {isLoading ? 'Archivage…' : 'Archiver'}
           </button>
@@ -176,9 +176,9 @@ export function IdentityDrawer({
         <div
           style={{
             padding: '10px',
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            color: '#b91c1c',
+            background: 'var(--ut-color-danger-soft)',
+            border: '1px solid var(--ut-color-danger-soft)',
+            color: 'var(--ut-color-danger)',
             borderRadius: '8px',
             fontSize: '0.85rem',
           }}

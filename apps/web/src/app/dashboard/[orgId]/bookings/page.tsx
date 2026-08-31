@@ -73,7 +73,7 @@ export default async function BookingsListPage({
             fontWeight: 600,
             textDecoration: 'none',
             background: !sp.status ? 'var(--ut-color-ink-strong)' : 'var(--ut-color-surface-soft)',
-            color: !sp.status ? '#ffffff' : 'var(--ut-color-ink)',
+            color: !sp.status ? 'var(--ut-color-surface)' : 'var(--ut-color-ink)',
             border: 'var(--ut-border-thin)',
           }}
         >
@@ -94,7 +94,7 @@ export default async function BookingsListPage({
                 fontWeight: 600,
                 textDecoration: 'none',
                 background: isMatch ? 'var(--ut-color-ink-strong)' : 'var(--ut-color-surface-soft)',
-                color: isMatch ? '#ffffff' : 'var(--ut-color-ink)',
+                color: isMatch ? 'var(--ut-color-surface)' : 'var(--ut-color-ink)',
                 border: 'var(--ut-border-thin)',
               }}
             >

@@ -5,14 +5,18 @@
 }
 
 .header {
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  border: 1px solid #334155;
+  background: linear-gradient(
+    135deg,
+    var(--ut-color-support-elevated) 0%,
+    var(--ut-color-support-footer) 100%
+  );
+  border: 1px solid var(--ut-color-support-border-muted);
   border-radius: 12px;
   padding: 2rem;
 }
 
 .title {
-  color: #f8fafc;
+  color: var(--ut-color-support-ink-strong);
   font-size: 1.75rem;
   font-weight: 700;
   margin: 0 0 0.5rem;
@@ -20,7 +24,7 @@
 
 .subtitle,
 .timestamp {
-  color: #94a3b8;
+  color: var(--ut-color-support-muted);
   margin: 0;
 }
 
@@ -37,8 +41,8 @@
 
 .card,
 .errorCard {
-  background: #111827;
-  border: 1px solid #27354d;
+  background: var(--ut-color-support-surface);
+  border: 1px solid var(--ut-color-support-border-alt);
   border-radius: 10px;
   padding: 1.25rem;
 }
@@ -52,7 +56,7 @@
 }
 
 .cardTitle {
-  color: #f8fafc;
+  color: var(--ut-color-support-ink-strong);
   font-size: 1rem;
   margin: 0;
 }
@@ -66,21 +70,21 @@
 }
 
 .statusOk {
-  background: rgba(34, 197, 94, 0.15);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  color: #4ade80;
+  background: var(--ut-color-support-success-bg);
+  border: 1px solid var(--ut-color-support-success-border);
+  color: var(--ut-color-support-success);
 }
 
 .statusWatch {
-  background: rgba(245, 158, 11, 0.15);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  color: #fbbf24;
+  background: var(--ut-color-support-warning-bg);
+  border: 1px solid var(--ut-color-support-warning-border-alpha);
+  color: var(--ut-color-support-warning);
 }
 
 .statusAction {
-  background: rgba(239, 68, 68, 0.15);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #f87171;
+  background: var(--ut-color-support-danger-bg);
+  border: 1px solid var(--ut-color-support-danger-border);
+  color: var(--ut-color-support-danger);
 }
 
 .counts {
@@ -91,30 +95,30 @@
 }
 
 .counts div {
-  background: #151e2e;
+  background: var(--ut-color-support-panel);
   border-radius: 6px;
   padding: 0.7rem;
 }
 
 .counts dt {
-  color: #94a3b8;
+  color: var(--ut-color-support-muted);
   font-size: 0.75rem;
 }
 
 .counts dd {
-  color: #f8fafc;
+  color: var(--ut-color-support-ink-strong);
   font-size: 1.25rem;
   font-weight: 700;
   margin: 0.2rem 0 0;
 }
 
 .errorCard {
-  border-color: rgba(239, 68, 68, 0.5);
-  color: #cbd5e1;
+  border-color: var(--ut-color-support-danger-border-strong);
+  color: var(--ut-color-support-ink-soft);
 }
 
 .errorTitle {
-  color: #f87171;
+  color: var(--ut-color-support-danger);
   display: block;
   margin-bottom: 0.5rem;
 }

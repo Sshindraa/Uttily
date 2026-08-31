@@ -106,7 +106,7 @@ export function DepartureFlow({ orgId, bookingId, items }: DepartureFlowProps): 
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'var(--ut-color-overlay)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
