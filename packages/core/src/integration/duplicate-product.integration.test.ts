@@ -271,7 +271,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Controlled product duplication â€
           sourceProductId: source.id,
           idempotencyKey: `rejected-${index}`,
         }),
-      ).rejects.toThrow(/famille commerciale active/);
+      ).rejects.toThrow(/familles commerciales actives/);
     }
 
     const historical = await db
