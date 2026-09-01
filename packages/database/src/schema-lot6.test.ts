@@ -634,7 +634,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 6 G2 — contraintes 
   // -------------------------------------------------------------------------
   // 1. Migration from scratch — toutes les tables Lot 6 existent
   // -------------------------------------------------------------------------
-  it('crée les 3 tables Lot 6 et __drizzle_migrations a 50 entrées', async () => {
+  it('crée les 3 tables Lot 6 et __drizzle_migrations a 51 entrées', async () => {
     if (!testUrl) return;
     const sql = postgres(testUrl, { max: 1 });
     try {
@@ -648,7 +648,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 6 G2 — contraintes 
       expect(lot6Tables.length).toBe(3);
 
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(50);
+      expect(rows.length).toBe(51);
     } finally {
       await sql.end();
     }
@@ -663,7 +663,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Schéma Lot 6 G2 — contraintes 
     const sql = postgres(testUrl, { max: 1 });
     try {
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(50);
+      expect(rows.length).toBe(51);
     } finally {
       await sql.end();
     }

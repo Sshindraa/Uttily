@@ -22,7 +22,7 @@ describe('closed outdoor equipment taxonomy', () => {
   it('assigns the locked lifecycle status to every registered family', () => {
     expect(EQUIPMENT_FAMILY_REGISTRY.map(({ slug, status }) => [slug, status])).toEqual([
       ['bike', 'ACTIVE'],
-      ['kayak', 'APPROVED_NEXT'],
+      ['kayak', 'ACTIVE'],
       ['surf', 'APPROVED_LATER'],
       ['ski', 'APPROVED_LATER'],
       ['equipment', 'INTERNAL_FALLBACK'],
@@ -71,7 +71,7 @@ describe('closed outdoor equipment taxonomy', () => {
     expect(resolveEquipmentFamily(null)).toEqual({ kind: 'UNSUPPORTED', slug: null });
     expect(resolveEquipmentFamily('equipment').kind).toBe('SUPPORTED');
     expect(isCommerciallyActiveEquipmentFamily('bike')).toBe(true);
-    expect(isCommerciallyActiveEquipmentFamily('kayak')).toBe(false);
+    expect(isCommerciallyActiveEquipmentFamily('kayak')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('equipment')).toBe(false);
     expect(isCommerciallyActiveEquipmentFamily('unknown')).toBe(false);
   });

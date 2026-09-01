@@ -10,7 +10,7 @@ univers outdoor fermés :
 | Univers | Slug d’univers | Familles prévues | Statut dans cette tranche |
 | --- | --- | --- | --- |
 | Cycle | `cycle` | `bike` | `ACTIVE` |
-| Kayak, canoë et pagaie | `paddle` | `kayak` | `APPROVED_NEXT` |
+| Kayak, canoë et pagaie | `paddle` | `kayak` | `ACTIVE` |
 | Surf et glisse nautique | `surf` | `surf` | `APPROVED_LATER` |
 | Neige et glisse | `snow` | `ski` | `APPROVED_LATER` |
 
@@ -49,18 +49,21 @@ La source de vérité typée est
 [`packages/core/src/catalog/equipment-taxonomy.ts`](../../packages/core/src/catalog/equipment-taxonomy.ts).
 Elle distingue :
 
-- `ACTIVE` : famille activée commercialement ; aujourd'hui uniquement `bike` ;
-- `APPROVED_NEXT` : famille approuvée pour le prochain lot ; aujourd'hui
+- `ACTIVE` : familles activées commercialement ; aujourd'hui `bike` et
   `kayak` ;
+- `APPROVED_NEXT` : famille approuvée pour le prochain lot ; aucune après
+  l'activation du kayak ;
 - `APPROVED_LATER` : famille approuvée mais différée ; aujourd'hui `surf` et
   `ski` ;
 - `INTERNAL_FALLBACK` : `equipment`, compatibilité technique uniquement ;
 - valeur inconnue : résolution `UNSUPPORTED`, sans conversion en catégorie
   commerciale.
 
-Le registre prépare le contrat, mais cette tranche ne modifie ni les données
-existantes, ni la recherche publique, ni les règles de publication, ni le
-schéma de base. L'activation du kayak appartient au prochain lot dédié.
+L'activation du kayak ajoute sa catégorie canonique via la migration 0051 et
+met à jour uniquement la fixture locale `kayak-dev`. Les produits historiques
+`equipment` ne sont pas convertis. Le kayak réutilise les données, la
+recherche, la publication et les parcours de réservation existants ; ses
+caractéristiques descriptives ne sont affichées que si elles sont présentes.
 
 ## Compléments
 
