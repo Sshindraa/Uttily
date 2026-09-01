@@ -8,7 +8,13 @@ const summary = (categorySlug: string): UnifiedBikeSummary => ({
   name: 'Kayak de démonstration',
   slug: 'kayak-de-demonstration',
   categoryName:
-    categorySlug === 'equipment' ? 'Équipements' : categorySlug === 'surf' ? 'Surf' : 'Kayak',
+    categorySlug === 'equipment'
+      ? 'Équipements'
+      : categorySlug === 'surf'
+        ? 'Surf'
+        : categorySlug === 'ski'
+          ? 'Ski & Snowboard'
+          : 'Kayak',
   categorySlug,
   variantName: 'Standard',
   variantId: 'variant-1',
@@ -56,6 +62,18 @@ describe('Mes équipements — liste', () => {
     expect(html).toContain('🏄');
     expect(html).toContain('Surf');
     expect(html).toContain('2/3 photos');
+    expect(html).not.toContain('vues requises');
+  });
+
+  it('présente le ski sans le libellé snowboard ni les slots vélo', () => {
+    const html = renderToStaticMarkup(
+      <BikesListView organizationId="org-1" bikes={[summary('ski')]} canManage />,
+    );
+
+    expect(html).toContain('🎿');
+    expect(html).toContain('ski');
+    expect(html).toContain('2/3 photos');
+    expect(html).not.toContain('Snowboard');
     expect(html).not.toContain('vues requises');
   });
 });

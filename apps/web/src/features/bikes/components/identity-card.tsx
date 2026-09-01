@@ -1,5 +1,6 @@
 import type { UnifiedBike } from '@uttily/core';
 import { IdentityDrawer } from './identity-drawer';
+import { getCategoryDisplayLabel } from '@/features/equipment/category-presentation';
 import styles from './components.module.css';
 
 interface IdentityCardProps {
@@ -84,7 +85,7 @@ export function BikeIdentityCard({
               marginTop: '2px',
             }}
           >
-            🏷️ {product.categoryName}
+            🏷️ {getCategoryDisplayLabel(product.categorySlug, product.categoryName)}
           </div>
         </div>
 

@@ -1,6 +1,6 @@
 # ADR-035 — Taxonomie commerciale outdoor fermée
 
-**Statut :** Accepted — surf activé comme deuxième famille non-vélo.
+**Statut :** Accepted — ski activé comme troisième famille non-vélo.
 
 **Date :** 2026-09-01
 
@@ -16,7 +16,7 @@ implicite de publier n'importe quelle catégorie.
 
 Le produit doit donc distinguer l'universalité du modèle
 Produit → Variante → Exemplaire d'un périmètre commercial volontairement
-fermé. Cette décision encadre l'activation du kayak puis du surf sans
+fermé. Cette décision encadre l'activation du kayak, du surf puis du ski sans
 convertir les produits historiques qui utilisent `equipment`.
 
 ## Décision
@@ -41,9 +41,9 @@ Le registre serveur fermé et typé est porté par
 
 | Statut | Familles |
 | --- | --- |
-| `ACTIVE` | `bike`, `kayak`, `surf` |
+| `ACTIVE` | `bike`, `kayak`, `surf`, `ski` |
 | `APPROVED_NEXT` | — |
-| `APPROVED_LATER` | `ski` |
+| `APPROVED_LATER` | — |
 | `INTERNAL_FALLBACK` | `equipment`, compatibilité technique seulement |
 
 Toute autre valeur est résolue comme `UNSUPPORTED`. Le fallback interne ne
@@ -66,6 +66,14 @@ le volume, le niveau et les règles spécialisées windsurf, wingfoil, kitesurf
 ou foil ne sont pas introduits. Le parcours surf réutilise les mêmes
 invariants génériques et le gestionnaire photo neutre ; aucune règle Photo
 Coach, slot ou sécurité vélo ne lui est appliquée.
+
+Le ski est actif uniquement pour la famille `ski` et les sous-types descriptifs
+`alpine`, `touring` et `cross-country`. Ces valeurs restent portées par les
+champs de variante déjà disponibles et ne créent aucun slug supplémentaire.
+Aucun champ de mensuration, niveau ou longueur de bâton n'est ajouté. Le ski
+réutilise le parcours générique et le gestionnaire photo neutre, sans Photo
+Coach, slot photo ou règle de sécurité vélo. Le snowboard et les autres
+familles neige restent désactivés.
 
 ## Compléments
 
@@ -97,11 +105,13 @@ résolu exclusivement par le registre serveur de cette ADR.
   universel de trois photos valides et sans règles spécialisées supplémentaires.
   Ses sous-types sont descriptifs et restent portés par les variantes ou les
   données déjà disponibles.
-- Le ski reste explicitement approuvé pour plus tard, sans activation.
+- Le ski est actif comme troisième famille non-vélo, uniquement pour `alpine`,
+  `touring` et `cross-country`; le snowboard et les autres familles neige ne
+  sont pas activés.
 - Les catégories hors périmètre et les valeurs inconnues doivent être refusées
   par les futurs flux commerciaux plutôt que converties silencieusement en
   `equipment`.
-- Les accessoires des familles kayak et surf restent des compléments non
+- Les accessoires des familles kayak, surf et ski restent des compléments non
   publiables seuls par défaut ; leur moteur de supplément n'est pas livré.
 - Les familles windsurf, wingfoil, kitesurf et foil ne sont pas activées par
   cette décision.

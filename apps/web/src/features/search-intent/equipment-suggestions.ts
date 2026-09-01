@@ -21,6 +21,7 @@ const MEANINGS = [
   ],
   ['paddle', 'paddleboard', 'paddleboarding', 'stand up paddle', 'sup'],
   ['kayak', 'kayaks'],
+  ['ski', 'skis', 'ski alpin', 'ski de randonnée', 'ski de fond', 'alpine ski', 'touring ski'],
   ['vtc', 'hybrid bike', 'hybrid bikes'],
   ['velo de route', 'velo route', 'road bike', 'road bikes', 'route'],
 ] as const;
@@ -50,7 +51,6 @@ export function rankEquipmentSuggestions(
     .flatMap((category) => {
       const terms = [
         category.slug,
-        category.name,
         getPublicCategoryLabel(locale, category),
         ...(meaning(category) ?? []),
       ].map(normalize);

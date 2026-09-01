@@ -10,6 +10,7 @@ import { BikePhotosCard } from './components/photos-card';
 import { BikePricingCard } from './components/pricing-card';
 import { BikeInventoryCard } from './components/inventory-card';
 import {
+  getCategoryDisplayLabel,
   getCategoryPresentation,
   getDisplayableCharacteristics,
 } from '@/features/equipment/category-presentation';
@@ -30,6 +31,10 @@ export function BikeDetailView({
   locations,
 }: BikeDetailViewProps): React.ReactElement {
   const presentation = getCategoryPresentation(bike.product.categorySlug);
+  const categoryLabel = getCategoryDisplayLabel(
+    bike.product.categorySlug,
+    bike.product.categoryName,
+  );
   const characteristics = getDisplayableCharacteristics(bike.variant.attributes, presentation);
 
   return (
@@ -58,7 +63,7 @@ export function BikeDetailView({
         <div className={styles.heroTop}>
           <div className={styles.titleArea}>
             <div className={styles.metaRow}>
-              <span className={styles.categoryTag}>{bike.product.categoryName}</span>
+              <span className={styles.categoryTag}>{categoryLabel}</span>
               <span className={styles.categoryTag}>{presentation.singularLabel}</span>
               <span>•</span>
               <span>

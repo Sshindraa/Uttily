@@ -252,8 +252,8 @@ groupées, ni de nouvelles règles métier spécifiques à une catégorie.
 
 **Cadrage livré le 2026-09-01 :** ADR-035 et le registre Core ferment le
 périmètre commercial aux quatre univers Cycle, Kayak/canoë/pagaie, Surf/glisse
-nautique et Neige/glisse. `bike`, `kayak` et `surf` sont `ACTIVE`, tandis que
-`ski` est `APPROVED_LATER`, `equipment` reste un fallback interne et
+nautique et Neige/glisse. `bike`, `kayak`, `surf` et `ski` sont `ACTIVE`,
+`equipment` reste un fallback interne et
 les valeurs inconnues sont `UNSUPPORTED`. Aucune catégorie camping, outdoor
 technique, sport généraliste, outillage, jardin, événementiel, audiovisuel ou
 construction n'est activée. La PR #43 est fusionnée dans `b8a7a2e` après une CI complète
@@ -290,6 +290,16 @@ aucune migration, règle métier, nouvelle catégorie ou URL n'est ajoutée.
 Tests ciblés Web/Core et typecheck Web verts ; les intégrations PostgreSQL
 ciblées restent déléguées à la CI lorsqu'elles ne sont pas configurées en
 local.
+
+**Activation ski livrée le 2026-09-01 :** la famille `ski` est désormais
+`ACTIVE` avec les seuls sous-types descriptifs `alpine`, `touring` et
+`cross-country`, sans nouveau slug, champ spécialisé ou migration. Les parcours
+loueur et publics réutilisent Produit → Variante → Exemplaire, la tarification,
+la disponibilité, les photos neutres, la publication, la recherche, le hold,
+le paiement TEST et la confirmation. Les surfaces internes et publiques
+présentent `ski` et filtrent l'ancien libellé `Ski & Snowboard`; aucune règle
+Photo Coach, slot ou sécurité vélo n'est appliquée. Snowboard, télémark,
+raquettes, luges, snowscoot et packs avalanche restent inactifs.
 
 ### 7.2 Onboarding autonome
 
@@ -636,8 +646,9 @@ Chaque catégorie définit avant activation :
 - documents ;
 - critères de publication.
 
-Ordre d'activation encadré par ADR-035 : `bike`, `kayak` et `surf` actifs ;
-`ski` plus tard. Les familles hors taxonomie fermée sont exclues.
+Ordre d'activation encadré par ADR-035 : `bike`, `kayak`, `surf` et `ski`
+actifs ; les autres familles neige et les familles hors taxonomie fermée sont
+exclues.
 
 ### 13.2 Kit d'activation pays
 

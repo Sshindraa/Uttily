@@ -15,7 +15,10 @@ import {
   getPricingPlanUnitLabel,
   type PricingPlanType,
 } from '@/lib/status-presentation';
-import { getCategoryPresentation } from '@/features/equipment/category-presentation';
+import {
+  getCategoryDisplayLabel,
+  getCategoryPresentation,
+} from '@/features/equipment/category-presentation';
 import { NeutralPhotoUploader } from '@/features/equipment/neutral-photo-uploader';
 import styles from './setup.module.css';
 
@@ -241,6 +244,7 @@ export function BikeSetupWizard({
   const selectedCategorySlug =
     categories.find((category) => category.id === categoryId)?.slug ?? bike.categorySlug;
   const categoryPresentation = getCategoryPresentation(selectedCategorySlug);
+  const categoryLabel = getCategoryDisplayLabel(selectedCategorySlug, bike.categoryName);
   const hasBikePhotoModule = categoryPresentation.specificSections.includes('photo-slots');
 
   return (
@@ -943,7 +947,7 @@ export function BikeSetupWizard({
                   color: 'var(--ut-color-primary)',
                 }}
               >
-                {bike.categoryName} • Version {bike.variantName}
+                {categoryLabel} • Version {bike.variantName}
               </div>
               <h3
                 style={{

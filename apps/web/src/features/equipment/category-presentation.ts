@@ -2,6 +2,7 @@ export interface CategoryCharacteristic {
   readonly key: string;
   readonly label: string;
   readonly aliases?: readonly string[];
+  readonly allowedValues?: readonly string[];
 }
 
 export interface CategoryPresentation {
@@ -63,6 +64,21 @@ const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
     primaryActionLabel: 'Gérer l’équipement',
     setupActionLabel: 'Continuer la configuration',
   },
+  ski: {
+    singularLabel: 'ski',
+    pluralLabel: 'skis',
+    icon: '🎿',
+    characteristics: [
+      {
+        key: 'subtype',
+        label: 'Sous-type',
+        allowedValues: ['alpine', 'touring', 'cross-country'],
+      },
+    ],
+    specificSections: [],
+    primaryActionLabel: 'Gérer l’équipement',
+    setupActionLabel: 'Continuer la configuration',
+  },
   equipment: GENERIC_CATEGORY_PRESENTATION,
 };
 
@@ -88,6 +104,20 @@ export function getDisplayableCharacteristics(
   return presentation.characteristics.flatMap((characteristic) => {
     const keys = [characteristic.key, ...(characteristic.aliases ?? [])];
     const value = keys.map((key) => displayValue(attributes[key])).find(Boolean);
+    if (value && characteristic.allowedValues && !characteristic.allowedValues.includes(value)) {
+      return [];
+    }
     return value ? [{ label: characteristic.label, value }] : [];
   });
+}
+
+/**
+ * Normalise uniquement l’ancien libellé global ski/snowboard à l’affichage.
+ * Le slug reste l’autorité : aucune autre famille neige n’est activée.
+ */
+export function getCategoryDisplayLabel(
+  categorySlug: string | null | undefined,
+  storedName: string,
+): string {
+  return categorySlug === 'ski' ? getCategoryPresentation('ski').singularLabel : storedName;
 }

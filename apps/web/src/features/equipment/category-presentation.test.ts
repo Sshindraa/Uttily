@@ -59,6 +59,19 @@ describe('registre de présentation des catégories', () => {
     ).toEqual([]);
   });
 
+  it('présente le ski actif avec ses trois sous-types existants, sans règles vélo', () => {
+    const presentation = getCategoryPresentation('ski');
+
+    expect(presentation.singularLabel).toBe('ski');
+    expect(presentation.pluralLabel).toBe('skis');
+    expect(presentation.icon).toBe('🎿');
+    expect(presentation.specificSections).toEqual([]);
+    expect(getDisplayableCharacteristics({ subtype: 'alpine' }, presentation)).toEqual([
+      { label: 'Sous-type', value: 'alpine' },
+    ]);
+    expect(getDisplayableCharacteristics({ subtype: 'snowboard' }, presentation)).toEqual([]);
+  });
+
   it('retombe sur une présentation générique pour toute catégorie inconnue', () => {
     expect(getCategoryPresentation('canoe')).toBe(GENERIC_CATEGORY_PRESENTATION);
     expect(getCategoryPresentation(undefined)).toBe(GENERIC_CATEGORY_PRESENTATION);
