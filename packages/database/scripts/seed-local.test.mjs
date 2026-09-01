@@ -57,4 +57,10 @@ describe('seed local environment guards', () => {
     expect(seedSource).not.toContain('local-preview-kayak-dev');
     expect(seedSource).toContain('product=kayak-dev (draft; upload real photos to publish)');
   });
+
+  it('utilise la catégorie kayak uniquement pour la fixture kayak-dev', () => {
+    expect(seedSource).toContain("VALUES ('kayak', 'Kayaks', true)");
+    expect(seedSource).toContain("const DEMO_PRODUCT_SLUG = 'kayak-dev'");
+    expect(seedSource).toContain('produit historique utilisant la catégorie equipment');
+  });
 });

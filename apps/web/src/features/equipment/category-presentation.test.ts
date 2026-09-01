@@ -26,8 +26,26 @@ describe('registre de présentation des catégories', () => {
     expect(presentation.specificSections).toEqual([]);
   });
 
+  it('présente le kayak avec ses caractéristiques disponibles et sans règles vélo', () => {
+    const presentation = getCategoryPresentation('kayak');
+
+    expect(presentation.singularLabel).toBe('kayak');
+    expect(presentation.pluralLabel).toBe('kayaks');
+    expect(presentation.specificSections).toEqual([]);
+    expect(
+      getDisplayableCharacteristics(
+        { capacity: 'double', construction: 'inflatable', practice: 'touring' },
+        presentation,
+      ),
+    ).toEqual([
+      { label: 'Capacité', value: 'double' },
+      { label: 'Construction', value: 'inflatable' },
+      { label: 'Pratique', value: 'touring' },
+    ]);
+  });
+
   it('retombe sur une présentation générique pour toute catégorie inconnue', () => {
-    expect(getCategoryPresentation('kayak')).toBe(GENERIC_CATEGORY_PRESENTATION);
+    expect(getCategoryPresentation('canoe')).toBe(GENERIC_CATEGORY_PRESENTATION);
     expect(getCategoryPresentation(undefined)).toBe(GENERIC_CATEGORY_PRESENTATION);
   });
 

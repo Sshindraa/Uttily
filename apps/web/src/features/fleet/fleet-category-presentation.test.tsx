@@ -60,17 +60,17 @@ const maintenanceCase = (
 });
 
 describe('présentation catégorie — flotte et maintenance', () => {
-  it('affiche le fallback générique dans la flotte sans changer les états', () => {
+  it('affiche la présentation kayak dans la flotte sans changer les états', () => {
     const html = renderToStaticMarkup(
       <FleetListView organizationId="org-1" items={[inventoryItem('kayak')]} canManage={false} />,
     );
 
-    expect(html).toContain('🧰 équipement');
+    expect(html).toContain('🛶 kayak');
     expect(html).toContain('Disponible');
     expect(html).not.toContain('🚲 vélo');
   });
 
-  it('adapte les libellés de maintenance pour le vélo et le fallback', () => {
+  it('adapte les libellés de maintenance pour le vélo et le kayak', () => {
     const html = renderToStaticMarkup(
       <MaintenanceListView
         organizationId="org-1"
@@ -79,7 +79,7 @@ describe('présentation catégorie — flotte et maintenance', () => {
     );
 
     expect(html).toContain('🚲 vélo');
-    expect(html).toContain('🧰 équipement');
+    expect(html).toContain('🛶 kayak');
     expect(html).toContain('À traiter');
     expect(html).toContain('Interventions à traiter (2)');
   });

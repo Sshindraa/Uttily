@@ -1,6 +1,6 @@
 # ADR-035 — Taxonomie commerciale outdoor fermée
 
-**Statut :** Accepted — contrat canonique préparatoire à l'activation du kayak.
+**Statut :** Accepted — kayak activé comme première famille non-vélo.
 
 **Date :** 2026-09-01
 
@@ -16,8 +16,8 @@ implicite de publier n'importe quelle catégorie.
 
 Le produit doit donc distinguer l'universalité du modèle
 Produit → Variante → Exemplaire d'un périmètre commercial volontairement
-fermé. Cette décision intervient avant l'activation du kayak et ne demande ni
-migration ni modification des données existantes.
+fermé. Cette décision encadre l'activation du kayak sans convertir les
+produits historiques qui utilisent `equipment`.
 
 ## Décision
 
@@ -41,16 +41,22 @@ Le registre serveur fermé et typé est porté par
 
 | Statut | Familles |
 | --- | --- |
-| `ACTIVE` | `bike` |
-| `APPROVED_NEXT` | `kayak` |
+| `ACTIVE` | `bike`, `kayak` |
+| `APPROVED_NEXT` | — |
 | `APPROVED_LATER` | `surf`, `ski` |
 | `INTERNAL_FALLBACK` | `equipment`, compatibilité technique seulement |
 
 Toute autre valeur est résolue comme `UNSUPPORTED`. Le fallback interne ne
-peut pas être considéré comme une famille commerciale active. Cette ADR ne
-branche pas encore le registre sur la recherche, les données ou le gate de
-publication : elle fixe le contrat qui devra être consommé par un lot
-d'activation ultérieur.
+peut pas être considéré comme une famille commerciale active. La migration
+0051 ajoute uniquement la catégorie canonique `kayak`; elle ne met à jour
+aucun produit existant utilisant `equipment`. La fixture `kayak-dev` est la
+seule fixture locale explicitement rattachée à cette catégorie.
+
+Le kayak consomme les parcours génériques déjà en place : Produit → Variante
+→ Exemplaire, prix, disponibilité, photos, publication, recherche, hold,
+paiement et réservation. Ses attributs descriptifs `capacity`, `construction`
+et `practice` ne sont affichés que lorsqu'ils existent dans les attributs de
+la variante. Ils n'introduisent aucune validation ou colonne nouvelle.
 
 ## Compléments
 
@@ -72,14 +78,16 @@ résolu exclusivement par le registre serveur de cette ADR.
 
 ## Conséquences et limites
 
-- Le vélo reste le seul univers actif et conserve ses règles approfondies déjà
+- Le vélo reste le premier module approfondi et conserve ses règles déjà
   validées par ADR-031.
-- Le kayak est le prochain candidat d'activation, mais aucune règle kayak,
-  donnée, recherche ou publication n'est introduite ici.
+- Le kayak est actif comme première famille non-vélo. Il utilise le
+  gestionnaire photo neutre, le seuil universel de trois photos valides et les
+  règles de disponibilité, publication et réservation existantes ; aucun Photo
+  Coach, slot ou bloc de sécurité vélo ne lui est appliqué.
 - Surf et ski sont explicitement approuvés pour plus tard, sans activation.
 - Les catégories hors périmètre et les valeurs inconnues doivent être refusées
   par les futurs flux commerciaux plutôt que converties silencieusement en
   `equipment`.
-- Une activation de famille devra ajouter ses propres décisions et tests pour
-  les attributs, variantes, photos, entretien, sécurité, prix, caution et
-  publication.
+- Les familles surf et ski devront ajouter leurs propres décisions et tests
+  avant activation. Les accessoires kayak restent des compléments non
+  publiables seuls par défaut ; leur moteur de supplément n'est pas livré.

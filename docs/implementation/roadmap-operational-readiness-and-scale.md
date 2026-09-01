@@ -252,12 +252,18 @@ groupées, ni de nouvelles règles métier spécifiques à une catégorie.
 
 **Cadrage livré le 2026-09-01 :** ADR-035 et le registre Core ferment le
 périmètre commercial aux quatre univers Cycle, Kayak/canoë/pagaie, Surf/glisse
-nautique et Neige/glisse. `bike` est `ACTIVE`, `kayak` `APPROVED_NEXT`, `surf`
+nautique et Neige/glisse. `bike` et `kayak` sont `ACTIVE`, `surf`
 et `ski` `APPROVED_LATER`, tandis que `equipment` reste un fallback interne et
 les valeurs inconnues sont `UNSUPPORTED`. Aucune catégorie camping, outdoor
 technique, sport généraliste, outillage, jardin, événementiel, audiovisuel ou
-construction n'est activée. La PR #43 (`4286fe4`) est validée par la CI complète
+construction n'est activée. La PR #43 est fusionnée dans `b8a7a2e` après une CI complète
 verte, y compris Browser acceptance avec les credentials Clerk TEST.
+
+**Activation kayak livrée le 2026-09-01 :** la famille `kayak` est désormais
+`ACTIVE`. La migration 0051 ajoute sa catégorie canonique sans conversion des
+produits `equipment`; la fixture `kayak-dev` utilise cette catégorie. Le kayak
+réutilise le parcours générique complet et affiche `capacity`, `construction`
+et `practice` seulement lorsqu'ils existent, sans Photo Coach ni règle vélo.
 
 ### 7.2 Onboarding autonome
 
@@ -604,8 +610,8 @@ Chaque catégorie définit avant activation :
 - documents ;
 - critères de publication.
 
-Ordre d'activation encadré par ADR-035 : `bike` actif ; `kayak` prochain lot ;
-`surf` et `ski` plus tard. Les familles hors taxonomie fermée sont exclues.
+Ordre d'activation encadré par ADR-035 : `bike` et `kayak` actifs ; `surf` et
+`ski` plus tard. Les familles hors taxonomie fermée sont exclues.
 
 ### 13.2 Kit d'activation pays
 

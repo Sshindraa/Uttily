@@ -108,7 +108,7 @@ Une ADR est nécessaire avant schéma et moteur. Voir
 | Sujet | Décision nécessaire avant | Propriétaire | Statut |
 | --- | --- | --- | --- |
 | Périmètre des univers et familles commerciales | Toute activation de famille | Produit / direction | **Résolu par ADR-035** — quatre univers fermés ; `bike` actif, `kayak` prochain, `surf` et `ski` plus tard ; catégories hors périmètre explicitement exclues. |
-| Activation de la famille `kayak` | Lot d'activation kayak | Produit / technique / juridique | **Ouvert pour le prochain lot** — le contrat est prêt, mais les données, règles de publication, photos, sécurité, prix et entretien kayak ne sont pas activés dans cette tranche. |
+| Activation de la famille `kayak` | Lot d'activation kayak | Produit / technique / juridique | **Résolu le 2026-09-01** — `kayak` est `ACTIVE`, sa catégorie canonique est seedée par migration 0051, la fixture `kayak-dev` l'utilise et les parcours génériques sont validés ; aucun attribut ou accessoire nouveau n'est requis. |
 | Modes, stock et prix des compléments | ADR groupes/packs avant moteur ou schéma | Produit / technique / juridique | **Partiellement résolu par ADR-035** — vocabulaire fixé (`INCLUDED`, `MANDATORY`, `OPTIONAL_FREE`, `PAID_SUPPLEMENT`, `SEPARATELY_RENTABLE`) ; comportement, stock, prix et autorisation restent ouverts. |
 
 ## Décisions produit Lot 4 (approuvées, validations juridique/finance en attente)

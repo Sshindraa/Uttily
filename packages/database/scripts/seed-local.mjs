@@ -297,8 +297,9 @@ async function ensureOpeningHours(tx, locationId) {
 async function ensureCategory(tx) {
   const rows = await tx`
     INSERT INTO "categories" ("slug", "name", "is_active")
-    VALUES ('equipment', 'Équipements', true)
+    VALUES ('kayak', 'Kayaks', true)
     ON CONFLICT ("slug") DO UPDATE SET
+      "name" = EXCLUDED."name",
       "is_active" = true,
       "updated_at" = now()
     RETURNING "id"
@@ -334,6 +335,8 @@ async function ensureProduct(tx, organizationId, categoryId) {
     productId = existingRows[0].id;
   }
 
+  // Cette mise à jour vise uniquement la fixture canonique kayak-dev ; aucun
+  // produit historique utilisant la catégorie equipment n'est converti.
   // Le produit est DRAFT avant toute insertion ou remise en état de photo.
   await tx`
     UPDATE "products"

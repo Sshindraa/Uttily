@@ -24,7 +24,7 @@ import { productPhotoFileState } from '../src/schema';
  * - Le trigger de protection contre la suppression sous le seuil (court-circuit).
  * - La concurrence (deux connexions, 4→3 jamais 4→2).
  * - L'absence d'événement outbox photo_object_cleanup.
- * - Le journal de migrations (50 entrées).
+ * - Le journal de migrations (51 entrées).
  */
 
 const TEST_DB_NAME = 'uttily_test_g7f_a_photos';
@@ -305,17 +305,17 @@ describe.skipIf(shouldSkipIntegrationTests())('G7F-A2 — Photos et gate de publ
       ]);
     });
 
-    it('A5 — journal de migrations : __drizzle_migrations a 50 entrées, _journal.json a 50 entrées', async () => {
+    it('A5 — journal de migrations : __drizzle_migrations a 51 entrées, _journal.json a 51 entrées', async () => {
       if (!testUrl) return;
       const sql = postgres(testUrl, { max: 1 });
       try {
         const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-        expect(rows.length).toBe(50);
+        expect(rows.length).toBe(51);
 
         const __dirname = dirname(fileURLToPath(import.meta.url));
         const journalPath = join(__dirname, '..', 'drizzle', 'meta', '_journal.json');
         const journal = JSON.parse(readFileSync(journalPath, 'utf-8'));
-        expect(journal.entries.length).toBe(50);
+        expect(journal.entries.length).toBe(51);
         expect(journal.entries[33]!.tag).toBe('0034_g7f_a_product_photos');
         expect(journal.entries[33]!.idx).toBe(33);
       } finally {

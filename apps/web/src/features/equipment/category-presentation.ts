@@ -41,6 +41,19 @@ const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
     primaryActionLabel: 'Gérer l’équipement',
     setupActionLabel: 'Continuer la configuration',
   },
+  kayak: {
+    singularLabel: 'kayak',
+    pluralLabel: 'kayaks',
+    icon: '🛶',
+    characteristics: [
+      { key: 'capacity', label: 'Capacité' },
+      { key: 'construction', label: 'Construction' },
+      { key: 'practice', label: 'Pratique' },
+    ],
+    specificSections: [],
+    primaryActionLabel: 'Gérer l’équipement',
+    setupActionLabel: 'Continuer la configuration',
+  },
   equipment: GENERIC_CATEGORY_PRESENTATION,
 };
 

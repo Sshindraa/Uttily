@@ -2,8 +2,8 @@
  * Registre serveur fermé des familles d'équipements Uttily.
  *
  * Ce contrat décrit le périmètre commercial et ne remplace pas la taxonomie
- * globale stockée en base. Il n'active aucune famille et ne porte aucune
- * règle de publication, de disponibilité, de tarification ou de permission.
+ * globale stockée en base. Le registre ne déplace aucune règle de publication,
+ * de disponibilité, de tarification ou de permission dans la présentation.
  */
 
 export const EQUIPMENT_UNIVERSE_SLUGS = ['cycle', 'paddle', 'surf', 'snow'] as const;
@@ -84,7 +84,7 @@ export const EQUIPMENT_FAMILY_REGISTRY: readonly EquipmentFamilyDefinition[] = O
   {
     slug: 'kayak',
     universe: 'paddle',
-    status: 'APPROVED_NEXT',
+    status: 'ACTIVE',
     singularLabel: 'kayak',
     pluralLabel: 'kayaks',
     subtypes: [],
