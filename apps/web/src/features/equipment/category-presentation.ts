@@ -48,8 +48,16 @@ const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
     icon: '🛶',
     characteristics: [
       { key: 'capacity', label: 'Capacité' },
-      { key: 'construction', label: 'Construction' },
-      { key: 'practice', label: 'Pratique' },
+      {
+        key: 'construction',
+        label: 'Construction',
+        allowedValues: ['rigid', 'inflatable'],
+      },
+      {
+        key: 'practice',
+        label: 'Pratique',
+        allowedValues: ['sea', 'touring', 'whitewater'],
+      },
     ],
     specificSections: [],
     primaryActionLabel: 'Gérer l’équipement',
@@ -121,12 +129,16 @@ export function getDisplayableCharacteristics(
 }
 
 /**
- * Normalise uniquement l’ancien libellé global ski/snowboard à l’affichage.
- * Le slug reste l’autorité : aucune autre famille neige n’est activée.
+ * Normalise les libellés historiques connus à l’affichage.
+ * Le slug reste l’autorité pour éviter qu’un nom stocké incohérent ne brouille
+ * la famille présentée.
  */
 export function getCategoryDisplayLabel(
   categorySlug: string | null | undefined,
   storedName: string,
 ): string {
-  return categorySlug === 'ski' ? getCategoryPresentation('ski').singularLabel : storedName;
+  if (categorySlug === 'ski' || categorySlug === 'kayak') {
+    return getCategoryPresentation(categorySlug).singularLabel;
+  }
+  return storedName;
 }

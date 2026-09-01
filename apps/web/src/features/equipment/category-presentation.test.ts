@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   GENERIC_CATEGORY_PRESENTATION,
+  getCategoryDisplayLabel,
   getCategoryPresentation,
   getDisplayableCharacteristics,
 } from './category-presentation';
@@ -42,6 +43,29 @@ describe('registre de présentation des catégories', () => {
       { label: 'Construction', value: 'inflatable' },
       { label: 'Pratique', value: 'touring' },
     ]);
+  });
+
+  it('normalise le libellé historique pluriel du kayak en contexte singulier', () => {
+    expect(getCategoryDisplayLabel('kayak', 'Kayaks')).toBe('kayak');
+    expect(getCategoryDisplayLabel('kayak', 'Ski & Snowboard')).toBe('kayak');
+    expect(getCategoryDisplayLabel('equipment', 'Équipements')).toBe('Équipements');
+  });
+
+  it('affiche simple, double et triple et ignore les valeurs nautiques inconnues', () => {
+    const presentation = getCategoryPresentation('kayak');
+
+    expect(
+      ['simple', 'double', 'triple'].map(
+        (capacity) => getDisplayableCharacteristics({ capacity }, presentation)[0],
+      ),
+    ).toEqual([
+      { label: 'Capacité', value: 'simple' },
+      { label: 'Capacité', value: 'double' },
+      { label: 'Capacité', value: 'triple' },
+    ]);
+    expect(
+      getDisplayableCharacteristics({ construction: 'unknown', practice: 'unknown' }, presentation),
+    ).toEqual([]);
   });
 
   it('présente le socle surf sans Photo Coach ni champ spécialisé inventé', () => {

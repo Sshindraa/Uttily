@@ -6,6 +6,8 @@ describe('getPublicCategoryLabel', () => {
     expect(getPublicCategoryLabel('en', { slug: 'bike', name: 'Vélos' })).toBe('Bikes');
     expect(getPublicCategoryLabel('en', { slug: 'climbing', name: 'Escalade' })).toBe('Climbing');
     expect(getPublicCategoryLabel('fr', { slug: 'bike', name: 'Vélos' })).toBe('Vélos');
+    expect(getPublicCategoryLabel('en', { slug: 'kayak', name: 'Kayaks' })).toBe('Kayak');
+    expect(getPublicCategoryLabel('fr', { slug: 'kayak', name: 'Kayaks' })).toBe('Kayak');
     expect(getPublicCategoryLabel('en', { slug: 'ski', name: 'Ski & Snowboard' })).toBe('Ski');
     expect(getPublicCategoryLabel('fr', { slug: 'ski', name: 'Ski & Snowboard' })).toBe('Ski');
     expect(getPublicCategoryLabel('en', { slug: 'snowboard', name: 'Snowboard' })).toBe(
