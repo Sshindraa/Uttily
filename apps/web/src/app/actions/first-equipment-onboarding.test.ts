@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createFirstEquipmentDraftAction, publishFirstEquipmentFromSetupAction } from './products';
+import {
+  createFirstEquipmentDraftAction,
+  duplicateProductAction,
+  publishFirstEquipmentFromSetupAction,
+} from './products';
 
 const EMPTY_PREV = { ok: false as const, code: 'UNKNOWN' as const, message: '' };
 
@@ -56,6 +60,25 @@ describe('Onboarding autonome — premier équipement', () => {
     if (!result.ok) {
       expect(result.code).toBe('VALIDATION');
       expect(result.message).toContain('invalide');
+    }
+  });
+
+  it('valide la clé d’idempotence et le produit source avant toute autorisation', async () => {
+    const formData = new FormData();
+    formData.set('productId', 'not-a-uuid');
+    formData.set('idempotencyKey', '');
+
+    const result = await duplicateProductAction(
+      '00000000-0000-0000-0000-000000000001',
+      EMPTY_PREV,
+      formData,
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.code).toBe('VALIDATION');
+      expect(result.fieldErrors?.productId).toBeDefined();
+      expect(result.fieldErrors?.idempotencyKey).toBeDefined();
     }
   });
 });

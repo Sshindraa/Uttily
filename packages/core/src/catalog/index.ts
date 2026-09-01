@@ -10,6 +10,7 @@ export * from './permissions';
 export * from './errors';
 export * from './categories';
 export * from './products';
+export * from './duplicate-product';
 export * from './variants';
 export * from './inventory';
 export * from './movements';

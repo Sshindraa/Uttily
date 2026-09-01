@@ -10,7 +10,9 @@ import type { BadgeTone } from '@uttily/ui';
 import {
   getCategoryDisplayLabel,
   getCategoryPresentation,
+  isCommercialEquipmentCategorySlug,
 } from '@/features/equipment/category-presentation';
+import { DuplicateEquipmentButton } from '@/features/equipment/duplicate-equipment-button';
 
 function getStatusBadgeProps(status: UnifiedBikeStatusSummary): { tone: BadgeTone; label: string } {
   switch (status) {
@@ -242,6 +244,9 @@ export function BikesListView({
                     borderTop: 'var(--ut-border-thin)',
                     display: 'flex',
                     justifyContent: 'flex-end',
+                    alignItems: 'flex-start',
+                    gap: '0.75rem',
+                    flexWrap: 'wrap',
                   }}
                 >
                   <Link
@@ -261,6 +266,13 @@ export function BikesListView({
                       : presentation.setupActionLabel}{' '}
                     <Icon name="arrow-right" size={16} />
                   </Link>
+                  {canManage && isCommercialEquipmentCategorySlug(bike.categorySlug) && (
+                    <DuplicateEquipmentButton
+                      organizationId={organizationId}
+                      productId={bike.id}
+                      productName={bike.name}
+                    />
+                  )}
                 </div>
               </Card>
             );

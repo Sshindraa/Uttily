@@ -6,6 +6,7 @@ import {
   getCategoryDisplayLabel,
   getCategoryPresentation,
   getDisplayableCharacteristics,
+  isCommercialEquipmentCategorySlug,
 } from './category-presentation';
 
 describe('registre de présentation des catégories', () => {
@@ -181,6 +182,18 @@ describe('registre de présentation des catégories', () => {
     expect(getCategoryPresentation('unknown-family')).toBe(GENERIC_CATEGORY_PRESENTATION);
     expect(getCategoryPresentation('pedalboat')).not.toBe(GENERIC_CATEGORY_PRESENTATION);
     expect(getCategoryPresentation(undefined)).toBe(GENERIC_CATEGORY_PRESENTATION);
+  });
+
+  it('réserve l’action de duplication aux huit familles commerciales actives', () => {
+    expect(
+      ['bike', 'kayak', 'canoe', 'paddleboard', 'pedalboat', 'surf', 'ski', 'snowboard'].every(
+        (slug) => isCommercialEquipmentCategorySlug(slug),
+      ),
+    ).toBe(true);
+    expect(isCommercialEquipmentCategorySlug('equipment')).toBe(false);
+    expect(isCommercialEquipmentCategorySlug('paddle')).toBe(false);
+    expect(isCommercialEquipmentCategorySlug('custom-family')).toBe(false);
+    expect(isCommercialEquipmentCategorySlug(null)).toBe(false);
   });
 
   it('n’affiche pas d’attributs qui ne sont pas déclarés par la catégorie', () => {

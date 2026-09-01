@@ -19,6 +19,7 @@ import {
   updateVariant,
   activateDailyPricingPlan,
   publishFirstEquipment,
+  duplicateProduct,
   type ProductRecord,
   type CreateProductInput,
 } from '@uttily/core';
@@ -63,6 +64,37 @@ function parseProductId(formData: FormData): ParsedFailure | { productId: string
 
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
   return { productId };
+}
+
+function parseDuplicateProduct(formData: FormData):
+  | ParsedFailure
+  | {
+      sourceProductId: string;
+      idempotencyKey: string;
+      name?: string;
+      slug?: string;
+    } {
+  const fieldErrors: Record<string, string> = {};
+  const sourceProductId = String(formData.get('productId') ?? '');
+  const idempotencyKey = String(formData.get('idempotencyKey') ?? '').trim();
+  const name = String(formData.get('name') ?? '').trim();
+  const slug = String(formData.get('slug') ?? '').trim();
+
+  if (!isValidUuid(sourceProductId)) fieldErrors.productId = 'Produit source invalide.';
+  if (idempotencyKey.length < 1) {
+    fieldErrors.idempotencyKey = "La clé d'idempotence est requise.";
+  } else if (idempotencyKey.length > 200) {
+    fieldErrors.idempotencyKey = 'La clé ne doit pas dépasser 200 caractères.';
+  }
+
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+
+  return {
+    sourceProductId,
+    idempotencyKey,
+    ...(name ? { name } : {}),
+    ...(slug ? { slug } : {}),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -197,6 +229,39 @@ export async function restoreArchivedProductAction(
     revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
     revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${parsed.productId}`);
     return product;
+  });
+}
+
+/** Duplique uniquement le catalogue d’un équipement dans la même organisation. */
+export async function duplicateProductAction(
+  organizationId: string,
+  _prev: ActionResult<{ equipmentId: string }>,
+  formData: FormData,
+): Promise<ActionResult<{ equipmentId: string }>> {
+  const parsed = parseDuplicateProduct(formData);
+  if ('fieldErrors' in parsed) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Veuillez corriger les erreurs.',
+      fieldErrors: parsed.fieldErrors,
+    };
+  }
+
+  return runAction(async () => {
+    const { db, organizationId: authorizedOrgId } = await requireCatalogManagerOf(organizationId);
+    const product = await duplicateProduct(db, {
+      organizationId: authorizedOrgId,
+      sourceProductId: parsed.sourceProductId,
+      idempotencyKey: parsed.idempotencyKey,
+      ...(parsed.name ? { name: parsed.name } : {}),
+      ...(parsed.slug ? { slug: parsed.slug } : {}),
+    });
+
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${product.id}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${product.id}/setup`);
+    return { equipmentId: product.id };
   });
 }
 
