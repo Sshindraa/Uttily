@@ -9,6 +9,10 @@ import { BikeIdentityCard } from './components/identity-card';
 import { BikePhotosCard } from './components/photos-card';
 import { BikePricingCard } from './components/pricing-card';
 import { BikeInventoryCard } from './components/inventory-card';
+import {
+  getCategoryPresentation,
+  getDisplayableCharacteristics,
+} from '@/features/equipment/category-presentation';
 import styles from './bike-detail.module.css';
 
 export interface BikeDetailViewProps {
@@ -24,6 +28,9 @@ export function BikeDetailView({
   categories,
   locations,
 }: BikeDetailViewProps): React.ReactElement {
+  const presentation = getCategoryPresentation(bike.product.categorySlug);
+  const characteristics = getDisplayableCharacteristics(bike.variant.attributes, presentation);
+
   return (
     <div className={styles.container}>
       {/* Fil d'Ariane & Retour rapide */}
@@ -51,14 +58,24 @@ export function BikeDetailView({
           <div className={styles.titleArea}>
             <div className={styles.metaRow}>
               <span className={styles.categoryTag}>{bike.product.categoryName}</span>
+              <span className={styles.categoryTag}>{presentation.singularLabel}</span>
               <span>•</span>
               <span>
                 Version : <strong>{bike.variant.name}</strong>
               </span>
             </div>
             <h1 id="bike-heading" className={styles.bikeTitle}>
-              🧰 {bike.product.name}
+              {presentation.icon} {bike.product.name}
             </h1>
+            {characteristics.length > 0 && (
+              <div className={styles.metaRow} aria-label="Caractéristiques">
+                {characteristics.map((characteristic) => (
+                  <span key={characteristic.label}>
+                    {characteristic.label} : <strong>{characteristic.value}</strong>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
@@ -109,7 +126,10 @@ export function BikeDetailView({
             >
               {bike.photos.isComplete ? '✓' : '○'}
             </span>
-            <span>{bike.photos.count}/3 vues requises</span>
+            <span>
+              {bike.photos.count}/3{' '}
+              {presentation.specificSections.includes('photo-slots') ? 'vues requises' : 'photos'}
+            </span>
           </div>
 
           <span className={styles.summaryDivider}>|</span>
@@ -197,11 +217,13 @@ export function BikeDetailView({
           isPublicationReady={bike.publication.ready}
         />
 
-        <BikePhotosCard
-          organizationId={organizationId}
-          productId={bike.product.id}
-          photos={bike.photos}
-        />
+        {presentation.specificSections.includes('photo-slots') && (
+          <BikePhotosCard
+            organizationId={organizationId}
+            productId={bike.product.id}
+            photos={bike.photos}
+          />
+        )}
 
         <BikePricingCard
           organizationId={organizationId}

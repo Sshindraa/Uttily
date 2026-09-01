@@ -98,6 +98,7 @@ export interface UnifiedBikeSummary {
   name: string;
   slug: string;
   categoryName: string;
+  categorySlug: string;
   variantName: string;
   variantId: string;
   publicationStatus: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
@@ -502,6 +503,7 @@ export async function listUnifiedBikes(
       name: prod.name,
       slug: prod.slug,
       categoryName: prod.categoryName,
+      categorySlug: prod.categorySlug,
       variantName: primaryVariant.name,
       variantId: primaryVariant.id,
       publicationStatus: prod.publicationStatus as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',

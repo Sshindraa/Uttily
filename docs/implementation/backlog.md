@@ -302,6 +302,22 @@ aucune tâche de Phase 1 n'est engagée.
 | 21-U1-D22 — Fiches support internes | déplacer les fiches organisation et réservation, leurs styles et leurs actions client dans `apps/web/src/features/internal/` et garder la garde plateforme, les lectures Core et les 404 dans les routes | **Terminé le 2026-08-31** |
 | 21-U1-D23 — Consoles support internes | déplacer les consoles paiements, notifications et audit, leurs styles et leurs actions client dans `apps/web/src/features/internal/` et garder la garde plateforme, les filtres et les lectures Core dans les routes | **Terminé le 2026-08-31** |
 
+## Chantier 21-U2 — Premières surfaces universelles « Mes équipements »
+
+**Statut : tranche technique livrée le 2026-09-01 — Phase 2 ouverte uniquement
+sur ce périmètre ; aucune tâche de Phase 1 n'est modifiée.** ADR-034 ajoute un
+registre de présentation frontend avec fallback générique obligatoire. Les
+surfaces liste et fiche historiques `/bikes` consomment `categorySlug` pour
+présenter `equipment` et les catégories inconnues, tout en conservant les
+libellés, caractéristiques et sections spécifiques du vélo. Les gardes
+d'organisation, l'isolation tenant, le modèle Produit/Variante/Exemplaire, la
+disponibilité transactionnelle, les prix et les URLs restent inchangés.
+
+| Lot | Résultat | Statut |
+| --- | --- | --- |
+| 21-U2-A — Registre de présentation par catégorie | libellés singulier/pluriel, caractéristiques explicites, sections spécifiques, actions principales et fallback générique ; tests vélo, `equipment`, fallback et tenant | **Terminé le 2026-09-01 — ADR-034** |
+| 21-U2-B — Liste et fiche génériques | branchement limité aux surfaces « Mes équipements », états vides, titres, badges, synthèse photo et actions ; règles Photo Coach vélo conservées | **Terminé le 2026-09-01 — validation ciblée Web et typecheck** |
+
 ### Recherche par intention — UX accueil et résultats (2026-08-31)
 
 Palette transversale mise à jour à la demande du porteur de produit : gamme
