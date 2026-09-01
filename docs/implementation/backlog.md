@@ -249,23 +249,27 @@ complet sont validés dans
 
 ## Chantier 21-U1 — Frontend par routes, features et UI
 
-**Statut : Phase 0 techniquement finalisée le 2026-09-01 — ADR-033 accepté le 2026-08-31.** Les tranches livrées
+**Statut : Phase 0 clôturée le 2026-09-01 — ADR-033 accepté le 2026-08-31.** Les tranches livrées
 séparent les primitives UI, officialisent les shells, extraient le cockpit
 loueur et structurent la recherche, le checkout, les réservations, l'offre publique,
 l'onboarding, la flotte, les établissements et la maintenance par domaine sans modifier
 l'API publique de `@uttily/ui`, les URLs ou le comportement métier des routes. Le
 checkout courant ajoute aussi les extractions accueil, sélection d'organisation
 et support interne, supprime les façades devenues mortes et documente les
-assets retirés. Le commit local de clôture est
-`a235bfceab8c319fa391e147e7b62f6358d08cb9`. La base locale PostGIS a été
-migrée depuis zéro (50 entrées Drizzle), la suite Database PostgreSQL a passé
-24 fichiers et 816 tests sans skip, la suite Core PostgreSQL 158 fichiers et
-2 973 tests sans skip, et le restore drill réel a rendu `PASS`. `pnpm test`,
-`check:fast` (35/35), lint, format, typecheck, builds, smoke worker et Playwright
-public (16/16) sont validés. L'unique `pnpm test:full` final s'est terminé en
-échec dans l'exécution concurrente des workspaces ; aucun test n'a été modifié
-pour le masquer et le détail final n'est pas exploitable dans la sortie tronquée.
-L'E2E authentifié et la CI restent à exécuter.
+assets retirés. Le commit fonctionnel réécrit de clôture est
+`ee382ac`. La base locale PostGIS a été migrée depuis zéro (50 entrées Drizzle),
+la suite Database PostgreSQL a passé 24 fichiers et 816 tests sans skip, la suite
+Core PostgreSQL 158 fichiers et 2 973 tests sans skip, et le restore drill réel a
+rendu `PASS`. Le correctif d'orchestration séquence `test:full` avec
+`--workspace-concurrency=1` et son garde-fou est couvert ; `pnpm check:fast`,
+lint, format, typecheck, builds, smoke worker et Playwright public (16/16) sont
+validés. Après rebase sur `origin/main=aa1350d`, les quatre commits sont
+`ee382ac`, `04a9b88`, `4426da7` et `200a2f3`, avec un arbre fonctionnel inchangé
+par rapport à la sauvegarde `05ac1c3`. La CI parallèle est entièrement verte au
+run [#33498404591](https://github.com/Sshindraa/Uttily/actions/runs/33498404591),
+y compris les six shards Core et Browser acceptance ; les E2E authentifiés ont
+été validés avec les credentials Clerk TEST de la CI. La PR #40 est mergeable et
+aucune tâche de Phase 1 n'est engagée.
 
 | Lot | Périmètre | Statut |
 | --- | --- | --- |

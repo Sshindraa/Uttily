@@ -77,19 +77,23 @@ restent compatibles. Les URLs, redirections historiques, Server Actions,
 permissions, frontières Core, idempotence et isolation tenant n'ont pas été
 modifiées.
 
-Les preuves obtenues sur ce checkout sont les suivantes : commit local
-`a235bfceab8c319fa391e147e7b62f6358d08cb9`, migrations depuis une base vierge
-avec 50 entrées Drizzle, suite Database PostgreSQL locale (24 fichiers, 816
-tests passés, aucun skip), suite Core PostgreSQL complète (158 fichiers, 2 973
-tests passés, aucun skip), restore drill réel local `PASS`, lint, format, typecheck,
-build Web/worker, smoke du bundle worker, contrôles de recovery et Playwright
-public responsive/accessibilité (16/16). `pnpm test` et `pnpm check:fast`
-passent, ce dernier ayant confirmé 35/35 tests de scripts. L'unique
-`pnpm test:full` final s'est terminé en échec dans l'exécution concurrente des
-workspaces ; le détail final du test fautif n'est pas exploitable dans la sortie
-tronquée et aucun code n'a été modifié pour contourner ce résultat. Aucun parcours
-E2E authentifié n'a été exécuté faute de credentials Clerk TEST dédiés, et la CI
-n'a pas été lancée.
+Les preuves obtenues sur ce checkout sont les suivantes : migrations depuis une
+base vierge avec 50 entrées Drizzle, suite Database PostgreSQL locale (24
+fichiers, 816 tests passés, aucun skip), suite Core PostgreSQL complète (158
+fichiers, 2 973 tests passés, aucun skip), restore drill réel local `PASS`, lint,
+format, typecheck, build Web/worker, smoke du bundle worker, contrôles de
+recovery et Playwright public responsive/accessibilité (16/16). Le correctif
+final séquence désormais `test:full` avec `--workspace-concurrency=1` et son
+garde-fou est couvert ; `pnpm check:fast` passe avec 35/35 tests de scripts.
+Après rebase exact sur `origin/main` (`aa1350d`), les quatre commits propres sont
+`ee382ac`, `04a9b88`, `4426da7` et `200a2f3`. L'arbre fonctionnel est strictement
+identique à la sauvegarde du checkout précédent (`05ac1c3`), sans différence.
+La validation CI parallèle du run
+[#33498404591](https://github.com/Sshindraa/Uttily/actions/runs/33498404591)
+est entièrement verte, y compris les six shards Core, Database, Build, Quality,
+Verify et Browser acceptance ; ce dernier a validé les E2E authentifiés avec les
+credentials Clerk TEST de la CI. `pnpm test:full` n'a pas été relancé localement,
+conformément à la procédure de clôture.
 
 ## 4. Niveaux de priorité
 
@@ -137,10 +141,10 @@ globale de sortie reste conditionnée par le gate de la section 5.3.
 
 ### 5.3 Gate de sortie
 
-**Résultat au 2026-09-01 : `PARTIEL`.** Le commit local est créé et les preuves
-PostgreSQL Database, Core complet, migrations vierges et restore drill réel sont
-disponibles. Le run final `pnpm test:full`, l'E2E authentifié et la CI complète
-restent non validés.
+**Résultat au 2026-09-01 : `COMPLET`.** Les preuves PostgreSQL Database, Core
+complet, migrations vierges, restore drill réel, validation CI parallèle et E2E
+authentifié Browser sont disponibles. Le conflit de la PR #40 est résolu et la
+PR est mergeable ; aucune tâche de Phase 1 n'est ouverte par cette clôture.
 
 - arbre Git maîtrisé et commits cohérents ;
 - CI complète verte ;
