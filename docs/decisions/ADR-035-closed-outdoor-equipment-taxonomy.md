@@ -84,7 +84,9 @@ produit publié ni conversion historique. Le paddle réutilise le parcours
 générique Produit → Variante → Exemplaire, les trois photos valides requises,
 la tarification, la disponibilité, la publication, la recherche, le hold, le
 paiement TEST et la réservation. Il n'active ni Photo Coach, ni slots photo
-vélo, ni règle kayak/canoë, ni moteur de packs. Le pédalo reste inactif.
+vélo, ni règle kayak/canoë, ni moteur de packs. Le pédalo reste inactif ; sa
+préparation sans activation est documentée dans
+[ADR-036](ADR-036-pedalboat-preparation.md).
 
 Le surf est actif uniquement pour la famille `surf` et les sous-types
 descriptifs `classic`, `longboard`, `softboard`, `bodyboard` et `skimboard`.

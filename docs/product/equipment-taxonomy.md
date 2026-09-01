@@ -67,6 +67,26 @@ valides requises avant publication, la recherche, la réservation, le hold et
 le paiement TEST. Il n'active ni Photo Coach, ni slots photo vélo, ni règle
 kayak/canoë, ni moteur de packs. Le pédalo reste inactif.
 
+### Préparation pédalo (sans activation)
+
+Le contrat proposé réserve le slug interne `pedalboat` à une famille unique de
+l'univers nautique. Les libellés proposés sont « Pédalo » en français et
+« Pedal boat » en anglais. Une capacité pourra éventuellement réutiliser les
+attributs de variante existants ; aucune dimension, propulsion ou information
+de sécurité ne devient obligatoire.
+
+Cette proposition reste `INACTIVE` et n'est pas ajoutée au registre des
+familles commerciales actives. Tant que la décision d'activation n'est pas
+prise, `pedalboat` est non supporté par les flux commerciaux : aucune migration,
+fixture publiée, recherche, onboarding, offre publiable ou réservation n'est
+créée. La présentation future sera nautique générique, avec photos neutres,
+sans Photo Coach, slots vélo ni règle spécialisée réutilisée.
+
+Le modèle Produit → Variante → Exemplaire, `equipment`, `paddle` et toutes les
+données historiques restent inchangés. Voir
+[`ADR-036`](../decisions/ADR-036-pedalboat-preparation.md) pour la décision à
+obtenir avant activation.
+
 ## Registre fermé côté serveur
 
 La source de vérité typée est
@@ -82,6 +102,10 @@ Elle distingue :
 - `INTERNAL_FALLBACK` : `equipment`, compatibilité technique uniquement ;
 - valeur inconnue : résolution `UNSUPPORTED`, sans conversion en catégorie
   commerciale.
+
+Le slug proposé `pedalboat` reste volontairement hors de ce registre tant que
+son activation n'est pas décidée ; il est couvert par la préparation
+documentaire d'ADR-036 et le fallback générique existant.
 
 L'activation du kayak ajoute sa catégorie canonique via la migration 0051 et
 met à jour uniquement la fixture locale `kayak-dev`. Les produits historiques
