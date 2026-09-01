@@ -264,6 +264,9 @@ verte, y compris Browser acceptance avec les credentials Clerk TEST.
 produits `equipment`; la fixture `kayak-dev` utilise cette catégorie. Le kayak
 réutilise le parcours générique complet et affiche `capacity`, `construction`
 et `practice` seulement lorsqu'ils existent, sans Photo Coach ni règle vélo.
+Commit `2570a81`, PR #44 et CI complète verte, Browser acceptance compris.
+Les tests d'intégration PostgreSQL locaux ont été délégués à cette CI, la base
+locale étant indisponible pendant la validation.
 
 ### 7.2 Onboarding autonome
 
