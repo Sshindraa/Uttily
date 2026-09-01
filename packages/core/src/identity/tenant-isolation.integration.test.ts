@@ -131,7 +131,7 @@ beforeEach(async () => {
 
   const catRow = await rawSql`
     INSERT INTO categories (name, slug)
-    VALUES ('Vélos', ${`cat-${suffix}`})
+    VALUES ('Vélos', 'bike')
     RETURNING id
   `.then((r) => r[0]!);
   categoryId = catRow.id;

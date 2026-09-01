@@ -211,7 +211,7 @@ async function seedBaseData(owner: AuthenticatedUser): Promise<BaseIds> {
     name: 'Annecy',
     timeZone: 'Europe/Paris',
   });
-  const categoryId = await getCategoryId('equipment');
+  const categoryId = await getCategoryId('kayak');
   const product = await createProduct(testDb, {
     organizationId: organization.id,
     categoryId,

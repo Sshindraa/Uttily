@@ -14,8 +14,7 @@ import { CatalogError, isUniqueViolation } from './errors';
 import { missingRequiredBikePhotoSlots } from '../photos/photo-publication-rules';
 import { isCommerciallyActiveEquipmentFamily, resolveEquipmentFamily } from './equipment-taxonomy';
 
-const COMMERCIAL_CATEGORY_ERROR =
-  'La catégorie n’est pas une famille commerciale active.';
+const COMMERCIAL_CATEGORY_ERROR = 'La catégorie n’est pas une famille commerciale active.';
 
 function getCommercialCategoryFailure(
   category: { slug: string; isActive: boolean } | null | undefined,
@@ -475,10 +474,7 @@ export async function publishProduct(
       .limit(1);
     const categoryFailure = getCommercialCategoryFailure(category);
     if (categoryFailure) {
-      throw new CatalogError(
-        'PUBLISH_INCOMPLETE',
-        `Publication impossible:\n- ${categoryFailure}`,
-      );
+      throw new CatalogError('PUBLISH_INCOMPLETE', `Publication impossible:\n- ${categoryFailure}`);
     }
 
     // Vérifie la readiness via le helper partagé.

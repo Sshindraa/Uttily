@@ -185,7 +185,7 @@ async function seedJourneyFixture(suffix = SUFFIX()): Promise<JourneyIds> {
     RETURNING "id"
   `.then((r) => r[0]!);
 
-  const category = await sql`SELECT "id" FROM "categories" WHERE "slug" = 'equipment' LIMIT 1`.then(
+  const category = await sql`SELECT "id" FROM "categories" WHERE "slug" = 'kayak' LIMIT 1`.then(
     (r) => r[0]!,
   );
 

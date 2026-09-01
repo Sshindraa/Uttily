@@ -170,10 +170,32 @@ async function insertProductFixture(
   if (!db) throw new Error('db not initialized');
   const rows = await db.execute<{ id: string }>(sql`
     INSERT INTO products (organization_id, category_id, name, slug, description, publication_status)
-    VALUES (${organizationId}, ${categoryId}, ${slug}, ${slug}, 'Fixture historique', ${publicationStatus})
+    VALUES (${organizationId}, ${categoryId}, ${slug}, ${slug}, 'Fixture historique', 'DRAFT')
     RETURNING id
   `);
-  return rows[0]!.id;
+  const productId = rows[0]!.id;
+  if (publicationStatus === 'PUBLISHED') {
+    for (let i = 0; i < 3; i++) {
+      await db.execute(sql`
+        INSERT INTO product_photos (
+          organization_id, product_id, storage_key,
+          content_type, byte_size, width_px, height_px, checksum_sha256,
+          sort_order, file_state
+        )
+        VALUES (
+          ${organizationId}, ${productId}, ${'product-photos/' + slug + '-' + i},
+          'image/jpeg', 102400, 800, 600, ${('000' + i).repeat(16).slice(0, 64)},
+          ${i}, 'AVAILABLE'
+        )
+      `);
+    }
+  }
+  if (publicationStatus !== 'DRAFT') {
+    await db.execute(sql`
+      UPDATE products SET publication_status = ${publicationStatus} WHERE id = ${productId}
+    `);
+  }
+  return productId;
 }
 
 describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-tenant', () => {
@@ -239,7 +261,11 @@ describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-ten
       ).rejects.toThrow();
     }
 
-    const { product } = await createProductForOrg(organizationId, 'Category Change Product', 'bike');
+    const { product } = await createProductForOrg(
+      organizationId,
+      'Category Change Product',
+      'bike',
+    );
     const equipmentId = categoryBySlug.get('equipment')?.id;
     if (!equipmentId) throw new Error('Catégorie equipment absente.');
     await expect(

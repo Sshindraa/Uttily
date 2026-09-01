@@ -4,10 +4,7 @@ import { categories } from '@uttily/database';
 import type { CategoryRecord, CreateCategoryInput, UpdateCategoryInput } from './types';
 import { isValidSlug } from '../identity/slug';
 import { AuthorizationError } from '../identity/permissions';
-import {
-  isCommerciallyActiveEquipmentFamily,
-  resolveEquipmentFamily,
-} from './equipment-taxonomy';
+import { isCommerciallyActiveEquipmentFamily, resolveEquipmentFamily } from './equipment-taxonomy';
 
 /**
  * Compte la profondeur d'une catégorie en remontant la chaîne parent_id.
@@ -83,9 +80,7 @@ export async function listActiveCategories(db: DbExecutor): Promise<CategoryReco
 }
 
 /** Catégories proposées dans les parcours commerciaux loueur. */
-export async function listCommerciallyActiveCategories(
-  db: DbExecutor,
-): Promise<CategoryRecord[]> {
+export async function listCommerciallyActiveCategories(db: DbExecutor): Promise<CategoryRecord[]> {
   const rows = await db.select().from(categories).where(eq(categories.isActive, true));
   return rows
     .filter((category) => {
