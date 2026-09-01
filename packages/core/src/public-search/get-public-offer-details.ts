@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, isNull, or } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import {
+  categories,
   countries,
   locationOpeningHours,
   locations,
@@ -10,6 +11,7 @@ import {
   products,
   productVariants,
 } from '@uttily/database';
+import { isPaddleReadinessCategorySlug } from '../catalog/equipment-taxonomy';
 import type {
   GetPublicOfferDetailsInput,
   GetPublicOfferDetailsResult,
@@ -76,6 +78,7 @@ export async function getPublicOfferDetails(
       productDescription: products.description,
       productPublicationStatus: products.publicationStatus,
       productDeletedAt: products.deletedAt,
+      categorySlug: categories.slug,
       productOrgId: products.organizationId,
       orgId: organizations.id,
       orgLegalName: organizations.legalName,
@@ -100,6 +103,7 @@ export async function getPublicOfferDetails(
     .from(products)
     .innerJoin(organizations, eq(organizations.id, products.organizationId))
     .innerJoin(locations, eq(locations.publicId, cleanPublicLocationId))
+    .leftJoin(categories, eq(categories.id, products.categoryId))
     .leftJoin(countries, eq(countries.countryCode, locations.countryCode))
     .where(eq(products.publicId, cleanPublicProductId))
     .limit(1);
@@ -116,6 +120,10 @@ export async function getPublicOfferDetails(
   }
 
   if (r.productPublicationStatus !== 'PUBLISHED') {
+    return { kind: 'NOT_FOUND' };
+  }
+
+  if (isPaddleReadinessCategorySlug(r.categorySlug)) {
     return { kind: 'NOT_FOUND' };
   }
 

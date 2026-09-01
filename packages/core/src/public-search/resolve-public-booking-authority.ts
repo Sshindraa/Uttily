@@ -1,6 +1,14 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
-import { countries, locations, organizations, products, productVariants } from '@uttily/database';
+import {
+  categories,
+  countries,
+  locations,
+  organizations,
+  products,
+  productVariants,
+} from '@uttily/database';
+import { isPaddleReadinessCategorySlug } from '../catalog/equipment-taxonomy';
 import type {
   PublicProductPublicationGate,
   ResolvePublicBookingAuthorityInput,
@@ -58,6 +66,7 @@ export async function resolvePublicBookingAuthority(
       productOrgId: products.organizationId,
       productPublicationStatus: products.publicationStatus,
       productDeletedAt: products.deletedAt,
+      categorySlug: categories.slug,
       orgId: organizations.id,
       orgDeletedAt: organizations.deletedAt,
       locationId: locations.id,
@@ -75,6 +84,7 @@ export async function resolvePublicBookingAuthority(
     .from(products)
     .innerJoin(organizations, eq(organizations.id, products.organizationId))
     .innerJoin(locations, eq(locations.publicId, cleanPublicLocationId))
+    .leftJoin(categories, eq(categories.id, products.categoryId))
     .leftJoin(countries, eq(countries.countryCode, locations.countryCode))
     .where(eq(products.publicId, cleanPublicProductId))
     .limit(1);
@@ -91,6 +101,10 @@ export async function resolvePublicBookingAuthority(
   }
 
   if (r.productPublicationStatus !== 'PUBLISHED') {
+    return { kind: 'NOT_FOUND' };
+  }
+
+  if (isPaddleReadinessCategorySlug(r.categorySlug)) {
     return { kind: 'NOT_FOUND' };
   }
 

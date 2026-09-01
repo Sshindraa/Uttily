@@ -1,3 +1,5 @@
+import { PADDLE_READINESS_CONTRACT, isPaddleReadinessCategorySlug } from '@uttily/core';
+
 export interface CategoryCharacteristic {
   readonly key: string;
   readonly label: string;
@@ -13,6 +15,12 @@ export interface CategoryPresentation {
   readonly specificSections: readonly string[];
   readonly primaryActionLabel: string;
   readonly setupActionLabel: string;
+}
+
+export interface InactiveCategoryPresentation {
+  readonly proposedSlug: string;
+  readonly status: 'INACTIVE';
+  readonly presentation: CategoryPresentation;
 }
 
 /**
@@ -39,6 +47,21 @@ export const GENERIC_WATERCRAFT_CATEGORY_PRESENTATION: CategoryPresentation = {
   primaryActionLabel: 'Gérer l’équipement',
   setupActionLabel: 'Continuer la configuration',
 };
+
+/** Présentation préparée uniquement pour documenter le futur paddle. */
+export const PADDLE_READINESS_PRESENTATION: InactiveCategoryPresentation = Object.freeze({
+  proposedSlug: PADDLE_READINESS_CONTRACT.proposedSlug,
+  status: PADDLE_READINESS_CONTRACT.status,
+  presentation: Object.freeze({
+    singularLabel: 'paddle',
+    pluralLabel: 'paddles',
+    icon: '🛟',
+    characteristics: [],
+    specificSections: [],
+    primaryActionLabel: 'Gérer l’équipement',
+    setupActionLabel: 'Continuer la configuration',
+  }),
+});
 
 const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
   bike: {
@@ -108,6 +131,10 @@ const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
     primaryActionLabel: 'Gérer l’équipement',
     setupActionLabel: 'Continuer la configuration',
   },
+  // Ces entrées servent uniquement aux données historiques ou à la préparation
+  // interne ; le registre serveur ne les considère pas comme commerciales.
+  paddle: PADDLE_READINESS_PRESENTATION.presentation,
+  [PADDLE_READINESS_CONTRACT.proposedSlug]: PADDLE_READINESS_PRESENTATION.presentation,
   equipment: GENERIC_CATEGORY_PRESENTATION,
 };
 
@@ -149,7 +176,12 @@ export function getCategoryDisplayLabel(
   categorySlug: string | null | undefined,
   storedName: string,
 ): string {
-  if (categorySlug === 'ski' || categorySlug === 'kayak' || categorySlug === 'canoe') {
+  if (
+    categorySlug === 'ski' ||
+    categorySlug === 'kayak' ||
+    categorySlug === 'canoe' ||
+    isPaddleReadinessCategorySlug(categorySlug)
+  ) {
     return getCategoryPresentation(categorySlug).singularLabel;
   }
   return storedName;
