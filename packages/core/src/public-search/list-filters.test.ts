@@ -6,6 +6,7 @@ describe('filtrage des catégories publiques', () => {
     const rows = [
       { id: 'legacy-paddle', slug: 'paddle', name: 'Paddle' },
       { id: 'paddleboard', slug: 'paddleboard', name: 'Paddle' },
+      { id: 'pedalboat', slug: 'pedalboat', name: 'Pédalo' },
       { id: 'equipment', slug: 'equipment', name: 'Équipement' },
       { id: 'kayak', slug: 'kayak', name: 'Kayak' },
     ];

@@ -136,6 +136,15 @@ describe('closed outdoor equipment taxonomy', () => {
     expect(isCommerciallyActiveEquipmentFamily('paddle')).toBe(false);
   });
 
+  it('garde le pédalo hors du registre commercial tant que son activation n’est pas décidée', () => {
+    expect(resolveEquipmentFamily('pedalboat')).toEqual({
+      kind: 'UNSUPPORTED',
+      slug: 'pedalboat',
+    });
+    expect(isCommerciallyActiveEquipmentFamily('pedalboat')).toBe(false);
+    expect(COMMERCIAL_EQUIPMENT_FAMILY_SLUGS).not.toContain('pedalboat');
+  });
+
   it('publishes the future accessory vocabulary without creating an engine', () => {
     expect(ACCESSORY_MODES).toEqual([
       'INCLUDED',

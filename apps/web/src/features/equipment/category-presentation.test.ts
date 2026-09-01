@@ -160,6 +160,7 @@ describe('registre de présentation des catégories', () => {
 
   it('retombe sur une présentation générique pour toute catégorie inconnue', () => {
     expect(getCategoryPresentation('unknown-family')).toBe(GENERIC_CATEGORY_PRESENTATION);
+    expect(getCategoryPresentation('pedalboat')).toBe(GENERIC_CATEGORY_PRESENTATION);
     expect(getCategoryPresentation(undefined)).toBe(GENERIC_CATEGORY_PRESENTATION);
   });
 

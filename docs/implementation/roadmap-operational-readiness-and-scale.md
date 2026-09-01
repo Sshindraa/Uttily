@@ -350,6 +350,17 @@ historiques restent lisibles sans conversion ni suppression et ne peuvent pas
 être publiés ou restaurés. Aucun schéma, URL, invariant de prix,
 disponibilité, tenant, maintenance, réservation ou paiement n'est modifié.
 
+**Préparation pédalo livrée le 2026-09-01 :** le slug interne proposé
+`pedalboat` reste une préparation `INACTIVE`, hors du registre commercial actif
+et hors des sept familles publiables. Le contrat prévoit une famille unique,
+les libellés « Pédalo » / « Pedal boat », une capacité éventuellement portée
+par les attributs de variante existants, le modèle Produit → Variante →
+Exemplaire et une présentation nautique générique avec photos neutres. Aucun
+schéma, migration, fixture publiée, filtre de recherche, onboarding, offre
+réservable ou moteur de compléments n'est ajouté ; `equipment`, `paddle` et les
+données historiques restent inchangés. L'activation exige une décision produit
+explicite et des preuves dédiées.
+
 ### 7.2 Onboarding autonome
 
 - organisation, identité légale et Stripe Connect ;

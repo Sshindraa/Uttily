@@ -24,6 +24,7 @@
 | [ADR-030](decisions/ADR-030-split-refund-policy.md) | Politique proposée de remboursement split, soumise à validation Finance/Juridique. |
 | [ADR-031](decisions/ADR-031-category-photo-requirements-and-publication-gate.md) | Slots photo obligatoires du pilote vélo ; règle générique conservée pour les autres catégories. |
 | [ADR-035](decisions/ADR-035-closed-outdoor-equipment-taxonomy.md) | Taxonomie commerciale outdoor fermée et registre serveur des familles. |
+| [ADR-036](decisions/ADR-036-pedalboat-preparation.md) | Préparation du pédalo sans activation commerciale. |
 
 ## Règle de maintenance
 
