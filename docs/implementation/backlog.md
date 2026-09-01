@@ -256,9 +256,14 @@ l'onboarding, la flotte, les établissements et la maintenance par domaine sans 
 l'API publique de `@uttily/ui`, les URLs ou le comportement métier des routes. Le
 checkout courant ajoute aussi les extractions accueil, sélection d'organisation
 et support interne, supprime les façades devenues mortes et documente les
-assets retirés. Les tests, builds et validations navigateur locales sont verts ;
-PostgreSQL réel, recovery réel, CI et intégration Git restent à prouver dans
-leur environnement autorisé.
+assets retirés. Le commit local de clôture est
+`a235bfceab8c319fa391e147e7b62f6358d08cb9`. La base locale PostGIS a été
+migrée depuis zéro (50 entrées Drizzle), la suite Database PostgreSQL a passé
+24 fichiers et 816 tests sans skip, et le restore drill réel a rendu `PASS`.
+`pnpm test`, lint, format, typecheck, builds, smoke worker et Playwright public
+(16/16) sont validés. `check:fast` reste bloqué par un échec isolé du test de
+terminaison de processus non modifié ; la suite Core PostgreSQL complète a été
+interrompue pour durée excessive. L'E2E authentifié et la CI restent à exécuter.
 
 | Lot | Périmètre | Statut |
 | --- | --- | --- |

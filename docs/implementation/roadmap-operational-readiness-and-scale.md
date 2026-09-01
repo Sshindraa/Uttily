@@ -77,13 +77,17 @@ restent compatibles. Les URLs, redirections historiques, Server Actions,
 permissions, frontières Core, idempotence et isolation tenant n'ont pas été
 modifiées.
 
-Les validations locales disponibles sont vertes : `pnpm test`,
-`pnpm check:fast`, `pnpm test:full`, lint, format, typecheck, build Web/worker,
-smoke du bundle worker, contrôles de recovery et matrice Playwright
-responsive/accessibilité (16 tests séquentiels). `test:full` laisse toutefois
-les suites dépendantes de PostgreSQL en skip lorsque `DATABASE_URL` est absente.
-La suite PostgreSQL CI, le restore drill réel, la validation CI et l'intégration
-dans un commit cohérent restent à exécuter dans leur environnement autorisé.
+Les preuves obtenues sur ce checkout sont les suivantes : commit local
+`a235bfceab8c319fa391e147e7b62f6358d08cb9`, migrations depuis une base vierge
+avec 50 entrées Drizzle, suite Database PostgreSQL locale (24 fichiers, 816
+tests passés, aucun skip), restore drill réel local `PASS`, lint, format, typecheck,
+build Web/worker, smoke du bundle worker, contrôles de recovery et Playwright
+public responsive/accessibilité (16/16). `pnpm test` passe. En revanche,
+`pnpm check:fast` reste non vert à cause d'un échec isolé du test de terminaison
+de processus (`scripts/dev-local.test.mjs`), sans modification du test ; la suite Core
+PostgreSQL complète a été interrompue pour durée excessive et `pnpm test:full`
+n'a pas été relancé sur ce checkout. Aucun parcours E2E authentifié n'a été
+exécuté faute de credentials Clerk TEST dédiés, et la CI n'a pas été lancée.
 
 ## 4. Niveaux de priorité
 
@@ -131,10 +135,10 @@ globale de sortie reste conditionnée par le gate de la section 5.3.
 
 ### 5.3 Gate de sortie
 
-**Résultat au 2026-09-01 : `PARTIEL`.** Les contrôles locaux de code, tests,
-build, smoke worker et navigateur sont passés. L'arbre était déjà modifié au
-démarrage et aucun commit n'a été créé ; les validations PostgreSQL/recovery
-réelles, la CI complète et l'intégration Git restent donc non prouvées.
+**Résultat au 2026-09-01 : `PARTIEL`.** Le commit local est créé et les preuves
+PostgreSQL Database, migrations vierges et restore drill réel sont disponibles.
+Le test de terminaison de `check:fast`, la suite Core PostgreSQL complète,
+l'E2E authentifié et la CI complète restent non validés.
 
 - arbre Git maîtrisé et commits cohérents ;
 - CI complète verte ;
