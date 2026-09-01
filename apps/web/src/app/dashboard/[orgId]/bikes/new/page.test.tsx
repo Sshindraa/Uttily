@@ -17,11 +17,14 @@ describe('NewBikePage (/bikes/new)', () => {
     expect(pageSource).not.toContain('listCategories(db)');
   });
 
-  it('propose un formulaire simple d’étape 1 et appelle createBikeDraftAction', () => {
-    expect(formSource).toContain('createBikeDraftAction');
-    expect(formSource).toContain('Étape 1 sur 5');
+  it('propose le premier équipement et appelle la mutation générique', () => {
+    expect(formSource).toContain('createFirstEquipmentDraftAction');
+    expect(formSource).not.toContain('createBikeDraftAction');
+    expect(formSource).toContain('Étape 1 · Catégorie, produit et variante');
     expect(formSource).toContain('Nom commercial de l’équipement');
-    expect(formSource).toContain('Taille / Version');
+    expect(formSource).toContain('Variante initiale (facultatif)');
+    expect(formSource).toContain('Laisser vide crée la variante « Standard »');
+    expect(formSource).not.toContain('Taille / Version');
     expect(formSource).toContain('/setup');
   });
 

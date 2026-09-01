@@ -15,6 +15,7 @@ import {
   getProduct,
   updateProduct,
   publishProduct,
+  publishFirstEquipment,
   archiveProduct,
   restoreArchivedProduct,
   listVariants,
@@ -37,6 +38,8 @@ import {
   getInventoryDetails,
   listActiveVariantOptions,
   getProductPublicationReadiness,
+  saveDailyPricingPlanDraft,
+  activateDailyPricingPlan,
   COMMERCIAL_EQUIPMENT_FAMILY_SLUGS,
   type AuthenticatedUser,
 } from '../index';
@@ -437,6 +440,47 @@ describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-ten
     const { product } = await createProductForOrg(organizationId, 'Pub NoStock Product');
     const published = await publishProduct(db, organizationId, product.id);
     expect(published.publicationStatus).toBe('PUBLISHED');
+  });
+
+  it('publication guidée du premier équipement exige tarif et exemplaire actifs', async () => {
+    if (!ctx || !db) return;
+    const { organizationId, locationId } = await setupOrgWithLocation(
+      'first-equipment-gate@example.com',
+      'First Equipment Gate Org',
+    );
+    const { product, variantId } = await createProductForOrg(
+      organizationId,
+      'First Equipment Gate Product',
+      'pedalboat',
+    );
+
+    await expect(publishFirstEquipment(db, organizationId, product.id)).rejects.toThrow(
+      /tarif actif/,
+    );
+
+    const draftPlan = await saveDailyPricingPlanDraft(db, {
+      organizationId,
+      variantId,
+      locationId,
+      priceAmountMinor: 2500,
+      currency: 'EUR',
+    });
+    await activateDailyPricingPlan(db, organizationId, draftPlan.id);
+
+    await expect(publishFirstEquipment(db, organizationId, product.id)).rejects.toThrow(
+      /exemplaire physique actif/,
+    );
+
+    await createInventoryItem(db, {
+      organizationId,
+      productVariantId: variantId,
+      internalSku: 'FIRST-EQUIPMENT-001',
+      currentLocationId: locationId,
+    });
+
+    await expect(publishFirstEquipment(db, organizationId, product.id)).resolves.toMatchObject({
+      publicationStatus: 'PUBLISHED',
+    });
   });
 
   it('publication vélo : les trois slots canoniques sont requis', async () => {

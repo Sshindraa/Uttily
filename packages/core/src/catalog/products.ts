@@ -1,6 +1,13 @@
 import { and, eq, inArray, isNull, count, sql } from 'drizzle-orm';
 import type { DatabaseClient, DbExecutor } from '@uttily/database';
-import { categories, products, productVariants, productPhotos } from '@uttily/database';
+import {
+  categories,
+  products,
+  productVariants,
+  productPhotos,
+  pricingPlans,
+  inventoryItems,
+} from '@uttily/database';
 import { REQUIRED_BIKE_PHOTO_SLOTS } from '@uttily/contracts';
 import type {
   ProductRecord,
@@ -30,7 +37,7 @@ function getCommercialCategoryFailure(
 }
 
 /**
- * Crée un produit et sa variante "Standard" atomiquement.
+ * Crée un produit et sa première variante atomiquement.
  * Le produit est créé en DRAFT ; la publication est une opération distincte.
  */
 export async function createProduct(
@@ -48,6 +55,11 @@ export async function createProduct(
     throw new CatalogError('VALIDATION', msg, { slug: msg });
   }
   const description = input.description ?? '';
+  const initialVariantName = input.initialVariantName?.trim() || 'Standard';
+  if (initialVariantName.length < 1) {
+    const msg = 'Le nom de la variante est requis.';
+    throw new CatalogError('VALIDATION', msg, { initialVariantName: msg });
+  }
 
   return await db.transaction(async (tx) => {
     // Verrouille la catégorie et applique le registre fermé avant l'insertion.
@@ -102,10 +114,10 @@ export async function createProduct(
     }
     if (!product) throw new CatalogError('UNKNOWN', 'Échec de création du produit.');
 
-    // Crée la variante "Standard" atomiquement.
+    // Crée la variante initiale atomiquement ("Standard" par défaut).
     await tx.insert(productVariants).values({
       productId: product.id,
-      name: 'Standard',
+      name: initialVariantName,
       attributes: {},
       isActive: true,
     });
@@ -445,6 +457,7 @@ export async function publishProduct(
   db: DatabaseClient,
   organizationId: string,
   productId: string,
+  options: { requireOfferReadiness?: boolean } = {},
 ): Promise<ProductRecord> {
   return await db.transaction(async (tx) => {
     // Verrouille le produit.
@@ -486,6 +499,51 @@ export async function publishProduct(
       );
     }
 
+    if (options.requireOfferReadiness) {
+      const [activePlan] = await tx
+        .select({ id: pricingPlans.id })
+        .from(pricingPlans)
+        .innerJoin(productVariants, eq(pricingPlans.productVariantId, productVariants.id))
+        .where(
+          and(
+            eq(pricingPlans.organizationId, organizationId),
+            eq(productVariants.productId, product.id),
+            eq(productVariants.isActive, true),
+            eq(pricingPlans.lifecycleState, 'ACTIVE'),
+            isNull(productVariants.deletedAt),
+          ),
+        )
+        .limit(1);
+      if (!activePlan) {
+        throw new CatalogError(
+          'PUBLISH_INCOMPLETE',
+          'Publication impossible:\n- Un tarif actif est requis pour rendre l’offre réservable.',
+        );
+      }
+
+      const [activeInventory] = await tx
+        .select({ id: inventoryItems.id })
+        .from(inventoryItems)
+        .innerJoin(productVariants, eq(inventoryItems.productVariantId, productVariants.id))
+        .where(
+          and(
+            eq(inventoryItems.organizationId, organizationId),
+            eq(productVariants.productId, product.id),
+            eq(productVariants.isActive, true),
+            eq(inventoryItems.status, 'ACTIVE'),
+            isNull(inventoryItems.deletedAt),
+            isNull(productVariants.deletedAt),
+          ),
+        )
+        .limit(1);
+      if (!activeInventory) {
+        throw new CatalogError(
+          'PUBLISH_INCOMPLETE',
+          'Publication impossible:\n- Au moins un exemplaire physique actif est requis pour la disponibilité.',
+        );
+      }
+    }
+
     const [row] = await tx
       .update(products)
       .set({ publicationStatus: 'PUBLISHED', updatedAt: new Date() })
@@ -523,6 +581,19 @@ export async function restoreArchivedProduct(
   productId: string,
 ): Promise<ProductRecord> {
   return publishProduct(db, organizationId, productId);
+}
+
+/**
+ * Publication guidée du premier équipement : elle conserve la publication
+ * générique et ajoute uniquement le contrôle serveur de l'offre réservable.
+ * Les appels historiques à `publishProduct` gardent leur contrat inchangé.
+ */
+export async function publishFirstEquipment(
+  db: DatabaseClient,
+  organizationId: string,
+  productId: string,
+): Promise<ProductRecord> {
+  return publishProduct(db, organizationId, productId, { requireOfferReadiness: true });
 }
 
 /**

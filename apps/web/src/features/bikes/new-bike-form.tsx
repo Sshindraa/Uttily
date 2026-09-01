@@ -3,8 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { createBikeDraftAction } from '@/app/actions/products';
-import { getCategoryDisplayLabel } from '@/features/equipment/category-presentation';
+import { createFirstEquipmentDraftAction } from '@/app/actions/products';
+import {
+  getCategoryDisplayLabel,
+  getCategoryPresentation,
+} from '@/features/equipment/category-presentation';
 import styles from './new-bike.module.css';
 
 interface CategoryOption {
@@ -22,10 +25,12 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
   const router = useRouter();
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '');
-  const [size, setSize] = useState('M');
+  const [variantName, setVariantName] = useState('');
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const selectedCategory = categories.find((category) => category.id === categoryId);
+  const categoryPresentation = getCategoryPresentation(selectedCategory?.slug);
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -36,10 +41,10 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
       const formData = new FormData();
       formData.set('name', name);
       formData.set('categoryId', categoryId);
-      formData.set('size', size);
+      if (variantName.trim()) formData.set('variantName', variantName.trim());
       formData.set('description', description);
 
-      const res = await createBikeDraftAction(
+      const res = await createFirstEquipmentDraftAction(
         organizationId,
         { ok: false, code: 'UNKNOWN', message: '' },
         formData,
@@ -49,8 +54,7 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
         throw new Error(res.message || 'Erreur lors de la création de l’équipement.');
       }
 
-      // Redirection immédiate vers le setup de l’équipement avec son bikeId réel
-      router.push(`/dashboard/${organizationId}/bikes/${res.data.bikeId}/setup`);
+      router.push(`/dashboard/${organizationId}/bikes/${res.data.equipmentId}/setup`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue.');
       setIsLoading(false);
@@ -64,30 +68,30 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
           ← Mes équipements
         </Link>
         <span>/</span>
-        <span>Nouvel équipement</span>
+        <span>Premier équipement</span>
       </nav>
 
       <div className={styles.card}>
         <div className={styles.stepHeader}>
-          <span className={styles.stepBadge}>Étape 1 sur 5</span>
+          <span className={styles.stepBadge}>Étape 1 · Catégorie, produit et variante</span>
           <span className={styles.autosaveBadge}>Sauvegarde automatique activée</span>
         </div>
 
         <h1 className={styles.title}>🧰 Quel équipement proposez-vous ?</h1>
         <p className={styles.subtitle}>
-          Renseignez le modèle de votre équipement. Dès cette étape validée, votre brouillon est
-          sécurisé et vous pourrez reprendre sa configuration à tout moment.
+          Choisissez une famille active, renseignez votre produit et sa variante initiale. Le
+          brouillon sera ensuite complété avec un exemplaire, un lieu, un tarif et trois photos.
         </p>
 
         {error && <div className={styles.errorAlert}>{error}</div>}
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.formGroup}>
-            <label htmlFor="bike-name" className={styles.label}>
+            <label htmlFor="equipment-name" className={styles.label}>
               Nom commercial de l’équipement :
             </label>
             <input
-              id="bike-name"
+              id="equipment-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -100,11 +104,11 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
 
           <div className={styles.row}>
             <div className={styles.formGroup}>
-              <label htmlFor="bike-category" className={styles.label}>
+              <label htmlFor="equipment-category" className={styles.label}>
                 Catégorie :
               </label>
               <select
-                id="bike-category"
+                id="equipment-category"
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
                 className={styles.input}
@@ -120,20 +124,38 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
             </div>
 
             <div className={styles.formGroup}>
-              <label htmlFor="bike-size" className={styles.label}>
-                Taille / Version :
+              <label htmlFor="equipment-variant" className={styles.label}>
+                Variante initiale (facultatif) :
               </label>
               <input
-                id="bike-size"
+                id="equipment-variant"
                 type="text"
-                value={size}
-                onChange={(e) => setSize(e.target.value)}
-                placeholder="ex : Standard, Taille Unique, Version renforcée..."
+                value={variantName}
+                onChange={(e) => setVariantName(e.target.value)}
+                placeholder="ex. Standard, M, Tandem, Version renforcée…"
                 className={styles.input}
-                required
                 disabled={isLoading}
               />
+              <span style={{ fontSize: '0.82rem', color: 'var(--ut-color-ink-muted)' }}>
+                Laisser vide crée la variante « Standard ». Aucune caractéristique technique n’est
+                imposée par ce parcours.
+              </span>
             </div>
+          </div>
+
+          <div
+            role="status"
+            style={{
+              padding: '12px 14px',
+              borderRadius: '10px',
+              background: 'var(--ut-color-surface-raised)',
+              color: 'var(--ut-color-ink-muted)',
+              fontSize: '0.85rem',
+            }}
+          >
+            {categoryPresentation.characteristics.length > 0
+              ? `Caractéristiques affichables pour ${categoryPresentation.singularLabel} : ${categoryPresentation.characteristics.map((characteristic) => characteristic.label).join(', ')}. Elles restent facultatives.`
+              : `Présentation générique pour ${categoryPresentation.singularLabel}, sans caractéristique obligatoire.`}
           </div>
 
           <div className={styles.formGroup}>
@@ -157,7 +179,7 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
               Annuler
             </Link>
             <button type="submit" disabled={isLoading} className={styles.primaryBtn}>
-              {isLoading ? 'Création du brouillon…' : 'Continuer vers les photos →'}
+              {isLoading ? 'Création du brouillon…' : 'Continuer vers la configuration →'}
             </button>
           </div>
         </form>

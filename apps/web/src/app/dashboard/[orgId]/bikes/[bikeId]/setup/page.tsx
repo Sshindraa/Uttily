@@ -55,7 +55,12 @@ export default async function BikeSetupPage({
     draftPricingPlanId: bike.pricing.draftPlan?.id ?? null,
     discountTiers: activePlan?.discountTiers,
     inventoryCount: bike.inventory.totalCount,
+    activeInventoryCount: bike.inventory.activeCount,
+    isVariantActive: bike.variant.isActive,
     isPublicationReady: bike.publication.ready,
+    isOfferReady:
+      (bike.pricing.activePlan !== null || bike.pricing.draftPlan !== null) &&
+      bike.inventory.activeCount > 0,
     publicationFailures: bike.publication.failures,
   };
 

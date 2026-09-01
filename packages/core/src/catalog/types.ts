@@ -85,6 +85,8 @@ export interface CreateProductInput {
   name: string;
   slug?: string;
   description?: string;
+  /** Nom facultatif de la première variante créée avec le produit. */
+  initialVariantName?: string;
 }
 
 export interface UpdateProductInput {

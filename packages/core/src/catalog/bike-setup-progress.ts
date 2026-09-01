@@ -27,10 +27,10 @@ export function resolveBikeSetupProgress(bike: UnifiedBike): BikeSetupProgress {
     completedSteps.push('IDENTITY');
   }
 
-  // 2. Photos complètes (slots canoniques pour un vélo + checksums distincts)
-  const isPhotosComplete = bike.photos.isComplete;
-  if (isPhotosComplete) {
-    completedSteps.push('PHOTOS');
+  // 2. Flotte et lieu renseignés (au moins 1 exemplaire créé)
+  const isInventoryComplete = bike.inventory.totalCount >= 1;
+  if (isInventoryComplete) {
+    completedSteps.push('INVENTORY');
   }
 
   // 3. Tarification configurée (plan actif ou draft)
@@ -40,22 +40,22 @@ export function resolveBikeSetupProgress(bike: UnifiedBike): BikeSetupProgress {
     completedSteps.push('PRICING');
   }
 
-  // 4. Flotte physique renseignée (au moins 1 exemplaire créé)
-  const isInventoryComplete = bike.inventory.totalCount >= 1;
-  if (isInventoryComplete) {
-    completedSteps.push('INVENTORY');
+  // 4. Photos complètes (slots canoniques pour un vélo + checksums distincts)
+  const isPhotosComplete = bike.photos.isComplete;
+  if (isPhotosComplete) {
+    completedSteps.push('PHOTOS');
   }
 
   // 5. Détermine la prochaine meilleure étape
   let nextStep: BikeSetupStep = 'IDENTITY';
   if (!isIdentityComplete) {
     nextStep = 'IDENTITY';
-  } else if (!isPhotosComplete) {
-    nextStep = 'PHOTOS';
-  } else if (!isPricingComplete) {
-    nextStep = 'PRICING';
   } else if (!isInventoryComplete) {
     nextStep = 'INVENTORY';
+  } else if (!isPricingComplete) {
+    nextStep = 'PRICING';
+  } else if (!isPhotosComplete) {
+    nextStep = 'PHOTOS';
   } else {
     nextStep = 'REVIEW';
   }

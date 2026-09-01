@@ -247,8 +247,9 @@ désormais le même registre : gestionnaire photo neutre hors vélo et libellés
 adaptés dans la flotte, l'ouverture, la liste, le détail et la remise en
 service. Les read models flotte et maintenance exposent `categorySlug`, sans
 migration, changement d'URL ou déplacement des règles Core.
-Le périmètre ne couvre pas encore l'onboarding autonome, les opérations
-groupées, ni de nouvelles règles métier spécifiques à une catégorie.
+Le périmètre initial ne couvrait pas encore l'onboarding autonome ni les
+opérations groupées ; ces limites restent valables pour les lots suivants,
+sans ajouter de règle métier spécifique à une catégorie.
 
 **Cadrage livré le 2026-09-01 :** ADR-035 et le registre Core ferment le
 périmètre commercial aux quatre univers Cycle, Kayak/canoë/pagaie, Surf/glisse
@@ -369,8 +370,23 @@ réutilisent Produit → Variante → Exemplaire, les photos neutres et le seuil
 universel de trois photos valides, le tarif, la disponibilité, la publication,
 la recherche, le hold, le paiement TEST et la réservation. Aucun Photo Coach,
 slot vélo, règle kayak/paddle, pack, supplément ou autre catégorie n'est activé.
-La PR #56 est ouverte vers `main` et sa CI complète est verte, Browser Clerk
-TEST compris.
+La PR #56 est fusionnée dans `9fabdad` après une CI complète verte, Browser
+Clerk TEST compris.
+
+**Onboarding autonome — premier équipement livré le 2026-09-02 :** la route
+historique `/dashboard/:orgId/bikes/new` propose désormais le parcours unique
+catégorie → produit → variante → exemplaire → lieu → tarif → photos →
+disponibilité → publication pour les huit familles `ACTIVE` du registre
+serveur. La création et la publication restent autorisées côté serveur ; le
+parcours affiche les libellés et caractéristiques du registre, conserve le
+Photo Coach et les slots uniquement pour `bike`, et utilise des photos neutres
+pour les autres familles. La checklist bloque explicitement tant que le
+produit, la variante, les trois photos valides, le tarif et un exemplaire actif
+dans un établissement ne sont pas prêts ; la réservation TEST reste la preuve
+post-publication. Les produits historiques restent lisibles, les URLs et les
+invariants tenant, prix, disponibilité et réservation restent inchangés.
+Les accessoires autonomes, packs, duplication et opérations groupées restent
+hors périmètre.
 
 ### 7.2 Onboarding autonome
 
