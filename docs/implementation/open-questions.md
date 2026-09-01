@@ -103,6 +103,14 @@ les synonymes livrés.** Aucune capacité n'est déduite d'un nom de produit.
 Une ADR est nécessaire avant schéma et moteur. Voir
 [home-search-next-level.md](home-search-next-level.md).
 
+## Phase 2 — Taxonomie commerciale outdoor (2026-09-01)
+
+| Sujet | Décision nécessaire avant | Propriétaire | Statut |
+| --- | --- | --- | --- |
+| Périmètre des univers et familles commerciales | Toute activation de famille | Produit / direction | **Résolu par ADR-035** — quatre univers fermés ; `bike` actif, `kayak` prochain, `surf` et `ski` plus tard ; catégories hors périmètre explicitement exclues. |
+| Activation de la famille `kayak` | Lot d'activation kayak | Produit / technique / juridique | **Ouvert pour le prochain lot** — le contrat est prêt, mais les données, règles de publication, photos, sécurité, prix et entretien kayak ne sont pas activés dans cette tranche. |
+| Modes, stock et prix des compléments | ADR groupes/packs avant moteur ou schéma | Produit / technique / juridique | **Partiellement résolu par ADR-035** — vocabulaire fixé (`INCLUDED`, `MANDATORY`, `OPTIONAL_FREE`, `PAID_SUPPLEMENT`, `SEPARATELY_RENTABLE`) ; comportement, stock, prix et autorisation restent ouverts. |
+
 ## Décisions produit Lot 4 (approuvées, validations juridique/finance en attente)
 
 - Politiques d'annulation : trois politiques prédéfinies (Flexible par défaut, Modérée, Ferme). Validation juridique de la conformité et de la base remboursable requise avant activation en production.
@@ -132,7 +140,7 @@ future.
 | Limites finales de dimensions (min/max pixels) | G7F-A2 implémentation ou G7F-B upload réel | Technique / produit | **Résolu pour G7F-A2** — `200–8000` px, implémenté via CHECK constraint nullable. Ajustable par migration future. |
 | Formats autorisés (JPEG/PNG/WebP uniquement ? HEIC/AVIF ? Refus SVG/GIF/BMP/TIFF confirmé ?) | G7F-B upload réel | Technique / produit | **Résolu par ADR-026 (G8B-1)** — JPEG, PNG et WebP uniquement, après validation des octets réels. HEIC, AVIF, SVG, GIF, BMP et TIFF sont refusés. |
 | Modération automatique (NSFW, copyright) | G7F-B upload réel ou activation production | Produit / juridique | Ouvert — modération manuelle pour le MVP ? Détection automatique reportée à G7F-B. |
-| Règles précises par catégorie (nombre minimum, vues requises, angles) | G8B-3B4 | Produit / technique | **Résolu pour le pilote vélo par ADR-031** — la catégorie `bike` exige `HERO_PROFILE`, `THREE_QUARTER_FRONT` et `SECONDARY_VIEW`, plus trois checksums distincts ; contrat, UI, persistance `0040`, allow-list et gate Core/PostgreSQL/public `0050` sont alignés. Les règles des autres catégories restent ouvertes. |
+| Règles précises par catégorie (nombre minimum, vues requises, angles) | G8B-3B4 / activation de chaque famille | Produit / technique | **Résolu pour le pilote vélo par ADR-031** — la catégorie `bike` exige `HERO_PROFILE`, `THREE_QUARTER_FRONT` et `SECONDARY_VIEW`, plus trois checksums distincts ; les règles des autres familles seront décidées dans leur lot d'activation. |
 | Profil public et badge loueur | G8B-3B4 | Produit / privacy / technique | Calcul auditable et retrait fail-closed livrés par ADR-032. Restent à décider : données de profil complémentaires, preuve d'expérience et politique privacy. Aucun badge de performance avant données réelles. |
 | Parcours et conseils locaux | G8B-3E | Produit / juridique / modération | Différé après les premiers partenaires — contenu structuré, public, actualisable et assorti d'informations de sécurité. Responsabilité, signalement, modération et suppression du contenu obsolète à décider avant implémentation. |
 | Durée de conservation des objets R2 supprimés (soft delete → suppression physique) | G7F-B ou activation production | Technique / juridique | **Résolu techniquement par ADR-026 (G8B-1)** — suppression physique après le commit du soft delete, avec rejeu idempotent en cas d’échec ; une politique de rétention juridique ultérieure pourra ajouter un délai. |

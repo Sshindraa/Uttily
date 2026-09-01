@@ -14,6 +14,10 @@ Cette vision combine trois produits complémentaires :
 3. **Uttily Intelligence** : l'optimisation explicable du choix client, du parc,
    des prix et des opérations.
 
+Le périmètre commercial reste fermé aux quatre univers outdoor de la
+[taxonomie canonique](equipment-taxonomy.md) ; cette décision ne vise pas à
+faire d'Uttily une marketplace généraliste.
+
 La trajectoire n'est donc ni une simple marketplace (« Airbnb du matériel »),
 ni un SaaS isolé (« logiciel de caisse pour loueurs »). Uttily construit d'abord
 un excellent système opérationnel, utilise ses données fiables pour alimenter
@@ -222,7 +226,7 @@ override humain. Le schéma exact sera défini par un ADR avant implémentation.
 Réussir une réservation réelle : offre professionnelle, disponibilité,
 tarification, hold, paiement, retrait, retour et preuve d'état.
 
-### Horizon 1 — OS + marketplace dense
+### Horizon 1 — OS + marketplace outdoor spécialisée dense
 
 Faire d'Uttily l'outil quotidien des loueurs et densifier progressivement les
 destinations, d'abord en France, puis en Europe.

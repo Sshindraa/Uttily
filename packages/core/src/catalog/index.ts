@@ -16,3 +16,4 @@ export * from './movements';
 export * from './read-models';
 export * from './unified-bike';
 export * from './bike-setup-progress';
+export * from './equipment-taxonomy';

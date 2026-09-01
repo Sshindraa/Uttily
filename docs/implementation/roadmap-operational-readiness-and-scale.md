@@ -92,8 +92,12 @@ La validation CI parallèle du run
 [#33498404591](https://github.com/Sshindraa/Uttily/actions/runs/33498404591)
 est entièrement verte, y compris les six shards Core, Database, Build, Quality,
 Verify et Browser acceptance ; ce dernier a validé les E2E authentifiés avec les
-credentials Clerk TEST de la CI. `pnpm test:full` n'a pas été relancé localement,
-conformément à la procédure de clôture.
+credentials Clerk TEST de la CI. La PR #40 est fusionnée ; la PR #42, issue de
+la tranche photos/maintenance, a ensuite été fusionnée au commit
+`eebaf08` sur `origin/main` après validation verte du run
+[#33504787871](https://github.com/Sshindraa/Uttily/actions/runs/33504787871).
+`pnpm test:full` n'a pas été relancé localement, conformément à la procédure de
+clôture.
 
 ## 4. Niveaux de priorité
 
@@ -246,6 +250,15 @@ migration, changement d'URL ou déplacement des règles Core.
 Le périmètre ne couvre pas encore l'onboarding autonome, les opérations
 groupées, ni de nouvelles règles métier spécifiques à une catégorie.
 
+**Cadrage livré le 2026-09-01 :** ADR-035 et le registre Core ferment le
+périmètre commercial aux quatre univers Cycle, Kayak/canoë/pagaie, Surf/glisse
+nautique et Neige/glisse. `bike` est `ACTIVE`, `kayak` `APPROVED_NEXT`, `surf`
+et `ski` `APPROVED_LATER`, tandis que `equipment` reste un fallback interne et
+les valeurs inconnues sont `UNSUPPORTED`. Aucune catégorie camping, outdoor
+technique, sport généraliste, outillage, jardin, événementiel, audiovisuel ou
+construction n'est activée. La PR #43 (`4286fe4`) est validée par la CI complète
+verte, y compris Browser acceptance avec les credentials Clerk TEST.
+
 ### 7.2 Onboarding autonome
 
 - organisation, identité légale et Stripe Connect ;
@@ -372,7 +385,7 @@ parcours nominaux et les principales exceptions avec stock et finances cohérent
 
 ---
 
-## 8. Phase 3 — Marketplace client (`P1/P2`)
+## 8. Phase 3 — Marketplace client spécialisée (`P1/P2`)
 
 ### 8.1 Recherche et contenu
 
@@ -449,7 +462,7 @@ alternatives explicites.
 ### 9.2 Imports et connecteurs
 
 - import CSV assisté ;
-- prioriser Cilea, Ginkoia, Skilou, Wintersteiger et outils vélo uniquement selon
+- prioriser Cilea, Ginkoia, Skilou, Wintersteiger et connecteurs vélo uniquement selon
   accès API et demande de marché prouvés ;
 - environnement de test par connecteur ;
 - matrice des données supportées ;
@@ -591,8 +604,8 @@ Chaque catégorie définit avant activation :
 - documents ;
 - critères de publication.
 
-Ordre indicatif à confirmer par stratégie commerciale : vélo/VAE, ski/snowboard,
-nautisme léger, surf, outdoor/camping, outils, événementiel.
+Ordre d'activation encadré par ADR-035 : `bike` actif ; `kayak` prochain lot ;
+`surf` et `ski` plus tard. Les familles hors taxonomie fermée sont exclues.
 
 ### 13.2 Kit d'activation pays
 

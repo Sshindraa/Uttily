@@ -4,6 +4,15 @@
 
 Permettre à un client de trouver et réserver un équipement réellement disponible auprès d'un loueur professionnel, dans une destination donnée et pour une période donnée.
 
+## Périmètre commercial fermé
+
+Le MVP s'inscrit dans une plateforme outdoor spécialisée autour de quatre
+univers : Cycle ; Kayak, canoë et pagaie ; Surf et glisse nautique ; Neige et
+glisse. Les catégories camping, outdoor technique, sports généralistes,
+outillage, jardin, événementiel, audiovisuel et construction sont hors
+périmètre. La taxonomie et les statuts d'activation sont définis par
+[le contrat canonique](equipment-taxonomy.md) et [ADR-035](../decisions/ADR-035-closed-outdoor-equipment-taxonomy.md).
+
 ## Utilisateurs
 
 - **Client** : recherche, réserve, paie, récupère et restitue.

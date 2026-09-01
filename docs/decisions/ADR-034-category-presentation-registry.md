@@ -1,6 +1,7 @@
 # ADR-034 — Registre de présentation des catégories
 
-**Statut :** Accepted — tranches Phase 2 « Mes équipements » 1 et 2.
+**Statut :** Accepted — tranches Phase 2 « Mes équipements » 1 et 2 ;
+présentation consommant le périmètre fermé d'ADR-035.
 
 **Date :** 2026-09-01
 
@@ -33,6 +34,12 @@ La projection de liste expose `categorySlug` afin de sélectionner cette
 présentation sans changer les URLs, le modèle Produit → Variante → Exemplaire,
 ni les contrats de mutation.
 
+Ce registre frontend est uniquement une source de présentation. Le périmètre
+commercial et les statuts d'activation sont définis par le registre serveur
+fermé d'[ADR-035](ADR-035-closed-outdoor-equipment-taxonomy.md). Ainsi,
+`equipment` et une valeur inconnue peuvent conserver un fallback visuel pour
+compatibilité, sans devenir une famille commerciale publiable.
+
 ## Extension — tranche photos et maintenance
 
 Les surfaces photos et maintenance réutilisent le même registre. Pour `bike`,
@@ -59,6 +66,8 @@ nécessite aucune migration.
   renommage global est hors périmètre.
 - Une nouvelle section ou caractéristique doit être ajoutée au registre et
   testée sans déplacer les règles métier dans le frontend.
+- Le fallback générique d'interface ne constitue jamais une autorisation
+  commerciale ; toute valeur inconnue reste non supportée côté serveur.
 
 ## Hors périmètre
 

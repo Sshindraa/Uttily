@@ -2,7 +2,11 @@
 
 ## Vision
 
-Uttily vise à devenir le système d'exploitation mondial de la location d'équipements : une marketplace pour les voyageurs et habitants, couplée à un SaaS opérationnel pour les loueurs professionnels.
+Uttily vise à devenir le système d'exploitation de la location outdoor
+professionnelle dans un périmètre commercial fermé : une marketplace
+spécialisée pour les voyageurs et habitants, couplée à un SaaS opérationnel
+pour les loueurs professionnels. Les quatre univers et les familles
+activables sont définis dans la [taxonomie canonique](equipment-taxonomy.md).
 
 La direction stratégique retenue est l'**option C** : Uttily construit
 progressivement une infrastructure mondiale de l'accès au matériel, composée de
@@ -12,7 +16,9 @@ des partenaires et des agents logiciels autorisés. La vision canonique et ses
 garde-fous sont détaillés dans
 [`long-term-vision.md`](long-term-vision.md) et ADR-019.
 
-La stratégie n'est pas de se déployer partout immédiatement. Uttily crée d'abord une offre dense, fiable et utile dans une destination, puis reproduit ce modèle destination par destination.
+La stratégie n'est pas de se déployer partout immédiatement ni de devenir une
+marketplace généraliste. Uttily crée d'abord une offre dense, fiable et utile
+dans une destination, puis reproduit ce modèle destination par destination.
 
 ## Problème
 
@@ -36,7 +42,7 @@ La promesse Uttily est :
 
 | Surface | Rôle |
 | --- | --- |
-| Marketplace client | Découvrir, comparer, réserver, payer et gérer une location. |
+| Marketplace client spécialisée | Découvrir, comparer, réserver, payer et gérer une location dans le périmètre fermé. |
 | SaaS loueur | Gérer catalogue, exemplaires, disponibilité, prix, réservations, opérations et performance. |
 | Plateforme Uttily | Paiement, contrats, caution, administration, risque et distribution. |
 
@@ -82,14 +88,16 @@ L'avantage défendable vient surtout de la densité de l'offre locale, de la qua
 
 Hypothèse initiale : **Hossegor, Capbreton et Seignosse**.
 
-Catégories proposées : surf, bodyboard, combinaisons, paddle, vélo et surfskate. Cette hypothèse doit être validée par des entretiens et l'engagement réel de partenaires avant tout investissement produit spécifique.
+Le pilote commence par la famille `bike`. `kayak` est approuvé pour le prochain
+lot ; `surf` et `ski` sont approuvés pour plus tard. Les autres catégories ne
+font pas partie de la marketplace Uttily.
 
 ## MVP commercial
 
 Le but du MVP est une réservation réelle, pas une marketplace complète.
 
 1. Référencer 5 à 10 loueurs professionnels.
-2. Proposer 100 à 300 équipements dans 3 à 5 catégories.
+2. Proposer 100 à 300 équipements dans les familles actives du registre fermé.
 3. Permettre la recherche et réservation pour une destination.
 4. Accompagner manuellement les partenaires et les premières opérations.
 5. Mesurer la fiabilité de disponibilité et la conversion.
