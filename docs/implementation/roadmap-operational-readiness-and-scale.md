@@ -268,7 +268,7 @@ Commit `2570a81`, PR #44 et CI complète verte, Browser acceptance compris.
 Les tests d'intégration PostgreSQL locaux ont été délégués à cette CI, la base
 locale étant indisponible pendant la validation.
 
-**Activation surf préparée le 2026-09-01 :** la famille `surf` passe à
+**Activation surf livrée le 2026-09-01 :** la famille `surf` passe à
 `ACTIVE` sans migration, car sa catégorie canonique existait déjà dans le seed.
 Le socle couvre `classic`, `longboard`, `softboard`, `bodyboard` et
 `skimboard` comme sous-types descriptifs du même slug `surf`. Les surfaces
@@ -276,8 +276,9 @@ loueur et publiques réutilisent le parcours générique Produit → Variante �
 Exemplaire, les photos neutres, le tarif, la disponibilité, la publication,
 la recherche, le hold, le paiement TEST et la confirmation. Aucun champ
 dimensions/volume/niveau, aucune règle windsurf/wingfoil/kitesurf/foil et
-aucun accessoire publiable seul n'est ajouté. La PR d'activation est en cours
-de validation CI.
+aucun accessoire publiable seul n'est ajouté. Commit `cbcebc9`, PR #45 et CI
+complète verte, Browser acceptance avec credentials Clerk TEST compris. Les
+tests PostgreSQL exhaustifs restent exécutés par la CI parallèle.
 
 ### 7.2 Onboarding autonome
 
