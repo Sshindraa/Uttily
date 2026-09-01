@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import {
   getUnifiedBike,
   resolveBikeSetupProgress,
-  listCategories,
+  listCommerciallyActiveCategories,
   listLocations,
 } from '@uttily/core';
 import { requireCatalogManagerOf } from '@/lib/catalog-auth';
@@ -23,7 +23,7 @@ export default async function BikeSetupPage({
   const progress = resolveBikeSetupProgress(bike);
 
   const [categoriesList, locationsList] = await Promise.all([
-    listCategories(db),
+    listCommerciallyActiveCategories(db),
     listLocations(db, organizationId),
   ]);
 

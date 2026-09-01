@@ -3,6 +3,7 @@ import {
   ACCESSORY_MODES,
   ACCESSORY_STANDALONE_PUBLICATION_DEFAULT,
   CLOSED_OUTDOOR_EQUIPMENT_TAXONOMY,
+  COMMERCIAL_EQUIPMENT_FAMILY_SLUGS,
   EQUIPMENT_FAMILY_REGISTRY,
   EQUIPMENT_UNIVERSE_REGISTRY,
   PADDLE_CATEGORY_CONTRACT,
@@ -32,6 +33,18 @@ describe('closed outdoor equipment taxonomy', () => {
       ['ski', 'ACTIVE'],
       ['snowboard', 'ACTIVE'],
       ['equipment', 'INTERNAL_FALLBACK'],
+    ]);
+  });
+
+  it('exposes exactly the seven ACTIVE commercial families', () => {
+    expect(COMMERCIAL_EQUIPMENT_FAMILY_SLUGS).toEqual([
+      'bike',
+      'kayak',
+      'canoe',
+      'paddleboard',
+      'surf',
+      'ski',
+      'snowboard',
     ]);
   });
 

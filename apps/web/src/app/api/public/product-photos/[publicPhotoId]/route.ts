@@ -1,5 +1,6 @@
-import { and, eq, isNull } from 'drizzle-orm';
-import { productPhotos, products } from '@uttily/database';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { categories, productPhotos, products } from '@uttily/database';
+import { COMMERCIAL_EQUIPMENT_FAMILY_SLUGS } from '@uttily/core';
 import { getDb } from '@/lib/db';
 import { getProductPhotoStorage } from '@/lib/product-photo-storage';
 import { isValidUuid } from '@/lib/validation';
@@ -23,6 +24,7 @@ export async function GET(
     })
     .from(productPhotos)
     .innerJoin(products, eq(products.id, productPhotos.productId))
+    .innerJoin(categories, eq(categories.id, products.categoryId))
     .where(
       and(
         eq(productPhotos.publicId, publicPhotoId),
@@ -30,6 +32,8 @@ export async function GET(
         isNull(productPhotos.deletedAt),
         eq(products.publicationStatus, 'PUBLISHED'),
         isNull(products.deletedAt),
+        eq(categories.isActive, true),
+        inArray(categories.slug, [...COMMERCIAL_EQUIPMENT_FAMILY_SLUGS]),
       ),
     )
     .limit(1);

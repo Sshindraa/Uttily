@@ -125,8 +125,9 @@ import {
 } from '../pricing-plans/time-utils';
 import { findDayRangeWindow } from '../pricing-plans/windows';
 import {
-  PADDLE_CATEGORY_CONTRACT,
-  isHistoricalPaddleCategorySlug,
+  COMMERCIAL_EQUIPMENT_FAMILY_SLUGS,
+  isCommerciallyActiveEquipmentFamily,
+  resolveEquipmentFamily,
 } from '../catalog/equipment-taxonomy';
 import type {
   CandidateRow,
@@ -176,6 +177,11 @@ const MAX_CATEGORY_DEPTH = 10;
  * éventuelle de catégorie si categoryId est fourni.
  */
 const MAX_SCAN_BATCHES = 5;
+
+const COMMERCIAL_CATEGORY_SLUGS_SQL = sql.join(
+  COMMERCIAL_EQUIPMENT_FAMILY_SLUGS.map((slug) => sql`${slug}`),
+  sql`, `,
+);
 
 function buildSearchFingerprint(input: SearchPublicOffersInput): CursorFingerprint {
   return {
@@ -773,7 +779,11 @@ async function resolveCategoryTree(db: DatabaseClient, categoryId: string): Prom
     throw new PublicSearchError('CATEGORY_INACTIVE', 'Catégorie inactive.');
   }
 
-  if (isHistoricalPaddleCategorySlug(catRows[0]!.slug)) {
+  const categoryResolution = resolveEquipmentFamily(catRows[0]!.slug);
+  if (
+    categoryResolution.kind !== 'SUPPORTED' ||
+    !isCommerciallyActiveEquipmentFamily(catRows[0]!.slug)
+  ) {
     throw new PublicSearchError('CATEGORY_INACTIVE', 'Catégorie inactive.');
   }
 
@@ -968,9 +978,8 @@ async function loadCandidateGroups(
     WHERE p.publication_status = 'PUBLISHED'
       AND p.deleted_at IS NULL
       AND p.public_id IS NOT NULL
-      AND category.slug NOT IN (
-        ${PADDLE_CATEGORY_CONTRACT.historicalStorageSlugs[0]}
-      )
+      AND category.is_active = true
+      AND category.slug IN (${COMMERCIAL_CATEGORY_SLUGS_SQL})
       AND EXISTS (
         SELECT 1
         FROM product_variants pv

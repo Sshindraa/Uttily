@@ -117,9 +117,10 @@ describe.skipIf(shouldSkipIntegrationTests())('listPublicSearchFilterOptions', (
       VALUES ('search-test-inactive', 'Inactive', ${parent!.id}, false) RETURNING id
     `;
     const result = await listPublicSearchFilterOptions(db, 'fr');
-    expect(result.categories.find((item) => item.id === parent!.id)?.parentId).toBeNull();
-    expect(result.categories.find((item) => item.id === child!.id)?.parentId).toBe(parent!.id);
+    expect(result.categories.some((item) => item.id === parent!.id)).toBe(false);
+    expect(result.categories.some((item) => item.id === child!.id)).toBe(false);
     expect(result.categories.some((item) => item.id === inactive!.id)).toBe(false);
+    expect(result.categories.some((item) => item.slug === 'bike')).toBe(true);
   });
 
   it('sélectionne explicitement la traduction EN sans fallback implicite', async () => {

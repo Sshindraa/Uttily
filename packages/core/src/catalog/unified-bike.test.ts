@@ -60,6 +60,7 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
                 description: 'Superbe vélo de ville léger et rapide.',
                 categoryId: 'cat-1',
                 categoryIsActive: true,
+                categorySlug: 'bike',
               },
             ]),
           }),
@@ -172,8 +173,18 @@ describe('UnifiedBike Read Model (Core Unit Tests)', () => {
               };
             }
             // 7. collectPublicationFailuresBatch photo counts (groupBy)
+            if (selectIndex === 8) {
+              return {
+                groupBy: vi.fn().mockResolvedValue([{ productId: 'prod-1', value: 3 }]),
+              };
+            }
+            // 8. collectPublicationFailuresBatch bike slots
             return {
-              groupBy: vi.fn().mockResolvedValue([{ productId: 'prod-1', value: 3 }]),
+              groupBy: vi.fn().mockResolvedValue([
+                { productId: 'prod-1', slotType: 'HERO_PROFILE' },
+                { productId: 'prod-1', slotType: 'THREE_QUARTER_FRONT' },
+                { productId: 'prod-1', slotType: 'SECONDARY_VIEW' },
+              ]),
             };
           }),
         })),

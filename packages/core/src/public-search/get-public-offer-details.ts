@@ -11,7 +11,10 @@ import {
   products,
   productVariants,
 } from '@uttily/database';
-import { isHistoricalPaddleCategorySlug } from '../catalog/equipment-taxonomy';
+import {
+  isCommerciallyActiveEquipmentFamily,
+  resolveEquipmentFamily,
+} from '../catalog/equipment-taxonomy';
 import type {
   GetPublicOfferDetailsInput,
   GetPublicOfferDetailsResult,
@@ -99,6 +102,7 @@ export async function getPublicOfferDetails(
       isPubliclyListed: locations.isPubliclyListed,
       locationDeletedAt: locations.deletedAt,
       countryIsActive: countries.isActive,
+      categoryIsActive: categories.isActive,
     })
     .from(products)
     .innerJoin(organizations, eq(organizations.id, products.organizationId))
@@ -123,7 +127,12 @@ export async function getPublicOfferDetails(
     return { kind: 'NOT_FOUND' };
   }
 
-  if (isHistoricalPaddleCategorySlug(r.categorySlug)) {
+  const categoryResolution = resolveEquipmentFamily(r.categorySlug);
+  if (
+    r.categoryIsActive !== true ||
+    categoryResolution.kind !== 'SUPPORTED' ||
+    !isCommerciallyActiveEquipmentFamily(r.categorySlug)
+  ) {
     return { kind: 'NOT_FOUND' };
   }
 

@@ -215,7 +215,7 @@ async function seedInventory(
 async function seedCategory() {
   if (!rawSql) throw new Error('rawSql not initialized');
   const sql = rawSql;
-  const cat = await sql`SELECT "id" FROM "categories" WHERE "slug" = 'equipment' LIMIT 1`.then(
+  const cat = await sql`SELECT "id" FROM "categories" WHERE "slug" = 'kayak' LIMIT 1`.then(
     (r) => r[0]!,
   );
   return { categoryId: cat.id };

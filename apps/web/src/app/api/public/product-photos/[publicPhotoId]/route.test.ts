@@ -18,7 +18,8 @@ const validPublicPhotoId = '00000000-0000-4000-8000-000000000001';
 function mockDatabase(photo: Record<string, unknown> | null): void {
   const limit = vi.fn().mockResolvedValue(photo ? [photo] : []);
   const where = vi.fn(() => ({ limit }));
-  const innerJoin = vi.fn(() => ({ where }));
+  const secondInnerJoin = vi.fn(() => ({ where }));
+  const innerJoin = vi.fn(() => ({ innerJoin: secondInnerJoin }));
   const from = vi.fn(() => ({ innerJoin }));
   getDbMock.mockReturnValue({ select: vi.fn(() => ({ from })) });
 }

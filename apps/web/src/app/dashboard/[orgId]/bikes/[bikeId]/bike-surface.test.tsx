@@ -19,7 +19,7 @@ vi.mock('@uttily/core', async (importOriginal) => {
   return {
     ...actual,
     getUnifiedBike: vi.fn(),
-    listCategories: vi.fn(),
+    listCommerciallyActiveCategories: vi.fn(),
     listLocations: vi.fn(),
   };
 });
@@ -114,7 +114,9 @@ async function renderBikePage(bike: UnifiedBike): Promise<string> {
     user: { id: 'user-1' },
   } as never);
   vi.mocked(core.getUnifiedBike).mockResolvedValue(bike);
-  vi.mocked(core.listCategories).mockResolvedValue([{ id: 'cat-1', name: 'VTT' }] as never);
+  vi.mocked(core.listCommerciallyActiveCategories).mockResolvedValue([
+    { id: 'cat-1', name: 'VTT', slug: 'bike' },
+  ] as never);
   vi.mocked(core.listLocations).mockResolvedValue([
     { id: 'location-1', name: 'Boutique Lyon' },
   ] as never);

@@ -103,12 +103,9 @@ describe.skipIf(shouldSkip)('resolvePublicBookingAuthority — intégration Post
       RETURNING "id"
     `.then((r) => r[0]!);
 
-    // 3. Catégorie
+    // 3. Catégorie commerciale active
     const cat = await sql`
-      INSERT INTO "categories" ("name", "slug", "is_active")
-      VALUES (${'Cat ' + tag}, ${'cat-' + tag}, true)
-      ON CONFLICT ("slug") DO UPDATE SET "is_active" = true
-      RETURNING "id"
+      SELECT "id" FROM "categories" WHERE "slug" = 'kayak' LIMIT 1
     `.then((r) => r[0]!);
 
     // 4. Établissement

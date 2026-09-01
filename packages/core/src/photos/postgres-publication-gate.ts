@@ -22,6 +22,7 @@ import type { DatabaseClient } from '@uttily/database';
 import type { PublicProductPublicationGate } from '../public-search/types';
 import { PublicSearchError } from '../public-search/errors';
 import { REQUIRED_BIKE_PHOTO_SLOTS } from '@uttily/contracts';
+import { COMMERCIAL_EQUIPMENT_FAMILY_SLUGS } from '../catalog/equipment-taxonomy';
 
 export class PostgresPhotoPublicationGate implements PublicProductPublicationGate {
   /**
@@ -49,6 +50,10 @@ export class PostgresPhotoPublicationGate implements PublicProductPublicationGat
         [...productIds].map((id) => sql`${id}::uuid`),
         sql`, `,
       );
+      const commercialCategorySlugs = sql.join(
+        COMMERCIAL_EQUIPMENT_FAMILY_SLUGS.map((slug) => sql`${slug}`),
+        sql`, `,
+      );
 
       const result = await db.execute<{ id: string }>(
         // Une seule requête batch : compte les photos valides distinctes
@@ -62,6 +67,8 @@ export class PostgresPhotoPublicationGate implements PublicProductPublicationGat
           INNER JOIN categories c ON c.id = p.category_id
           WHERE p.id IN (${uuidList})
             AND p.deleted_at IS NULL
+            AND c.is_active = true
+            AND c.slug IN (${commercialCategorySlugs})
             AND (
               SELECT COUNT(DISTINCT pp.checksum_sha256)
               FROM product_photos pp

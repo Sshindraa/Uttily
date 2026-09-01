@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { getUnifiedBike, listCategories, listLocations } from '@uttily/core';
+import { getUnifiedBike, listCommerciallyActiveCategories, listLocations } from '@uttily/core';
 import { requireCatalogViewerOf } from '@/lib/catalog-auth';
 import { BikeDetailView } from '@/features/bikes';
 
@@ -15,7 +15,7 @@ export default async function UnifiedBikePage({
   if (bike === null) notFound();
 
   const [categoriesList, locationsList] = await Promise.all([
-    listCategories(db),
+    listCommerciallyActiveCategories(db),
     listLocations(db, organizationId),
   ]);
 
