@@ -4,6 +4,7 @@ import { categories } from '@uttily/database';
 import type { CategoryRecord, CreateCategoryInput, UpdateCategoryInput } from './types';
 import { isValidSlug } from '../identity/slug';
 import { AuthorizationError } from '../identity/permissions';
+import { isCommerciallyActiveEquipmentFamily, resolveEquipmentFamily } from './equipment-taxonomy';
 
 /**
  * Compte la profondeur d'une catégorie en remontant la chaîne parent_id.
@@ -76,6 +77,17 @@ export async function listCategories(db: DbExecutor): Promise<CategoryRecord[]> 
 export async function listActiveCategories(db: DbExecutor): Promise<CategoryRecord[]> {
   const rows = await db.select().from(categories).where(eq(categories.isActive, true));
   return rows.map(mapCategory);
+}
+
+/** Catégories proposées dans les parcours commerciaux loueur. */
+export async function listCommerciallyActiveCategories(db: DbExecutor): Promise<CategoryRecord[]> {
+  const rows = await db.select().from(categories).where(eq(categories.isActive, true));
+  return rows
+    .filter((category) => {
+      const resolution = resolveEquipmentFamily(category.slug);
+      return resolution.kind === 'SUPPORTED' && isCommerciallyActiveEquipmentFamily(category.slug);
+    })
+    .map(mapCategory);
 }
 
 export async function getCategory(db: DbExecutor, id: string): Promise<CategoryRecord | null> {

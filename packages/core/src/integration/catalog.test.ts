@@ -37,6 +37,7 @@ import {
   getInventoryDetails,
   listActiveVariantOptions,
   getProductPublicationReadiness,
+  COMMERCIAL_EQUIPMENT_FAMILY_SLUGS,
   type AuthenticatedUser,
 } from '../index';
 
@@ -159,6 +160,44 @@ async function createProductForOrg(
   return { product, variantId: variants[0]!.id };
 }
 
+/** Fixture SQL réservée aux tests de compatibilité des données historiques. */
+async function insertProductFixture(
+  organizationId: string,
+  categoryId: string,
+  slug: string,
+  publicationStatus: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
+): Promise<string> {
+  if (!db) throw new Error('db not initialized');
+  const rows = await db.execute<{ id: string }>(sql`
+    INSERT INTO products (organization_id, category_id, name, slug, description, publication_status)
+    VALUES (${organizationId}, ${categoryId}, ${slug}, ${slug}, 'Fixture historique', 'DRAFT')
+    RETURNING id
+  `);
+  const productId = rows[0]!.id;
+  if (publicationStatus === 'PUBLISHED') {
+    for (let i = 0; i < 3; i++) {
+      await db.execute(sql`
+        INSERT INTO product_photos (
+          organization_id, product_id, storage_key,
+          content_type, byte_size, width_px, height_px, checksum_sha256,
+          sort_order, file_state
+        )
+        VALUES (
+          ${organizationId}, ${productId}, ${'product-photos/' + slug + '-' + i},
+          'image/jpeg', 102400, 800, 600, ${('000' + i).repeat(16).slice(0, 64)},
+          ${i}, 'AVAILABLE'
+        )
+      `);
+    }
+  }
+  if (publicationStatus !== 'DRAFT') {
+    await db.execute(sql`
+      UPDATE products SET publication_status = ${publicationStatus} WHERE id = ${productId}
+    `);
+  }
+  return productId;
+}
+
 describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-tenant', () => {
   it('seed catégories : au moins 9 catégories racines actives après migration', async () => {
     if (!ctx || !db) return;
@@ -178,6 +217,86 @@ describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-ten
     expect(variants[0]!.name).toBe('Standard');
     expect(variants[0]!.id).toBe(variantId);
     expect(variants[0]!.isActive).toBe(true);
+  });
+
+  it('impose le registre fermé à la création et aux transitions commerciales', async () => {
+    if (!ctx || !db) return;
+    const { organizationId } = await setupOrgWithLocation(
+      'taxonomy-enforcement@example.com',
+      'Taxonomy Enforcement Org',
+    );
+    const { categories: categoriesTable } = await import('@uttily/database');
+    const { eq } = await import('drizzle-orm');
+    const categoryRows = await db.select().from(categoriesTable);
+    const categoryBySlug = new Map(categoryRows.map((category) => [category.slug, category]));
+
+    for (const slug of COMMERCIAL_EQUIPMENT_FAMILY_SLUGS) {
+      const category = categoryBySlug.get(slug);
+      if (!category) throw new Error(`Catégorie commerciale absente: ${slug}`);
+      await expect(
+        createProductForOrg(organizationId, `Accepted ${slug}`, category.id),
+      ).resolves.toBeDefined();
+    }
+
+    const customActive = await createCategory(db, {
+      slug: 'taxonomy-custom-active',
+      name: 'Taxonomy Custom Active',
+    });
+    const customInactive = await createCategory(db, {
+      slug: 'taxonomy-custom-inactive',
+      name: 'Taxonomy Custom Inactive',
+    });
+    await deactivateCategory(db, customInactive.id);
+
+    const rejectedCategoryIds = [
+      categoryBySlug.get('equipment')?.id,
+      categoryBySlug.get('paddle')?.id,
+      customActive.id,
+      customInactive.id,
+    ];
+    for (const categoryId of rejectedCategoryIds) {
+      if (!categoryId) throw new Error('Catégorie historique attendue absente.');
+      await expect(
+        createProductForOrg(organizationId, `Rejected ${categoryId}`, categoryId),
+      ).rejects.toThrow();
+    }
+
+    const { product } = await createProductForOrg(
+      organizationId,
+      'Category Change Product',
+      'bike',
+    );
+    const equipmentId = categoryBySlug.get('equipment')?.id;
+    if (!equipmentId) throw new Error('Catégorie equipment absente.');
+    await expect(
+      updateProduct(db, organizationId, product.id, { categoryId: equipmentId }),
+    ).rejects.toThrow(/famille commerciale active/);
+
+    const historicalId = await insertProductFixture(
+      organizationId,
+      equipmentId,
+      'legacy-equipment-read-only',
+      'ARCHIVED',
+    );
+    await expect(getProduct(db, organizationId, historicalId)).resolves.toMatchObject({
+      id: historicalId,
+      categoryId: equipmentId,
+      publicationStatus: 'ARCHIVED',
+    });
+    await expect(publishProduct(db, organizationId, historicalId)).rejects.toThrow(
+      /famille commerciale active/,
+    );
+    await expect(restoreArchivedProduct(db, organizationId, historicalId)).rejects.toThrow(
+      /famille commerciale active/,
+    );
+
+    // Le test exerce aussi explicitement le garde-fou de catégorie historique.
+    const [paddle] = await db
+      .select()
+      .from(categoriesTable)
+      .where(eq(categoriesTable.slug, 'paddle'))
+      .limit(1);
+    expect(paddle?.isActive).toBe(true);
   });
 
   it("isolation multi-tenant : un loueur ne voit pas le catalogue d'un autre", async () => {
@@ -733,8 +852,14 @@ describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-ten
   it("désactivation catégorie refusée si produit PUBLISHED l'utilise", async () => {
     if (!ctx || !db) return;
     const { organizationId } = await setupOrgWithLocation('cat-deact@example.com', 'Cat Deact Org');
-    // Crée une catégorie personnalisée
-    const cat = await createCategory(db, { slug: 'custom-cat-test', name: 'Custom Cat' });
+    const { categories: categoriesTable } = await import('@uttily/database');
+    const { eq } = await import('drizzle-orm');
+    const [cat] = await db
+      .select()
+      .from(categoriesTable)
+      .where(eq(categoriesTable.slug, 'surf'))
+      .limit(1);
+    if (!cat) throw new Error('Catégorie surf absente.');
     const { product } = await createProductForOrg(organizationId, 'Cat Deact Product', cat.id);
     await publishProduct(db, organizationId, product.id);
     await expect(deactivateCategory(db, cat.id)).rejects.toThrow();
@@ -746,11 +871,19 @@ describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-ten
       'cat-deact-ok@example.com',
       'Cat Deact OK Org',
     );
-    const cat = await createCategory(db, { slug: 'custom-cat-ok', name: 'Custom Cat OK' });
+    const { categories: categoriesTable } = await import('@uttily/database');
+    const { eq } = await import('drizzle-orm');
+    const [cat] = await db
+      .select()
+      .from(categoriesTable)
+      .where(eq(categoriesTable.slug, 'snowboard'))
+      .limit(1);
+    if (!cat) throw new Error('Catégorie snowboard absente.');
     const { product } = await createProductForOrg(organizationId, 'Cat Deact OK Product', cat.id);
     await publishProduct(db, organizationId, product.id);
     await archiveProduct(db, organizationId, product.id);
     await expect(deactivateCategory(db, cat.id)).resolves.toBeDefined();
+    await restoreCategory(db, cat.id);
   });
 
   it('désactivation catégorie refusée si elle a des descendants actifs', async () => {
@@ -773,8 +906,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-ten
       name: 'Child Subtree',
       parentId: parent.id,
     });
-    const { product } = await createProductForOrg(organizationId, 'Subtree Product', child.id);
-    await publishProduct(db, organizationId, product.id);
+    await insertProductFixture(organizationId, child.id, 'subtree-product', 'PUBLISHED');
     // Le parent n'a pas de produit direct, mais son enfant a un produit PUBLISHED → refus.
     await expect(deactivateCategory(db, parent.id)).rejects.toThrow(/publi|descendant/);
   });
@@ -791,10 +923,14 @@ describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-ten
       name: 'Cascade Child',
       parentId: parent.id,
     });
-    const { product } = await createProductForOrg(organizationId, 'Cascade Product', child.id);
-    await publishProduct(db, organizationId, product.id);
+    const productId = await insertProductFixture(
+      organizationId,
+      child.id,
+      'cascade-product',
+      'PUBLISHED',
+    );
     // Archive le produit, puis désactive l'enfant, puis désactive le parent.
-    await archiveProduct(db, organizationId, product.id);
+    await archiveProduct(db, organizationId, productId);
     await deactivateCategory(db, child.id);
     await expect(deactivateCategory(db, parent.id)).resolves.toBeDefined();
   });
@@ -1125,8 +1261,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-ten
   it('updateProduct refuse une catégorie désactivée sur un produit PUBLISHED', async () => {
     if (!ctx || !db) return;
     const { organizationId } = await setupOrgWithLocation('pub-cat@example.com', 'Pub Cat Org');
-    const cat = await createCategory(db, { slug: 'pub-cat-test', name: 'Pub Cat' });
-    const { product } = await createProductForOrg(organizationId, 'Pub Cat Product', cat.id);
+    const { product } = await createProductForOrg(organizationId, 'Pub Cat Product', 'surf');
     await publishProduct(db, organizationId, product.id);
     // Crée une catégorie désactivée.
     const cat2 = await createCategory(db, { slug: 'pub-cat-disabled', name: 'Disabled Cat' });
@@ -1158,8 +1293,14 @@ describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-ten
       'conc-pub-cat@example.com',
       'Conc Pub Cat Org',
     );
-    // Catégorie personnalisée active pour ce test.
-    const cat = await createCategory(db, { slug: 'conc-pub-cat', name: 'Conc Pub Cat' });
+    const { categories: categoriesTable } = await import('@uttily/database');
+    const { eq } = await import('drizzle-orm');
+    const [cat] = await db
+      .select()
+      .from(categoriesTable)
+      .where(eq(categoriesTable.slug, 'surf'))
+      .limit(1);
+    if (!cat) throw new Error('Catégorie surf absente.');
     // Produit DRAFT complet (nom ≥2, description non vide, variante active par défaut).
     const { product } = await createProductForOrg(organizationId, 'Conc Pub Product', cat.id);
 
@@ -1182,9 +1323,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-ten
     //
     // Invariant final interdit : publicationStatus === 'PUBLISHED'
     //   ET category.isActive === false (publication sur catégorie désactivée).
-    const { products: productsTable, categories: categoriesTable } =
-      await import('@uttily/database');
-    const { eq } = await import('drizzle-orm');
+    const { products: productsTable } = await import('@uttily/database');
 
     const results = await Promise.allSettled([
       // T1 : publication du produit (verrou FOR UPDATE sur produit + catégorie).
@@ -1227,6 +1366,8 @@ describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-ten
         expect(r.reason.message).toMatch(/désactiv|inact|publi|inexistante/i);
       }
     }
+
+    if (finalCat && !finalCat.isActive) await restoreCategory(db, cat.id);
   });
 
   it('course concurrente : update produit (changement catégorie) vs désactivation catégorie cible', async () => {
@@ -1235,9 +1376,20 @@ describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-ten
       'conc-upd-cat@example.com',
       'Conc Upd Cat Org',
     );
-    // Deux catégories actives distinctes.
-    const cat1 = await createCategory(db, { slug: 'conc-cat-1', name: 'Conc Cat 1' });
-    const cat2 = await createCategory(db, { slug: 'conc-cat-2', name: 'Conc Cat 2' });
+    // Deux familles commerciales actives distinctes.
+    const { categories: categoriesTable } = await import('@uttily/database');
+    const { eq } = await import('drizzle-orm');
+    const [cat1] = await db
+      .select()
+      .from(categoriesTable)
+      .where(eq(categoriesTable.slug, 'surf'))
+      .limit(1);
+    const [cat2] = await db
+      .select()
+      .from(categoriesTable)
+      .where(eq(categoriesTable.slug, 'snowboard'))
+      .limit(1);
+    if (!cat1 || !cat2) throw new Error('Familles commerciales attendues absentes.');
     // Produit PUBLISHED dans cat1.
     const { product } = await createProductForOrg(organizationId, 'Conc Upd Product', cat1.id);
     await publishProduct(db, organizationId, product.id);
@@ -1262,9 +1414,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-ten
     //
     // Invariant final interdit : produit PUBLISHED avec categoryId === cat2.id
     //   ET cat2.isActive === false (produit publié sur catégorie désactivée).
-    const { products: productsTable, categories: categoriesTable } =
-      await import('@uttily/database');
-    const { eq } = await import('drizzle-orm');
+    const { products: productsTable } = await import('@uttily/database');
 
     const results = await Promise.allSettled([
       // T1 : déplacement du produit vers cat2 (verrou FOR UPDATE sur produit + cat2).
@@ -1311,6 +1461,8 @@ describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-ten
         expect(r.reason.message).toMatch(/désactiv|inact|publi|inexistante/i);
       }
     }
+
+    if (finalCat2 && !finalCat2.isActive) await restoreCategory(db, cat2.id);
   });
 
   // -------------------------------------------------------------------------

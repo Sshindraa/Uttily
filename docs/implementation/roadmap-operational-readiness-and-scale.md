@@ -339,6 +339,17 @@ loueur/public réutilisent les invariants génériques, les trois photos valides
 la recherche, le hold, le paiement TEST et la réservation, sans Photo Coach,
 slot vélo, règle kayak/canoë ou moteur de packs. Le pédalo reste inactif.
 
+**Taxonomy enforcement livré le 2026-09-01 :** le registre fermé serveur est
+désormais l'autorité commerciale des familles `bike`, `kayak`, `canoe`,
+`paddleboard`, `surf`, `ski` et `snowboard`. Les mutations de création,
+changement de catégorie, publication et restauration refusent `equipment`,
+l'ancien `paddle`, les catégories personnalisées, inconnues, inactives ou
+seulement approuvées. Les sélecteurs loueur, les filtres et les read models
+publics n'exposent que les familles commerciales actives ; les produits
+historiques restent lisibles sans conversion ni suppression et ne peuvent pas
+être publiés ou restaurés. Aucun schéma, URL, invariant de prix,
+disponibilité, tenant, maintenance, réservation ou paiement n'est modifié.
+
 ### 7.2 Onboarding autonome
 
 - organisation, identité légale et Stripe Connect ;

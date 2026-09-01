@@ -179,6 +179,14 @@ export const EQUIPMENT_FAMILY_REGISTRY: readonly EquipmentFamilyDefinition[] = O
   },
 ]);
 
+/** Slugs commerciaux actuellement publiables, dérivés du registre fermé. */
+export const COMMERCIAL_EQUIPMENT_FAMILY_SLUGS: readonly CommercialEquipmentFamilySlug[] =
+  Object.freeze(
+    EQUIPMENT_FAMILY_REGISTRY.filter(
+      (family) => family.status === 'ACTIVE' && family.slug !== 'equipment',
+    ).map((family) => family.slug as CommercialEquipmentFamilySlug),
+  );
+
 export const CLOSED_OUTDOOR_EQUIPMENT_TAXONOMY = Object.freeze({
   universes: EQUIPMENT_UNIVERSE_REGISTRY,
   families: EQUIPMENT_FAMILY_REGISTRY,

@@ -2,7 +2,10 @@ import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import { categories, countries, destinations, destinationTranslations } from '@uttily/database';
 import { PublicSearchError } from './errors';
-import { isHistoricalPaddleCategorySlug } from '../catalog/equipment-taxonomy';
+import {
+  isCommerciallyActiveEquipmentFamily,
+  resolveEquipmentFamily,
+} from '../catalog/equipment-taxonomy';
 
 export interface PublicSearchDestinationOption {
   publicId: string;
@@ -36,13 +39,17 @@ export interface PublicSearchFilterOptions {
 }
 
 /**
- * Le slug historique `paddle` reste lisible en interne mais n'est pas une
- * catégorie commerciale publique. `paddleboard` est le slug canonique actif.
+ * Seules les familles ACTIVE du registre fermé sont des catégories publiques.
+ * Les slugs historiques, internes, inconnus ou approuvés seulement restent
+ * absents des filtres.
  */
 export function filterPublicSearchCategories<T extends Pick<PublicSearchCategoryOption, 'slug'>>(
   rows: readonly T[],
 ): T[] {
-  return rows.filter((row) => !isHistoricalPaddleCategorySlug(row.slug));
+  return rows.filter((row) => {
+    const resolution = resolveEquipmentFamily(row.slug);
+    return resolution.kind === 'SUPPORTED' && isCommerciallyActiveEquipmentFamily(row.slug);
+  });
 }
 
 /**

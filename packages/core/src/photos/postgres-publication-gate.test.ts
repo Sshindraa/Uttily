@@ -97,7 +97,7 @@ interface BaseIds {
 async function seedBaseData(
   sql: postgres.Sql,
   slugSuffix?: string,
-  categorySlug = 'equipment',
+  categorySlug = 'kayak',
 ): Promise<BaseIds> {
   const suffix = slugSuffix ?? Math.random().toString(36).slice(2, 10);
   const org = await sql`
@@ -123,7 +123,7 @@ async function seedSecondOrg(sql: postgres.Sql): Promise<{ orgId: string; produc
     VALUES (${'Other Org ' + suffix}, ${'other-org-' + suffix}, 'EUR')
     RETURNING "id"
   `.then((r) => r[0]!);
-  const category = await sql`SELECT "id" FROM "categories" WHERE "slug" = 'equipment' LIMIT 1`.then(
+  const category = await sql`SELECT "id" FROM "categories" WHERE "slug" = 'kayak' LIMIT 1`.then(
     (r) => r[0]!,
   );
   const product = await sql`

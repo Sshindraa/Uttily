@@ -13,8 +13,8 @@ describe('NewBikePage (/bikes/new)', () => {
 
   it('exige les droits de gestionnaire de catalogue et charge les catégories', () => {
     expect(pageSource).toContain('requireCatalogManagerOf(orgId)');
-    expect(pageSource).toContain('listCategories(db)');
-    expect(pageSource).toContain('isHistoricalPaddleCategorySlug(c.slug)');
+    expect(pageSource).toContain('listCommerciallyActiveCategories(db)');
+    expect(pageSource).not.toContain('listCategories(db)');
   });
 
   it('propose un formulaire simple d’étape 1 et appelle createBikeDraftAction', () => {

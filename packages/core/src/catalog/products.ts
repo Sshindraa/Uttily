@@ -12,7 +12,22 @@ import { isValidSlug, slugify } from '../identity/slug';
 import { AuthorizationError } from '../identity/permissions';
 import { CatalogError, isUniqueViolation } from './errors';
 import { missingRequiredBikePhotoSlots } from '../photos/photo-publication-rules';
-import { isHistoricalPaddleCategorySlug } from './equipment-taxonomy';
+import { isCommerciallyActiveEquipmentFamily, resolveEquipmentFamily } from './equipment-taxonomy';
+
+const COMMERCIAL_CATEGORY_ERROR = 'La catégorie n’est pas une famille commerciale active.';
+
+function getCommercialCategoryFailure(
+  category: { slug: string; isActive: boolean } | null | undefined,
+): string | null {
+  if (!category) return 'Catégorie inexistante ou désactivée.';
+  if (!category.isActive) return 'Catégorie désactivée.';
+
+  const resolution = resolveEquipmentFamily(category.slug);
+  if (resolution.kind !== 'SUPPORTED' || !isCommerciallyActiveEquipmentFamily(category.slug)) {
+    return COMMERCIAL_CATEGORY_ERROR;
+  }
+  return null;
+}
 
 /**
  * Crée un produit et sa variante "Standard" atomiquement.
@@ -34,22 +49,19 @@ export async function createProduct(
   }
   const description = input.description ?? '';
 
-  // Vérifie que la catégorie existe et est active.
-  const [cat] = await db
-    .select()
-    .from(categories)
-    .where(and(eq(categories.id, input.categoryId), eq(categories.isActive, true)))
-    .limit(1);
-  if (!cat) {
-    const msg = 'Catégorie inexistante ou désactivée.';
-    throw new CatalogError('VALIDATION', msg, { categoryId: msg });
-  }
-  if (isHistoricalPaddleCategorySlug(cat.slug)) {
-    const msg = 'La catégorie historique paddle n’est pas une famille commerciale active.';
-    throw new CatalogError('VALIDATION', msg, { categoryId: msg });
-  }
-
   return await db.transaction(async (tx) => {
+    // Verrouille la catégorie et applique le registre fermé avant l'insertion.
+    const [cat] = await tx
+      .select()
+      .from(categories)
+      .where(eq(categories.id, input.categoryId))
+      .for('update')
+      .limit(1);
+    const categoryFailure = getCommercialCategoryFailure(cat);
+    if (categoryFailure) {
+      throw new CatalogError('VALIDATION', categoryFailure, { categoryId: categoryFailure });
+    }
+
     // Vérifie l'unicité du slug dans l'organisation.
     const existing = await tx
       .select()
@@ -211,9 +223,9 @@ export async function updateProduct(
         const msg = 'Catégorie désactivée.';
         throw new CatalogError('VALIDATION', msg, { categoryId: msg });
       }
-      if (isHistoricalPaddleCategorySlug(cat.slug)) {
-        const msg = 'La catégorie historique paddle n’est pas une famille commerciale active.';
-        throw new CatalogError('VALIDATION', msg, { categoryId: msg });
+      const categoryFailure = getCommercialCategoryFailure(cat);
+      if (categoryFailure) {
+        throw new CatalogError('VALIDATION', categoryFailure, { categoryId: categoryFailure });
       }
       patch.categoryId = input.categoryId;
     }
@@ -295,10 +307,12 @@ export async function collectPublicationFailuresBatch(
     const failures: string[] = [];
     if (row.name.trim().length < 2) failures.push('Le nom doit faire au moins 2 caractères.');
     if (row.description.trim().length === 0) failures.push('La description est requise.');
-    if (!row.categoryIsActive) failures.push('La catégorie est inexistante ou désactivée.');
-    if (isHistoricalPaddleCategorySlug(row.categorySlug)) {
-      failures.push('La catégorie historique paddle n’est pas une famille commerciale active.');
-    }
+    const categoryFailure = getCommercialCategoryFailure(
+      row.categorySlug === null || row.categoryIsActive === null
+        ? null
+        : { slug: row.categorySlug, isActive: row.categoryIsActive },
+    );
+    if (categoryFailure) failures.push(categoryFailure);
     result.set(row.id, failures);
   }
 
@@ -452,12 +466,16 @@ export async function publishProduct(
     // entre la vérification et la transition PUBLISHED.
     // La catégorie est verrouillée FOR UPDATE ci-dessus ; le verrou est maintenu
     // par la transaction pendant l'exécution de collectPublicationFailures.
-    await tx
+    const [category] = await tx
       .select()
       .from(categories)
       .where(eq(categories.id, product.categoryId))
       .for('update')
       .limit(1);
+    const categoryFailure = getCommercialCategoryFailure(category);
+    if (categoryFailure) {
+      throw new CatalogError('PUBLISH_INCOMPLETE', `Publication impossible:\n- ${categoryFailure}`);
+    }
 
     // Vérifie la readiness via le helper partagé.
     const failures = await collectPublicationFailures(tx, product.id);
