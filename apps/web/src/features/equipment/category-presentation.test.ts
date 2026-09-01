@@ -44,6 +44,21 @@ describe('registre de présentation des catégories', () => {
     ]);
   });
 
+  it('présente le socle surf sans Photo Coach ni champ spécialisé inventé', () => {
+    const presentation = getCategoryPresentation('surf');
+
+    expect(presentation.singularLabel).toBe('planche de surf');
+    expect(presentation.pluralLabel).toBe('planches de surf');
+    expect(presentation.icon).toBe('🏄');
+    expect(presentation.specificSections).toEqual([]);
+    expect(
+      getDisplayableCharacteristics(
+        { dimensions: '8 ft', volume: '60 L', level: 'débutant', subtype: 'longboard' },
+        presentation,
+      ),
+    ).toEqual([]);
+  });
+
   it('retombe sur une présentation générique pour toute catégorie inconnue', () => {
     expect(getCategoryPresentation('canoe')).toBe(GENERIC_CATEGORY_PRESENTATION);
     expect(getCategoryPresentation(undefined)).toBe(GENERIC_CATEGORY_PRESENTATION);

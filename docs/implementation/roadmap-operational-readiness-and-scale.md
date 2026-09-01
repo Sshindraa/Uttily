@@ -252,8 +252,8 @@ groupées, ni de nouvelles règles métier spécifiques à une catégorie.
 
 **Cadrage livré le 2026-09-01 :** ADR-035 et le registre Core ferment le
 périmètre commercial aux quatre univers Cycle, Kayak/canoë/pagaie, Surf/glisse
-nautique et Neige/glisse. `bike` et `kayak` sont `ACTIVE`, `surf`
-et `ski` `APPROVED_LATER`, tandis que `equipment` reste un fallback interne et
+nautique et Neige/glisse. `bike`, `kayak` et `surf` sont `ACTIVE`, tandis que
+`ski` est `APPROVED_LATER`, `equipment` reste un fallback interne et
 les valeurs inconnues sont `UNSUPPORTED`. Aucune catégorie camping, outdoor
 technique, sport généraliste, outillage, jardin, événementiel, audiovisuel ou
 construction n'est activée. La PR #43 est fusionnée dans `b8a7a2e` après une CI complète
@@ -267,6 +267,17 @@ et `practice` seulement lorsqu'ils existent, sans Photo Coach ni règle vélo.
 Commit `2570a81`, PR #44 et CI complète verte, Browser acceptance compris.
 Les tests d'intégration PostgreSQL locaux ont été délégués à cette CI, la base
 locale étant indisponible pendant la validation.
+
+**Activation surf préparée le 2026-09-01 :** la famille `surf` passe à
+`ACTIVE` sans migration, car sa catégorie canonique existait déjà dans le seed.
+Le socle couvre `classic`, `longboard`, `softboard`, `bodyboard` et
+`skimboard` comme sous-types descriptifs du même slug `surf`. Les surfaces
+loueur et publiques réutilisent le parcours générique Produit → Variante →
+Exemplaire, les photos neutres, le tarif, la disponibilité, la publication,
+la recherche, le hold, le paiement TEST et la confirmation. Aucun champ
+dimensions/volume/niveau, aucune règle windsurf/wingfoil/kitesurf/foil et
+aucun accessoire publiable seul n'est ajouté. La PR d'activation est en cours
+de validation CI.
 
 ### 7.2 Onboarding autonome
 
@@ -613,7 +624,7 @@ Chaque catégorie définit avant activation :
 - documents ;
 - critères de publication.
 
-Ordre d'activation encadré par ADR-035 : `bike` et `kayak` actifs ; `surf` et
+Ordre d'activation encadré par ADR-035 : `bike`, `kayak` et `surf` actifs ;
 `ski` plus tard. Les familles hors taxonomie fermée sont exclues.
 
 ### 13.2 Kit d'activation pays
