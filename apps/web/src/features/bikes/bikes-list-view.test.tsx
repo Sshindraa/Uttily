@@ -14,7 +14,9 @@ const summary = (categorySlug: string): UnifiedBikeSummary => ({
         ? 'Surf'
         : categorySlug === 'ski'
           ? 'Ski & Snowboard'
-          : 'Kayak',
+          : categorySlug === 'snowboard'
+            ? 'Snowboard'
+            : 'Kayak',
   categorySlug,
   variantName: 'Standard',
   variantId: 'variant-1',
@@ -74,6 +76,18 @@ describe('Mes équipements — liste', () => {
     expect(html).toContain('ski');
     expect(html).toContain('2/3 photos');
     expect(html).not.toContain('Snowboard');
+    expect(html).not.toContain('vues requises');
+  });
+
+  it('présente le snowboard avec les photos neutres et sans règles ski ou vélo', () => {
+    const html = renderToStaticMarkup(
+      <BikesListView organizationId="org-1" bikes={[summary('snowboard')]} canManage />,
+    );
+
+    expect(html).toContain('🏂');
+    expect(html).toContain('Snowboard');
+    expect(html).toContain('2/3 photos');
+    expect(html).not.toContain('🎿');
     expect(html).not.toContain('vues requises');
   });
 });

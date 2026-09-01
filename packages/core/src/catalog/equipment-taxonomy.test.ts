@@ -25,6 +25,7 @@ describe('closed outdoor equipment taxonomy', () => {
       ['kayak', 'ACTIVE'],
       ['surf', 'ACTIVE'],
       ['ski', 'ACTIVE'],
+      ['snowboard', 'ACTIVE'],
       ['equipment', 'INTERNAL_FALLBACK'],
     ]);
   });
@@ -34,6 +35,7 @@ describe('closed outdoor equipment taxonomy', () => {
     const kayak = resolveEquipmentFamily('kayak');
     const surf = resolveEquipmentFamily('surf');
     const ski = resolveEquipmentFamily('ski');
+    const snowboard = resolveEquipmentFamily('snowboard');
 
     expect(bike.kind).toBe('SUPPORTED');
     expect(bike.kind === 'SUPPORTED' && bike.definition.subtypes).toEqual([
@@ -65,6 +67,9 @@ describe('closed outdoor equipment taxonomy', () => {
       'touring',
       'cross-country',
     ]);
+    expect(snowboard.kind).toBe('SUPPORTED');
+    expect(snowboard.kind === 'SUPPORTED' && snowboard.definition.subtypes).toEqual([]);
+    expect(snowboard.kind === 'SUPPORTED' && snowboard.definition.characteristics).toEqual([]);
   });
 
   it('rejects unknown families and never treats the internal fallback as commercial', () => {
@@ -76,6 +81,7 @@ describe('closed outdoor equipment taxonomy', () => {
     expect(isCommerciallyActiveEquipmentFamily('kayak')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('surf')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('ski')).toBe(true);
+    expect(isCommerciallyActiveEquipmentFamily('snowboard')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('equipment')).toBe(false);
     expect(isCommerciallyActiveEquipmentFamily('unknown')).toBe(false);
   });

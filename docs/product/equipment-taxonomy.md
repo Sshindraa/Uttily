@@ -12,7 +12,7 @@ univers outdoor fermés :
 | Cycle | `cycle` | `bike` | `ACTIVE` |
 | Kayak, canoë et pagaie | `paddle` | `kayak` | `ACTIVE` |
 | Surf et glisse nautique | `surf` | `surf` | `ACTIVE` |
-| Neige et glisse | `snow` | `ski` | `ACTIVE` |
+| Neige et glisse | `snow` | `ski`, `snowboard` | `ACTIVE` |
 
 Le registre n'autorise pas les catégories camping, outdoor technique, sports
 généralistes, outillage, jardin, événementiel, audiovisuel ou construction.
@@ -28,7 +28,7 @@ La taxonomie sépare strictement :
 1. **Univers** : regroupement commercial fermé (`cycle`, `paddle`, `surf`,
    `snow`).
 2. **Famille d'équipement** : slug stable du produit (`bike`, `kayak`, `surf`,
-   `ski`).
+   `ski`, `snowboard`).
 3. **Caractéristiques ou sous-types** : valeurs descriptives de la famille,
    jamais des catégories ni des slugs indépendants.
 
@@ -38,6 +38,7 @@ La taxonomie sépare strictement :
 | `kayak` | `capacity` ; construction `rigid` ou `inflatable` ; pratique `sea`, `touring` ou `whitewater` |
 | `surf` | sous-types `classic`, `longboard`, `softboard`, `bodyboard`, `skimboard` |
 | `ski` | sous-types `alpine`, `touring`, `cross-country` |
+| `snowboard` | aucun sous-type ou caractéristique spécialisé dans cette tranche |
 
 Le fait de couvrir l'univers « Kayak, canoë et pagaie » ne crée pas de slugs
 `canoe` ou `paddle` dans cette tranche. Toute famille distincte devra être
@@ -50,7 +51,7 @@ La source de vérité typée est
 Elle distingue :
 
 - `ACTIVE` : familles activées commercialement ; aujourd'hui `bike`, `kayak`,
-  `surf` et `ski` ;
+  `surf`, `ski` et `snowboard` ;
 - `APPROVED_NEXT` : famille approuvée pour le prochain lot ; aucune après
   l'activation du kayak ;
 - `APPROVED_LATER` : familles approuvées mais différées ; aucune dans le
@@ -75,9 +76,13 @@ L'activation ski réutilise la catégorie déjà seedée `ski`, sans migration e
 sans conversion des produits `equipment`. Elle active uniquement les sous-types
 descriptifs `alpine`, `touring` et `cross-country` du même slug `ski`. Les
 variantes existantes portent l'information lorsqu'elle est disponible ; aucun
-champ de mensuration, niveau ou longueur de bâton n'est ajouté. Le snowboard,
-le télémark, les raquettes, les luges, le snowscoot et les packs avalanche
-restent désactivés.
+champ de mensuration, niveau ou longueur de bâton n'est ajouté. Le télémark,
+les raquettes, les luges, le snowscoot et les packs avalanche restent désactivés.
+
+L'activation snowboard ajoute la catégorie canonique `snowboard` via la
+migration 0052, sans conversion des produits historiques `equipment`. Aucun
+sous-type, champ ou caractéristique spécialisée n'est introduit. Le parcours
+générique et les photos neutres sont réutilisés, sans règle vélo ou ski.
 
 ## Compléments
 

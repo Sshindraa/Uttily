@@ -72,6 +72,19 @@ describe('registre de présentation des catégories', () => {
     expect(getDisplayableCharacteristics({ subtype: 'snowboard' }, presentation)).toEqual([]);
   });
 
+  it('présente le snowboard comme une famille neutre sans sous-type inventé', () => {
+    const presentation = getCategoryPresentation('snowboard');
+
+    expect(presentation.singularLabel).toBe('snowboard');
+    expect(presentation.pluralLabel).toBe('snowboards');
+    expect(presentation.icon).toBe('🏂');
+    expect(presentation.characteristics).toEqual([]);
+    expect(presentation.specificSections).toEqual([]);
+    expect(
+      getDisplayableCharacteristics({ subtype: 'alpine', level: 'expert' }, presentation),
+    ).toEqual([]);
+  });
+
   it('retombe sur une présentation générique pour toute catégorie inconnue', () => {
     expect(getCategoryPresentation('canoe')).toBe(GENERIC_CATEGORY_PRESENTATION);
     expect(getCategoryPresentation(undefined)).toBe(GENERIC_CATEGORY_PRESENTATION);

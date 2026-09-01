@@ -1,6 +1,6 @@
 # ADR-035 — Taxonomie commerciale outdoor fermée
 
-**Statut :** Accepted — ski activé comme troisième famille non-vélo.
+**Statut :** Accepted — snowboard activé comme quatrième famille non-vélo.
 
 **Date :** 2026-09-01
 
@@ -16,7 +16,8 @@ implicite de publier n'importe quelle catégorie.
 
 Le produit doit donc distinguer l'universalité du modèle
 Produit → Variante → Exemplaire d'un périmètre commercial volontairement
-fermé. Cette décision encadre l'activation du kayak, du surf puis du ski sans
+fermé. Cette décision encadre l'activation du kayak, du surf, du ski puis du
+snowboard sans
 convertir les produits historiques qui utilisent `equipment`.
 
 ## Décision
@@ -41,16 +42,17 @@ Le registre serveur fermé et typé est porté par
 
 | Statut | Familles |
 | --- | --- |
-| `ACTIVE` | `bike`, `kayak`, `surf`, `ski` |
+| `ACTIVE` | `bike`, `kayak`, `surf`, `ski`, `snowboard` |
 | `APPROVED_NEXT` | — |
 | `APPROVED_LATER` | — |
 | `INTERNAL_FALLBACK` | `equipment`, compatibilité technique seulement |
 
 Toute autre valeur est résolue comme `UNSUPPORTED`. Le fallback interne ne
 peut pas être considéré comme une famille commerciale active. La migration
-0051 ajoute uniquement la catégorie canonique `kayak`; la catégorie `surf`
-existait déjà dans le seed initial. Aucun produit existant utilisant
-`equipment` n'est converti et aucune migration surf n'est nécessaire. La
+0051 ajoute uniquement la catégorie canonique `kayak`; la catégorie `surf` et la
+catégorie `ski` existaient déjà dans le seed initial. La migration 0052 ajoute
+la catégorie canonique `snowboard`. Aucun produit existant utilisant
+`equipment` n'est converti et aucune catégorie historique n'est réécrite. La
 fixture `kayak-dev` reste explicitement rattachée à `kayak`.
 
 Le kayak consomme les parcours génériques déjà en place : Produit → Variante
@@ -72,8 +74,15 @@ Le ski est actif uniquement pour la famille `ski` et les sous-types descriptifs
 champs de variante déjà disponibles et ne créent aucun slug supplémentaire.
 Aucun champ de mensuration, niveau ou longueur de bâton n'est ajouté. Le ski
 réutilise le parcours générique et le gestionnaire photo neutre, sans Photo
-Coach, slot photo ou règle de sécurité vélo. Le snowboard et les autres
-familles neige restent désactivés.
+Coach, slot photo ou règle de sécurité vélo.
+
+Le snowboard est actif comme famille unique `snowboard`, sans sous-type,
+caractéristique ou règle spécialisée inventé. Il réutilise les parcours
+génériques, la publication universelle à trois photos valides, la recherche,
+la réservation, le hold et le paiement TEST. Son gestionnaire photo reste
+neutre : aucun Photo Coach, slot photo ou règle de sécurité vélo ou ski ne lui
+est appliqué. La migration 0052 ne convertit pas les produits historiques
+`equipment`.
 
 ## Compléments
 
@@ -106,12 +115,14 @@ résolu exclusivement par le registre serveur de cette ADR.
   Ses sous-types sont descriptifs et restent portés par les variantes ou les
   données déjà disponibles.
 - Le ski est actif comme troisième famille non-vélo, uniquement pour `alpine`,
-  `touring` et `cross-country`; le snowboard et les autres familles neige ne
-  sont pas activés.
+  `touring` et `cross-country`.
+- Le snowboard est actif comme quatrième famille non-vélo sous le seul slug
+  `snowboard`; aucun sous-type, champ spécialisé ou règle ski n'est ajouté.
+- Les autres familles neige et les catégories hors périmètre restent exclues.
 - Les catégories hors périmètre et les valeurs inconnues doivent être refusées
   par les futurs flux commerciaux plutôt que converties silencieusement en
   `equipment`.
-- Les accessoires des familles kayak, surf et ski restent des compléments non
+- Les accessoires des familles kayak, surf, ski et snowboard restent des compléments non
   publiables seuls par défaut ; leur moteur de supplément n'est pas livré.
 - Les familles windsurf, wingfoil, kitesurf et foil ne sont pas activées par
   cette décision.

@@ -252,7 +252,7 @@ groupées, ni de nouvelles règles métier spécifiques à une catégorie.
 
 **Cadrage livré le 2026-09-01 :** ADR-035 et le registre Core ferment le
 périmètre commercial aux quatre univers Cycle, Kayak/canoë/pagaie, Surf/glisse
-nautique et Neige/glisse. `bike`, `kayak`, `surf` et `ski` sont `ACTIVE`,
+nautique et Neige/glisse. `bike`, `kayak`, `surf`, `ski` et `snowboard` sont `ACTIVE`,
 `equipment` reste un fallback interne et
 les valeurs inconnues sont `UNSUPPORTED`. Aucune catégorie camping, outdoor
 technique, sport généraliste, outillage, jardin, événementiel, audiovisuel ou
@@ -309,6 +309,15 @@ fallback `equipment`, les sous-types absents ou inconnus, les photos neutres,
 la maintenance, les surfaces publiques et l'isolation tenant restent
 inchangés. Aucun schéma, champ, règle métier, URL ou nouvelle catégorie n'est
 ajouté ; les familles neige non activées restent inchangées.
+
+**Activation snowboard livrée le 2026-09-01 :** la famille `snowboard` est
+`ACTIVE` sous un seul slug, sans sous-type, champ ou règle spécialisée ajoutés.
+La migration 0052 ajoute sa catégorie canonique sans convertir les produits
+historiques `equipment`. Les parcours loueur et publics réutilisent les
+invariants génériques Produit → Variante → Exemplaire, le tarif, la
+disponibilité, les photos neutres, la publication, la recherche, le hold, le
+paiement TEST et la confirmation. Aucun Photo Coach, slot photo vélo, règle ski,
+pack ou moteur de supplément n'est activé.
 
 ### 7.2 Onboarding autonome
 
@@ -655,9 +664,9 @@ Chaque catégorie définit avant activation :
 - documents ;
 - critères de publication.
 
-Ordre d'activation encadré par ADR-035 : `bike`, `kayak`, `surf` et `ski`
-actifs ; les autres familles neige et les familles hors taxonomie fermée sont
-exclues.
+Ordre d'activation encadré par ADR-035 : `bike`, `kayak`, `surf`, `ski` et
+`snowboard` actifs ; les autres familles neige et les familles hors taxonomie
+fermée sont exclues.
 
 ### 13.2 Kit d'activation pays
 

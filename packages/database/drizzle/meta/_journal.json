@@ -358,6 +358,13 @@
       "when": 1788107362001,
       "tag": "0051_activate_kayak_category",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1788107362002,
+      "tag": "0052_activate_snowboard_category",
+      "breakpoints": true
     }
   ]
 }

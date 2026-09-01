@@ -91,7 +91,22 @@ describe('présentation catégorie — flotte et maintenance', () => {
     expect(html).not.toContain('🚲 vélo');
   });
 
-  it('adapte les libellés de maintenance pour le vélo, le kayak, le surf et le ski', () => {
+  it('affiche le snowboard dans la flotte avec la présentation neutre', () => {
+    const html = renderToStaticMarkup(
+      <FleetListView
+        organizationId="org-1"
+        items={[inventoryItem('snowboard')]}
+        canManage={false}
+      />,
+    );
+
+    expect(html).toContain('🏂 snowboard');
+    expect(html).toContain('Disponible');
+    expect(html).not.toContain('🎿 ski');
+    expect(html).not.toContain('🚲 vélo');
+  });
+
+  it('adapte les libellés de maintenance pour les familles actives', () => {
     const html = renderToStaticMarkup(
       <MaintenanceListView
         organizationId="org-1"
@@ -100,6 +115,7 @@ describe('présentation catégorie — flotte et maintenance', () => {
           maintenanceCase('kayak'),
           maintenanceCase('surf'),
           maintenanceCase('ski'),
+          maintenanceCase('snowboard'),
         ]}
       />,
     );
@@ -108,8 +124,9 @@ describe('présentation catégorie — flotte et maintenance', () => {
     expect(html).toContain('🛶 kayak');
     expect(html).toContain('🏄 planche de surf');
     expect(html).toContain('🎿 ski');
+    expect(html).toContain('🏂 snowboard');
     expect(html).toContain('À traiter');
-    expect(html).toContain('Interventions à traiter (4)');
+    expect(html).toContain('Interventions à traiter (5)');
   });
 
   it('conserve la disponibilité et la transition de remise en service', () => {

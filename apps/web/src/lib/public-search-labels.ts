@@ -6,6 +6,7 @@ const MVP_CATEGORY_LABELS_EN: Readonly<Record<string, string>> = {
   paddle: 'Paddleboarding',
   bike: 'Bikes',
   ski: 'Ski',
+  snowboard: 'Snowboard',
   camping: 'Camping & Outdoor',
   climbing: 'Climbing',
   diving: 'Diving',
@@ -14,6 +15,7 @@ const MVP_CATEGORY_LABELS_EN: Readonly<Record<string, string>> = {
 
 const MVP_CATEGORY_LABELS_FR: Readonly<Record<string, string>> = {
   ski: 'Ski',
+  snowboard: 'Snowboard',
 };
 
 /** Les slugs de la taxonomie MVP sont les clés stables de présentation. */

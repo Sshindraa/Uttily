@@ -219,6 +219,26 @@ describe('Fiche vélo — surface loueur', () => {
     expect(html).not.toContain('vues requises');
   });
 
+  it('présente une fiche snowboard neutre sans règles ski ou vélo', async () => {
+    const snowboard = buildBike();
+    snowboard.product.categorySlug = 'snowboard';
+    snowboard.product.categoryName = 'Snowboard';
+    snowboard.variant.name = 'Standard';
+    snowboard.variant.attributes = {};
+    snowboard.photos = { count: 2, minRequired: 3, isComplete: false, items: [] };
+
+    const html = await renderBikePage(snowboard);
+
+    expect(html).toContain('🏂');
+    expect(html).toContain('Snowboard');
+    expect(html).toContain('Photos de l’équipement');
+    expect(html).toContain('2/3 photos valides');
+    expect(html).not.toContain('🎿');
+    expect(html).not.toContain('Photo Coach');
+    expect(html).not.toContain('HERO_PROFILE');
+    expect(html).not.toContain('vues requises');
+  });
+
   it('associe les photos aux slots canoniques plutôt qu’à leur ordre d’insertion', async () => {
     const bike = buildBike();
     bike.product.categorySlug = 'bike';

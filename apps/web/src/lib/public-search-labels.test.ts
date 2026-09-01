@@ -8,5 +8,11 @@ describe('getPublicCategoryLabel', () => {
     expect(getPublicCategoryLabel('fr', { slug: 'bike', name: 'Vélos' })).toBe('Vélos');
     expect(getPublicCategoryLabel('en', { slug: 'ski', name: 'Ski & Snowboard' })).toBe('Ski');
     expect(getPublicCategoryLabel('fr', { slug: 'ski', name: 'Ski & Snowboard' })).toBe('Ski');
+    expect(getPublicCategoryLabel('en', { slug: 'snowboard', name: 'Snowboard' })).toBe(
+      'Snowboard',
+    );
+    expect(getPublicCategoryLabel('fr', { slug: 'snowboard', name: 'Snowboard' })).toBe(
+      'Snowboard',
+    );
   });
 });
