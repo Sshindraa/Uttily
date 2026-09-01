@@ -15,6 +15,10 @@ vi.mock('@/app/actions/maintenance', () => ({
   resolveMaintenanceCaseAction: vi.fn(),
 }));
 
+vi.mock('@/app/actions/inventory', () => ({
+  transferInventoryItemsBatchAction: vi.fn(),
+}));
+
 const inventoryItem = (categorySlug: string): InventorySummary => ({
   id: 'item-1',
   internalSku: 'SKU-1',
@@ -60,6 +64,25 @@ const maintenanceCase = (
 });
 
 describe('présentation catégorie — flotte et maintenance', () => {
+  it('expose une sélection et une action de transfert génériques aux gestionnaires', () => {
+    const html = renderToStaticMarkup(
+      <FleetListView
+        organizationId="org-1"
+        items={[inventoryItem('kayak')]}
+        locations={[
+          { id: 'location-1', name: 'Paris' },
+          { id: 'location-2', name: 'Annecy' },
+        ]}
+        canManage
+      />,
+    );
+
+    expect(html).toContain('Sélectionner tous les exemplaires');
+    expect(html).toContain('Sélectionner SKU-1');
+    expect(html).not.toContain('Photo Coach');
+    expect(html).not.toContain('Transférer vers un établissement');
+  });
+
   it('affiche la présentation kayak dans la flotte sans changer les états', () => {
     const html = renderToStaticMarkup(
       <FleetListView organizationId="org-1" items={[inventoryItem('kayak')]} canManage={false} />,

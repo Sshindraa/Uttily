@@ -13,6 +13,7 @@ import {
   createInventoryItemsBatch,
   updateInventoryItem,
   transferInventoryItem,
+  transferInventoryItemsBatch,
   retireInventoryItem,
   INVENTORY_CONDITIONS,
   INVENTORY_STATUSES,
@@ -20,6 +21,7 @@ import {
   type InventoryMovementRecord,
   type CreateInventoryItemInput,
   type TransferInventoryItemInput,
+  type TransferInventoryItemsBatchResult,
 } from '@uttily/core';
 import type { ActionResult } from '@uttily/contracts';
 import { MAX_BULK_INVENTORY_ITEMS } from '@uttily/contracts';
@@ -108,6 +110,38 @@ function parseTransferInventoryItem(
   };
   if (reason !== undefined) input.reason = reason;
   return { itemId, input };
+}
+
+function parseTransferInventoryItemsBatch(formData: FormData):
+  | ParsedFailure
+  | {
+      inventoryItemIds: string[];
+      toLocationId: string;
+      idempotencyKey: string;
+    } {
+  const fieldErrors: Record<string, string> = {};
+  const inventoryItemIds = formData.getAll('inventoryItemId').map((value) => String(value));
+  const toLocationId = String(formData.get('toLocationId') ?? '');
+  const idempotencyKey = String(formData.get('idempotencyKey') ?? '').trim();
+
+  if (inventoryItemIds.length < 1) {
+    fieldErrors.inventoryItemIds = 'Sélectionnez au moins un exemplaire.';
+  } else if (inventoryItemIds.length > MAX_BULK_INVENTORY_ITEMS) {
+    fieldErrors.inventoryItemIds = `La sélection est limitée à ${MAX_BULK_INVENTORY_ITEMS} exemplaires.`;
+  } else if (inventoryItemIds.some((itemId) => !isValidUuid(itemId))) {
+    fieldErrors.inventoryItemIds = 'Un ou plusieurs exemplaires sont invalides.';
+  } else if (new Set(inventoryItemIds).size !== inventoryItemIds.length) {
+    fieldErrors.inventoryItemIds = 'La sélection contient un doublon.';
+  }
+  if (!isValidUuid(toLocationId)) {
+    fieldErrors.toLocationId = 'Établissement de destination invalide.';
+  }
+  if (idempotencyKey.length < 1) {
+    fieldErrors.idempotencyKey = "La clé d'idempotence est requise.";
+  }
+
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+  return { inventoryItemIds, toLocationId, idempotencyKey };
 }
 
 function parseItemId(formData: FormData): ParsedFailure | { itemId: string } {
@@ -250,6 +284,39 @@ export async function transferInventoryItemAction(
     });
     revalidatePath(`/dashboard/${authorizedOrgId}/inventory`);
     revalidatePath(`/dashboard/${authorizedOrgId}/inventory/${parsed.itemId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+    return result;
+  });
+}
+
+export async function transferInventoryItemsBatchAction(
+  organizationId: string,
+  _prev: ActionResult<TransferInventoryItemsBatchResult>,
+  formData: FormData,
+): Promise<ActionResult<TransferInventoryItemsBatchResult>> {
+  const parsed = parseTransferInventoryItemsBatch(formData);
+  if ('fieldErrors' in parsed) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Veuillez corriger les erreurs.',
+      fieldErrors: parsed.fieldErrors,
+    };
+  }
+
+  return runAction(async () => {
+    const {
+      db,
+      user,
+      organizationId: authorizedOrgId,
+    } = await requireCatalogManagerOf(organizationId);
+    const result = await transferInventoryItemsBatch(db, {
+      ...parsed,
+      organizationId: authorizedOrgId,
+      createdBy: user.id,
+    });
+    revalidatePath(`/dashboard/${authorizedOrgId}/inventory`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/fleet`);
     revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
     return result;
   });
