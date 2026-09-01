@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { UnifiedBikeInventoryItem } from '@uttily/core';
+import { MAX_BULK_INVENTORY_ITEMS } from '@uttily/contracts';
 import {
+  bulkCreateInventoryItemsAction,
   createInventoryItemAction,
   updateInventoryItemAction,
   retireInventoryItemAction,
@@ -26,9 +28,16 @@ export function InventoryActions({
 }: InventoryActionsProps): React.ReactElement {
   const router = useRouter();
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [sku, setSku] = useState(() => buildSuggestedInventorySku());
   const [serialNumber, setSerialNumber] = useState('');
   const [locationId, setLocationId] = useState(locations[0]?.id ?? '');
+  const [bulkCount, setBulkCount] = useState(2);
+  const [bulkPrefix, setBulkPrefix] = useState('EQUIP');
+  const [bulkLocationId, setBulkLocationId] = useState(locations[0]?.id ?? '');
+  const [bulkIdempotencyKey, setBulkIdempotencyKey] = useState(() =>
+    globalThis.crypto.randomUUID(),
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -102,6 +111,41 @@ export function InventoryActions({
     }
   }
 
+  async function handleBulkAdd(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.set('productVariantId', variantId);
+      formData.set('currentLocationId', bulkLocationId);
+      formData.set('count', String(bulkCount));
+      formData.set('prefix', bulkPrefix);
+      formData.set('idempotencyKey', bulkIdempotencyKey);
+
+      const res = await bulkCreateInventoryItemsAction(
+        organizationId,
+        { ok: false, code: 'UNKNOWN', message: '' },
+        formData,
+      );
+
+      if (!res.ok) {
+        throw new Error(res.message || 'Erreur lors de la création des exemplaires.');
+      }
+
+      setIsBulkOpen(false);
+      setBulkCount(2);
+      setBulkPrefix('EQUIP');
+      setBulkIdempotencyKey(globalThis.crypto.randomUUID());
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return (
     <>
       <div style={{ display: 'flex', gap: '8px' }}>
@@ -114,6 +158,17 @@ export function InventoryActions({
           className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
         >
           ➕ Ajouter un exemplaire
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setBulkLocationId(locations[0]?.id ?? '');
+            setBulkIdempotencyKey(globalThis.crypto.randomUUID());
+            setIsBulkOpen(true);
+          }}
+          className={styles.actionBtn}
+        >
+          ➕ Ajouter plusieurs
         </button>
       </div>
 
@@ -238,11 +293,11 @@ export function InventoryActions({
             className={styles.drawerContent}
             role="dialog"
             aria-modal="true"
-            aria-labelledby="add-bike-drawer-title"
+            aria-labelledby="add-inventory-drawer-title"
             onClick={(e) => e.stopPropagation()}
           >
             <div className={styles.drawerHeader}>
-              <h3 id="add-bike-drawer-title" className={styles.drawerTitle}>
+              <h3 id="add-inventory-drawer-title" className={styles.drawerTitle}>
                 🧰 Ajouter un exemplaire à la flotte
               </h3>
               <button
@@ -261,11 +316,11 @@ export function InventoryActions({
               style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
             >
               <div className={styles.formGroup}>
-                <label htmlFor="bike-sku" className={styles.formLabel}>
+                <label htmlFor="inventory-sku" className={styles.formLabel}>
                   Référence exemplaire (ex : EQP-001) :
                 </label>
                 <input
-                  id="bike-sku"
+                  id="inventory-sku"
                   type="text"
                   value={sku}
                   onChange={(e) => setSku(e.target.value)}
@@ -276,11 +331,11 @@ export function InventoryActions({
               </div>
 
               <div className={styles.formGroup}>
-                <label htmlFor="bike-serial" className={styles.formLabel}>
-                  Numéro de série du cadre (optionnel) :
+                <label htmlFor="inventory-serial" className={styles.formLabel}>
+                  Numéro de série (optionnel) :
                 </label>
                 <input
-                  id="bike-serial"
+                  id="inventory-serial"
                   type="text"
                   value={serialNumber}
                   onChange={(e) => setSerialNumber(e.target.value)}
@@ -291,11 +346,11 @@ export function InventoryActions({
               </div>
 
               <div className={styles.formGroup}>
-                <label htmlFor="bike-location" className={styles.formLabel}>
+                <label htmlFor="inventory-location" className={styles.formLabel}>
                   Boutique / Point de retrait :
                 </label>
                 <select
-                  id="bike-location"
+                  id="inventory-location"
                   value={locationId}
                   onChange={(e) => setLocationId(e.target.value)}
                   className={styles.inputField}
@@ -325,6 +380,113 @@ export function InventoryActions({
                   className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
                 >
                   {isLoading ? 'Ajout en cours…' : 'Ajouter l’exemplaire à la flotte'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isBulkOpen && (
+        <div className={styles.drawerOverlay} onClick={() => !isLoading && setIsBulkOpen(false)}>
+          <div
+            className={styles.drawerContent}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-inventory-batch-drawer-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.drawerHeader}>
+              <h3 id="add-inventory-batch-drawer-title" className={styles.drawerTitle}>
+                🧰 Ajouter plusieurs exemplaires
+              </h3>
+              <button
+                type="button"
+                onClick={() => !isLoading && setIsBulkOpen(false)}
+                className={styles.closeBtn}
+                disabled={isLoading}
+                aria-label="Fermer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleBulkAdd}
+              style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+            >
+              <div className={styles.formGroup}>
+                <label htmlFor="inventory-batch-count" className={styles.formLabel}>
+                  Nombre d’exemplaires (1–{MAX_BULK_INVENTORY_ITEMS}) :
+                </label>
+                <input
+                  id="inventory-batch-count"
+                  type="number"
+                  min={1}
+                  max={MAX_BULK_INVENTORY_ITEMS}
+                  value={bulkCount}
+                  onChange={(e) => setBulkCount(Number(e.target.value))}
+                  className={styles.inputField}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="inventory-batch-prefix" className={styles.formLabel}>
+                  Préfixe des références :
+                </label>
+                <input
+                  id="inventory-batch-prefix"
+                  type="text"
+                  value={bulkPrefix}
+                  onChange={(e) => setBulkPrefix(e.target.value)}
+                  className={styles.inputField}
+                  maxLength={32}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="inventory-batch-location" className={styles.formLabel}>
+                  Boutique / Point de retrait :
+                </label>
+                <select
+                  id="inventory-batch-location"
+                  value={bulkLocationId}
+                  onChange={(e) => setBulkLocationId(e.target.value)}
+                  className={styles.inputField}
+                  required
+                  disabled={isLoading}
+                >
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <p style={{ margin: 0, color: 'var(--ut-color-ink-muted)', fontSize: '0.85rem' }}>
+                La création est atomique et peut être rejouée sans créer de doublon.
+              </p>
+
+              <div className={styles.drawerFooter}>
+                <button
+                  type="button"
+                  onClick={() => setIsBulkOpen(false)}
+                  disabled={isLoading}
+                  className={styles.actionBtn}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className={`${styles.actionBtn} ${styles.actionBtnPrimary}`}
+                >
+                  {isLoading ? 'Création en cours…' : 'Créer les exemplaires'}
                 </button>
               </div>
             </form>

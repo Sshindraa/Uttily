@@ -32,6 +32,7 @@ describe('BikeSetupPage (/bikes/[bikeId]/setup)', () => {
     expect(wizardSource).toContain('updateProductAction');
     expect(wizardSource).toContain('saveDailyPricingPlanDraftAction');
     expect(wizardSource).toContain('bulkCreateInventoryItemsAction');
+    expect(wizardSource).toContain("formData.set('idempotencyKey', inventoryIdempotencyKey)");
     expect(wizardSource).toContain('publishFirstEquipmentFromSetupAction');
     expect(pageSource).toContain('activeInventoryCount: bike.inventory.activeCount');
     expect(pageSource).toContain('isVariantActive: bike.variant.isActive');

@@ -422,7 +422,7 @@ Prévoir plusieurs chemins d'entrée :
 ### 7.3 Catalogue et flotte
 
 - duplication contrôlée de produit, variante et paramètres ;
-- création de plusieurs exemplaires avec références déterministes ;
+- création de plusieurs exemplaires avec références déterministes (tranche Core atomique et rejouable livrée le 2026-09-02) ;
 - numéros de série et identifiants fabricant ;
 - changements groupés de statut et d'établissement ;
 - transferts multi-sites ;
