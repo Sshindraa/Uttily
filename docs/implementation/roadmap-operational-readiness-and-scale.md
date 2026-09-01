@@ -280,6 +280,17 @@ aucun accessoire publiable seul n'est ajouté. Commit `cbcebc9`, PR #45 et CI
 complète verte, Browser acceptance avec credentials Clerk TEST compris. Les
 tests PostgreSQL exhaustifs restent exécutés par la CI parallèle.
 
+**Hardening surf livré le 2026-09-01 :** l'audit des surfaces surf a détecté
+que le wizard historique de création et d'édition affichait encore par défaut
+le Photo Coach et les trois slots vélo. La correction minimale transmet
+`categorySlug`, branche ce wizard sur le registre et fournit un upload neutre
+pour `surf`, `equipment` et les catégories inconnues. Les listes, fiches,
+recherche, maintenance, publication et invariants tenant restent inchangés ;
+aucune migration, règle métier, nouvelle catégorie ou URL n'est ajoutée.
+Tests ciblés Web/Core et typecheck Web verts ; les intégrations PostgreSQL
+ciblées restent déléguées à la CI lorsqu'elles ne sont pas configurées en
+local.
+
 ### 7.2 Onboarding autonome
 
 - organisation, identité légale et Stripe Connect ;

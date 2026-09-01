@@ -27,7 +27,7 @@ export default async function BikeSetupPage({
     listLocations(db, organizationId),
   ]);
 
-  const categories = categoriesList.map((c) => ({ id: c.id, name: c.name }));
+  const categories = categoriesList.map((c) => ({ id: c.id, name: c.name, slug: c.slug }));
   const locations = locationsList.map((l) => ({ id: l.id, name: l.name }));
 
   const activePlan = bike.pricing.activePlan ?? bike.pricing.draftPlan;
@@ -38,6 +38,7 @@ export default async function BikeSetupPage({
     name: bike.product.name,
     description: bike.product.description ?? '',
     categoryId: bike.product.categoryId,
+    categorySlug: bike.product.categorySlug,
     categoryName: bike.product.categoryName,
     variantId: bike.variant.id,
     variantName: bike.variant.name,
@@ -46,6 +47,7 @@ export default async function BikeSetupPage({
       publicId: p.publicId,
       sortOrder: p.sortOrder,
     })),
+    photoCount: bike.photos.count,
     isPhotosComplete: bike.photos.isComplete,
     currentPriceEuros: priceEuros,
     pricingPlanType: activePlan?.planType as PricingPlanType | null,

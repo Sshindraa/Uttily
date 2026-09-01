@@ -58,6 +58,21 @@ Les projections `listInventorySummaries` et `listMaintenanceCases` exposent
 `categorySlug` par jointure de lecture avec `categories`. Cette extension ne
 nécessite aucune migration.
 
+## Extension — hardening des surfaces de configuration
+
+Le wizard historique `/bikes/:id/setup` transmet désormais le `categorySlug`
+de la projection `getUnifiedBike` et résout la présentation via le même
+registre. Le Photo Coach, ses trois slots canoniques et le vocabulaire vélo
+restent donc limités à `bike`. Les catégories `surf`, `kayak`, `equipment` et
+les valeurs inconnues utilisent un upload photo neutre avec la mutation photo
+existante et un slot nul ; le seuil universel de trois photos valides et les
+gardes serveur ne changent pas.
+
+Cette correction ne modifie ni le schéma, ni le stockage, ni les permissions,
+ni les URLs. Elle garantit seulement qu'une catégorie non-vélo ne réactive pas
+par erreur une présentation ou une règle photo vélo dans la création et
+la modification d'une offre.
+
 ## Conséquences
 
 - Les écrans liste et fiche peuvent accueillir `equipment` et les catégories
