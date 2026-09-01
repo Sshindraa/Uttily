@@ -1,4 +1,5 @@
 import type { DatabaseClient } from '@uttily/database';
+import type { ProfessionalVerificationStatus } from '../professional-verification';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Intent & Constraints
@@ -219,6 +220,8 @@ export interface PublicOfferDetails {
   publicProductId: string;
   publicLocationId: string;
   organizationPublicDisplayName: string;
+  /** Badge public uniquement lorsque la vérification LIVE est éligible. */
+  professionalVerificationStatus?: ProfessionalVerificationStatus;
   productName: string;
   productDescription: string;
   locationName: string;

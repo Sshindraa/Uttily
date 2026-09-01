@@ -3,7 +3,11 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PAGE_PATH = join(__dirname, 'page.tsx');
-const WIZARD_PATH = join(__dirname, 'bike-setup-wizard.tsx');
+const WIZARD_PATH = join(
+  __dirname,
+  '../../../../../..',
+  'features/bikes/setup/bike-setup-wizard.tsx',
+);
 
 describe('BikeSetupPage (/bikes/[bikeId]/setup)', () => {
   const pageSource = readFileSync(PAGE_PATH, 'utf8');
@@ -29,5 +33,11 @@ describe('BikeSetupPage (/bikes/[bikeId]/setup)', () => {
     expect(wizardSource).toContain('saveDailyPricingPlanDraftAction');
     expect(wizardSource).toContain('bulkCreateInventoryItemsAction');
     expect(wizardSource).toContain('publishBikeFromSetupAction');
+  });
+
+  it('laisse la présentation et les mutations interactives au wizard de la feature bikes', () => {
+    expect(pageSource).toContain('<BikeSetupWizard');
+    expect(pageSource).not.toContain('className=');
+    expect(pageSource).not.toContain('<form');
   });
 });

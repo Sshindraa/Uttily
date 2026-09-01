@@ -1,0 +1,214 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.hero {
+  background: linear-gradient(
+    135deg,
+    var(--ut-color-support-elevated) 0%,
+    var(--ut-color-support-footer) 100%
+  );
+  border: 1px solid var(--ut-color-support-border-muted);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: var(--ut-shadow-support-card);
+}
+
+.heroTitle {
+  font-size: 1.75rem;
+  font-weight: var(--ut-weight-bold);
+  margin-bottom: 0.5rem;
+  color: var(--ut-color-support-ink-strong);
+}
+
+.heroSubtitle {
+  color: var(--ut-color-support-muted);
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+}
+
+.searchForm {
+  display: flex;
+  gap: 0.75rem;
+  max-width: 800px;
+}
+
+.searchInput {
+  flex: 1;
+  background: var(--ut-color-support-deep);
+  border: 1px solid var(--ut-color-support-border-light);
+  border-radius: 8px;
+  padding: 0.85rem 1.25rem;
+  font-size: 1rem;
+  color: var(--ut-color-support-ink-strong);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.searchInput:focus {
+  border-color: var(--ut-color-support-link);
+  box-shadow: 0 0 0 3px var(--ut-color-support-link-focus);
+}
+
+.searchButton {
+  background: var(--ut-color-support-primary);
+  color: var(--ut-color-support-ink-strong);
+  border: none;
+  border-radius: 8px;
+  padding: 0.85rem 1.5rem;
+  font-weight: var(--ut-weight-semibold);
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.15s ease;
+}
+
+.searchButton:hover {
+  background: var(--ut-color-support-primary-strong);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.statCard {
+  background: var(--ut-color-support-panel);
+  border: 1px solid var(--ut-color-support-border-alt);
+  border-radius: 8px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.statLabel {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ut-color-support-muted);
+  font-weight: var(--ut-weight-semibold);
+}
+
+.statValue {
+  font-size: 1.5rem;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-support-link);
+}
+
+.resultsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--ut-color-support-border);
+  padding-bottom: 0.75rem;
+}
+
+.sectionTitle {
+  font-size: 1.25rem;
+  font-weight: var(--ut-weight-semibold);
+  color: var(--ut-color-support-ink-strong);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.resultBadge {
+  background: var(--ut-color-support-elevated);
+  color: var(--ut-color-support-link);
+  font-size: 0.75rem;
+  font-weight: var(--ut-weight-semibold);
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.tableWrapper {
+  background: var(--ut-color-support-surface);
+  border: 1px solid var(--ut-color-support-border);
+  border-radius: 8px;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.th {
+  background: var(--ut-color-support-navigation-alt);
+  color: var(--ut-color-support-muted);
+  font-weight: var(--ut-weight-semibold);
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--ut-color-support-border);
+  white-space: nowrap;
+}
+
+.td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--ut-color-support-border);
+  color: var(--ut-color-support-ink-soft);
+  vertical-align: middle;
+}
+
+.tr:hover {
+  background: var(--ut-color-border-on-dark);
+}
+
+.link {
+  color: var(--ut-color-support-link);
+  text-decoration: none;
+  font-weight: var(--ut-weight-medium);
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.statusTag {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: var(--ut-weight-semibold);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.statusSuccess {
+  background: var(--ut-color-support-success-bg);
+  color: var(--ut-color-support-success);
+  border: 1px solid var(--ut-color-support-success-border);
+}
+
+.statusWarning {
+  background: var(--ut-color-support-warning-bg);
+  color: var(--ut-color-support-warning);
+  border: 1px solid var(--ut-color-support-warning-border-alpha);
+}
+
+.statusError {
+  background: var(--ut-color-support-danger-bg);
+  color: var(--ut-color-support-danger);
+  border: 1px solid var(--ut-color-support-danger-border);
+}
+
+.emptyState {
+  padding: 3rem;
+  text-align: center;
+  color: var(--ut-color-support-subtle);
+  background: var(--ut-color-support-surface);
+  border: 1px dashed var(--ut-color-support-border-muted);
+  border-radius: 8px;
+}

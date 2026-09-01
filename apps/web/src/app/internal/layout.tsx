@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
-import Link from 'next/link';
 import { requireSupportPlatformAdmin } from '@/lib/support-auth';
-import styles from './layout.module.css';
+import { SupportShell } from '@/components/shells/support-shell';
 
 export default async function InternalLayout({
   children,
@@ -16,105 +15,10 @@ export default async function InternalLayout({
       redirect('/sign-in');
     }
     // Fail-closed pour les utilisateurs non-admin Uttily
-    return (
-      <div
-        style={{
-          padding: '3rem 1.5rem',
-          textAlign: 'center',
-          background: 'var(--ut-color-support-background)',
-          minHeight: '100vh',
-          color: 'var(--ut-color-support-danger)',
-        }}
-      >
-        <h1 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>⛔ Accès Interne Refusé</h1>
-        <p
-          style={{
-            color: 'var(--ut-color-support-muted)',
-            maxWidth: '500px',
-            margin: '0 auto 1.5rem',
-          }}
-        >
-          Cette zone est strictement réservée à l’équipe support et administration interne d’Uttily.
-        </p>
-        <Link
-          href="/dashboard"
-          style={{
-            display: 'inline-block',
-            padding: '0.6rem 1.2rem',
-            background: 'var(--ut-color-support-elevated)',
-            color: 'var(--ut-color-support-link)',
-            borderRadius: '6px',
-            textDecoration: 'none',
-            fontWeight: 500,
-          }}
-        >
-          Retourner à l’Espace Pro
-        </Link>
-      </div>
-    );
+    return <SupportShell accessDenied />;
   }
 
   const { user } = adminContext;
 
-  return (
-    <div className={styles.wrapper}>
-      <header className={styles.topBar}>
-        <div className={styles.topBarInner}>
-          <div className={styles.brandGroup}>
-            <Link href="/internal" className={styles.brandLogo}>
-              <span style={{ fontSize: '1.25rem' }}>⚡</span> Uttily Support
-            </Link>
-            <span className={styles.adminBadge}>Admin Interne</span>
-          </div>
-
-          <div className={styles.userEmail}>
-            <span>👤 {user.email}</span>
-            <Link
-              href="/dashboard"
-              style={{
-                marginLeft: '1rem',
-                color: 'var(--ut-color-support-link)',
-                fontSize: '0.8rem',
-                textDecoration: 'none',
-                border: '1px solid var(--ut-color-support-elevated)',
-                padding: '0.25rem 0.6rem',
-                borderRadius: '4px',
-              }}
-            >
-              🏢 Aller au Dashboard Pro →
-            </Link>
-          </div>
-        </div>
-
-        <nav className={styles.navBar} aria-label="Navigation Support Interne">
-          <div className={styles.navInner}>
-            <Link href="/internal" className={styles.navLink}>
-              🔍 Recherche globale
-            </Link>
-            <Link href="/internal/health" className={styles.navLink}>
-              🩺 Santé opérationnelle
-            </Link>
-            <Link href="/internal/payments" className={styles.navLink}>
-              💳 Paiements & Remboursements
-            </Link>
-            <Link href="/internal/notifications" className={styles.navLink}>
-              🔔 Notifications & Invitations
-            </Link>
-            <Link href="/internal/audit" className={styles.navLink}>
-              📜 Journal d’audit
-            </Link>
-            <Link href="/internal/analytics" className={styles.navLink}>
-              📊 Funnel produit
-            </Link>
-          </div>
-        </nav>
-      </header>
-
-      <main className={styles.mainContent}>{children}</main>
-
-      <footer className={styles.footer}>
-        <p>Uttily Back-office Support Interne V1 — Accès et actions sécurisés & audités.</p>
-      </footer>
-    </div>
-  );
+  return <SupportShell userEmail={user.email}>{children}</SupportShell>;
 }

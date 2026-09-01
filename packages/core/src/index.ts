@@ -167,6 +167,9 @@ export * from './photos';
 // G7G — Projection read-only des signaux maintenance du dashboard.
 export * from './dashboard';
 
+// G8B-3B4 — Badge professionnel calculé côté serveur et révocable.
+export * from './professional-verification';
+
 // G7H-A — Fondations analytics first-party privacy-first.
 export * from './product-analytics';
 

@@ -1,0 +1,191 @@
+.container {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 32px 20px 64px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--ut-text-sm);
+  line-height: var(--ut-leading-body);
+  color: var(--ut-color-ink-muted);
+}
+
+.breadcrumbLink {
+  color: var(--ut-color-primary);
+  text-decoration: none;
+  font-weight: var(--ut-weight-medium);
+}
+
+.card {
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
+  border-radius: 20px;
+  padding: 32px 36px;
+  box-shadow: var(--ut-shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.stepHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stepBadge {
+  background: var(--ut-color-primary-soft);
+  color: var(--ut-color-primary);
+  border: 1px solid var(--ut-color-primary-soft);
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: var(--ut-leading-ui);
+}
+
+.autosaveBadge {
+  font-size: var(--ut-text-xs);
+  color: var(--ut-color-success);
+  font-weight: var(--ut-weight-medium);
+  line-height: 1.3333;
+}
+
+.title {
+  font-size: var(--ut-text-title-md);
+  font-weight: var(--ut-weight-semibold);
+  color: var(--ut-color-ink-strong);
+  margin: 0;
+  letter-spacing: normal;
+  line-height: 1.1538;
+}
+
+.subtitle {
+  font-size: var(--ut-text-md);
+  color: var(--ut-color-ink-muted);
+  line-height: var(--ut-leading-body);
+  margin: 0;
+}
+
+.errorAlert {
+  padding: 12px 16px;
+  background: var(--ut-color-danger-soft);
+  border: 1px solid var(--ut-color-danger-soft);
+  color: var(--ut-color-danger);
+  border-radius: 10px;
+  font-size: var(--ut-text-sm);
+  line-height: var(--ut-leading-body);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  color: var(--ut-color-ink);
+  line-height: var(--ut-leading-ui);
+}
+
+.input {
+  padding: 12px 16px;
+  border: 1.5px solid var(--ut-color-border-strong);
+  border-radius: 12px;
+  font-size: var(--ut-text-md);
+  color: var(--ut-color-ink-strong);
+  background: var(--ut-color-surface);
+  line-height: 1.375;
+  transition: all 0.15s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--ut-color-primary);
+  box-shadow: var(--ut-shadow-primary-ring);
+}
+
+.textarea {
+  padding: 12px 16px;
+  border: 1.5px solid var(--ut-color-border-strong);
+  border-radius: 12px;
+  font-size: var(--ut-text-md);
+  color: var(--ut-color-ink-strong);
+  background: var(--ut-color-surface);
+  resize: vertical;
+  line-height: 1.375;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--ut-color-primary);
+  box-shadow: var(--ut-shadow-primary-ring);
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--ut-color-surface-soft);
+}
+
+.cancelBtn {
+  color: var(--ut-color-ink-muted);
+  text-decoration: none;
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  line-height: var(--ut-leading-ui);
+}
+
+.cancelBtn:hover {
+  color: var(--ut-color-ink-strong);
+}
+
+.primaryBtn {
+  padding: 12px 24px;
+  background: var(--ut-color-primary);
+  color: var(--ut-color-surface);
+  border: none;
+  border-radius: 12px;
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  line-height: var(--ut-leading-ui);
+  cursor: pointer;
+  box-shadow: var(--ut-shadow-primary-subtle);
+  transition: all 0.15s ease;
+}
+
+.primaryBtn:hover {
+  background: var(--ut-color-primary-strong);
+}

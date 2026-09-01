@@ -3,9 +3,12 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PAGE_PATH = join(__dirname, 'page.tsx');
+const FEATURE_PATH = join(__dirname, '../../../../../features/bikes/bike-detail-view.tsx');
 
 describe('UnifiedBikePage (Fiche Vélo Unifiée v2 - Centre de commande)', () => {
   const pageSource = readFileSync(PAGE_PATH, 'utf8');
+  const featureSource = readFileSync(FEATURE_PATH, 'utf8');
+  const source = `${pageSource}\n${featureSource}`;
 
   it('appelle getUnifiedBike et exige les autorisations catalogue du loueur', () => {
     expect(pageSource).toContain('requireCatalogViewerOf(orgId)');
@@ -14,15 +17,21 @@ describe('UnifiedBikePage (Fiche Vélo Unifiée v2 - Centre de commande)', () =>
   });
 
   it('intègre les 4 cartes modulaires d’action sur place', () => {
-    expect(pageSource).toContain('BikeIdentityCard');
-    expect(pageSource).toContain('BikePhotosCard');
-    expect(pageSource).toContain('BikePricingCard');
-    expect(pageSource).toContain('BikeInventoryCard');
+    expect(source).toContain('BikeIdentityCard');
+    expect(source).toContain('BikePhotosCard');
+    expect(source).toContain('BikePricingCard');
+    expect(source).toContain('BikeInventoryCard');
   });
 
   it('fournit le fil d’Ariane et les badges de statut fail-closed', () => {
-    expect(pageSource).toContain('← Retour à Mes équipements');
-    expect(pageSource).toContain('ONLINE_AVAILABLE');
-    expect(pageSource).toContain('En ligne · Disponible');
+    expect(source).toContain('← Retour à Mes équipements');
+    expect(source).toContain('ONLINE_AVAILABLE');
+    expect(source).toContain('En ligne · Disponible');
+  });
+
+  it('laisse la présentation de la fiche à la feature bikes', () => {
+    expect(pageSource).toContain('<BikeDetailView');
+    expect(pageSource).not.toContain('<section');
+    expect(pageSource).not.toContain('className=');
   });
 });

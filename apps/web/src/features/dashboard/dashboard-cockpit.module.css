@@ -1,0 +1,396 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.heroRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.greetingTitle {
+  font-size: var(--ut-text-title-md);
+  font-weight: var(--ut-weight-semibold);
+  color: var(--ut-color-ink-strong);
+  margin: 0;
+  letter-spacing: normal;
+  line-height: 1.1538;
+}
+
+.dateSubtitle {
+  font-size: var(--ut-text-sm);
+  color: var(--ut-color-ink-muted);
+  margin: 4px 0 0 0;
+  line-height: var(--ut-leading-body);
+}
+
+.quickActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btnNewBike {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  background: var(--ut-color-primary);
+  color: var(--ut-color-surface);
+  border-radius: 12px;
+  font-weight: var(--ut-weight-medium);
+  font-size: var(--ut-text-sm);
+  line-height: var(--ut-leading-ui);
+  text-decoration: none;
+  box-shadow: var(--ut-shadow-primary-subtle);
+  transition: all 0.15s ease;
+}
+
+.btnNewBike:hover {
+  background: var(--ut-color-primary-strong);
+  transform: translateY(-1px);
+}
+
+/* 4 Chiffres Clés du Jour */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.kpiCard {
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--ut-shadow-card-subtle);
+  text-decoration: none;
+  color: inherit;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.kpiCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ut-shadow-md);
+}
+
+.kpiIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.kpiIconGreen {
+  background: var(--ut-color-success-soft);
+  color: var(--ut-color-success);
+}
+
+.kpiIconBlue {
+  background: var(--ut-color-primary-soft);
+  color: var(--ut-color-primary);
+}
+
+.kpiIconSky {
+  background: var(--ut-color-primary-soft);
+  color: var(--ut-color-primary);
+}
+
+.kpiIconAmber {
+  background: var(--ut-color-warning-soft);
+  color: var(--ut-color-warning);
+}
+
+.kpiText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.kpiValue {
+  font-size: var(--ut-text-title-md);
+  font-weight: var(--ut-weight-semibold);
+  color: var(--ut-color-ink-strong);
+  line-height: 1.1538;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.kpiLabel {
+  font-size: var(--ut-text-sm);
+  color: var(--ut-color-ink-muted);
+  font-weight: var(--ut-weight-medium);
+  line-height: var(--ut-leading-ui);
+}
+
+/* Grille principale 2 colonnes */
+.cockpitGrid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+}
+
+.cockpitGrid > * {
+  min-width: 0;
+}
+
+.cockpitAside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ut-space-6);
+}
+
+@media (max-width: 900px) {
+  .cockpitGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sectionCard {
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
+  border-radius: 20px;
+  padding: 24px;
+  min-width: 0;
+  box-shadow: var(--ut-shadow-card-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid var(--ut-color-surface-soft);
+  padding-bottom: 12px;
+}
+
+.sectionTitle {
+  font-size: var(--ut-text-title-sm);
+  font-weight: var(--ut-weight-semibold);
+  color: var(--ut-color-ink-strong);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.1818;
+}
+
+.seeAllLink {
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  line-height: var(--ut-leading-ui);
+  color: var(--ut-color-primary);
+  text-decoration: none;
+}
+
+.seeAllLink:hover {
+  text-decoration: underline;
+}
+
+/* Liste des tâches À Faire */
+.tasksList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.taskItem {
+  background: var(--ut-color-surface-raised);
+  border: 1px solid var(--ut-color-border);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  transition: all 0.15s ease;
+}
+
+.taskItem:hover {
+  background: var(--ut-color-surface);
+  border-color: var(--ut-color-border-strong);
+  box-shadow: var(--ut-shadow-card-subtle);
+}
+
+.taskLeft {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.taskTimeBadge {
+  font-family: var(--ut-font-sans);
+  font-variant-numeric: var(--ut-numerals);
+  font-size: 0.95rem;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-ink-strong);
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border-strong);
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+
+.taskDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.taskModel {
+  font-size: 0.95rem;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-ink-strong);
+}
+
+.taskSub {
+  font-size: 0.82rem;
+  color: var(--ut-color-ink-muted);
+}
+
+.taskBtnPickup {
+  padding: 8px 16px;
+  background: var(--ut-color-primary);
+  color: var(--ut-color-surface);
+  border-radius: 10px;
+  font-weight: var(--ut-weight-bold);
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.taskBtnPickup:hover {
+  background: var(--ut-color-primary-strong);
+}
+
+.taskBtnReturn {
+  padding: 8px 16px;
+  background: var(--ut-color-success);
+  color: var(--ut-color-surface);
+  border-radius: 10px;
+  font-weight: var(--ut-weight-bold);
+  font-size: 0.85rem;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.taskBtnReturn:hover {
+  background: var(--ut-color-success-strong);
+}
+
+.emptyTasks {
+  background: var(--ut-color-surface-raised);
+  border: 1.5px dashed var(--ut-color-border-strong);
+  border-radius: 14px;
+  padding: 28px;
+  text-align: center;
+  color: var(--ut-color-ink-muted);
+  font-size: 0.9rem;
+}
+
+/* Alertes Matériel */
+.alertsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.alertItem {
+  background: var(--ut-color-warning-soft);
+  border: 1px solid var(--ut-color-warning-soft);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.alertLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.alertTitle {
+  font-size: 0.9rem;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-warning);
+}
+
+.alertSub {
+  font-size: 0.8rem;
+  color: var(--ut-color-warning);
+}
+
+.alertLink {
+  font-size: 0.82rem;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-warning);
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.emptyAlerts {
+  padding: 16px;
+  background: var(--ut-color-success-soft);
+  border: 1px solid var(--ut-color-success-soft);
+  border-radius: 12px;
+  color: var(--ut-color-success);
+  font-size: 0.88rem;
+  font-weight: var(--ut-weight-semibold);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Synthèse Semaine */
+.weekSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.weekStatRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--ut-color-ink-muted);
+  border-bottom: 1px solid var(--ut-color-surface-soft);
+  padding-bottom: 8px;
+}
+
+.financeLink {
+  color: var(--ut-color-success);
+  font-weight: var(--ut-weight-bold);
+  text-decoration: none;
+}
+
+.weekStatRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}

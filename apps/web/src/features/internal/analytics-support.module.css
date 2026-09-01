@@ -1,0 +1,198 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.header {
+  background: linear-gradient(
+    135deg,
+    var(--ut-color-support-elevated) 0%,
+    var(--ut-color-support-footer) 100%
+  );
+  border: 1px solid var(--ut-color-support-border-muted);
+  border-radius: 12px;
+  padding: 1.75rem;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-support-ink-strong);
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--ut-color-support-muted);
+  font-size: 0.95rem;
+}
+
+.notice {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 1rem 1.15rem;
+  border-radius: 10px;
+  border: 1px solid var(--ut-color-support-warning-border);
+  background: var(--ut-color-support-warning-bg-subtle);
+  color: var(--ut-color-support-warning-soft);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.noticeIcon {
+  font-size: 1.1rem;
+  line-height: 1.3;
+}
+
+.noticeTitle {
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-support-warning-strong);
+}
+
+.rangeBar {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 1.25rem;
+}
+
+.rangeLabel {
+  font-size: 0.85rem;
+  color: var(--ut-color-support-muted);
+}
+
+.rangeLink {
+  padding: 0.4rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: var(--ut-weight-semibold);
+  text-decoration: none;
+  background: var(--ut-color-support-surface);
+  color: var(--ut-color-support-muted);
+  border: 1px solid var(--ut-color-support-border);
+  transition: all 0.15s ease;
+}
+
+.rangeLink:hover {
+  background: var(--ut-color-support-elevated);
+  color: var(--ut-color-support-ink-strong);
+}
+
+.rangeLinkActive {
+  background: var(--ut-color-support-primary-soft);
+  color: var(--ut-color-support-primary-ink);
+  border-color: var(--ut-color-support-link);
+}
+
+.windowInfo {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: var(--ut-color-support-subtle);
+}
+
+.envGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.25rem;
+}
+
+.envCard {
+  background: var(--ut-color-support-footer);
+  border: 1px solid var(--ut-color-support-border);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.envHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.envTitle {
+  font-size: 1.05rem;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-support-ink-strong);
+}
+
+.envBadge {
+  font-size: 0.7rem;
+  font-weight: var(--ut-weight-bold);
+  letter-spacing: 0.04em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--ut-color-support-border-muted);
+  color: var(--ut-color-support-muted);
+  background: var(--ut-color-support-surface);
+}
+
+.metricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.metricCard {
+  background: var(--ut-color-support-surface);
+  border: 1px solid var(--ut-color-support-border);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+}
+
+.metricLabel {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ut-color-support-subtle);
+  margin-bottom: 0.3rem;
+}
+
+.metricValue {
+  font-size: 1.35rem;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-support-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.ratioGrid {
+  margin-top: 1rem;
+  border-top: 1px solid var(--ut-color-support-border);
+  padding-top: 0.9rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.ratioRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ratioLabel {
+  font-size: 0.85rem;
+  color: var(--ut-color-support-muted);
+}
+
+.ratioValue {
+  font-size: 1rem;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-support-link);
+  font-variant-numeric: tabular-nums;
+}
+
+.ratioEmpty {
+  color: var(--ut-color-support-subtle);
+  font-weight: var(--ut-weight-semibold);
+}
+
+.privacyNote {
+  font-size: 0.78rem;
+  color: var(--ut-color-support-subtle);
+  line-height: 1.6;
+  border-top: 1px solid var(--ut-color-support-border);
+  padding-top: 1rem;
+}

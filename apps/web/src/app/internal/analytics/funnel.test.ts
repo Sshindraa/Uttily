@@ -10,7 +10,7 @@ import {
   DEFAULT_FUNNEL_RANGE,
   FUNNEL_ENVIRONMENTS,
   PRODUCTION_COLLECTION_NOTICE,
-} from './funnel';
+} from '@/features/internal/funnel';
 
 /**
  * Chantier 18-A — Modèle de lecture du funnel interne.

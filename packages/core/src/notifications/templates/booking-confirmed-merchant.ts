@@ -43,7 +43,7 @@ export function renderBookingConfirmedMerchant(data: BookingConfirmedMerchantDat
         <span class="metric-label">Lieu :</span>
         <span class="metric-value">${escapeHtml(data.locationName)}</span>
       </div>
-      <div class="metric-row" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+      <div class="metric-row" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #d1e1e5;">
         <span class="metric-label">Prix location :</span>
         <span class="metric-value">${escapeHtml(formatEur(data.merchantBaseAmountMinor))}</span>
       </div>
@@ -53,7 +53,7 @@ export function renderBookingConfirmedMerchant(data: BookingConfirmedMerchantDat
       </div>
       <div class="metric-row">
         <span class="metric-label">Net location :</span>
-        <span class="metric-value" style="color: #4f46e5; font-size: 16px;">${escapeHtml(formatEur(data.merchantNetAmountMinor))}</span>
+        <span class="metric-value" style="color: #465b5f; font-size: 16px;">${escapeHtml(formatEur(data.merchantNetAmountMinor))}</span>
       </div>
     </div>
 

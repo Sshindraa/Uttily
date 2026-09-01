@@ -11,7 +11,7 @@
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: #090d16;
+  background: var(--ut-color-surface-dark);
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
@@ -24,8 +24,8 @@
 }
 
 .card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
   border-radius: 12px;
   padding: 20px;
   display: flex;
@@ -35,8 +35,8 @@
 
 .title {
   font-size: 1.1rem;
-  font-weight: 700;
-  color: #0f172a;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-ink-strong);
   margin: 0;
 }
 
@@ -56,16 +56,16 @@
   cursor: pointer;
   padding: 8px 12px;
   border-radius: 8px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: var(--ut-color-surface-raised);
+  border: 1px solid var(--ut-color-border);
   transition:
     background 0.15s ease,
     border-color 0.15s ease;
 }
 
 .item:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+  background: var(--ut-color-surface-soft);
+  border-color: var(--ut-color-border-strong);
 }
 
 .checkbox {
@@ -73,12 +73,12 @@
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: #0284c7;
+  accent-color: var(--ut-color-primary);
 }
 
 .itemLabel {
   font-size: 0.95rem;
-  color: #334155;
+  color: var(--ut-color-ink);
   line-height: 1.4;
   cursor: pointer;
 }
@@ -93,37 +93,37 @@
 
 .retakeBtn {
   background: transparent;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   padding: 10px 20px;
   border-radius: 8px;
-  font-weight: 600;
-  border: 1px solid #cbd5e1;
+  font-weight: var(--ut-weight-semibold);
+  border: 1px solid var(--ut-color-border-strong);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .retakeBtn:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--ut-color-surface-soft);
+  color: var(--ut-color-ink-strong);
 }
 
 .useBtn {
-  background: #0284c7;
-  color: #ffffff;
+  background: var(--ut-color-primary);
+  color: var(--ut-color-ink-on-dark);
   padding: 10px 24px;
   border-radius: 8px;
-  font-weight: 600;
+  font-weight: var(--ut-weight-semibold);
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .useBtn:hover:not(:disabled) {
-  background: #0369a1;
+  background: var(--ut-color-primary-strong);
 }
 
 .useBtn:disabled {
-  background: #94a3b8;
+  background: var(--ut-color-ink-subtle);
   cursor: not-allowed;
   opacity: 0.7;
 }

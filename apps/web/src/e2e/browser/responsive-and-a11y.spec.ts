@@ -6,6 +6,16 @@ async function expectConfiguredViewport(page: Page, testInfo: TestInfo): Promise
   expect(page.viewportSize()).toEqual(configuredViewport);
 }
 
+async function waitForClientHydration(page: Page): Promise<void> {
+  await page.waitForFunction(() => document.readyState === 'complete');
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+}
+
 async function expectNoGlobalHorizontalOverflow(page: Page): Promise<void> {
   const overflow = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
@@ -29,19 +39,28 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
   }, testInfo) => {
     await expectConfiguredViewport(page, testInfo);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await waitForClientHydration(page);
 
     await expect(
-      page.getByRole('heading', { name: 'Le bon équipement, au bon endroit.' }),
+      page.getByRole('heading', { name: 'Votre équipement vous attend.' }),
     ).toBeVisible();
 
-    const nav = page.getByRole('navigation', { name: 'Navigation client' });
-    await expect(nav).toBeVisible();
+    const header = page.getByRole('banner');
+    await expect(header).toBeVisible();
 
-    const searchLink = nav.getByRole('link', { name: 'Trouver un équipement' });
-    await expect(searchLink).toBeVisible();
-    await expectReasonableTouchTarget(searchLink, 'Lien de recherche Client');
+    const hostLink = header.getByRole('link', { name: 'Vous êtes loueur' });
+    await expect(hostLink).toBeVisible();
+    await expectReasonableTouchTarget(hostLink, 'Lien loueur');
 
-    const signInLink = nav.getByRole('link', { name: 'Se connecter' });
+    const languageButton = header.getByRole('button', { name: 'Choisir la langue' });
+    await expect(languageButton).toBeVisible();
+    await expectReasonableTouchTarget(languageButton, 'Choix de langue');
+
+    const menuTrigger = header.locator('summary[aria-label="Menu principal"]');
+    await expect(menuTrigger).toBeVisible();
+    await expectReasonableTouchTarget(menuTrigger, 'Menu principal');
+    await menuTrigger.click();
+    const signInLink = header.getByRole('link', { name: 'Se connecter' });
     await expect(signInLink).toBeVisible();
     await expectReasonableTouchTarget(signInLink, 'Lien de connexion');
 
@@ -53,41 +72,37 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
   }, testInfo) => {
     await expectConfiguredViewport(page, testInfo);
     await page.goto('/fr/search', { waitUntil: 'domcontentloaded' });
+    await waitForClientHydration(page);
     await expectNoGlobalHorizontalOverflow(page);
 
-    const destinationInput = page.getByRole('combobox', { name: 'Destination' });
-    const intentSelect = page.getByLabel('Type de durée');
-    const categorySelect = page.getByLabel('Catégorie');
-    const submitButton = page.getByRole('button', { name: 'Voir les équipements' });
+    const searchForm = page.getByRole('form', { name: 'Rechercher un équipement' });
+    const destinationButton = searchForm.getByRole('button', { name: /Destination/ });
+    await destinationButton.click();
+    await expect(page.getByRole('dialog')).toBeVisible();
 
+    const destinationInput = page.getByRole('combobox', { name: 'Rechercher une destination' });
     await expect(destinationInput).toBeVisible();
-    await expect(intentSelect).toBeVisible();
-    await expect(categorySelect).toBeVisible();
-    await expect(submitButton).toBeVisible();
-    await expectReasonableTouchTarget(submitButton, 'CTA de recherche');
-
-    await destinationInput.focus();
-    await expect(destinationInput).toBeFocused();
-    await destinationInput.pressSequentially('Lyon');
+    await destinationInput.fill('Lyon');
     await expect(page.getByRole('option').first()).toBeVisible();
     await page.keyboard.press('ArrowDown');
-    await expect(destinationInput).toHaveAttribute('aria-expanded', 'true');
     await page.keyboard.press('Enter');
-    await expect(destinationInput).toHaveValue('Lyon · FR');
-    await expect(destinationInput).toHaveAttribute('aria-expanded', 'false');
+    await expect(destinationButton).toContainText('Lyon');
 
-    // `selectOption` keeps the scenario deterministic across native select
-    // implementations while the destination and submit controls remain
-    // exercised through real keyboard input below.
-    await intentSelect.selectOption('TIME_RANGE');
-    await expect(page.getByLabel('Début')).toBeVisible();
-    await expect(page.getByLabel('Fin')).toBeVisible();
-    await intentSelect.selectOption('DAY_RANGE');
-    await expect(page.getByLabel('Premier jour')).toBeVisible();
-    await expect(page.getByLabel('Restitution')).toBeVisible();
+    const equipmentButton = searchForm.getByRole('button', { name: /Équipement/ });
+    await expect(equipmentButton).toContainText('Équipement');
+    await page.getByRole('button', { name: 'Tous les équipements' }).click();
 
-    await page.getByLabel('Premier jour').fill('2030-06-10');
-    await page.getByLabel('Restitution').fill('2030-06-11');
+    const searchStartDate = page.getByLabel('Début');
+    const searchEndDate = page.getByLabel('Dernier jour');
+    await expect(searchStartDate).toBeVisible();
+    await expect(searchEndDate).toBeVisible();
+    await searchStartDate.fill('2030-06-10');
+    await searchEndDate.fill('2030-06-11');
+    await page.getByRole('button', { name: 'Valider les dates' }).click();
+
+    const submitButton = searchForm.getByRole('button', { name: 'Rechercher' });
+    await expect(submitButton).toBeVisible();
+    await expectReasonableTouchTarget(submitButton, 'CTA de recherche');
     await submitButton.focus();
     await expect(submitButton).toBeFocused();
     await page.keyboard.press('Space');
@@ -135,21 +150,25 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
   test('Client navigation supports Tab, Shift+Tab, and Enter', async ({ page }, testInfo) => {
     await expectConfiguredViewport(page, testInfo);
     await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await waitForClientHydration(page);
 
     const brandLink = page.getByRole('link', { name: 'Uttily, accueil' });
-    const searchLink = page
-      .getByRole('navigation', { name: 'Navigation client' })
-      .getByRole('link', { name: 'Trouver un équipement' });
+    const hostLink = page.getByRole('link', { name: 'Vous êtes loueur' });
+    const languageButton = page.getByRole('button', { name: 'Choisir la langue' });
 
     await brandLink.focus();
     await expect(brandLink).toBeFocused();
     await page.keyboard.press('Tab');
-    await expect(searchLink).toBeFocused();
+    await expect(hostLink).toBeFocused();
     await page.keyboard.press('Shift+Tab');
     await expect(brandLink).toBeFocused();
     await page.keyboard.press('Tab');
+    await page.keyboard.press('Tab');
+    await expect(languageButton).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(page).toHaveURL(/\/fr\/search$/);
+    await expect(
+      page.getByRole('dialog', { name: 'Personnalisez votre expérience' }),
+    ).toBeVisible();
   });
 
   test('Photo Coach dialog has semantics, focus management, keyboard close, and no overflow', async ({
@@ -157,6 +176,7 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
   }, testInfo) => {
     await expectConfiguredViewport(page, testInfo);
     await page.goto('/photo-coach-demo', { waitUntil: 'domcontentloaded' });
+    await waitForClientHydration(page);
     await expectNoGlobalHorizontalOverflow(page);
 
     const openButton = page.getByRole('button', { name: /Commencer par la vue profil/ });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseLocationFormData, toTimeInputValue } from './location-form';
+import { parseLocationFormData, toTimeInputValue } from '@/features/locations';
 
 describe('location form parsing', () => {
   it('parse une fiche complète avec plusieurs créneaux', () => {

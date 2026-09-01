@@ -3,9 +3,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PAGE_PATH = join(__dirname, 'page.tsx');
-const HUB_PATH = join(__dirname, 'finances-hub.tsx');
+const HUB_PATH = join(__dirname, '../../../../features/finances/finances-hub.tsx');
 
-describe('FinancesPage (Revenus & Versements V2 - Chantier 11.1 & 21-U2.3)', () => {
+describe('FinancesPage (Revenus & Versements V2 - Chantier 11.1 & 21-U1-D20)', () => {
   const pageSource = readFileSync(PAGE_PATH, 'utf8');
   const hubSource = readFileSync(HUB_PATH, 'utf8');
 

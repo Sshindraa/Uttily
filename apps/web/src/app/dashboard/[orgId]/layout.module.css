@@ -30,7 +30,7 @@
 
 .brandLogo {
   font-size: 1.15rem;
-  font-weight: 900;
+  font-weight: var(--ut-weight-bold);
   color: var(--ut-color-primary);
   text-decoration: none;
   display: flex;
@@ -48,7 +48,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 700;
+  font-weight: var(--ut-weight-bold);
   color: var(--ut-color-ink);
   font-size: 0.95rem;
   text-decoration: none;
@@ -64,7 +64,7 @@
 
 .roleBadge {
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: var(--ut-weight-bold);
   padding: 2px 8px;
   background: var(--ut-color-primary-soft);
   color: var(--ut-color-primary-strong);
@@ -95,7 +95,7 @@
 .navLink {
   padding: 12px 14px;
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: var(--ut-weight-semibold);
   color: var(--ut-color-ink-muted);
   text-decoration: none;
   white-space: nowrap;

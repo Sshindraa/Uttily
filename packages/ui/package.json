@@ -7,7 +7,23 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./tokens.css": "./src/tokens.css"
+    "./tokens.css": "./src/tokens.css",
+    "./button": "./src/button/index.ts",
+    "./icon": "./src/icon/index.ts",
+    "./input": "./src/input/index.ts",
+    "./select": "./src/select/index.ts",
+    "./field": "./src/field/index.ts",
+    "./card": "./src/card/index.ts",
+    "./badge": "./src/badge/index.ts",
+    "./alert": "./src/alert/index.ts",
+    "./empty-state": "./src/empty-state/index.ts",
+    "./spinner": "./src/spinner/index.ts",
+    "./loading-state": "./src/loading-state/index.ts",
+    "./skeleton": "./src/skeleton/index.ts",
+    "./dialog": "./src/dialog/index.ts",
+    "./tabs": "./src/tabs/index.ts",
+    "./page-header": "./src/page-header/index.ts",
+    "./section-header": "./src/section-header/index.ts"
   },
   "peerDependencies": {
     "react": ">=19.0.0"

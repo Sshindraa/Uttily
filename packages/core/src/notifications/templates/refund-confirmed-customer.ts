@@ -21,7 +21,7 @@ export function renderRefundConfirmedCustomer(data: RefundConfirmedCustomerData)
     <div class="card">
       <div class="metric-row">
         <span class="metric-label">Montant remboursé :</span>
-        <span class="metric-value" style="color: #059669; font-size: 18px; font-weight: 700;">${escapeHtml(formatEur(data.amountMinor))}</span>
+        <span class="metric-value" style="color: #247a4b; font-size: 18px; font-weight: 700;">${escapeHtml(formatEur(data.amountMinor))}</span>
       </div>
       <div class="metric-row" style="margin-top: 8px;">
         <span class="metric-label">Mode :</span>

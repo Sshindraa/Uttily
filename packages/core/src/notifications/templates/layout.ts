@@ -19,14 +19,14 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
     body {
       margin: 0;
       padding: 0;
-      background-color: #f8fafc;
+      background-color: #f3f7f8;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      color: #0f172a;
+      color: #465b5f;
       -webkit-font-smoothing: antialiased;
     }
     .wrapper {
       width: 100%;
-      background-color: #f8fafc;
+      background-color: #f3f7f8;
       padding: 32px 16px;
       box-sizing: border-box;
     }
@@ -36,11 +36,11 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
       background-color: #ffffff;
       border-radius: 16px;
       overflow: hidden;
-      border: 1px solid #e2e8f0;
+      border: 1px solid #d1e1e5;
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
     .header {
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      background: linear-gradient(135deg, #465b5f 0%, #1c2426 100%);
       padding: 24px 32px;
       text-align: left;
     }
@@ -52,41 +52,41 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
       text-decoration: none;
     }
     .brand span {
-      color: #6366f1;
+      color: #d1e1e5;
     }
     .body {
       padding: 32px;
     }
     .footer {
       padding: 24px 32px;
-      background-color: #f1f5f9;
-      border-top: 1px solid #e2e8f0;
+      background-color: #e8f0f2;
+      border-top: 1px solid #d1e1e5;
       font-size: 12px;
-      color: #64748b;
+      color: #546d72;
       line-height: 1.5;
       text-align: center;
     }
     .footer a {
-      color: #4f46e5;
+      color: #465b5f;
       text-decoration: none;
     }
     h1 {
       margin: 0 0 16px 0;
       font-size: 22px;
       font-weight: 700;
-      color: #0f172a;
+      color: #465b5f;
       line-height: 1.3;
     }
     p {
       margin: 0 0 16px 0;
       font-size: 15px;
       line-height: 1.6;
-      color: #334155;
+      color: #2a3639;
     }
     .card {
-      background-color: #f8fafc;
+      background-color: #f3f7f8;
       border-radius: 12px;
-      border: 1px solid #e2e8f0;
+      border: 1px solid #d1e1e5;
       padding: 20px;
       margin: 20px 0;
     }
@@ -100,15 +100,15 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
       margin-bottom: 0;
     }
     .metric-label {
-      color: #64748b;
+      color: #546d72;
     }
     .metric-value {
       font-weight: 600;
-      color: #0f172a;
+      color: #465b5f;
     }
     .btn {
       display: inline-block;
-      background-color: #4f46e5;
+      background-color: #465b5f;
       color: #ffffff !important;
       padding: 12px 24px;
       border-radius: 10px;
@@ -120,8 +120,8 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
     .badge-success {
       display: inline-block;
       padding: 4px 10px;
-      background-color: #ecfdf5;
-      color: #065f46;
+      background-color: #e8f4ec;
+      color: #1d623c;
       border-radius: 9999px;
       font-size: 12px;
       font-weight: 600;
@@ -129,8 +129,8 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
     .badge-warning {
       display: inline-block;
       padding: 4px 10px;
-      background-color: #fffbeb;
-      color: #92400e;
+      background-color: #fce8c5;
+      color: #87510f;
       border-radius: 9999px;
       font-size: 12px;
       font-weight: 600;

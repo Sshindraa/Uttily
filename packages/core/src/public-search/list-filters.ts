@@ -25,6 +25,8 @@ export interface PublicSearchCategoryOption {
   id: string;
   slug: string;
   name: string;
+  /** Parent actif ou non ; la présentation ne suppose jamais sa présence dans la liste. */
+  parentId?: string | null;
 }
 
 export interface PublicSearchFilterOptions {
@@ -82,7 +84,12 @@ export async function listPublicSearchFilterOptions(
         asc(destinations.id),
       ),
     db
-      .select({ id: categories.id, slug: categories.slug, name: categories.name })
+      .select({
+        id: categories.id,
+        slug: categories.slug,
+        name: categories.name,
+        parentId: categories.parentId,
+      })
       .from(categories)
       .where(eq(categories.isActive, true))
       .orderBy(asc(categories.name), asc(categories.id)),

@@ -1,6 +1,6 @@
 import { listCategories } from '@uttily/core';
 import { requireCatalogManagerOf } from '@/lib/catalog-auth';
-import { NewBikeForm } from './new-bike-form';
+import { NewBikeForm } from '@/features/bikes';
 
 export default async function NewBikePage({
   params,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getInvitableRoles } from './page';
+import { getInvitableRoles } from '@/features/team';
 
 describe('Team Invitation Role Matrix (Chantier 21-U2.3)', () => {
   it('OWNER peut inviter ADMIN, MANAGER et STAFF, mais jamais OWNER', () => {

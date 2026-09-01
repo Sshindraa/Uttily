@@ -4,9 +4,12 @@ import { join } from 'node:path';
 import { requireMembership, LOCATION_MANAGERS, type MembershipRecord } from '@uttily/core';
 
 const PAGE_PATH = join(__dirname, 'page.tsx');
+const FEATURE_PATH = join(__dirname, '../../../../features/locations/locations-list-view.tsx');
 
 describe('LocationsListPage — Authorization and RBAC Guardrails (Chantier 21-U2.1)', () => {
   const pageSource = readFileSync(PAGE_PATH, 'utf8');
+  const featureSource = readFileSync(FEATURE_PATH, 'utf8');
+  const source = `${pageSource}\n${featureSource}`;
 
   it('1. Présente les auth gates stricts dans le code source de la page', () => {
     expect(pageSource).toContain('getAuthenticatedUser()');
@@ -61,5 +64,11 @@ describe('LocationsListPage — Authorization and RBAC Guardrails (Chantier 21-U
       const active = requireMembership(managerMembership, ['OWNER', 'ADMIN', 'MANAGER', 'STAFF']);
       expect(LOCATION_MANAGERS.includes(active.role)).toBe(true);
     }
+  });
+
+  it('laisse la présentation de la liste à la feature locations', () => {
+    expect(pageSource).toContain('<LocationsListView');
+    expect(pageSource).not.toContain('<PageHeader');
+    expect(source).toContain('Établissements');
   });
 });

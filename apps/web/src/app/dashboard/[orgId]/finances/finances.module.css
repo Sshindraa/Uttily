@@ -14,17 +14,19 @@
 }
 
 .pageTitle {
-  font-size: 1.85rem;
-  font-weight: 900;
+  font-size: var(--ut-text-title-md);
+  font-weight: var(--ut-weight-semibold);
   color: var(--ut-color-ink-strong);
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: normal;
+  line-height: 1.1538;
 }
 
 .pageSubtitle {
-  font-size: 0.95rem;
+  font-size: var(--ut-text-sm);
   color: var(--ut-color-ink-muted);
   margin: 4px 0 0 0;
+  line-height: var(--ut-leading-body);
 }
 
 .headerActions {
@@ -41,8 +43,9 @@
   background: var(--ut-color-surface);
   border: 1px solid var(--ut-color-border-strong);
   border-radius: 12px;
-  font-size: 0.88rem;
-  font-weight: 700;
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  line-height: var(--ut-leading-ui);
   color: var(--ut-color-ink-strong);
   text-decoration: none;
   box-shadow: var(--ut-shadow-sm);
@@ -84,30 +87,36 @@
 }
 
 .statLabel {
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: var(--ut-text-xs);
+  font-weight: var(--ut-weight-medium);
   color: var(--ut-color-ink-muted);
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
+  line-height: 1.3333;
 }
 
 .statNumberPrimary {
-  font-size: 2.1rem;
-  font-weight: 900;
+  font-size: var(--ut-text-title-lg);
+  font-weight: var(--ut-weight-semibold);
   color: var(--ut-color-success);
-  letter-spacing: -0.02em;
+  letter-spacing: normal;
+  line-height: 1.125;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 .statNumber {
-  font-size: 1.8rem;
-  font-weight: 900;
+  font-size: var(--ut-text-title-md);
+  font-weight: var(--ut-weight-semibold);
   color: var(--ut-color-ink-strong);
+  line-height: 1.1538;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 .statSubText {
-  font-size: 0.8rem;
+  font-size: var(--ut-text-xs);
   color: var(--ut-color-ink-subtle);
-  font-weight: 500;
+  font-weight: var(--ut-weight-regular);
+  line-height: 1.3333;
 }
 
 .statBlue {
@@ -143,19 +152,21 @@
 }
 
 .payoutsTitle {
-  font-size: 1.2rem;
-  font-weight: 800;
+  font-size: var(--ut-text-title-sm);
+  font-weight: var(--ut-weight-semibold);
   color: var(--ut-color-ink-strong);
   margin: 0;
   display: flex;
   align-items: center;
   gap: 8px;
+  line-height: 1.1818;
 }
 
 .payoutsSubtitle {
-  font-size: 0.88rem;
+  font-size: var(--ut-text-sm);
   color: var(--ut-color-ink-muted);
-  font-weight: 600;
+  font-weight: var(--ut-weight-regular);
+  line-height: var(--ut-leading-body);
 }
 
 .btnToggleSettings {
@@ -163,8 +174,9 @@
   background: var(--ut-color-surface-raised);
   border: 1px solid var(--ut-color-border-strong);
   border-radius: 10px;
-  font-size: 0.85rem;
-  font-weight: 700;
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  line-height: var(--ut-leading-ui);
   color: var(--ut-color-ink);
   cursor: pointer;
   transition: all 0.15s ease;
@@ -191,15 +203,18 @@
 }
 
 .payoutMetricLabel {
-  font-size: 0.8rem;
+  font-size: var(--ut-text-xs);
   color: var(--ut-color-ink-muted);
-  font-weight: 600;
+  font-weight: var(--ut-weight-medium);
+  line-height: 1.3333;
 }
 
 .payoutMetricValue {
-  font-size: 1.05rem;
-  font-weight: 800;
+  font-size: var(--ut-text-md);
+  font-weight: var(--ut-weight-medium);
   color: var(--ut-color-ink-strong);
+  line-height: 1.375;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 .bankDrawer {
@@ -235,16 +250,18 @@
 }
 
 .activityTitle {
-  font-size: 1.25rem;
-  font-weight: 800;
+  font-size: var(--ut-text-title-sm);
+  font-weight: var(--ut-weight-semibold);
   color: var(--ut-color-ink-strong);
   margin: 0;
+  line-height: 1.1818;
 }
 
 .activitySubtitle {
-  font-size: 0.85rem;
+  font-size: var(--ut-text-sm);
   color: var(--ut-color-ink-subtle);
-  font-weight: 600;
+  font-weight: var(--ut-weight-regular);
+  line-height: var(--ut-leading-ui);
 }
 
 .filterControls {
@@ -258,8 +275,9 @@
   padding: 8px 14px;
   border: 1px solid var(--ut-color-border-strong);
   border-radius: 10px;
-  font-size: 0.88rem;
+  font-size: var(--ut-text-md);
   color: var(--ut-color-ink-strong);
+  line-height: 1.375;
   min-width: 240px;
 }
 
@@ -279,8 +297,9 @@
 
 .typeBtn {
   padding: 6px 12px;
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  line-height: var(--ut-leading-ui);
   color: var(--ut-color-ink-muted);
   border: none;
   background: transparent;
@@ -303,17 +322,20 @@
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 0.88rem;
+  font-size: var(--ut-text-sm);
+  line-height: var(--ut-leading-body);
 }
 
 .table th {
   background: var(--ut-color-surface-raised);
   padding: 12px 14px;
-  font-weight: 700;
+  font-weight: var(--ut-weight-medium);
   color: var(--ut-color-ink-muted);
   border-bottom: 1px solid var(--ut-color-border);
-  font-size: 0.8rem;
+  font-size: var(--ut-text-xs);
   text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.3333;
 }
 
 .table td {
@@ -325,14 +347,14 @@
 .dateCell {
   display: flex;
   flex-direction: column;
-  font-weight: 700;
+  font-weight: var(--ut-weight-medium);
   color: var(--ut-color-ink-strong);
 }
 
 .timeSub {
-  font-size: 0.75rem;
+  font-size: var(--ut-text-xs);
   color: var(--ut-color-ink-subtle);
-  font-weight: 500;
+  font-weight: var(--ut-weight-medium);
 }
 
 .refCell {
@@ -342,8 +364,9 @@
 }
 
 .bookingLink {
-  font-family: monospace;
-  font-weight: 800;
+  font-family: var(--ut-font-sans);
+  font-variant-numeric: var(--ut-numerals);
+  font-weight: var(--ut-weight-bold);
   color: var(--ut-color-primary);
   text-decoration: none;
 }
@@ -353,8 +376,9 @@
 }
 
 .refBadge {
-  font-family: monospace;
-  font-weight: 700;
+  font-family: var(--ut-font-sans);
+  font-variant-numeric: var(--ut-numerals);
+  font-weight: var(--ut-weight-bold);
   color: var(--ut-color-ink);
 }
 
@@ -369,27 +393,32 @@
 }
 
 .amountCell {
-  font-weight: 600;
+  font-weight: var(--ut-weight-medium);
   color: var(--ut-color-ink-strong);
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 .commCell {
-  font-size: 0.82rem;
+  font-size: var(--ut-text-xs);
   color: var(--ut-color-ink-muted);
+  line-height: 1.3333;
 }
 
 .netCell {
   color: var(--ut-color-success);
-  font-weight: 800;
-  font-size: 0.95rem;
+  font-weight: var(--ut-weight-semibold);
+  font-size: var(--ut-text-sm);
+  line-height: var(--ut-leading-ui);
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 .statusBadge {
   display: inline-block;
   padding: 4px 10px;
   border-radius: 9999px;
-  font-size: 0.78rem;
-  font-weight: 700;
+  font-size: var(--ut-text-xs);
+  font-weight: var(--ut-weight-medium);
+  line-height: 1.3333;
 }
 
 .badgeSuccess {
@@ -449,7 +478,7 @@
 }
 
 .formLabel {
-  font-weight: 700;
+  font-weight: var(--ut-weight-bold);
   font-size: 0.85rem;
   color: var(--ut-color-ink);
 }
@@ -474,7 +503,7 @@
   border: 1.5px solid var(--ut-color-border-strong);
   border-radius: 10px;
   font-size: 0.9rem;
-  font-weight: 600;
+  font-weight: var(--ut-weight-semibold);
   color: var(--ut-color-ink-strong);
   background: var(--ut-color-surface);
 }
@@ -488,7 +517,7 @@
   color: var(--ut-color-surface);
   border: none;
   border-radius: 10px;
-  font-weight: 800;
+  font-weight: var(--ut-weight-bold);
   font-size: 0.9rem;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -507,7 +536,7 @@
   color: var(--ut-color-ink);
   border: 1.5px solid var(--ut-color-border-strong);
   border-radius: 10px;
-  font-weight: 700;
+  font-weight: var(--ut-weight-bold);
   font-size: 0.88rem;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -530,7 +559,7 @@
   border: none;
   color: var(--ut-color-ink-muted);
   font-size: 0.82rem;
-  font-weight: 600;
+  font-weight: var(--ut-weight-semibold);
   cursor: pointer;
   text-decoration: underline;
 }
@@ -551,7 +580,7 @@
   border-radius: 12px;
   color: var(--ut-color-success);
   font-size: 0.9rem;
-  font-weight: 700;
+  font-weight: var(--ut-weight-bold);
 }
 
 .securityNote {
@@ -577,7 +606,7 @@
 
 .payoutsHistoryTitle {
   font-size: 0.95rem;
-  font-weight: 800;
+  font-weight: var(--ut-weight-bold);
   color: var(--ut-color-ink);
   margin: 0;
 }

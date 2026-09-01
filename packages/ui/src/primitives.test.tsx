@@ -1,9 +1,21 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import React from 'react';
 import { describe, expect, it } from 'vitest';
-import { Alert, Badge, Button, Dialog, Field, Icon, LinkButton } from './primitives';
+import { Alert } from './alert';
+import { Badge } from './badge';
+import { Button, LinkButton } from './button';
+import { Dialog } from './dialog';
+import { Field } from './field';
+import { Icon } from './icon';
 
 describe('@uttily/ui primitives', () => {
+  it('renders the decorative globe icon through the shared icon API', () => {
+    const html = renderToStaticMarkup(<Icon name="globe" size={20} />);
+    expect(html).toContain('aria-hidden="true"');
+    expect(html).toContain('<ellipse');
+    expect(html).toContain('width="20"');
+  });
+
   it('renders native controls with the shared interaction contract', () => {
     const html = renderToStaticMarkup(
       <Field

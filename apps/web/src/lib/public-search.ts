@@ -10,6 +10,7 @@ import {
   type PublicSearchViewport,
 } from '@uttily/core';
 import type { DatabaseClient } from '@uttily/database';
+import { parseSearchPeople } from './search-people';
 
 export type PublicUiLocale = 'fr' | 'en';
 
@@ -21,6 +22,8 @@ export interface PublicSearchFormValues {
   endDateExclusive: string;
   startAt: string;
   endAt: string;
+  /** Presentation context only; excluded from SearchPublicOffersInput. */
+  peopleCount?: number;
   viewport?: PublicSearchViewport;
   pageSize?: number;
 }
@@ -59,16 +62,23 @@ export function parsePublicSearchParams(
     startAt: params.get('startAt')?.trim() ?? '',
     endAt: params.get('endAt')?.trim() ?? '',
   };
+  const peopleCount = parseSearchPeople(params);
+  if (typeof peopleCount === 'number') values.peopleCount = peopleCount;
 
   const searchRequested =
     params.has('destinationPublicId') ||
     params.has('intent') ||
     params.has('pageSize') ||
+    params.has('peopleCount') ||
     VIEWPORT_QUERY_KEYS.some((key) => params.has(key));
   if (!searchRequested) return { kind: 'EMPTY', values };
 
   const viewportResult = parseViewportQuery(params, locale);
   const fieldErrors: Record<string, string> = { ...viewportResult.fieldErrors };
+  if (peopleCount === null) {
+    fieldErrors.peopleCount =
+      locale === 'fr' ? 'Indiquez entre 1 et 99 personnes.' : 'Enter between 1 and 99 people.';
+  }
   if (rawIntent !== 'DAY_RANGE' && rawIntent !== 'TIME_RANGE') {
     fieldErrors.intent = locale === 'fr' ? 'Type de durée invalide.' : 'Invalid rental period.';
   }

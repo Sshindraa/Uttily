@@ -21,25 +21,22 @@ describe('G7I — static accessibility guardrails', () => {
   // ─────────────────────────────────────────────────────────────────────────
   // search-form.tsx — labels, keyboard-accessible inputs, aria-describedby
   // ─────────────────────────────────────────────────────────────────────────
-  const searchForm = readFileSync(join(__dirname, '[locale]/search/search-form.tsx'), 'utf8');
-  const searchResults = readFileSync(join(__dirname, '[locale]/search/search-results.tsx'), 'utf8');
-  const searchCss = readFileSync(join(__dirname, '[locale]/search/search.module.css'), 'utf8');
+  const searchForm = readFileSync(join(__dirname, '../features/search/search-form.tsx'), 'utf8');
+  const searchResults = readFileSync(
+    join(__dirname, '../features/search/search-results.tsx'),
+    'utf8',
+  );
+  const searchCss = readFileSync(join(__dirname, '../features/search/search.module.css'), 'utf8');
   const checkoutClient = readFileSync(
-    join(__dirname, 'checkout/[draftId]/checkout-client.tsx'),
+    join(__dirname, '../features/checkout/checkout-client.tsx'),
     'utf8',
   );
-  const offerPage = readFileSync(
-    join(__dirname, '[locale]/offers/[publicProductId]/[publicLocationId]/page.tsx'),
-    'utf8',
-  );
+  const offerPage = readFileSync(join(__dirname, '../features/offers/offer-page-view.tsx'), 'utf8');
   const offerForm = readFileSync(
-    join(__dirname, '[locale]/offers/[publicProductId]/[publicLocationId]/offer-booking-form.tsx'),
+    join(__dirname, '../features/offers/offer-booking-form.tsx'),
     'utf8',
   );
-  const offerCss = readFileSync(
-    join(__dirname, '[locale]/offers/[publicProductId]/[publicLocationId]/offer.module.css'),
-    'utf8',
-  );
+  const offerCss = readFileSync(join(__dirname, '../features/offers/offer.module.css'), 'utf8');
 
   it('search-form.tsx: labels use htmlFor, inputs/selects are keyboard-accessible, aria-describedby for errors', () => {
     // Labels associated via htmlFor

@@ -17,4 +17,12 @@ describe('PublicSearchPage', () => {
     expect(pageSource).toContain('alternateHref={`/${otherLocale}/search`}');
     expect(pageSource).not.toContain('<header');
   });
+
+  it('reste une couche d orchestration et délègue la présentation à la feature', () => {
+    expect(pageSource).toContain('<SearchPageView');
+    expect(pageSource).not.toContain('className=');
+    expect(pageSource).not.toContain('.module.css');
+    expect(pageSource).not.toContain('<SearchForm');
+    expect(pageSource).not.toContain('<SearchResults');
+  });
 });

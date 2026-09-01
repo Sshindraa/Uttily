@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { getMembership, requireMembership, getOrganizationById } from '@uttily/core';
-import { ProShell } from './pro-shell';
+import { ProShell } from '@/components/shells/pro-shell';
 
 // Layout partagé de la section organisation.
 // Authentifie l'utilisateur et vérifie la membership une seule fois

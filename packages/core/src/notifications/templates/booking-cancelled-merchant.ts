@@ -29,9 +29,9 @@ export function renderBookingCancelledMerchant(data: BookingCancelledMerchantDat
       </div>
       ${
         data.finalMerchantRevenueMinor > 0
-          ? `<div class="metric-row" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+          ? `<div class="metric-row" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #d1e1e5;">
               <span class="metric-label">Frais conservés (revenu net) :</span>
-              <span class="metric-value" style="color: #4f46e5; font-size: 16px;">${escapeHtml(formatEur(data.finalMerchantRevenueMinor))}</span>
+              <span class="metric-value" style="color: #465b5f; font-size: 16px;">${escapeHtml(formatEur(data.finalMerchantRevenueMinor))}</span>
             </div>`
           : ''
       }

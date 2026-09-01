@@ -148,9 +148,9 @@ export function getInventoryConditionPresentation(
       return {
         label: 'Usagé',
         badgeStyle: {
-          backgroundColor: 'var(--ut-color-accent-soft)',
-          color: 'var(--ut-color-accent-strong)',
-          borderColor: 'var(--ut-color-accent-soft)',
+          backgroundColor: 'var(--ut-color-warning-soft)',
+          color: 'var(--ut-color-warning-strong)',
+          borderColor: 'var(--ut-color-warning-soft)',
         },
       };
     case 'BROKEN':
@@ -181,9 +181,9 @@ export function getInventoryStatusPresentation(
     return {
       label: 'En maintenance',
       badgeStyle: {
-        backgroundColor: 'var(--ut-color-accent-soft)',
-        color: 'var(--ut-color-accent-strong)',
-        borderColor: 'var(--ut-color-accent-soft)',
+        backgroundColor: 'var(--ut-color-warning-soft)',
+        color: 'var(--ut-color-warning-strong)',
+        borderColor: 'var(--ut-color-warning-soft)',
       },
       icon: '🔧',
     };

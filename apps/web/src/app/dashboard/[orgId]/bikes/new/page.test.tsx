@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PAGE_PATH = join(__dirname, 'page.tsx');
-const FORM_PATH = join(__dirname, 'new-bike-form.tsx');
+const FORM_PATH = join(__dirname, '../../../../../features/bikes/new-bike-form.tsx');
 
 describe('NewBikePage (/bikes/new)', () => {
   const pageSource = readFileSync(PAGE_PATH, 'utf8');
@@ -20,5 +20,11 @@ describe('NewBikePage (/bikes/new)', () => {
     expect(formSource).toContain('Nom commercial de l’équipement');
     expect(formSource).toContain('Taille / Version');
     expect(formSource).toContain('/setup');
+  });
+
+  it('laisse la présentation et la mutation client à la feature bikes', () => {
+    expect(pageSource).toContain('<NewBikeForm');
+    expect(pageSource).not.toContain('<form');
+    expect(pageSource).not.toContain('className=');
   });
 });

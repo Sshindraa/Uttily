@@ -1,11 +1,14 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { bookingAmendments, locations, productVariants, products } from '@uttily/database';
 import { getEffectiveBooking, getEffectivePricingIntent, type BookingStatus } from '@uttily/core';
 import { requireAmendmentManagerOf } from '@/lib/amendment-auth';
-import { isValidUuid, bookingStatusLabel } from '@/lib/operations-helpers';
-import { AmendBookingForm } from './amend-booking-form';
+import { isValidUuid } from '@/lib/operations-helpers';
+import {
+  AmendBookingPageView,
+  AmendBookingUnavailableView,
+  getAmendmentStatusDescription,
+} from '@/features/operations';
 
 export default async function AmendBookingPage({
   params,
@@ -32,18 +35,14 @@ export default async function AmendBookingPage({
 
   if (effectiveBooking.booking.status !== 'CONFIRMED') {
     return (
-      <main style={{ maxWidth: '800px', margin: '0 auto', padding: '1.5rem' }}>
-        <p>
-          <Link href={`/dashboard/${organizationId}/bookings/${bookingId}`}>
-            ← Retour à la réservation
-          </Link>
-        </p>
-        <h1>Modification impossible</h1>
-        <p>
-          Seules les réservations confirmées peuvent être modifiées (statut actuel :{' '}
-          {bookingStatusLabel(effectiveBooking.booking.status as BookingStatus)}).
-        </p>
-      </main>
+      <AmendBookingUnavailableView
+        organizationId={organizationId}
+        bookingId={bookingId}
+        title="Modification impossible"
+        description={getAmendmentStatusDescription(
+          effectiveBooking.booking.status as BookingStatus,
+        )}
+      />
     );
   }
 
@@ -61,18 +60,12 @@ export default async function AmendBookingPage({
 
   if (activeAmendmentRows.length > 0) {
     return (
-      <main style={{ maxWidth: '800px', margin: '0 auto', padding: '1.5rem' }}>
-        <p>
-          <Link href={`/dashboard/${organizationId}/bookings/${bookingId}`}>
-            ← Retour à la réservation
-          </Link>
-        </p>
-        <h1>Modification en cours</h1>
-        <p>
-          Une modification est déjà active sur cette réservation. Veuillez finaliser ou annuler
-          l'amendement en cours avant d'en initier un nouveau.
-        </p>
-      </main>
+      <AmendBookingUnavailableView
+        organizationId={organizationId}
+        bookingId={bookingId}
+        title="Modification en cours"
+        description="Une modification est déjà active sur cette réservation. Veuillez finaliser ou annuler l'amendement en cours avant d'en initier un nouveau."
+      />
     );
   }
 
@@ -153,25 +146,15 @@ export default async function AmendBookingPage({
   });
 
   return (
-    <main style={{ maxWidth: '800px', margin: '0 auto', padding: '1.5rem' }}>
-      <p>
-        <Link href={`/dashboard/${organizationId}/bookings/${bookingId}`}>
-          ← Retour à la réservation
-        </Link>
-      </p>
-
-      <h1>Modifier la réservation</h1>
-
-      <AmendBookingForm
-        organizationId={organizationId}
-        bookingId={bookingId}
-        locationName={locationName}
-        locationTimeZone={locationTimeZone}
-        expectedLastAppliedAmendmentNumber={effectiveBooking.lastAppliedAmendmentNumber}
-        initialIntent={initialIntent}
-        currentTotalAmountMinor={effectiveBooking.effectiveTotalAmountMinor}
-        lines={lines}
-      />
-    </main>
+    <AmendBookingPageView
+      organizationId={organizationId}
+      bookingId={bookingId}
+      locationName={locationName}
+      locationTimeZone={locationTimeZone}
+      expectedLastAppliedAmendmentNumber={effectiveBooking.lastAppliedAmendmentNumber}
+      initialIntent={initialIntent}
+      currentTotalAmountMinor={effectiveBooking.effectiveTotalAmountMinor}
+      lines={lines}
+    />
   );
 }

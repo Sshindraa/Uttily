@@ -12,7 +12,7 @@ import {
   canSubmitPayment,
   formatHoldDeadline,
   formatAmount,
-} from './supplement-checkout-client';
+} from '@/features/checkout';
 
 vi.mock('@/lib/auth', () => ({
   getAuthenticatedUser: vi.fn(),

@@ -209,8 +209,9 @@ Une tâche est terminée lorsque :
   `BIKE_PHOTO_SLOTS`, migration `0040`, persistance `slot_type`, Photo Coach,
   overlays, checklist et progression. ADR-031 et la migration `0050` imposent
   désormais les trois slots sémantiques aux produits de catégorie `bike` dans
-  Core, PostgreSQL et la recherche publique ; le badge professionnel n'est pas
-  implémenté.
+  Core, PostgreSQL et la recherche publique ; le badge professionnel est livré
+  par le read model serveur révocable `getProfessionalVerification` (ADR-032),
+  avec affichage public uniquement sur un compte Stripe LIVE éligible.
 - G7E-A (Web public sans fournisseur externe) : implémenté le 2026-08-09 ;
   G7E-B (carte et viewport) implémenté dans son prolongement.
   Route `/{locale}/search` (`fr`/`en`), formulaire `DAY_RANGE`/`TIME_RANGE`,

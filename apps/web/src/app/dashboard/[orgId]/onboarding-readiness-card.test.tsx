@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { OnboardingReadinessCard } from './onboarding-readiness-card';
+import { OnboardingReadinessCard } from '@/features/dashboard/components/onboarding-readiness-card';
 import type { OrganizationOnboardingReadiness } from '@uttily/core';
 
 describe('OnboardingReadinessCard Component (Chantier 6 - 4 Étapes Unifiées)', () => {

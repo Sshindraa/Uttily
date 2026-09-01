@@ -1,6 +1,7 @@
 import { ClerkProvider } from '@clerk/nextjs';
 import type { Metadata } from 'next';
 import '@uttily/ui/tokens.css';
+import { UTTILY_FONT_FAMILY } from '@/lib/typography';
 
 export const metadata: Metadata = {
   title: 'Uttily',
@@ -17,8 +18,31 @@ export default function RootLayout({
   children: React.ReactNode;
 }): React.ReactElement {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      appearance={{
+        variables: {
+          fontFamily: UTTILY_FONT_FAMILY,
+          colorPrimary: 'var(--ut-color-primary)',
+          colorText: 'var(--ut-color-ink-strong)',
+          colorTextSecondary: 'var(--ut-color-ink-muted)',
+          colorBackground: 'var(--ut-color-surface)',
+          colorInputBackground: 'var(--ut-color-surface)',
+          colorInputText: 'var(--ut-color-ink-strong)',
+          colorDanger: 'var(--ut-color-danger)',
+          colorNeutral: 'var(--ut-color-ink-strong)',
+        },
+      }}
+    >
       <html lang="fr">
+        <head>
+          <link
+            rel="preload"
+            href="/fonts/sora/sora-variable.woff2"
+            as="font"
+            type="font/woff2"
+            crossOrigin="anonymous"
+          />
+        </head>
         <body>{children}</body>
       </html>
     </ClerkProvider>

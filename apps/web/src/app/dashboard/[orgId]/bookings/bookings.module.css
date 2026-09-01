@@ -14,7 +14,7 @@
 
 .pageTitle {
   font-size: 1.85rem;
-  font-weight: 900;
+  font-weight: var(--ut-weight-bold);
   color: var(--ut-color-ink-strong);
   margin: 0;
   letter-spacing: -0.02em;
@@ -42,7 +42,7 @@
   padding: 8px 16px;
   border-radius: 10px;
   font-size: 0.88rem;
-  font-weight: 600;
+  font-weight: var(--ut-weight-semibold);
   color: var(--ut-color-ink-muted);
   text-decoration: none;
   background: var(--ut-color-surface);
@@ -60,7 +60,7 @@
   background: var(--ut-color-primary);
   color: var(--ut-color-surface);
   border-color: var(--ut-color-primary);
-  font-weight: 700;
+  font-weight: var(--ut-weight-bold);
 }
 
 .errorAlert {
@@ -124,8 +124,9 @@
 }
 
 .bookingIdBadge {
-  font-family: monospace;
-  font-weight: 800;
+  font-family: var(--ut-font-sans);
+  font-variant-numeric: var(--ut-numerals);
+  font-weight: var(--ut-weight-bold);
   font-size: 0.85rem;
   color: var(--ut-color-ink-strong);
   background: var(--ut-color-surface-soft);
@@ -138,7 +139,7 @@
   padding: 3px 10px;
   border-radius: 9999px;
   font-size: 0.75rem;
-  font-weight: 800;
+  font-weight: var(--ut-weight-bold);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
@@ -170,7 +171,7 @@
 .dateChip {
   font-size: 0.82rem;
   color: var(--ut-color-ink-muted);
-  font-weight: 600;
+  font-weight: var(--ut-weight-semibold);
 }
 
 .cardBody {
@@ -199,7 +200,7 @@
 .timeLabel {
   font-size: 0.75rem;
   color: var(--ut-color-ink-muted);
-  font-weight: 600;
+  font-weight: var(--ut-weight-semibold);
   text-transform: uppercase;
 }
 
@@ -214,7 +215,7 @@
 .itemsLabel {
   font-size: 0.78rem;
   color: var(--ut-color-ink-muted);
-  font-weight: 700;
+  font-weight: var(--ut-weight-bold);
   text-transform: uppercase;
 }
 
@@ -235,8 +236,9 @@
 }
 
 .itemSku {
-  font-family: monospace;
-  font-weight: 700;
+  font-family: var(--ut-font-sans);
+  font-variant-numeric: var(--ut-numerals);
+  font-weight: var(--ut-weight-bold);
   color: var(--ut-color-primary);
   background: var(--ut-color-surface);
   padding: 2px 6px;
@@ -246,7 +248,7 @@
 }
 
 .itemName {
-  font-weight: 600;
+  font-weight: var(--ut-weight-semibold);
   color: var(--ut-color-ink);
 }
 
@@ -263,7 +265,7 @@
   background: var(--ut-color-primary);
   color: var(--ut-color-surface);
   border-radius: 10px;
-  font-weight: 700;
+  font-weight: var(--ut-weight-bold);
   font-size: 0.88rem;
   text-decoration: none;
   transition: all 0.15s ease;
@@ -282,7 +284,7 @@
   background: var(--ut-color-success);
   color: var(--ut-color-surface);
   border-radius: 10px;
-  font-weight: 700;
+  font-weight: var(--ut-weight-bold);
   font-size: 0.88rem;
   text-decoration: none;
   transition: all 0.15s ease;
@@ -301,7 +303,7 @@
   background: var(--ut-color-surface-soft);
   color: var(--ut-color-ink);
   border-radius: 10px;
-  font-weight: 600;
+  font-weight: var(--ut-weight-semibold);
   font-size: 0.85rem;
   text-decoration: none;
   width: 100%;

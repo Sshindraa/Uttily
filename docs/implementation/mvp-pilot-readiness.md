@@ -1,6 +1,6 @@
 # MVP Pilot Readiness — Baseline officielle après Lot 7
 
-> **Mise à jour G8B-3A — 2026-08-27** : la France est le marché cible et Lyon
+> **Mise à jour G8B-3B4 — 2026-08-31** : la France est le marché cible et Lyon
 > la première zone commerciale. Le pilote vise les particuliers en location
 > ponctuelle, avec deux loueurs professionnels et vingt vélos de ville ou
 > électriques. Aucun partenaire n'est encore engagé. Voir
@@ -24,8 +24,9 @@ Le MVP n'est **pas encore prêt pour une production commerciale réelle**. La co
 staging réelle (Vercel, Neon, Clerk, Stripe TEST, R2, Resend) et le smoke test photo
 G8B-1 sont désormais validés. Des blocages externes (juridique, partenaires pilotes,
 Stripe LIVE, fiscalité/RGPD et décisions commerciales) restent à lever avant tout
-lancement public commercial. Le Photo Coach vélo et son enforcement serveur par
-slots sont livrés ; le badge professionnel reste à finaliser.
+lancement public commercial. Le Photo Coach vélo, son enforcement serveur par
+slots et le badge professionnel auditable sont livrés ; les blocages de lancement
+restent externes et opérationnels.
 
 ## Matrice de readiness
 
@@ -40,7 +41,7 @@ slots sont livrés ; le badge professionnel reste à finaliser.
 | Documents transactionnels | Implémenté (G5B–G5D) | Tests unitaires + PostgreSQL, CI verte | R2 staging bucket | Oui (R2 staging) | Oui (R2 production) |
 | Emails transactionnels | Implémenté (G5E, G5H) | 40 tests PostgreSQL, CI verte | Resend staging domaine | Oui (Resend staging) | Oui (Resend production) |
 | Analytics | Implémenté (G7H-A/B) | Migration 0035, tests Core, CI verte | Validation privacy PRODUCTION | Non (gate staging) | Oui (validation privacy) |
-| Photos et gating publication | Upload réel G8B-1 + gate PostgreSQL + Photo Coach G8B-3B4 | Migrations 0039/0040/0050, validation octets, slots persistés, gate vélo par slots, R2 privé, routes contrôlées, tests PostgreSQL et composants | Photos réelles pour chaque offre pilote ; badge professionnel restant | Non : smoke R2 staging validé | Oui (sans photos valides ni slots vélo requis, pas de publication publique) |
+| Photos et gating publication | Upload réel G8B-1 + gate PostgreSQL + Photo Coach G8B-3B4 | Migrations 0039/0040/0050, validation octets, slots persistés, gate vélo par slots, R2 privé, routes contrôlées, tests PostgreSQL et composants | Photos réelles pour chaque offre pilote | Non : smoke R2 staging validé | Oui (sans photos valides ni slots vélo requis, pas de publication publique) |
 | Dashboard loueur | Implémenté (G7G) | Projection Core, UI, tests, CI verte | Aucune | Non | Non |
 | Multi-tenant et sécurité | Implémenté | Tests d'isolation PostgreSQL, sentinelles fail-closed, CI verte | Aucune | Non | Non |
 | Worker et outbox | Implémenté (G5F, G5H-C2C) | 441 tests worker, bundle smoke-testé, CI verte | Vercel Cron staging, R2/Resend staging | Oui (cron staging) | Oui (cron production) |
@@ -57,12 +58,14 @@ Le Photo Coach G8B-3B4 ajoute le contrat partagé des slots, la migration `0040`
 la persistance du `slot_type`, le viseur caméra, les overlays, la checklist et la
 progression. L'ADR-031 et la migration `0050` ajoutent désormais l'enforcement
 du gate par slots pour la catégorie `bike` dans Core, PostgreSQL et la visibilité
-publique. Le badge de loueur professionnel reste non implémenté.
+publique. L'ADR-032 ajoute le read model serveur révocable du badge professionnel :
+il n'est public qu'avec un compte Stripe LIVE opérationnel et un établissement
+réellement publiable.
 
 **Une offre réelle ne peut être publiée que si elle possède trois photos valides
 distinctes ; un vélo doit en plus couvrir les trois slots canoniques.** Le badge
-professionnel ne doit pas être présenté comme vérifié tant que son calcul
-auditable n'est pas livré.
+professionnel est calculé côté serveur et reste masqué pour les statuts
+`pending` et `ineligible`.
 
 ## Travaux restants classés par priorité
 
@@ -88,7 +91,6 @@ minimale et rollback. La preuve détaillée est conservée dans
 
 ### P1 — Expérience pilote
 
-- Finalisation G8B-3B4 : badge professionnel auditable.
 - Calibration des seuils viewport avec données réelles.
 - Traduction du contenu libre des loueurs (FR+EN).
 
@@ -104,15 +106,17 @@ minimale et rollback. La preuve détaillée est conservée dans
 
 **Périmètre restant :**
 
-- Implémenter le statut du badge professionnel uniquement à partir de critères
-  vérifiables, avec retrait fail-closed.
+- **Livré le 2026-08-31 :** read model `getProfessionalVerification`, critères
+  détaillés, révocation automatique, affichage public conditionnel et carte de
+  diagnostic dans le dashboard ; voir ADR-032.
 - Mettre à jour les preuves de readiness et le parcours d’onboarding avec les
   données réelles du pilote.
 
 **Limites explicites :**
 
 - Aucune analyse d’image par IA.
-- Aucun badge professionnel affiché sans calcul et preuve auditable.
+- Aucun badge professionnel affiché sans calcul et preuve auditable ; Stripe TEST
+  ne peut jamais suffire.
 - Aucune activation Stripe LIVE ni décision juridique implicite.
 
 Le staging G8A et l’upload réel G8B-1 sont déjà validés ; ce travail est donc un

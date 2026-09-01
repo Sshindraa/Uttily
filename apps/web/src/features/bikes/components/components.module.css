@@ -1,0 +1,342 @@
+.card {
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
+  border-radius: 18px;
+  padding: 24px 28px;
+  box-shadow: var(--ut-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-bottom: 1px solid var(--ut-color-surface-soft);
+  padding-bottom: 14px;
+}
+
+.cardTitle {
+  font-size: var(--ut-text-title-sm);
+  font-weight: var(--ut-weight-semibold);
+  color: var(--ut-color-ink-strong);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.1818;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--ut-color-surface-raised);
+  border: 1.5px solid var(--ut-color-border-strong);
+  border-radius: 10px;
+  color: var(--ut-color-ink-strong);
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  line-height: var(--ut-leading-ui);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.actionBtn:hover {
+  background: var(--ut-color-surface-soft);
+  border-color: var(--ut-color-ink-subtle);
+}
+
+.actionBtnPrimary {
+  background: var(--ut-color-primary);
+  border-color: var(--ut-color-primary);
+  color: var(--ut-color-surface);
+  box-shadow: var(--ut-shadow-primary-subtle);
+}
+
+.actionBtnPrimary:hover {
+  background: var(--ut-color-primary-strong);
+  border-color: var(--ut-color-primary-strong);
+}
+
+/* Grille Photos */
+.photosGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.photoSlotCard {
+  border: 1.5px dashed var(--ut-color-border-strong);
+  border-radius: 14px;
+  padding: 16px;
+  background: var(--ut-color-surface-raised);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.photoSlotCard:hover {
+  border-color: var(--ut-color-primary);
+  background: var(--ut-color-primary-soft);
+}
+
+.photoSlotCardFilled {
+  border-style: solid;
+  border-color: var(--ut-color-border);
+  background: var(--ut-color-surface);
+}
+
+.photoSlotThumbnail {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.photoSlotLabel {
+  font-weight: var(--ut-weight-medium);
+  font-size: var(--ut-text-sm);
+  line-height: var(--ut-leading-ui);
+  color: var(--ut-color-ink);
+}
+
+.photoSlotStatus {
+  font-size: var(--ut-text-xs);
+  font-weight: var(--ut-weight-medium);
+  line-height: 1.3333;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Grille Tarifs */
+.pricingDisplay {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.pricingBig {
+  font-size: var(--ut-text-title-lg);
+  font-weight: var(--ut-weight-semibold);
+  color: var(--ut-color-ink-strong);
+  letter-spacing: normal;
+  line-height: 1.125;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+
+.pricingUnit {
+  font-size: var(--ut-text-md);
+  color: var(--ut-color-ink-muted);
+  font-weight: var(--ut-weight-regular);
+  line-height: 1.375;
+}
+
+.tiersList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.tierBadge {
+  background: var(--ut-color-surface-soft);
+  border: 1px solid var(--ut-color-border);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: var(--ut-text-sm);
+  color: var(--ut-color-ink);
+  font-weight: var(--ut-weight-medium);
+  line-height: var(--ut-leading-ui);
+}
+
+/* Liste Flotte */
+.fleetSummary {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.fleetCountBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  line-height: var(--ut-leading-ui);
+}
+
+.fleetBadgeActive {
+  background: var(--ut-color-success-soft);
+  color: var(--ut-color-success);
+  border: 1px solid var(--ut-color-success-soft);
+}
+
+.fleetBadgeMaintenance {
+  background: var(--ut-color-warning-soft);
+  color: var(--ut-color-warning);
+  border: 1px solid var(--ut-color-warning-soft);
+}
+
+.fleetBadgeRetired {
+  background: var(--ut-color-surface-soft);
+  color: var(--ut-color-ink-muted);
+  border: 1px solid var(--ut-color-border);
+}
+
+.itemsTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.itemsTable th {
+  text-align: left;
+  font-size: var(--ut-text-xs);
+  font-weight: var(--ut-weight-medium);
+  color: var(--ut-color-ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.3333;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ut-color-border);
+}
+
+.itemsTable td {
+  padding: 12px;
+  border-bottom: 1px solid var(--ut-color-surface-soft);
+  font-size: var(--ut-text-sm);
+  color: var(--ut-color-ink);
+  line-height: var(--ut-leading-body);
+}
+
+/* Drawer / Modal Overlay */
+.drawerOverlay {
+  position: fixed;
+  inset: 0;
+  background: var(--ut-color-overlay-dark);
+  backdrop-filter: blur(2px);
+  z-index: 999;
+  display: flex;
+  justify-content: flex-end;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.drawerContent {
+  width: 100%;
+  max-width: 480px;
+  height: 100%;
+  background: var(--ut-color-surface);
+  box-shadow: var(--ut-shadow-lg);
+  display: flex;
+  flex-direction: column;
+  padding: 28px;
+  gap: 20px;
+  overflow-y: auto;
+  animation: slideIn 0.25s ease-out;
+}
+
+.drawerHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--ut-color-border);
+  padding-bottom: 16px;
+}
+
+.drawerTitle {
+  font-size: var(--ut-text-title-sm);
+  font-weight: var(--ut-weight-semibold);
+  color: var(--ut-color-ink-strong);
+  margin: 0;
+  line-height: 1.1818;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--ut-color-ink-muted);
+  line-height: 1;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formLabel {
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  color: var(--ut-color-ink);
+  line-height: var(--ut-leading-ui);
+}
+
+.inputField {
+  padding: 10px 14px;
+  border: 1.5px solid var(--ut-color-border-strong);
+  border-radius: 10px;
+  font-size: var(--ut-text-md);
+  color: var(--ut-color-ink-strong);
+  line-height: 1.375;
+}
+
+.inputField:focus {
+  outline: none;
+  border-color: var(--ut-color-primary);
+  box-shadow: var(--ut-shadow-primary-ring);
+}
+
+.textareaField {
+  padding: 10px 14px;
+  border: 1.5px solid var(--ut-color-border-strong);
+  border-radius: 10px;
+  font-size: var(--ut-text-md);
+  color: var(--ut-color-ink-strong);
+  line-height: 1.375;
+  min-height: 90px;
+  resize: vertical;
+}
+
+.drawerFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: auto;
+  border-top: 1px solid var(--ut-color-border);
+  padding-top: 16px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}

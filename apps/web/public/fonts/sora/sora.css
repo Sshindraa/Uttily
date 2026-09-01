@@ -1,0 +1,8 @@
+/* Sora from Fontshare. SIL Open Font License: ./OFL.txt */
+@font-face {
+  font-family: 'Sora';
+  src: url('./sora-variable.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+}

@@ -21,7 +21,7 @@ export function renderRefundActionRequiredMerchant(
     <div class="card">
       <div class="metric-row">
         <span class="metric-label">Montant concerné :</span>
-        <span class="metric-value" style="color: #dc2626;">${escapeHtml(formatEur(data.amountMinor))}</span>
+        <span class="metric-value" style="color: #b42318;">${escapeHtml(formatEur(data.amountMinor))}</span>
       </div>
       <div class="metric-row">
         <span class="metric-label">Réservation :</span>

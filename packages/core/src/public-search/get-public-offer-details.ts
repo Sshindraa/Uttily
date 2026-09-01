@@ -24,6 +24,7 @@ import {
 } from '../marketplace-fees';
 import { FlexiblePricingError } from '../pricing-plans/errors';
 import { quoteFlexiblePricing } from '../pricing-plans/quote-flexible-pricing';
+import { getProfessionalVerification } from '../professional-verification';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -223,10 +224,16 @@ export async function getPublicOfferDetails(
       photo.heightPx !== null,
   );
 
+  // Une surface publique ne demande jamais l'environnement TEST. Le statut
+  // reste recalculé côté serveur et disparaît dès qu'un fait LIVE n'est plus
+  // conforme.
+  const professionalVerification = await getProfessionalVerification(db, r.orgId, 'LIVE');
+
   const offer: PublicOfferDetails = {
     publicProductId: r.publicProductId,
     publicLocationId: r.publicLocationId,
     organizationPublicDisplayName: r.orgPublicDisplayName ?? r.orgLegalName,
+    professionalVerificationStatus: professionalVerification.status,
     productName: r.productName,
     productDescription: r.productDescription ?? '',
     locationName: r.locationName,
