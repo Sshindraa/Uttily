@@ -1,6 +1,8 @@
 # ADR-035 — Taxonomie commerciale outdoor fermée
 
-**Statut :** Accepted — paddleboard activé comme famille de l'univers pagaie.
+**Statut :** Accepted — familles outdoor fermées ; paddleboard et pedalboat
+activés comme familles de l'univers pagaie. L'activation du pédalo est détaillée
+dans [ADR-037](ADR-037-pedalboat-activation.md).
 
 **Date :** 2026-09-01
 
@@ -42,7 +44,7 @@ Le registre serveur fermé et typé est porté par
 
 | Statut | Familles |
 | --- | --- |
-| `ACTIVE` | `bike`, `kayak`, `canoe`, `paddleboard`, `surf`, `ski`, `snowboard` |
+| `ACTIVE` | `bike`, `kayak`, `canoe`, `paddleboard`, `pedalboat`, `surf`, `ski`, `snowboard` |
 | `APPROVED_NEXT` | — |
 | `APPROVED_LATER` | — |
 | `INTERNAL_FALLBACK` | `equipment`, compatibilité technique seulement |
@@ -53,7 +55,8 @@ peut pas être considéré comme une famille commerciale active. La migration
 catégorie `ski` existaient déjà dans le seed initial. La migration 0052 ajoute
 la catégorie canonique `snowboard`, et la migration 0053 ajoute la catégorie
 canonique `canoe`. La migration 0054 ajoute la catégorie canonique
-`paddleboard`. Aucun produit existant utilisant `equipment` ou `paddle` n'est converti
+`paddleboard`, puis la migration 0055 ajoute la catégorie canonique
+`pedalboat`. Aucun produit existant utilisant `equipment` ou `paddle` n'est converti
 et aucune catégorie historique n'est réécrite. La
 fixture `kayak-dev` reste explicitement rattachée à `kayak`.
 
@@ -84,8 +87,9 @@ produit publié ni conversion historique. Le paddle réutilise le parcours
 générique Produit → Variante → Exemplaire, les trois photos valides requises,
 la tarification, la disponibilité, la publication, la recherche, le hold, le
 paiement TEST et la réservation. Il n'active ni Photo Coach, ni slots photo
-vélo, ni règle kayak/canoë, ni moteur de packs. Le pédalo reste inactif ; sa
-préparation sans activation est documentée dans
+vélo, ni règle kayak/canoë, ni moteur de packs. Le pédalo est activé sous le
+slug unique `pedalboat` conformément à [ADR-037](ADR-037-pedalboat-activation.md) ;
+sa préparation historique est documentée dans
 [ADR-036](ADR-036-pedalboat-preparation.md).
 
 Le surf est actif uniquement pour la famille `surf` et les sous-types
@@ -157,11 +161,14 @@ résolu exclusivement par le registre serveur de cette ADR.
 - Le paddleboard est actif comme famille unique de l'univers pagaie, sous le
   seul slug `paddleboard`; ses options simple/tandem et rigide/gonflable sont
   descriptives et portées par les attributs de variante existants.
+- Le pédalo est actif comme famille unique sous le seul slug `pedalboat`; sa
+  capacité reste facultative et portée par les attributs de variante existants
+  lorsqu'elle est disponible.
 - Les autres familles neige et les catégories hors périmètre restent exclues.
 - Les catégories hors périmètre et les valeurs inconnues doivent être refusées
   par les futurs flux commerciaux plutôt que converties silencieusement en
   `equipment`.
-- Les accessoires des familles kayak, canoë, paddleboard, surf, ski et snowboard restent des compléments non
+- Les accessoires des familles kayak, canoë, paddleboard, pédalo, surf, ski et snowboard restent des compléments non
   publiables seuls par défaut ; leur moteur de supplément n'est pas livré.
 - Les familles windsurf, wingfoil, kitesurf et foil ne sont pas activées par
   cette décision.

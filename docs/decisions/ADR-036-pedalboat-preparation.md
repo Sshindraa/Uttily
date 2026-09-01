@@ -1,7 +1,8 @@
 # ADR-036 — Préparation du pédalo sans activation
 
-**Statut :** Accepted pour préparation uniquement — activation commerciale non
-décidée.
+**Statut :** Superseded pour le statut commercial par
+[ADR-037](ADR-037-pedalboat-activation.md) — ce document conserve la décision
+historique de préparation.
 
 **Date :** 2026-09-01
 

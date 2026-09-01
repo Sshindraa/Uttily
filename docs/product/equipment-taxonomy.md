@@ -10,7 +10,7 @@ univers outdoor fermés :
 | Univers | Slug d’univers | Familles prévues | Statut dans cette tranche |
 | --- | --- | --- | --- |
 | Cycle | `cycle` | `bike` | `ACTIVE` |
-| Kayak, canoë et pagaie | `paddle` | `kayak`, `canoe`, `paddleboard` | `ACTIVE` |
+| Kayak, canoë et pagaie | `paddle` | `kayak`, `canoe`, `paddleboard`, `pedalboat` | `ACTIVE` |
 | Surf et glisse nautique | `surf` | `surf` | `ACTIVE` |
 | Neige et glisse | `snow` | `ski`, `snowboard` | `ACTIVE` |
 
@@ -28,7 +28,7 @@ La taxonomie sépare strictement :
 1. **Univers** : regroupement commercial fermé (`cycle`, `paddle`, `surf`,
    `snow`).
 2. **Famille d'équipement** : slug stable du produit (`bike`, `kayak`, `canoe`,
-   `paddleboard`, `surf`, `ski`, `snowboard`).
+   `paddleboard`, `pedalboat`, `surf`, `ski`, `snowboard`).
 3. **Caractéristiques ou sous-types** : valeurs descriptives de la famille,
    jamais des catégories ni des slugs indépendants.
 
@@ -40,6 +40,7 @@ La taxonomie sépare strictement :
 | `surf` | sous-types `classic`, `longboard`, `softboard`, `bodyboard`, `skimboard` |
 | `ski` | sous-types `alpine`, `touring`, `cross-country` |
 | `paddleboard` | `capacity` (`single` ou `tandem`) ; construction `rigid` ou `inflatable` |
+| `pedalboat` | `capacity` facultative via les attributs de variante existants |
 | `snowboard` | aucun sous-type ou caractéristique spécialisé dans cette tranche |
 
 Le slug historique `paddle` reste inchangé et n'est pas promu. La famille
@@ -65,27 +66,31 @@ colonne n'est ajoutée.
 Le paddle réutilise les parcours génériques loueur et public, les trois photos
 valides requises avant publication, la recherche, la réservation, le hold et
 le paiement TEST. Il n'active ni Photo Coach, ni slots photo vélo, ni règle
-kayak/canoë, ni moteur de packs. Le pédalo reste inactif.
+kayak/canoë, ni moteur de packs. L'activation du pédalo est encadrée par
+ADR-037.
 
-### Préparation pédalo (sans activation)
+### Activation pédalo
 
-Le contrat proposé réserve le slug interne `pedalboat` à une famille unique de
-l'univers nautique. Les libellés proposés sont « Pédalo » en français et
-« Pedal boat » en anglais. Une capacité pourra éventuellement réutiliser les
-attributs de variante existants ; aucune dimension, propulsion ou information
-de sécurité ne devient obligatoire.
+Le registre serveur définit désormais `pedalboat` comme famille `ACTIVE` sous
+un slug unique de l'univers nautique. L'interface affiche « Pédalo » en
+français et « Pedal boat » en anglais. Une capacité peut être portée par les
+attributs de variante existants lorsqu'elle est disponible ; aucune valeur,
+dimension, propulsion ou caractéristique technique ne devient obligatoire.
 
-Cette proposition reste `INACTIVE` et n'est pas ajoutée au registre des
-familles commerciales actives. Tant que la décision d'activation n'est pas
-prise, `pedalboat` est non supporté par les flux commerciaux : aucune migration,
-fixture publiée, recherche, onboarding, offre publiable ou réservation n'est
-créée. La présentation future sera nautique générique, avec photos neutres,
-sans Photo Coach, slots vélo ni règle spécialisée réutilisée.
+La migration idempotente 0055 ajoute ou réactive uniquement la catégorie
+canonique `pedalboat`. Le seed local prépare la catégorie sans convertir
+`equipment` ou `paddle` et sans publier de fixture synthétique. Les parcours
+loueur et public réutilisent Produit → Variante → Exemplaire, le seuil
+universel de trois photos valides, la tarification, la disponibilité, la
+publication, la recherche, le hold, le paiement TEST et la réservation.
 
-Le modèle Produit → Variante → Exemplaire, `equipment`, `paddle` et toutes les
-données historiques restent inchangés. Voir
-[`ADR-036`](../decisions/ADR-036-pedalboat-preparation.md) pour la décision à
-obtenir avant activation.
+La présentation reste nautique générique et les photos neutres : aucun Photo
+Coach, slot photo vélo, règle kayak ou règle paddle n'est appliqué. Le modèle
+Produit → Variante → Exemplaire, `equipment`, `paddle` et toutes les données
+historiques restent inchangés ; aucune conversion, suppression ou activation
+d'une autre catégorie n'est effectuée. Voir
+[`ADR-037`](../decisions/ADR-037-pedalboat-activation.md) pour le contrat
+d'activation.
 
 ## Registre fermé côté serveur
 
@@ -94,7 +99,7 @@ La source de vérité typée est
 Elle distingue :
 
 - `ACTIVE` : familles activées commercialement ; aujourd'hui `bike`, `kayak`,
-  `canoe`, `paddleboard`, `surf`, `ski` et `snowboard` ;
+  `canoe`, `paddleboard`, `pedalboat`, `surf`, `ski` et `snowboard` ;
 - `APPROVED_NEXT` : famille approuvée pour le prochain lot ; aucune après
   l'activation du kayak ;
 - `APPROVED_LATER` : familles approuvées mais différées ; aucune dans le
@@ -103,9 +108,10 @@ Elle distingue :
 - valeur inconnue : résolution `UNSUPPORTED`, sans conversion en catégorie
   commerciale.
 
-Le slug proposé `pedalboat` reste volontairement hors de ce registre tant que
-son activation n'est pas décidée ; il est couvert par la préparation
-documentaire d'ADR-036 et le fallback générique existant.
+Le slug `pedalboat` est désormais résolu comme famille `ACTIVE` par le registre
+serveur et sa catégorie canonique est assurée par la migration 0055. Le
+fallback `equipment` reste interne et le slug historique `paddle` reste
+inchangé ; aucun de ces slugs n'est promu ou converti.
 
 L'activation du kayak ajoute sa catégorie canonique via la migration 0051 et
 met à jour uniquement la fixture locale `kayak-dev`. Les produits historiques
@@ -144,6 +150,14 @@ migration 0054, sans conversion des produits historiques `equipment` ou
 disponibles. Sa présentation est générique nautique, avec « Paddle » en
 français et « Stand-up paddle » en anglais ; aucune règle Photo Coach, slot
 vélo, règle kayak/canoë ou dimension obligatoire n'est ajoutée.
+
+L'activation pédalo ajoute la catégorie canonique `pedalboat` via la migration
+0055, sans conversion des produits historiques `equipment` ou `paddle`. Elle
+utilise un seul slug, une capacité facultative dans les attributs de variante
+existants lorsqu'elle est disponible, une présentation nautique générique et
+des photos neutres. Les parcours communs, le seuil universel de publication,
+la disponibilité, la recherche, le hold, le paiement TEST et la réservation
+restent inchangés ; aucune autre catégorie n'est activée.
 
 ## Compléments
 

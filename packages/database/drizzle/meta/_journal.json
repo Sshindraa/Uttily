@@ -379,6 +379,13 @@
       "when": 1788107362004,
       "tag": "0054_activate_paddleboard_category",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1788107362005,
+      "tag": "0055_activate_pedalboat_category",
+      "breakpoints": true
     }
   ]
 }

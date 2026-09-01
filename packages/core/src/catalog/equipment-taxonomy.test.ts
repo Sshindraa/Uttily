@@ -29,6 +29,7 @@ describe('closed outdoor equipment taxonomy', () => {
       ['kayak', 'ACTIVE'],
       ['canoe', 'ACTIVE'],
       ['paddleboard', 'ACTIVE'],
+      ['pedalboat', 'ACTIVE'],
       ['surf', 'ACTIVE'],
       ['ski', 'ACTIVE'],
       ['snowboard', 'ACTIVE'],
@@ -36,12 +37,13 @@ describe('closed outdoor equipment taxonomy', () => {
     ]);
   });
 
-  it('exposes exactly the seven ACTIVE commercial families', () => {
+  it('exposes exactly the eight ACTIVE commercial families', () => {
     expect(COMMERCIAL_EQUIPMENT_FAMILY_SLUGS).toEqual([
       'bike',
       'kayak',
       'canoe',
       'paddleboard',
+      'pedalboat',
       'surf',
       'ski',
       'snowboard',
@@ -53,6 +55,7 @@ describe('closed outdoor equipment taxonomy', () => {
     const kayak = resolveEquipmentFamily('kayak');
     const canoe = resolveEquipmentFamily('canoe');
     const paddleboard = resolveEquipmentFamily('paddleboard');
+    const pedalboat = resolveEquipmentFamily('pedalboat');
     const surf = resolveEquipmentFamily('surf');
     const ski = resolveEquipmentFamily('ski');
     const snowboard = resolveEquipmentFamily('snowboard');
@@ -84,6 +87,10 @@ describe('closed outdoor equipment taxonomy', () => {
       { key: 'capacity', allowedValues: ['single', 'tandem'] },
       { key: 'construction', allowedValues: ['rigid', 'inflatable'] },
     ]);
+    expect(pedalboat.kind === 'SUPPORTED' && pedalboat.definition.subtypes).toEqual([]);
+    expect(pedalboat.kind === 'SUPPORTED' && pedalboat.definition.characteristics).toEqual([
+      { key: 'capacity' },
+    ]);
     expect(surf.kind === 'SUPPORTED' && surf.definition.subtypes).toEqual([
       'classic',
       'longboard',
@@ -110,6 +117,7 @@ describe('closed outdoor equipment taxonomy', () => {
     expect(isCommerciallyActiveEquipmentFamily('kayak')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('canoe')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('paddleboard')).toBe(true);
+    expect(isCommerciallyActiveEquipmentFamily('pedalboat')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('surf')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('ski')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('snowboard')).toBe(true);
@@ -136,13 +144,19 @@ describe('closed outdoor equipment taxonomy', () => {
     expect(isCommerciallyActiveEquipmentFamily('paddle')).toBe(false);
   });
 
-  it('garde le pédalo hors du registre commercial tant que son activation n’est pas décidée', () => {
+  it('active le pédalo sous un slug unique sans règle spécialisée', () => {
     expect(resolveEquipmentFamily('pedalboat')).toEqual({
-      kind: 'UNSUPPORTED',
-      slug: 'pedalboat',
+      kind: 'SUPPORTED',
+      definition: expect.objectContaining({
+        slug: 'pedalboat',
+        status: 'ACTIVE',
+        singularLabel: 'pédalo',
+        pluralLabel: 'pédalos',
+        subtypes: [],
+        characteristics: [{ key: 'capacity' }],
+      }),
     });
-    expect(isCommerciallyActiveEquipmentFamily('pedalboat')).toBe(false);
-    expect(COMMERCIAL_EQUIPMENT_FAMILY_SLUGS).not.toContain('pedalboat');
+    expect(COMMERCIAL_EQUIPMENT_FAMILY_SLUGS).toContain('pedalboat');
   });
 
   it('publishes the future accessory vocabulary without creating an engine', () => {

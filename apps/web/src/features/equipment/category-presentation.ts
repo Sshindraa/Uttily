@@ -160,6 +160,15 @@ const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
   // canonique `paddleboard` reçoit sa présentation active.
   paddle: HISTORICAL_PADDLE_PRESENTATION,
   [PADDLEBOARD_CATEGORY_SLUG]: PADDLEBOARD_CATEGORY_PRESENTATION.presentation,
+  pedalboat: {
+    singularLabel: 'pédalo',
+    pluralLabel: 'pédalos',
+    icon: '🛶',
+    characteristics: [{ key: 'capacity', label: 'Capacité' }],
+    specificSections: [],
+    primaryActionLabel: 'Gérer l’équipement',
+    setupActionLabel: 'Continuer la configuration',
+  },
   equipment: GENERIC_CATEGORY_PRESENTATION,
 };
 
@@ -205,6 +214,7 @@ export function getCategoryDisplayLabel(
     categorySlug === 'ski' ||
     categorySlug === 'kayak' ||
     categorySlug === 'canoe' ||
+    categorySlug === 'pedalboat' ||
     isPaddleCategorySlug(categorySlug)
   ) {
     return getCategoryPresentation(categorySlug).singularLabel;
