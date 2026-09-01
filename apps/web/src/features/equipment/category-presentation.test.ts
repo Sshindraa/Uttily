@@ -64,10 +64,7 @@ describe('registre de présentation des catégories', () => {
       { label: 'Capacité', value: 'triple' },
     ]);
     expect(
-      getDisplayableCharacteristics(
-        { construction: 'unknown', practice: 'unknown' },
-        presentation,
-      ),
+      getDisplayableCharacteristics({ construction: 'unknown', practice: 'unknown' }, presentation),
     ).toEqual([]);
   });
 
