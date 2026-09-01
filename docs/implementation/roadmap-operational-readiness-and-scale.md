@@ -369,7 +369,8 @@ réutilisent Produit → Variante → Exemplaire, les photos neutres et le seuil
 universel de trois photos valides, le tarif, la disponibilité, la publication,
 la recherche, le hold, le paiement TEST et la réservation. Aucun Photo Coach,
 slot vélo, règle kayak/paddle, pack, supplément ou autre catégorie n'est activé.
-La preuve exhaustive est déléguée à la CI et au Browser Clerk TEST.
+La PR #56 est ouverte vers `main` et sa CI complète est verte, Browser Clerk
+TEST compris.
 
 ### 7.2 Onboarding autonome
 
