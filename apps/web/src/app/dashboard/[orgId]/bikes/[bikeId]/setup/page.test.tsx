@@ -35,6 +35,16 @@ describe('BikeSetupPage (/bikes/[bikeId]/setup)', () => {
     expect(wizardSource).toContain('publishBikeFromSetupAction');
   });
 
+  it('transmet le slug et réserve le Photo Coach au vélo', () => {
+    expect(pageSource).toContain('categorySlug: bike.product.categorySlug');
+    expect(pageSource).toContain('photoCount: bike.photos.count');
+    expect(wizardSource).toContain('getCategoryPresentation(selectedCategorySlug)');
+    expect(wizardSource).toContain("categoryPresentation.specificSections.includes('photo-slots')");
+    expect(wizardSource).toContain("currentStep === 'PHOTOS' && hasBikePhotoModule");
+    expect(wizardSource).toContain("currentStep === 'PHOTOS' && !hasBikePhotoModule");
+    expect(wizardSource).toContain('<NeutralPhotoUploader');
+  });
+
   it('laisse la présentation et les mutations interactives au wizard de la feature bikes', () => {
     expect(pageSource).toContain('<BikeSetupWizard');
     expect(pageSource).not.toContain('className=');

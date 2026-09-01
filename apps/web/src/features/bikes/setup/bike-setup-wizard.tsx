@@ -15,6 +15,8 @@ import {
   getPricingPlanUnitLabel,
   type PricingPlanType,
 } from '@/lib/status-presentation';
+import { getCategoryPresentation } from '@/features/equipment/category-presentation';
+import { NeutralPhotoUploader } from '@/features/equipment/neutral-photo-uploader';
 import styles from './setup.module.css';
 
 export type SetupStep = 'IDENTITY' | 'PHOTOS' | 'PRICING' | 'INVENTORY' | 'REVIEW';
@@ -24,10 +26,12 @@ export interface SetupBikeDTO {
   name: string;
   description: string;
   categoryId: string;
+  categorySlug: string;
   categoryName: string;
   variantId: string;
   variantName: string;
   photos: Array<{ id: string; publicId: string; sortOrder: number }>;
+  photoCount: number;
   isPhotosComplete: boolean;
   currentPriceEuros: number | null;
   pricingPlanType: PricingPlanType | null;
@@ -43,7 +47,7 @@ interface BikeSetupWizardProps {
   organizationId: string;
   bike: SetupBikeDTO;
   initialStep: SetupStep;
-  categories: Array<{ id: string; name: string }>;
+  categories: Array<{ id: string; name: string; slug: string }>;
   locations: Array<{ id: string; name: string }>;
 }
 
@@ -234,6 +238,10 @@ export function BikeSetupWizard({
   const threeQuarterPhoto = bike.photos[1];
   const signaturePhoto = bike.photos[2];
   const selectedLocation = locations.find((l) => l.id === locationId) ?? locations[0];
+  const selectedCategorySlug =
+    categories.find((category) => category.id === categoryId)?.slug ?? bike.categorySlug;
+  const categoryPresentation = getCategoryPresentation(selectedCategorySlug);
+  const hasBikePhotoModule = categoryPresentation.specificSections.includes('photo-slots');
 
   return (
     <div className={styles.container}>
@@ -400,7 +408,7 @@ export function BikeSetupWizard({
       )}
 
       {/* ÉCRAN 2 : PHOTOS */}
-      {currentStep === 'PHOTOS' && (
+      {currentStep === 'PHOTOS' && hasBikePhotoModule && (
         <div className={styles.card}>
           <div className={styles.stepTitleArea}>
             <span className={styles.stepBadge}>Étape 2 sur 5</span>
@@ -578,6 +586,45 @@ export function BikeSetupWizard({
               }}
             />
           )}
+        </div>
+      )}
+
+      {currentStep === 'PHOTOS' && !hasBikePhotoModule && (
+        <div className={styles.card}>
+          <div className={styles.stepTitleArea}>
+            <span className={styles.stepBadge}>Étape 2 sur 5</span>
+            <h2 className={styles.stepTitle}>📸 Ajoutez les photos de votre équipement</h2>
+            <p className={styles.stepSubtitle}>
+              Présentez votre équipement avec trois photos claires. Aucun cadrage ou emplacement
+              propre à une catégorie n’est imposé ici.
+            </p>
+          </div>
+
+          <NeutralPhotoUploader
+            organizationId={organizationId}
+            productId={bike.id}
+            photos={bike.photos}
+            count={bike.photoCount}
+            minRequired={3}
+            isComplete={bike.isPhotosComplete}
+          />
+
+          <div className={styles.stepFooter}>
+            <button
+              type="button"
+              onClick={() => setCurrentStep('IDENTITY')}
+              className={styles.backBtn}
+            >
+              ← Retour
+            </button>
+            <button
+              type="button"
+              onClick={() => setCurrentStep('PRICING')}
+              className={styles.primaryActionBtn}
+            >
+              Continuer vers le tarif →
+            </button>
+          </div>
         </div>
       )}
 
@@ -963,8 +1010,8 @@ export function BikeSetupWizard({
                 fontSize: '0.9rem',
               }}
             >
-              <span>{bike.isPhotosComplete ? '✓' : '○'}</span> {bike.photos.length}/3 photos
-              conformes au Standard Photo Coach
+              <span>{bike.isPhotosComplete ? '✓' : '○'}</span> {bike.photoCount}/3 photos{' '}
+              {hasBikePhotoModule ? 'conformes au Standard Photo Coach' : 'valides'}
             </div>
             <div
               style={{
