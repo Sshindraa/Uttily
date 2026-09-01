@@ -233,6 +233,16 @@ doivent pas recopier ni réinterpréter ses 31 décisions.
 - ne jamais remplacer le modèle relationnel Produit/Variante/Exemplaire par une
   abstraction UX non transactionnelle.
 
+**Tranche technique livrée le 2026-09-01 :** un registre frontend de
+présentation par catégorie est en place (ADR-034), avec libellés singulier /
+pluriel, caractéristiques affichables, sections spécifiques et fallback
+générique. Les surfaces liste et fiche existantes l'utilisent pour la catégorie
+`equipment` et les catégories inconnues ; les slots photo et sections de
+sécurité restent limités au vélo. Le read model de liste expose désormais le
+`categorySlug`, sans migration, changement d'URL ou déplacement des règles Core.
+Le périmètre ne couvre pas encore l'onboarding autonome, les opérations
+groupées, ni les extensions de maintenance ou de sécurité par catégorie.
+
 ### 7.2 Onboarding autonome
 
 - organisation, identité légale et Stripe Connect ;

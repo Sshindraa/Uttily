@@ -7,6 +7,7 @@ import {
 } from '@/lib/status-presentation';
 import { PageHeader, Card, Badge, LinkButton, Icon } from '@uttily/ui';
 import type { BadgeTone } from '@uttily/ui';
+import { getCategoryPresentation } from '@/features/equipment/category-presentation';
 
 function getStatusBadgeProps(status: UnifiedBikeStatusSummary): { tone: BadgeTone; label: string } {
   switch (status) {
@@ -62,7 +63,9 @@ export function BikesListView({
             gap: '1rem',
           }}
         >
-          <div style={{ fontSize: '3rem' }}>🚲</div>
+          <div style={{ fontSize: '3rem' }} aria-hidden="true">
+            {getCategoryPresentation().icon}
+          </div>
           <h2
             style={{
               fontSize: '1.25rem',
@@ -92,6 +95,7 @@ export function BikesListView({
           }}
         >
           {bikes.map((bike) => {
+            const presentation = getCategoryPresentation(bike.categorySlug);
             const isReadyOrOnline =
               bike.statusSummary === 'ONLINE_AVAILABLE' ||
               bike.statusSummary === 'ONLINE_UNAVAILABLE' ||
@@ -135,6 +139,7 @@ export function BikesListView({
                         {bike.name}
                       </h2>
                       <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
+                        <span aria-hidden="true">{presentation.icon} </span>
                         {bike.categoryName} · Version : <strong>{bike.variantName}</strong>
                       </span>
                     </div>
@@ -160,7 +165,11 @@ export function BikesListView({
                         alignItems: 'center',
                       }}
                     >
-                      <span style={{ color: 'var(--ut-color-ink-muted)' }}>Photos (3 vues) :</span>
+                      <span style={{ color: 'var(--ut-color-ink-muted)' }}>
+                        {presentation.specificSections.includes('photo-slots')
+                          ? 'Photos (3 vues) :'
+                          : 'Photos :'}
+                      </span>
                       <strong
                         style={{
                           color: bike.hasRequiredPhotos
@@ -168,7 +177,10 @@ export function BikesListView({
                             : 'var(--ut-color-warning)',
                         }}
                       >
-                        {bike.hasRequiredPhotos ? '✓' : '○'} {bike.photoCount}/3 vues requises
+                        {bike.hasRequiredPhotos ? '✓' : '○'} {bike.photoCount}/3{' '}
+                        {presentation.specificSections.includes('photo-slots')
+                          ? 'vues requises'
+                          : 'photos'}
                       </strong>
                     </div>
 
@@ -240,7 +252,9 @@ export function BikesListView({
                       gap: '0.35rem',
                     }}
                   >
-                    {isReadyOrOnline ? 'Gérer l’équipement' : 'Continuer la configuration'}{' '}
+                    {isReadyOrOnline
+                      ? presentation.primaryActionLabel
+                      : presentation.setupActionLabel}{' '}
                     <Icon name="arrow-right" size={16} />
                   </Link>
                 </div>

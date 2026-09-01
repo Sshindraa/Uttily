@@ -159,6 +159,23 @@ describe('Fiche vélo — surface loueur', () => {
     expect(html).not.toContain('€');
   });
 
+  it('présente une catégorie générique sans activer les sections spécifiques au vélo', async () => {
+    const equipment = buildBike();
+    equipment.product.categorySlug = 'equipment';
+    equipment.product.categoryName = 'Équipements';
+    equipment.variant.name = 'Standard';
+    equipment.variant.attributes = { capacity: '2 personnes' };
+    equipment.photos = { count: 2, minRequired: 3, isComplete: false, items: [] };
+
+    const html = await renderBikePage(equipment);
+
+    expect(html).toContain('équipement');
+    expect(html).toContain('2/3 photos');
+    expect(html).toContain('Exemplaires en flotte');
+    expect(html).not.toContain('Photo Coach');
+    expect(html).not.toContain('vues requises');
+  });
+
   it('associe les photos aux slots canoniques plutôt qu’à leur ordre d’insertion', async () => {
     const bike = buildBike();
     bike.product.categorySlug = 'bike';
@@ -200,5 +217,12 @@ describe('Fiche vélo — surface loueur', () => {
 
     expect(heroIndex).toBeGreaterThanOrEqual(0);
     expect(secondaryIndex).toBeGreaterThan(heroIndex);
+  });
+
+  it('respecte l’organisation autorisée lors du chargement de la fiche', async () => {
+    await renderBikePage(buildBike());
+
+    expect(catalogAuth.requireCatalogViewerOf).toHaveBeenCalledWith(ORGANIZATION_ID);
+    expect(core.getUnifiedBike).toHaveBeenCalledWith({}, ORGANIZATION_ID, PRODUCT_ID);
   });
 });
