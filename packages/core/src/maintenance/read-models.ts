@@ -6,6 +6,7 @@ import {
   inventoryItems,
   productVariants,
   products,
+  categories,
   locations,
   damageReports,
 } from '@uttily/database';
@@ -24,6 +25,7 @@ export async function listMaintenanceCases(
       serialNumber: inventoryItems.serialNumber,
       productName: products.name,
       variantName: productVariants.name,
+      categorySlug: categories.slug,
       locationId: locations.id,
       locationName: locations.name,
       locationTimeZone: locations.timeZone,
@@ -47,6 +49,7 @@ export async function listMaintenanceCases(
     .innerJoin(inventoryBlocks, eq(maintenanceCases.maintenanceBlockId, inventoryBlocks.id))
     .innerJoin(productVariants, eq(inventoryItems.productVariantId, productVariants.id))
     .innerJoin(products, eq(productVariants.productId, products.id))
+    .innerJoin(categories, eq(products.categoryId, categories.id))
     .innerJoin(locations, eq(inventoryItems.currentLocationId, locations.id))
     .leftJoin(damageReports, eq(maintenanceCases.sourceDamageReportId, damageReports.id))
     .where(
@@ -71,6 +74,7 @@ export async function listMaintenanceCases(
       serialNumber: r.serialNumber,
       productName: r.productName,
       variantName: r.variantName,
+      categorySlug: r.categorySlug,
       locationId: r.locationId,
       locationName: r.locationName,
       locationTimeZone: r.locationTimeZone,

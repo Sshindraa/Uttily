@@ -4,6 +4,7 @@ import {
   getInventoryConditionPresentation,
   getInventoryStatusPresentation,
 } from '@/lib/status-presentation';
+import { getCategoryPresentation } from '@/features/equipment/category-presentation';
 import { PageHeader, Card, Badge, LinkButton } from '@uttily/ui';
 import { OpenMaintenanceModal } from './open-maintenance-modal';
 import styles from './fleet.module.css';
@@ -28,6 +29,7 @@ export function FleetListView({
     id: i.id,
     internalSku: i.internalSku,
     productName: `${i.productName} (${i.variantName})`,
+    categorySlug: i.categorySlug,
   }));
 
   return (
@@ -122,7 +124,7 @@ export function FleetListView({
             gap: '1rem',
           }}
         >
-          <div style={{ fontSize: '3rem' }}>🚲</div>
+          <div style={{ fontSize: '3rem' }}>{getCategoryPresentation().icon}</div>
           <h2
             style={{
               fontSize: '1.25rem',
@@ -228,6 +230,7 @@ export function FleetListView({
                 const isBroken = item.condition === 'BROKEN';
                 const conditionPresentation = getInventoryConditionPresentation(item.condition);
                 const statusPresentation = getInventoryStatusPresentation(item.status, isBroken);
+                const categoryPresentation = getCategoryPresentation(item.categorySlug);
                 const bikeLink = `/dashboard/${organizationId}/bikes/${item.productId}`;
 
                 return (
@@ -254,6 +257,15 @@ export function FleetListView({
                         }}
                       >
                         {item.variantName}
+                      </span>
+                      <span
+                        style={{
+                          marginLeft: '0.5rem',
+                          fontSize: '0.8rem',
+                          color: 'var(--ut-color-ink-muted)',
+                        }}
+                      >
+                        {categoryPresentation.icon} {categoryPresentation.singularLabel}
                       </span>
                     </td>
                     <td

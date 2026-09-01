@@ -188,6 +188,7 @@ export interface InventorySummary {
   variantName: string;
   productId: string;
   productName: string;
+  categorySlug: string;
   currentLocationId: string;
   locationName: string;
 }

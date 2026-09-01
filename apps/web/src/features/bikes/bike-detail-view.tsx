@@ -13,6 +13,7 @@ import {
   getCategoryPresentation,
   getDisplayableCharacteristics,
 } from '@/features/equipment/category-presentation';
+import { NeutralPhotoManager } from '@/features/equipment/neutral-photo-manager';
 import styles from './bike-detail.module.css';
 
 export interface BikeDetailViewProps {
@@ -217,12 +218,14 @@ export function BikeDetailView({
           isPublicationReady={bike.publication.ready}
         />
 
-        {presentation.specificSections.includes('photo-slots') && (
+        {presentation.specificSections.includes('photo-slots') ? (
           <BikePhotosCard
             organizationId={organizationId}
             productId={bike.product.id}
             photos={bike.photos}
           />
+        ) : (
+          <NeutralPhotoManager photos={bike.photos} />
         )}
 
         <BikePricingCard

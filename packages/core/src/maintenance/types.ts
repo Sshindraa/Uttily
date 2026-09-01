@@ -8,6 +8,7 @@ export interface MaintenanceCaseSummary {
   serialNumber: string | null;
   productName: string;
   variantName: string;
+  categorySlug: string;
   locationId: string;
   locationName: string;
   locationTimeZone: string;

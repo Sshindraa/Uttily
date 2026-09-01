@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { openMaintenanceCaseAction } from '@/app/actions/maintenance';
+import { getCategoryPresentation } from '@/features/equipment/category-presentation';
 import styles from './fleet.module.css';
 
 interface OpenMaintenanceModalProps {
@@ -11,6 +12,7 @@ interface OpenMaintenanceModalProps {
     id: string;
     internalSku: string;
     productName: string;
+    categorySlug: string;
   }[];
 }
 
@@ -114,7 +116,8 @@ export function OpenMaintenanceModal({
             >
               {items.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.internalSku} · {item.productName}
+                  {item.internalSku} · {getCategoryPresentation(item.categorySlug).icon}{' '}
+                  {getCategoryPresentation(item.categorySlug).singularLabel} · {item.productName}
                 </option>
               ))}
             </select>

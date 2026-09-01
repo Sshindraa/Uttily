@@ -271,12 +271,14 @@ export async function listInventorySummaries(
       variantName: productVariants.name,
       productId: products.id,
       productName: products.name,
+      categorySlug: categories.slug,
       currentLocationId: inventoryItems.currentLocationId,
       locationName: locations.name,
     })
     .from(inventoryItems)
     .innerJoin(productVariants, eq(inventoryItems.productVariantId, productVariants.id))
     .innerJoin(products, eq(productVariants.productId, products.id))
+    .innerJoin(categories, eq(products.categoryId, categories.id))
     .innerJoin(locations, eq(inventoryItems.currentLocationId, locations.id))
     .where(
       and(
@@ -298,6 +300,7 @@ export async function listInventorySummaries(
     variantName: r.variantName,
     productId: r.productId,
     productName: r.productName,
+    categorySlug: r.categorySlug,
     currentLocationId: r.currentLocationId,
     locationName: r.locationName,
   }));

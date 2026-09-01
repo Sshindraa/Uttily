@@ -171,9 +171,12 @@ describe('Fiche vélo — surface loueur', () => {
 
     expect(html).toContain('équipement');
     expect(html).toContain('2/3 photos');
+    expect(html).toContain('Photos de l’équipement');
+    expect(html).toContain('2/3 photos valides');
     expect(html).toContain('Exemplaires en flotte');
     expect(html).not.toContain('Photo Coach');
     expect(html).not.toContain('vues requises');
+    expect(html).not.toContain('HERO_PROFILE');
   });
 
   it('associe les photos aux slots canoniques plutôt qu’à leur ordre d’insertion', async () => {
@@ -215,6 +218,10 @@ describe('Fiche vélo — surface loueur', () => {
     const heroIndex = html.indexOf('/api/public/product-photos/hero-public');
     const secondaryIndex = html.indexOf('/api/public/product-photos/secondary-public');
 
+    expect(html).toContain('Standard Photo Coach (3 vues obligatoires)');
+    expect(html).toContain('Profil latéral Hero');
+    expect(html).toContain('3/4 Avant dynamique');
+    expect(html).toContain('Vue libre valorisante');
     expect(heroIndex).toBeGreaterThanOrEqual(0);
     expect(secondaryIndex).toBeGreaterThan(heroIndex);
   });
