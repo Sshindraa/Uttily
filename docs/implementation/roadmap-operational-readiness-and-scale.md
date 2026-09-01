@@ -256,7 +256,8 @@ nautique et Neige/glisse. `bike` est `ACTIVE`, `kayak` `APPROVED_NEXT`, `surf`
 et `ski` `APPROVED_LATER`, tandis que `equipment` reste un fallback interne et
 les valeurs inconnues sont `UNSUPPORTED`. Aucune catégorie camping, outdoor
 technique, sport généraliste, outillage, jardin, événementiel, audiovisuel ou
-construction n'est activée.
+construction n'est activée. La PR #43 (`4286fe4`) est validée par la CI complète
+verte, y compris Browser acceptance avec les credentials Clerk TEST.
 
 ### 7.2 Onboarding autonome
 
