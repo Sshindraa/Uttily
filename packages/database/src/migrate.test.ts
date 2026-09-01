@@ -113,7 +113,7 @@ describe.skipIf(shouldSkipIntegrationTests())('runMigrations — base vierge via
 
     // Vérifie le seed de catégories.
     const cats = await sql`SELECT count(*)::int as n FROM categories`;
-    expect(cats[0]!.n).toBe(12);
+    expect(cats[0]!.n).toBe(13);
     const kayak = await sql`SELECT slug, name, is_active FROM categories WHERE slug = 'kayak'`;
     expect(kayak).toEqual([{ slug: 'kayak', name: 'Kayaks', is_active: true }]);
     const canoe = await sql`SELECT slug, name, is_active FROM categories WHERE slug = 'canoe'`;
@@ -121,6 +121,9 @@ describe.skipIf(shouldSkipIntegrationTests())('runMigrations — base vierge via
     const snowboard =
       await sql`SELECT slug, name, is_active FROM categories WHERE slug = 'snowboard'`;
     expect(snowboard).toEqual([{ slug: 'snowboard', name: 'Snowboard', is_active: true }]);
+    const paddleboard =
+      await sql`SELECT slug, name, is_active FROM categories WHERE slug = 'paddleboard'`;
+    expect(paddleboard).toEqual([{ slug: 'paddleboard', name: 'Paddle', is_active: true }]);
 
     // Vérifie les extensions.
     const exts =
