@@ -25,6 +25,16 @@ export interface ActiveCategoryPresentation {
 // presentation mirror of the Core contract, not its authority.
 const PADDLEBOARD_CATEGORY_SLUG = 'paddleboard';
 const HISTORICAL_PADDLE_CATEGORY_SLUG = 'paddle';
+const ACTIVE_COMMERCIAL_CATEGORY_SLUGS = [
+  'bike',
+  'kayak',
+  'canoe',
+  'paddleboard',
+  'pedalboat',
+  'surf',
+  'ski',
+  'snowboard',
+] as const;
 
 function isPaddleCategorySlug(slug: string | null | undefined): boolean {
   return slug === PADDLEBOARD_CATEGORY_SLUG || slug === HISTORICAL_PADDLE_CATEGORY_SLUG;
@@ -175,6 +185,16 @@ const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
 export function getCategoryPresentation(categorySlug?: string | null): CategoryPresentation {
   if (!categorySlug) return GENERIC_CATEGORY_PRESENTATION;
   return CATEGORY_PRESENTATIONS[categorySlug] ?? GENERIC_CATEGORY_PRESENTATION;
+}
+
+/**
+ * Affordance UI uniquement : le serveur reste l’autorité pour la duplication.
+ * Les slugs inconnus et historiques ne reçoivent donc pas de CTA optimiste.
+ */
+export function isCommercialEquipmentCategorySlug(
+  categorySlug: string | null | undefined,
+): boolean {
+  return (ACTIVE_COMMERCIAL_CATEGORY_SLUGS as readonly string[]).includes(categorySlug ?? '');
 }
 
 function displayValue(value: unknown): string | null {

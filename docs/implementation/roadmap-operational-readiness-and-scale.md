@@ -247,9 +247,9 @@ désormais le même registre : gestionnaire photo neutre hors vélo et libellés
 adaptés dans la flotte, l'ouverture, la liste, le détail et la remise en
 service. Les read models flotte et maintenance exposent `categorySlug`, sans
 migration, changement d'URL ou déplacement des règles Core.
-Le périmètre initial ne couvrait pas encore l'onboarding autonome ni les
-opérations groupées ; ces limites restent valables pour les lots suivants,
-sans ajouter de règle métier spécifique à une catégorie.
+Le périmètre initial ne couvrait pas encore les opérations groupées ; cette
+limite reste valable pour les lots suivants, sans ajouter de règle métier
+spécifique à une catégorie.
 
 **Cadrage livré le 2026-09-01 :** ADR-035 et le registre Core ferment le
 périmètre commercial aux quatre univers Cycle, Kayak/canoë/pagaie, Surf/glisse
@@ -385,8 +385,20 @@ produit, la variante, les trois photos valides, le tarif et un exemplaire actif
 dans un établissement ne sont pas prêts ; la réservation TEST reste la preuve
 post-publication. Les produits historiques restent lisibles, les URLs et les
 invariants tenant, prix, disponibilité et réservation restent inchangés.
-Les accessoires autonomes, packs, duplication et opérations groupées restent
-hors périmètre.
+Les accessoires autonomes, packs et opérations groupées restent hors périmètre.
+
+**Duplication contrôlée d'un équipement livrée le 2026-09-02 :** depuis la liste
+générique « Mes équipements », un loueur autorisé peut dupliquer une offre de
+l'une des huit familles `ACTIVE`. Le serveur verrouille l'organisation,
+réserve la clé d'idempotence et crée un nouveau produit `DRAFT` avec un slug
+unique ; seuls le nom, la description, la catégorie et les variantes avec leurs
+attributs descriptifs sont copiés. Aucun exemplaire, tarif ou snapshot actif,
+photo, réservation, maintenance ou état de publication n'est repris. La cible
+retourne au setup pour repasser la checklist de publication ; les catégories
+`equipment`, `paddle`, inconnues, personnalisées, inactives ou historiques sont
+refusées sans convertir ni supprimer les données existantes. Le Photo Coach et
+les slots restent limités au vélo, sans parcours bulk, import, pack ou
+supplément.
 
 ### 7.2 Onboarding autonome
 
@@ -401,7 +413,7 @@ hors périmètre.
 Prévoir plusieurs chemins d'entrée :
 
 - création guidée pour petite flotte ;
-- duplication d'équipements similaires ;
+- duplication contrôlée d'une offre existante (livrée le 2026-09-02) ;
 - ajout en série d'exemplaires ;
 - opérations groupées ;
 - import structuré pour grande flotte ;
