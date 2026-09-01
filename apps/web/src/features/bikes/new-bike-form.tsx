@@ -4,11 +4,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createBikeDraftAction } from '@/app/actions/products';
+import { getCategoryDisplayLabel } from '@/features/equipment/category-presentation';
 import styles from './new-bike.module.css';
 
 interface CategoryOption {
   id: string;
   name: string;
+  slug: string;
 }
 
 interface NewBikeFormProps {
@@ -111,7 +113,7 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {getCategoryDisplayLabel(c.slug, c.name)}
                   </option>
                 ))}
               </select>

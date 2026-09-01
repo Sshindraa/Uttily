@@ -20,7 +20,7 @@ import styles from './bike-detail.module.css';
 export interface BikeDetailViewProps {
   organizationId: string;
   bike: UnifiedBike;
-  categories: Array<{ id: string; name: string }>;
+  categories: Array<{ id: string; name: string; slug: string }>;
   locations: Array<{ id: string; name: string }>;
 }
 
@@ -35,6 +35,9 @@ export function BikeDetailView({
     bike.product.categorySlug,
     bike.product.categoryName,
   );
+  const hasDistinctCategoryLabel =
+    categoryLabel.trim().toLocaleLowerCase() !==
+    presentation.singularLabel.trim().toLocaleLowerCase();
   const characteristics = getDisplayableCharacteristics(bike.variant.attributes, presentation);
 
   return (
@@ -64,7 +67,9 @@ export function BikeDetailView({
           <div className={styles.titleArea}>
             <div className={styles.metaRow}>
               <span className={styles.categoryTag}>{categoryLabel}</span>
-              <span className={styles.categoryTag}>{presentation.singularLabel}</span>
+              {hasDistinctCategoryLabel && (
+                <span className={styles.categoryTag}>{presentation.singularLabel}</span>
+              )}
               <span>•</span>
               <span>
                 Version : <strong>{bike.variant.name}</strong>

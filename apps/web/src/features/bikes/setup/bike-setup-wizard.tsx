@@ -241,10 +241,13 @@ export function BikeSetupWizard({
   const threeQuarterPhoto = bike.photos[1];
   const signaturePhoto = bike.photos[2];
   const selectedLocation = locations.find((l) => l.id === locationId) ?? locations[0];
-  const selectedCategorySlug =
-    categories.find((category) => category.id === categoryId)?.slug ?? bike.categorySlug;
+  const selectedCategory = categories.find((category) => category.id === categoryId);
+  const selectedCategorySlug = selectedCategory?.slug ?? bike.categorySlug;
   const categoryPresentation = getCategoryPresentation(selectedCategorySlug);
-  const categoryLabel = getCategoryDisplayLabel(selectedCategorySlug, bike.categoryName);
+  const categoryLabel = getCategoryDisplayLabel(
+    selectedCategorySlug,
+    selectedCategory?.name ?? bike.categoryName,
+  );
   const hasBikePhotoModule = categoryPresentation.specificSections.includes('photo-slots');
 
   return (
@@ -365,7 +368,7 @@ export function BikeSetupWizard({
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {getCategoryDisplayLabel(c.slug, c.name)}
                   </option>
                 ))}
               </select>

@@ -211,6 +211,7 @@ describe('Fiche vélo — surface loueur', () => {
     expect(html).toContain('🎿');
     expect(html).toContain('Sous-type : <strong>alpine</strong>');
     expect(html).toContain('ski');
+    expect(html.match(/>ski</g)).toHaveLength(1);
     expect(html).toContain('Photos de l’équipement');
     expect(html).not.toContain('Snowboard');
     expect(html).not.toContain('Photo Coach');

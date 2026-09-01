@@ -19,7 +19,7 @@ export default async function UnifiedBikePage({
     listLocations(db, organizationId),
   ]);
 
-  const categories = categoriesList.map((c) => ({ id: c.id, name: c.name }));
+  const categories = categoriesList.map((c) => ({ id: c.id, name: c.name, slug: c.slug }));
   const locations = locationsList.map((l) => ({ id: l.id, name: l.name }));
 
   return (
