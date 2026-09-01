@@ -80,14 +80,16 @@ modifiées.
 Les preuves obtenues sur ce checkout sont les suivantes : commit local
 `a235bfceab8c319fa391e147e7b62f6358d08cb9`, migrations depuis une base vierge
 avec 50 entrées Drizzle, suite Database PostgreSQL locale (24 fichiers, 816
+tests passés, aucun skip), suite Core PostgreSQL complète (158 fichiers, 2 973
 tests passés, aucun skip), restore drill réel local `PASS`, lint, format, typecheck,
 build Web/worker, smoke du bundle worker, contrôles de recovery et Playwright
-public responsive/accessibilité (16/16). `pnpm test` passe. En revanche,
-`pnpm check:fast` reste non vert à cause d'un échec isolé du test de terminaison
-de processus (`scripts/dev-local.test.mjs`), sans modification du test ; la suite Core
-PostgreSQL complète a été interrompue pour durée excessive et `pnpm test:full`
-n'a pas été relancé sur ce checkout. Aucun parcours E2E authentifié n'a été
-exécuté faute de credentials Clerk TEST dédiés, et la CI n'a pas été lancée.
+public responsive/accessibilité (16/16). `pnpm test` et `pnpm check:fast`
+passent, ce dernier ayant confirmé 35/35 tests de scripts. L'unique
+`pnpm test:full` final s'est terminé en échec dans l'exécution concurrente des
+workspaces ; le détail final du test fautif n'est pas exploitable dans la sortie
+tronquée et aucun code n'a été modifié pour contourner ce résultat. Aucun parcours
+E2E authentifié n'a été exécuté faute de credentials Clerk TEST dédiés, et la CI
+n'a pas été lancée.
 
 ## 4. Niveaux de priorité
 
@@ -136,9 +138,9 @@ globale de sortie reste conditionnée par le gate de la section 5.3.
 ### 5.3 Gate de sortie
 
 **Résultat au 2026-09-01 : `PARTIEL`.** Le commit local est créé et les preuves
-PostgreSQL Database, migrations vierges et restore drill réel sont disponibles.
-Le test de terminaison de `check:fast`, la suite Core PostgreSQL complète,
-l'E2E authentifié et la CI complète restent non validés.
+PostgreSQL Database, Core complet, migrations vierges et restore drill réel sont
+disponibles. Le run final `pnpm test:full`, l'E2E authentifié et la CI complète
+restent non validés.
 
 - arbre Git maîtrisé et commits cohérents ;
 - CI complète verte ;

@@ -259,11 +259,13 @@ et support interne, supprime les façades devenues mortes et documente les
 assets retirés. Le commit local de clôture est
 `a235bfceab8c319fa391e147e7b62f6358d08cb9`. La base locale PostGIS a été
 migrée depuis zéro (50 entrées Drizzle), la suite Database PostgreSQL a passé
-24 fichiers et 816 tests sans skip, et le restore drill réel a rendu `PASS`.
-`pnpm test`, lint, format, typecheck, builds, smoke worker et Playwright public
-(16/16) sont validés. `check:fast` reste bloqué par un échec isolé du test de
-terminaison de processus non modifié ; la suite Core PostgreSQL complète a été
-interrompue pour durée excessive. L'E2E authentifié et la CI restent à exécuter.
+24 fichiers et 816 tests sans skip, la suite Core PostgreSQL 158 fichiers et
+2 973 tests sans skip, et le restore drill réel a rendu `PASS`. `pnpm test`,
+`check:fast` (35/35), lint, format, typecheck, builds, smoke worker et Playwright
+public (16/16) sont validés. L'unique `pnpm test:full` final s'est terminé en
+échec dans l'exécution concurrente des workspaces ; aucun test n'a été modifié
+pour le masquer et le détail final n'est pas exploitable dans la sortie tronquée.
+L'E2E authentifié et la CI restent à exécuter.
 
 | Lot | Périmètre | Statut |
 | --- | --- | --- |
