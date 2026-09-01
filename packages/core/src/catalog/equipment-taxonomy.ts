@@ -106,7 +106,7 @@ export const EQUIPMENT_FAMILY_REGISTRY: readonly EquipmentFamilyDefinition[] = O
   {
     slug: 'ski',
     universe: 'snow',
-    status: 'APPROVED_LATER',
+    status: 'ACTIVE',
     singularLabel: 'ski',
     pluralLabel: 'skis',
     subtypes: ['alpine', 'touring', 'cross-country'],

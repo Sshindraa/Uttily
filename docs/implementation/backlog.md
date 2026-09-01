@@ -325,6 +325,7 @@ disponibilité transactionnelle, les prix et les URLs restent inchangés.
 | 21-U2-E — Activation kayak | catégorie canonique `kayak`, fixture `kayak-dev`, présentation des attributs existants, parcours loueur et public réutilisant les invariants génériques | **Livré le 2026-09-01 — commit `2570a81`, PR #44, CI complète verte avec Browser acceptance ; PostgreSQL local indisponible, suites d’intégration exécutées par la CI** |
 | 21-U2-F — Activation surf | famille `surf` active avec sous-types `classic`, `longboard`, `softboard`, `bodyboard`, `skimboard` ; parcours génériques loueur/public et présentation surf neutre, sans règle vélo ni champ spécialisé nouveau | **Livré le 2026-09-01 — commit `cbcebc9`, PR #45, CI complète verte avec Browser acceptance Clerk TEST ; catégorie déjà seedée, aucune migration** |
 | 21-U2-G — Hardening surf des surfaces existantes | audit ciblé liste/fiche, création/édition, recherche, maintenance, photos et sous-types ; Photo Coach vélo limité au vélo, upload neutre hors vélo, `categorySlug` conservé | **Livré le 2026-09-01 — correction minimale et tests ciblés Web/Core ; aucune migration ni nouvelle catégorie** |
+| 21-U2-H — Activation ski | famille `ski` active avec sous-types `alpine`, `touring`, `cross-country` ; parcours génériques loueur/public et présentation ski neutre, sans snowboard ni règle vélo | **Livré le 2026-09-01 — tests ciblés Core/Web, typechecks et `check:fast` ; catégorie déjà seedée, aucune migration** |
 
 ### Recherche par intention — UX accueil et résultats (2026-08-31)
 

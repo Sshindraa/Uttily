@@ -5,11 +5,15 @@ const MVP_CATEGORY_LABELS_EN: Readonly<Record<string, string>> = {
   surf: 'Surf',
   paddle: 'Paddleboarding',
   bike: 'Bikes',
-  ski: 'Ski & Snowboard',
+  ski: 'Ski',
   camping: 'Camping & Outdoor',
   climbing: 'Climbing',
   diving: 'Diving',
   other: 'Other',
+};
+
+const MVP_CATEGORY_LABELS_FR: Readonly<Record<string, string>> = {
+  ski: 'Ski',
 };
 
 /** Les slugs de la taxonomie MVP sont les clés stables de présentation. */
@@ -17,6 +21,6 @@ export function getPublicCategoryLabel(
   locale: PublicLabelLocale,
   category: { slug: string; name: string },
 ): string {
-  if (locale === 'fr') return category.name;
+  if (locale === 'fr') return MVP_CATEGORY_LABELS_FR[category.slug] ?? category.name;
   return MVP_CATEGORY_LABELS_EN[category.slug] ?? category.name;
 }

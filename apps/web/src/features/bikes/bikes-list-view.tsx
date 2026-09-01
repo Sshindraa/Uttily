@@ -7,7 +7,10 @@ import {
 } from '@/lib/status-presentation';
 import { PageHeader, Card, Badge, LinkButton, Icon } from '@uttily/ui';
 import type { BadgeTone } from '@uttily/ui';
-import { getCategoryPresentation } from '@/features/equipment/category-presentation';
+import {
+  getCategoryDisplayLabel,
+  getCategoryPresentation,
+} from '@/features/equipment/category-presentation';
 
 function getStatusBadgeProps(status: UnifiedBikeStatusSummary): { tone: BadgeTone; label: string } {
   switch (status) {
@@ -140,7 +143,8 @@ export function BikesListView({
                       </h2>
                       <span style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
                         <span aria-hidden="true">{presentation.icon} </span>
-                        {bike.categoryName} · Version : <strong>{bike.variantName}</strong>
+                        {getCategoryDisplayLabel(bike.categorySlug, bike.categoryName)} · Version :{' '}
+                        <strong>{bike.variantName}</strong>
                       </span>
                     </div>
                     <Badge tone={badgeProps.tone}>{badgeProps.label}</Badge>

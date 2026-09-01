@@ -11,6 +11,7 @@ const categories = [
   { id: 'emtb', slug: 'vtt-electrique', name: 'VTT électrique', parentId: 'mtb' },
   { id: 'ebike', slug: 'velo-electrique', name: 'Vélo électrique', parentId: 'bike' },
   { id: 'sup', slug: 'paddle', name: 'Paddle', parentId: null },
+  { id: 'ski', slug: 'ski', name: 'Ski & Snowboard', parentId: null },
 ];
 describe('deterministic equipment suggestions', () => {
   it.each(['VAE', 'e-bike', 'vélo elec'])('maps %s to an actual electric category', (query) => {
@@ -32,11 +33,18 @@ describe('deterministic equipment suggestions', () => {
     expect(rankEquipmentSuggestions([categories[0]!], 'vtt elec', 'fr')).toEqual([]);
     expect(rankEquipmentSuggestions(categories, 'kayak double', 'fr')).toEqual([]);
   });
+
+  it('expose le ski mais jamais le snowboard via l’ancien libellé de catégorie', () => {
+    expect(rankEquipmentSuggestions(categories, 'ski alpin', 'fr').map((c) => c.id)).toEqual([
+      'ski',
+    ]);
+    expect(rankEquipmentSuggestions(categories, 'snowboard', 'fr')).toEqual([]);
+  });
   it('uses supplied parents, handles missing parents and terminates on cycles', () => {
     expect(categoryBreadcrumb(categories[2]!, categories, 'fr')).toBe(
       'Vélos › VTT › VTT électrique',
     );
-    expect(equipmentFamilies(categories).map((c) => c.id)).toEqual(['bike', 'sup']);
+    expect(equipmentFamilies(categories).map((c) => c.id)).toEqual(['bike', 'sup', 'ski']);
     expect(equipmentFamilies([{ ...categories[1]!, parentId: 'missing' }])).toHaveLength(1);
     const cycle = [{ ...categories[0]!, parentId: 'mtb' }, categories[1]!];
     expect(categoryBreadcrumb(cycle[0]!, cycle, 'fr')).toBe('VTT › Vélos');

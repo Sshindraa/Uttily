@@ -24,7 +24,7 @@ describe('closed outdoor equipment taxonomy', () => {
       ['bike', 'ACTIVE'],
       ['kayak', 'ACTIVE'],
       ['surf', 'ACTIVE'],
-      ['ski', 'APPROVED_LATER'],
+      ['ski', 'ACTIVE'],
       ['equipment', 'INTERNAL_FALLBACK'],
     ]);
   });
@@ -75,6 +75,7 @@ describe('closed outdoor equipment taxonomy', () => {
     expect(isCommerciallyActiveEquipmentFamily('bike')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('kayak')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('surf')).toBe(true);
+    expect(isCommerciallyActiveEquipmentFamily('ski')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('equipment')).toBe(false);
     expect(isCommerciallyActiveEquipmentFamily('unknown')).toBe(false);
   });
