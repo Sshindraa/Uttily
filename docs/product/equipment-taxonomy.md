@@ -10,7 +10,7 @@ univers outdoor fermés :
 | Univers | Slug d’univers | Familles prévues | Statut dans cette tranche |
 | --- | --- | --- | --- |
 | Cycle | `cycle` | `bike` | `ACTIVE` |
-| Kayak, canoë et pagaie | `paddle` | `kayak`, `canoe` | `ACTIVE` |
+| Kayak, canoë et pagaie | `paddle` | `kayak`, `canoe`, paddle (à décider) | `ACTIVE` pour `kayak` et `canoe` |
 | Surf et glisse nautique | `surf` | `surf` | `ACTIVE` |
 | Neige et glisse | `snow` | `ski`, `snowboard` | `ACTIVE` |
 
@@ -45,6 +45,23 @@ Le fait de couvrir l'univers « Kayak, canoë et pagaie » n'active pas le slug
 `paddle`. La famille `canoe` est désormais active sous son slug canonique ;
 toute autre famille distincte devra être explicitement approuvée avant son
 activation.
+
+### Préparation paddle (sans activation)
+
+Le registre serveur ne définit pas encore de famille paddle canonique. Le slug
+`paddle` déjà présent dans le seed initial est traité comme une valeur
+historique ambiguë, sans conversion ni promotion commerciale. La proposition
+de slug futur est `paddleboard`, uniquement comme hypothèse de travail ; elle
+reste à confirmer par une décision produit et n'est pas ajoutée au registre des
+familles commerciales. Elle reste donc `INACTIVE` et `UNSUPPORTED` côté serveur.
+
+L'inventaire actuel ne contient aucune offre ou fixture paddle publiée et aucun
+attribut persistant démontré pour distinguer paddle simple/tandem,
+rigide/gonflable, dimensions ou capacité. Les termes paddle, paddleboard, SUP
+et stand up paddle présents dans les tests de recherche sont des alias UX ou
+des données synthétiques, pas des données catalogue activées. La préparation
+ajoute seulement une présentation interne neutre, sans caractéristique,
+section, Photo Coach ou slot vélo.
 
 ## Registre fermé côté serveur
 
@@ -107,3 +124,10 @@ Les accessoires vélo, nautisme, surf et neige ne sont pas publiables seuls par
 défaut. Aucun schéma de complément ni moteur de supplément n'est créé ici ; les
 règles de stock, prix, disponibilité et autorisation feront l'objet d'une
 décision avant leur implémentation.
+
+Pour le futur paddle, les compléments `pagaie`, `pompe`, `leash`, `gilet`,
+`chariot`, `sac étanche` et `combinaison` suivront ce même contrat : inclus,
+obligatoire, optionnel gratuit, supplément payant ou louable séparément
+uniquement si Uttily et le loueur l'autorisent. Ils restent des compléments
+non publiables seuls par défaut ; aucun moteur de packs ou de suppléments n'est
+préparé dans cette tranche.

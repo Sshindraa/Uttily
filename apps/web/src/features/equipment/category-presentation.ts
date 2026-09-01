@@ -15,6 +15,21 @@ export interface CategoryPresentation {
   readonly setupActionLabel: string;
 }
 
+export interface InactiveCategoryPresentation {
+  readonly proposedSlug: string;
+  readonly status: 'INACTIVE';
+  readonly presentation: CategoryPresentation;
+}
+
+// Do not import the server package from client components: this is the
+// presentation mirror of the inactive Core contract, not its authority.
+const PADDLE_READINESS_PROPOSED_SLUG = 'paddleboard';
+const PADDLE_READINESS_HISTORICAL_SLUG = 'paddle';
+
+function isPaddleReadinessCategorySlug(slug: string | null | undefined): boolean {
+  return slug === PADDLE_READINESS_PROPOSED_SLUG || slug === PADDLE_READINESS_HISTORICAL_SLUG;
+}
+
 /**
  * Presentation-only configuration. Category rules remain in Core; this map
  * only decides which labels and optional sections the loueur surface exposes.
@@ -39,6 +54,21 @@ export const GENERIC_WATERCRAFT_CATEGORY_PRESENTATION: CategoryPresentation = {
   primaryActionLabel: 'Gérer l’équipement',
   setupActionLabel: 'Continuer la configuration',
 };
+
+/** Présentation préparée uniquement pour documenter le futur paddle. */
+export const PADDLE_READINESS_PRESENTATION: InactiveCategoryPresentation = Object.freeze({
+  proposedSlug: PADDLE_READINESS_PROPOSED_SLUG,
+  status: 'INACTIVE',
+  presentation: Object.freeze({
+    singularLabel: 'paddle',
+    pluralLabel: 'paddles',
+    icon: '🛟',
+    characteristics: [],
+    specificSections: [],
+    primaryActionLabel: 'Gérer l’équipement',
+    setupActionLabel: 'Continuer la configuration',
+  }),
+});
 
 const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
   bike: {
@@ -108,6 +138,10 @@ const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
     primaryActionLabel: 'Gérer l’équipement',
     setupActionLabel: 'Continuer la configuration',
   },
+  // Ces entrées servent uniquement aux données historiques ou à la préparation
+  // interne ; le registre serveur ne les considère pas comme commerciales.
+  paddle: PADDLE_READINESS_PRESENTATION.presentation,
+  [PADDLE_READINESS_PROPOSED_SLUG]: PADDLE_READINESS_PRESENTATION.presentation,
   equipment: GENERIC_CATEGORY_PRESENTATION,
 };
 
@@ -149,7 +183,12 @@ export function getCategoryDisplayLabel(
   categorySlug: string | null | undefined,
   storedName: string,
 ): string {
-  if (categorySlug === 'ski' || categorySlug === 'kayak' || categorySlug === 'canoe') {
+  if (
+    categorySlug === 'ski' ||
+    categorySlug === 'kayak' ||
+    categorySlug === 'canoe' ||
+    isPaddleReadinessCategorySlug(categorySlug)
+  ) {
     return getCategoryPresentation(categorySlug).singularLabel;
   }
   return storedName;

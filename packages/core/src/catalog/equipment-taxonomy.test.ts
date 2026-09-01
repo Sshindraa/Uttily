@@ -5,7 +5,9 @@ import {
   CLOSED_OUTDOOR_EQUIPMENT_TAXONOMY,
   EQUIPMENT_FAMILY_REGISTRY,
   EQUIPMENT_UNIVERSE_REGISTRY,
+  PADDLE_READINESS_CONTRACT,
   isCommerciallyActiveEquipmentFamily,
+  isPaddleReadinessCategorySlug,
   resolveEquipmentFamily,
 } from './equipment-taxonomy';
 
@@ -90,6 +92,23 @@ describe('closed outdoor equipment taxonomy', () => {
     expect(isCommerciallyActiveEquipmentFamily('snowboard')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('equipment')).toBe(false);
     expect(isCommerciallyActiveEquipmentFamily('unknown')).toBe(false);
+  });
+
+  it('keeps paddle as an inactive proposal and preserves its historical slug', () => {
+    expect(PADDLE_READINESS_CONTRACT).toEqual({
+      proposedSlug: 'paddleboard',
+      status: 'INACTIVE',
+      historicalStorageSlugs: ['paddle'],
+    });
+    expect(resolveEquipmentFamily('paddle')).toEqual({ kind: 'UNSUPPORTED', slug: 'paddle' });
+    expect(resolveEquipmentFamily('paddleboard')).toEqual({
+      kind: 'UNSUPPORTED',
+      slug: 'paddleboard',
+    });
+    expect(isPaddleReadinessCategorySlug('paddle')).toBe(true);
+    expect(isPaddleReadinessCategorySlug('paddleboard')).toBe(true);
+    expect(isPaddleReadinessCategorySlug('kayak')).toBe(false);
+    expect(isCommerciallyActiveEquipmentFamily('paddle')).toBe(false);
   });
 
   it('publishes the future accessory vocabulary without creating an engine', () => {

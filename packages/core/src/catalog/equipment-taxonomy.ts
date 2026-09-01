@@ -33,6 +33,32 @@ export type AccessoryMode = (typeof ACCESSORY_MODES)[number];
 
 export const ACCESSORY_STANDALONE_PUBLICATION_DEFAULT = 'DISABLED_BY_DEFAULT' as const;
 
+/**
+ * Préparation du paddle sans activation commerciale.
+ *
+ * `paddle` est un ancien slug présent dans certaines bases et le slug de
+ * l'univers pagaie. Il ne peut donc pas être promu implicitement en famille.
+ * `paddleboard` est seulement une proposition de slug futur, à confirmer
+ * avant toute activation ou migration.
+ */
+export const PADDLE_READINESS_CONTRACT = Object.freeze({
+  proposedSlug: 'paddleboard',
+  status: 'INACTIVE',
+  historicalStorageSlugs: ['paddle'] as const,
+});
+
+export type PaddleReadinessStatus = typeof PADDLE_READINESS_CONTRACT.status;
+
+export function isPaddleReadinessCategorySlug(slug: string | null | undefined): boolean {
+  return (
+    slug === PADDLE_READINESS_CONTRACT.proposedSlug ||
+    (typeof slug === 'string' &&
+      PADDLE_READINESS_CONTRACT.historicalStorageSlugs.includes(
+        slug as (typeof PADDLE_READINESS_CONTRACT.historicalStorageSlugs)[number],
+      ))
+  );
+}
+
 export interface EquipmentCharacteristicDefinition {
   readonly key: string;
   readonly allowedValues?: readonly string[];

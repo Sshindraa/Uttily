@@ -15,7 +15,7 @@
 export { searchPublicOffers } from './search-offers';
 export { getPublicOfferDetails } from './get-public-offer-details';
 export { resolvePublicBookingAuthority } from './resolve-public-booking-authority';
-export { listPublicSearchFilterOptions } from './list-filters';
+export { filterPublicSearchCategories, listPublicSearchFilterOptions } from './list-filters';
 export {
   createPublicSearchCursorCodec,
   PUBLIC_SEARCH_CONTRACT_VERSION,

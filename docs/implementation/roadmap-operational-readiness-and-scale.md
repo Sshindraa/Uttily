@@ -328,6 +328,15 @@ le tarif, la disponibilité, les photos neutres, la publication, la recherche,
 le hold, le paiement TEST et la confirmation. Aucun sous-type, champ, Photo
 Coach, slot vélo, règle kayak, pack ou moteur de supplément n'est ajouté.
 
+**Préparation paddle ouverte le 2026-09-01 :** aucune famille paddle
+canonique n'est encore approuvée. `paddle` reste un slug historique ambigu,
+`paddleboard` est seulement proposé et reste `INACTIVE`/`UNSUPPORTED`. L'audit
+ne trouve aucune donnée catalogue persistante pour simple/tandem,
+rigide/gonflable, dimensions ou capacité ; une présentation interne neutre et
+les garde-fous de non-exposition sont préparés sans migration, fixture publiée,
+publication, réservation ou moteur de compléments. Une décision produit est
+requise avant l'activation.
+
 ### 7.2 Onboarding autonome
 
 - organisation, identité légale et Stripe Connect ;

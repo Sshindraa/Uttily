@@ -124,6 +124,10 @@ import {
   parseDateString,
 } from '../pricing-plans/time-utils';
 import { findDayRangeWindow } from '../pricing-plans/windows';
+import {
+  PADDLE_READINESS_CONTRACT,
+  isPaddleReadinessCategorySlug,
+} from '../catalog/equipment-taxonomy';
 import type {
   CandidateRow,
   KeysetTuple,
@@ -756,7 +760,7 @@ async function loadDestination(
 
 async function resolveCategoryTree(db: DatabaseClient, categoryId: string): Promise<string[]> {
   const catRows = await db
-    .select({ id: categories.id, isActive: categories.isActive })
+    .select({ id: categories.id, isActive: categories.isActive, slug: categories.slug })
     .from(categories)
     .where(eq(categories.id, categoryId))
     .limit(1);
@@ -766,6 +770,10 @@ async function resolveCategoryTree(db: DatabaseClient, categoryId: string): Prom
   }
 
   if (!catRows[0]!.isActive) {
+    throw new PublicSearchError('CATEGORY_INACTIVE', 'Catégorie inactive.');
+  }
+
+  if (isPaddleReadinessCategorySlug(catRows[0]!.slug)) {
     throw new PublicSearchError('CATEGORY_INACTIVE', 'Catégorie inactive.');
   }
 
@@ -956,9 +964,14 @@ async function loadCandidateGroups(
     FROM eligible_locations el
     INNER JOIN organizations o ON el.organization_id = o.id
     INNER JOIN products p ON p.organization_id = el.organization_id
+    INNER JOIN categories category ON category.id = p.category_id
     WHERE p.publication_status = 'PUBLISHED'
       AND p.deleted_at IS NULL
       AND p.public_id IS NOT NULL
+      AND category.slug NOT IN (
+        ${PADDLE_READINESS_CONTRACT.historicalStorageSlugs[0]},
+        ${PADDLE_READINESS_CONTRACT.proposedSlug}
+      )
       AND EXISTS (
         SELECT 1
         FROM product_variants pv

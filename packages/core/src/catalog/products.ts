@@ -12,6 +12,7 @@ import { isValidSlug, slugify } from '../identity/slug';
 import { AuthorizationError } from '../identity/permissions';
 import { CatalogError, isUniqueViolation } from './errors';
 import { missingRequiredBikePhotoSlots } from '../photos/photo-publication-rules';
+import { isPaddleReadinessCategorySlug } from './equipment-taxonomy';
 
 /**
  * Crée un produit et sa variante "Standard" atomiquement.
@@ -41,6 +42,10 @@ export async function createProduct(
     .limit(1);
   if (!cat) {
     const msg = 'Catégorie inexistante ou désactivée.';
+    throw new CatalogError('VALIDATION', msg, { categoryId: msg });
+  }
+  if (isPaddleReadinessCategorySlug(cat.slug)) {
+    const msg = 'La catégorie paddle est en préparation et reste inactive.';
     throw new CatalogError('VALIDATION', msg, { categoryId: msg });
   }
 
@@ -206,6 +211,10 @@ export async function updateProduct(
         const msg = 'Catégorie désactivée.';
         throw new CatalogError('VALIDATION', msg, { categoryId: msg });
       }
+      if (isPaddleReadinessCategorySlug(cat.slug)) {
+        const msg = 'La catégorie paddle est en préparation et reste inactive.';
+        throw new CatalogError('VALIDATION', msg, { categoryId: msg });
+      }
       patch.categoryId = input.categoryId;
     }
 
@@ -287,6 +296,9 @@ export async function collectPublicationFailuresBatch(
     if (row.name.trim().length < 2) failures.push('Le nom doit faire au moins 2 caractères.');
     if (row.description.trim().length === 0) failures.push('La description est requise.');
     if (!row.categoryIsActive) failures.push('La catégorie est inexistante ou désactivée.');
+    if (isPaddleReadinessCategorySlug(row.categorySlug)) {
+      failures.push('La catégorie paddle est en préparation et reste inactive.');
+    }
     result.set(row.id, failures);
   }
 

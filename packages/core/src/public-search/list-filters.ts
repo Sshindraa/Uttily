@@ -2,6 +2,7 @@ import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import { categories, countries, destinations, destinationTranslations } from '@uttily/database';
 import { PublicSearchError } from './errors';
+import { isPaddleReadinessCategorySlug } from '../catalog/equipment-taxonomy';
 
 export interface PublicSearchDestinationOption {
   publicId: string;
@@ -32,6 +33,16 @@ export interface PublicSearchCategoryOption {
 export interface PublicSearchFilterOptions {
   destinations: PublicSearchDestinationOption[];
   categories: PublicSearchCategoryOption[];
+}
+
+/**
+ * Le slug historique `paddle` reste lisible en interne mais n'est pas une
+ * catégorie commerciale publique tant que le contrat paddle n'est pas validé.
+ */
+export function filterPublicSearchCategories<T extends Pick<PublicSearchCategoryOption, 'slug'>>(
+  rows: readonly T[],
+): T[] {
+  return rows.filter((row) => !isPaddleReadinessCategorySlug(row.slug));
 }
 
 /**
@@ -113,7 +124,7 @@ export async function listPublicSearchFilterOptions(
         east: Number(destination.bboxEast),
       },
     })),
-    categories: categoryRows,
+    categories: filterPublicSearchCategories(categoryRows),
   };
 }
 

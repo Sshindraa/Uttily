@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   GENERIC_CATEGORY_PRESENTATION,
   GENERIC_WATERCRAFT_CATEGORY_PRESENTATION,
+  PADDLE_READINESS_PRESENTATION,
   getCategoryDisplayLabel,
   getCategoryPresentation,
   getDisplayableCharacteristics,
@@ -121,6 +122,23 @@ describe('registre de présentation des catégories', () => {
     expect(presentation.specificSections).toEqual([]);
     expect(
       getDisplayableCharacteristics({ subtype: 'alpine', level: 'expert' }, presentation),
+    ).toEqual([]);
+  });
+
+  it('prépare le paddle sans l’activer ni lui attribuer des règles spécialisées', () => {
+    expect(PADDLE_READINESS_PRESENTATION.status).toBe('INACTIVE');
+    expect(PADDLE_READINESS_PRESENTATION.proposedSlug).toBe('paddleboard');
+    expect(getCategoryPresentation('paddle')).toBe(PADDLE_READINESS_PRESENTATION.presentation);
+    expect(getCategoryPresentation('paddleboard')).toBe(PADDLE_READINESS_PRESENTATION.presentation);
+    expect(PADDLE_READINESS_PRESENTATION.presentation.singularLabel).toBe('paddle');
+    expect(PADDLE_READINESS_PRESENTATION.presentation.characteristics).toEqual([]);
+    expect(PADDLE_READINESS_PRESENTATION.presentation.specificSections).toEqual([]);
+    expect(getCategoryDisplayLabel('paddle', 'Paddle historique')).toBe('paddle');
+    expect(
+      getDisplayableCharacteristics(
+        { capacity: 'tandem', construction: 'inflatable' },
+        PADDLE_READINESS_PRESENTATION.presentation,
+      ),
     ).toEqual([]);
   });
 

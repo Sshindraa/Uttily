@@ -68,6 +68,23 @@ génériques Produit → Variante → Exemplaire, tarif, disponibilité, photos,
 publication, recherche, hold, paiement TEST et réservation. Aucun Photo Coach,
 slot photo ou règle spécialisée du kayak ou du vélo ne lui est appliqué.
 
+### Préparation du paddle sans activation
+
+La famille paddle n'a pas encore de slug canonique approuvé. Le slug `paddle`
+du seed initial est conservé comme valeur historique ambiguë et ne doit pas
+être promu implicitement en famille commerciale. `paddleboard` est proposé
+comme slug futur, sans être imposé : il n'est pas ajouté à
+`EquipmentFamilySlug`, au registre des familles commerciales, aux migrations,
+aux fixtures publiées ou aux catégories réservables. Le contrat de préparation
+le maintient `INACTIVE`/`UNSUPPORTED` et bloque son exposition publique ainsi
+que la création ou publication d'une nouvelle offre sous le slug historique.
+
+L'audit des données ne trouve aucune offre ou fixture paddle publiée, ni champ
+persistant établi pour simple/tandem, rigide/gonflable, dimensions ou capacité.
+La présentation dédiée est donc neutre, sans attribut ni section spécialisée,
+et n'active ni Photo Coach ni slots photo vélo. Les alias de recherche et
+fixtures synthétiques existants ne valent pas activation.
+
 Le surf est actif uniquement pour la famille `surf` et les sous-types
 descriptifs `classic`, `longboard`, `softboard`, `bodyboard` et `skimboard`.
 Ces valeurs ne créent aucun slug commercial supplémentaire. Les dimensions,
@@ -100,6 +117,12 @@ univers sont désactivés pour une publication autonome par défaut.
 
 Ces valeurs ne constituent pas encore un moteur de supplément, une règle de
 stock ou une mutation : aucun schéma ni calcul n'est ajouté dans cette ADR.
+
+Pour la préparation paddle, `pagaie`, `pompe`, `leash`, `gilet`, `chariot`,
+`sac étanche` et `combinaison` sont documentés comme compléments futurs. Leur
+mode pourra être inclus, obligatoire, optionnel gratuit, supplément payant ou
+louable séparément avec autorisation explicite ; ils restent non publiables
+seuls par défaut et aucun moteur n'est créé.
 
 ## Relation avec ADR-034
 
