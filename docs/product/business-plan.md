@@ -88,7 +88,7 @@ L'avantage défendable vient surtout de la densité de l'offre locale, de la qua
 
 Hypothèse initiale : **Hossegor, Capbreton et Seignosse**.
 
-Le pilote commence par la famille `bike`. `kayak`, `surf` et `ski` sont désormais
+Le pilote commence par la famille `bike`. `kayak`, `surf`, `ski` et `snowboard` sont désormais
 actifs dans le registre commercial fermé. Les autres familles neige et
 catégories ne font pas partie de la marketplace Uttily.
 

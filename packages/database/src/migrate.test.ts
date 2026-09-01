@@ -96,7 +96,7 @@ afterAll(async () => {
 });
 
 describe.skipIf(shouldSkipIntegrationTests())('runMigrations — base vierge via Drizzle Kit', () => {
-  it('applique les migrations et crée __drizzle_migrations (51 entrées)', async () => {
+  it('applique les migrations et crée __drizzle_migrations (52 entrées)', async () => {
     if (!testUrl) {
       // Garde de sécurité : ne devrait plus être atteint car describe.skipIf
       // (shouldSkipIntegrationTests) skipe toute la suite quand la base est absente
@@ -109,13 +109,16 @@ describe.skipIf(shouldSkipIntegrationTests())('runMigrations — base vierge via
     // Vérifie la table de suivi Drizzle (et non l'ancienne __migrations).
     // Drizzle Kit crée __drizzle_migrations dans le schéma "drizzle".
     const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-    expect(rows.length).toBe(51);
+    expect(rows.length).toBe(52);
 
     // Vérifie le seed de catégories.
     const cats = await sql`SELECT count(*)::int as n FROM categories`;
-    expect(cats[0]!.n).toBe(10);
+    expect(cats[0]!.n).toBe(11);
     const kayak = await sql`SELECT slug, name, is_active FROM categories WHERE slug = 'kayak'`;
     expect(kayak).toEqual([{ slug: 'kayak', name: 'Kayaks', is_active: true }]);
+    const snowboard =
+      await sql`SELECT slug, name, is_active FROM categories WHERE slug = 'snowboard'`;
+    expect(snowboard).toEqual([{ slug: 'snowboard', name: 'Snowboard', is_active: true }]);
 
     // Vérifie les extensions.
     const exts =
@@ -192,7 +195,7 @@ describe.skipIf(shouldSkipIntegrationTests())('runMigrations — base vierge via
     await runMigrations(testUrl);
     const sql = postgres(testUrl, { max: 1 });
     const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-    expect(rows.length).toBe(51);
+    expect(rows.length).toBe(52);
     await sql.end();
   });
 });
