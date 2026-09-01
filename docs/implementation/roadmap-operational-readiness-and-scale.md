@@ -301,6 +301,15 @@ présentent `ski` et filtrent l'ancien libellé `Ski & Snowboard`; aucune règle
 Photo Coach, slot ou sécurité vélo n'est appliquée. Snowboard, télémark,
 raquettes, luges, snowscoot et packs avalanche restent inactifs.
 
+**Hardening ski livré le 2026-09-01 :** l'audit a corrigé une régression de
+présentation dans la création et l'édition : les sélecteurs affichaient encore
+le nom historique `Ski & Snowboard` et la fiche répétait le libellé `ski`. Les
+sélecteurs utilisent désormais `categorySlug` et le registre, tandis que le
+fallback `equipment`, les sous-types absents ou inconnus, les photos neutres,
+la maintenance, les surfaces publiques et l'isolation tenant restent
+inchangés. Aucun schéma, champ, règle métier, URL ou nouvelle catégorie n'est
+ajouté ; les familles neige non activées restent inchangées.
+
 ### 7.2 Onboarding autonome
 
 - organisation, identité légale et Stripe Connect ;

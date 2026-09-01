@@ -8,6 +8,7 @@ import {
   archiveProductAction,
   restoreArchivedProductAction,
 } from '@/app/actions/products';
+import { getCategoryDisplayLabel } from '@/features/equipment/category-presentation';
 import styles from './components.module.css';
 
 interface IdentityDrawerProps {
@@ -16,7 +17,7 @@ interface IdentityDrawerProps {
   productName: string;
   description: string;
   categoryId: string;
-  categories: Array<{ id: string; name: string }>;
+  categories: Array<{ id: string; name: string; slug: string }>;
   publicationStatus: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   isPublicationReady: boolean;
 }
@@ -244,7 +245,7 @@ export function IdentityDrawer({
                 >
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {getCategoryDisplayLabel(c.slug, c.name)}
                     </option>
                   ))}
                 </select>

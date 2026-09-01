@@ -326,6 +326,7 @@ disponibilité transactionnelle, les prix et les URLs restent inchangés.
 | 21-U2-F — Activation surf | famille `surf` active avec sous-types `classic`, `longboard`, `softboard`, `bodyboard`, `skimboard` ; parcours génériques loueur/public et présentation surf neutre, sans règle vélo ni champ spécialisé nouveau | **Livré le 2026-09-01 — commit `cbcebc9`, PR #45, CI complète verte avec Browser acceptance Clerk TEST ; catégorie déjà seedée, aucune migration** |
 | 21-U2-G — Hardening surf des surfaces existantes | audit ciblé liste/fiche, création/édition, recherche, maintenance, photos et sous-types ; Photo Coach vélo limité au vélo, upload neutre hors vélo, `categorySlug` conservé | **Livré le 2026-09-01 — correction minimale et tests ciblés Web/Core ; aucune migration ni nouvelle catégorie** |
 | 21-U2-H — Activation ski | famille `ski` active avec sous-types `alpine`, `touring`, `cross-country` ; parcours génériques loueur/public et présentation ski neutre, sans snowboard ni règle vélo | **Livré le 2026-09-01 — tests ciblés Core/Web, typechecks et `check:fast` ; catégorie déjà seedée, aucune migration** |
+| 21-U2-I — Hardening ski des surfaces existantes | audit des surfaces loueur/public, variantes, photos et maintenance ; libellé historique normalisé dans création/édition, doublon de fiche supprimé, fallback et règles vélo conservés | **Livré le 2026-09-01 — correction minimale, tests ciblés Web/Core et typecheck ; aucune migration ni nouvelle catégorie** |
 
 ### Recherche par intention — UX accueil et résultats (2026-08-31)
 

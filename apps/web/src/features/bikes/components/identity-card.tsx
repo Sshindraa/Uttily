@@ -7,7 +7,7 @@ interface IdentityCardProps {
   organizationId: string;
   product: UnifiedBike['product'];
   variant: UnifiedBike['variant'];
-  categories: Array<{ id: string; name: string }>;
+  categories: Array<{ id: string; name: string; slug: string }>;
   isPublicationReady: boolean;
 }
 
