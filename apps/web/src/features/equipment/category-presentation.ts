@@ -1,5 +1,3 @@
-import { PADDLE_READINESS_CONTRACT, isPaddleReadinessCategorySlug } from '@uttily/core';
-
 export interface CategoryCharacteristic {
   readonly key: string;
   readonly label: string;
@@ -21,6 +19,15 @@ export interface InactiveCategoryPresentation {
   readonly proposedSlug: string;
   readonly status: 'INACTIVE';
   readonly presentation: CategoryPresentation;
+}
+
+// Do not import the server package from client components: this is the
+// presentation mirror of the inactive Core contract, not its authority.
+const PADDLE_READINESS_PROPOSED_SLUG = 'paddleboard';
+const PADDLE_READINESS_HISTORICAL_SLUG = 'paddle';
+
+function isPaddleReadinessCategorySlug(slug: string | null | undefined): boolean {
+  return slug === PADDLE_READINESS_PROPOSED_SLUG || slug === PADDLE_READINESS_HISTORICAL_SLUG;
 }
 
 /**
@@ -50,8 +57,8 @@ export const GENERIC_WATERCRAFT_CATEGORY_PRESENTATION: CategoryPresentation = {
 
 /** Présentation préparée uniquement pour documenter le futur paddle. */
 export const PADDLE_READINESS_PRESENTATION: InactiveCategoryPresentation = Object.freeze({
-  proposedSlug: PADDLE_READINESS_CONTRACT.proposedSlug,
-  status: PADDLE_READINESS_CONTRACT.status,
+  proposedSlug: PADDLE_READINESS_PROPOSED_SLUG,
+  status: 'INACTIVE',
   presentation: Object.freeze({
     singularLabel: 'paddle',
     pluralLabel: 'paddles',
@@ -134,7 +141,7 @@ const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
   // Ces entrées servent uniquement aux données historiques ou à la préparation
   // interne ; le registre serveur ne les considère pas comme commerciales.
   paddle: PADDLE_READINESS_PRESENTATION.presentation,
-  [PADDLE_READINESS_CONTRACT.proposedSlug]: PADDLE_READINESS_PRESENTATION.presentation,
+  [PADDLE_READINESS_PROPOSED_SLUG]: PADDLE_READINESS_PRESENTATION.presentation,
   equipment: GENERIC_CATEGORY_PRESENTATION,
 };
 
