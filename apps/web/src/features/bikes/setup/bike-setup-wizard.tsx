@@ -110,6 +110,7 @@ export function BikeSetupWizard({
     bike.activeInventoryCount > 0 ? bike.activeInventoryCount : 3,
   );
   const [locationId, setLocationId] = useState(locations[0]?.id ?? '');
+  const [inventoryIdempotencyKey] = useState(() => globalThis.crypto.randomUUID());
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -199,6 +200,7 @@ export function BikeSetupWizard({
         formData.set('currentLocationId', locationId);
         formData.set('count', String(fleetCount));
         formData.set('prefix', name.slice(0, 3).toUpperCase());
+        formData.set('idempotencyKey', inventoryIdempotencyKey);
 
         const res = await bulkCreateInventoryItemsAction(
           organizationId,
