@@ -1,6 +1,6 @@
 # ADR-034 — Registre de présentation des catégories
 
-**Statut :** Accepted — tranche Phase 2 « Mes équipements ».
+**Statut :** Accepted — tranches Phase 2 « Mes équipements » 1 et 2.
 
 **Date :** 2026-09-01
 
@@ -33,6 +33,24 @@ La projection de liste expose `categorySlug` afin de sélectionner cette
 présentation sans changer les URLs, le modèle Produit → Variante → Exemplaire,
 ni les contrats de mutation.
 
+## Extension — tranche photos et maintenance
+
+Les surfaces photos et maintenance réutilisent le même registre. Pour `bike`,
+la fiche conserve le Photo Coach, ses trois slots canoniques et la section de
+sécurité existante. Pour `equipment` et toute catégorie inconnue, la fiche
+affiche un gestionnaire photo neutre, sans vocabulaire ni slots vélo. Le seuil
+universel de trois photos valides avant publication reste contrôlé par Core.
+
+La flotte physique, l'ouverture d'une maintenance, la liste des interventions,
+le détail et la remise en service utilisent `categorySlug` uniquement pour les
+libellés, icônes et sections de présentation. Les statuts, blocs
+d'indisponibilité, transitions, permissions, isolation tenant et règles
+d'anti-chevauchement restent ceux des projections et mutations existantes.
+
+Les projections `listInventorySummaries` et `listMaintenanceCases` exposent
+`categorySlug` par jointure de lecture avec `categories`. Cette extension ne
+nécessite aucune migration.
+
 ## Conséquences
 
 - Les écrans liste et fiche peuvent accueillir `equipment` et les catégories
@@ -45,5 +63,5 @@ ni les contrats de mutation.
 ## Hors périmètre
 
 Aucune migration de base, aucun changement d’URL, aucune refonte d’onboarding
-et aucune extension des règles de disponibilité, de maintenance ou de sécurité
-ne fait partie de cette tranche.
+et aucune extension de règle métier de disponibilité, de maintenance ou de
+sécurité ne fait partie de cette tranche.

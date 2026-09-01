@@ -6,12 +6,14 @@ import {
   startMaintenanceCaseAction,
   resolveMaintenanceCaseAction,
 } from '@/app/actions/maintenance';
+import { getCategoryPresentation } from '@/features/equipment/category-presentation';
 import styles from './case-detail.module.css';
 
 interface ResolveMaintenanceModalProps {
   orgId: string;
   maintenanceCaseId: string;
   internalSku: string;
+  categorySlug: string;
   currentStatus: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
 }
 
@@ -19,9 +21,11 @@ export function ResolveMaintenanceModal({
   orgId,
   maintenanceCaseId,
   internalSku,
+  categorySlug,
   currentStatus,
 }: ResolveMaintenanceModalProps): React.ReactElement {
   const router = useRouter();
+  const categoryPresentation = getCategoryPresentation(categorySlug);
   const [isOpen, setIsOpen] = useState(false);
   const [targetCondition, setTargetCondition] = useState<'GOOD' | 'NEW' | 'FAIR'>('GOOD');
   const [notes, setNotes] = useState('');
@@ -108,7 +112,8 @@ export function ResolveMaintenanceModal({
 
       {!isOpen ? (
         <button type="button" onClick={() => setIsOpen(true)} className={styles.resolvePrimaryBtn}>
-          ✓ Terminer la réparation &amp; Remettre en service →
+          ✓ Terminer la réparation · {categoryPresentation.singularLabel} &amp; Remettre en service
+          →
         </button>
       ) : (
         <div

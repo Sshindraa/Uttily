@@ -1473,6 +1473,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Catalog integration — multi-ten
     expect(s.serialNumber).toBe('SN-INV-001');
     expect(s.variantName).toBe('Standard');
     expect(s.productName).toBe('RM InvSum Product');
+    expect(s.categorySlug).toBe('surf');
     expect(s.locationName).toBe('Shop InvSum');
     expect(s.productId).toBe(product.id);
     expect(s.productVariantId).toBe(variantId);

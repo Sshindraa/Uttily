@@ -5,6 +5,7 @@ import { getInventoryConditionPresentation } from '@/lib/status-presentation';
 import type { InventoryCondition } from '@uttily/contracts';
 import { PageHeader, Card, Badge } from '@uttily/ui';
 import { ResolveMaintenanceModal } from './case-detail/resolve-maintenance-modal';
+import { getCategoryPresentation } from '@/features/equipment/category-presentation';
 
 export interface MaintenanceCaseDetailViewProps {
   organizationId: string;
@@ -16,6 +17,7 @@ export function MaintenanceCaseDetailView({
   caseDetails,
 }: MaintenanceCaseDetailViewProps): React.ReactElement {
   const isResolved = caseDetails.status === 'RESOLVED';
+  const categoryPresentation = getCategoryPresentation(caseDetails.categorySlug);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -32,7 +34,7 @@ export function MaintenanceCaseDetailView({
       </Link>
 
       <PageHeader
-        eyebrow={`Référence : ${caseDetails.internalSku}`}
+        eyebrow={`${categoryPresentation.icon} ${categoryPresentation.singularLabel} · Référence : ${caseDetails.internalSku}`}
         title={`${caseDetails.productName} (${caseDetails.variantName})`}
         description={`Établissement : ${caseDetails.locationName} · N° de série : ${caseDetails.serialNumber ?? 'Sans numéro'}`}
         actions={
@@ -50,6 +52,7 @@ export function MaintenanceCaseDetailView({
                 orgId={organizationId}
                 maintenanceCaseId={caseDetails.id}
                 internalSku={caseDetails.internalSku}
+                categorySlug={caseDetails.categorySlug}
                 currentStatus={caseDetails.status}
               />
             )}
@@ -169,7 +172,7 @@ export function MaintenanceCaseDetailView({
               color: 'var(--ut-color-ink-strong)',
             }}
           >
-            🧰 Équipement concerné
+            {categoryPresentation.icon} {categoryPresentation.singularLabel} concerné
           </h2>
 
           <div

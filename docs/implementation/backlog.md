@@ -317,6 +317,7 @@ disponibilité transactionnelle, les prix et les URLs restent inchangés.
 | --- | --- | --- |
 | 21-U2-A — Registre de présentation par catégorie | libellés singulier/pluriel, caractéristiques explicites, sections spécifiques, actions principales et fallback générique ; tests vélo, `equipment`, fallback et tenant | **Terminé le 2026-09-01 — ADR-034** |
 | 21-U2-B — Liste et fiche génériques | branchement limité aux surfaces « Mes équipements », états vides, titres, badges, synthèse photo et actions ; règles Photo Coach vélo conservées | **Terminé le 2026-09-01 — validation ciblée Web et typecheck** |
+| 21-U2-C — Photos et maintenance par catégorie | gestionnaire photo neutre hors vélo ; Photo Coach et trois slots canoniques conservés pour le vélo ; libellés du registre dans la flotte et toutes les surfaces de maintenance ; `categorySlug` exposé par les projections concernées, sans migration ni changement de mutation | **Terminé le 2026-09-01 — tests ciblés Web/Core et validations CI à venir** |
 
 ### Recherche par intention — UX accueil et résultats (2026-08-31)
 

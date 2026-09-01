@@ -233,15 +233,18 @@ doivent pas recopier ni réinterpréter ses 31 décisions.
 - ne jamais remplacer le modèle relationnel Produit/Variante/Exemplaire par une
   abstraction UX non transactionnelle.
 
-**Tranche technique livrée le 2026-09-01 :** un registre frontend de
+**Tranches techniques livrées le 2026-09-01 :** un registre frontend de
 présentation par catégorie est en place (ADR-034), avec libellés singulier /
 pluriel, caractéristiques affichables, sections spécifiques et fallback
 générique. Les surfaces liste et fiche existantes l'utilisent pour la catégorie
-`equipment` et les catégories inconnues ; les slots photo et sections de
-sécurité restent limités au vélo. Le read model de liste expose désormais le
-`categorySlug`, sans migration, changement d'URL ou déplacement des règles Core.
+`equipment` et les catégories inconnues ; le vélo conserve ses slots photo,
+son Photo Coach et sa sécurité. Les surfaces photos et maintenance utilisent
+désormais le même registre : gestionnaire photo neutre hors vélo et libellés
+adaptés dans la flotte, l'ouverture, la liste, le détail et la remise en
+service. Les read models flotte et maintenance exposent `categorySlug`, sans
+migration, changement d'URL ou déplacement des règles Core.
 Le périmètre ne couvre pas encore l'onboarding autonome, les opérations
-groupées, ni les extensions de maintenance ou de sécurité par catégorie.
+groupées, ni de nouvelles règles métier spécifiques à une catégorie.
 
 ### 7.2 Onboarding autonome
 
