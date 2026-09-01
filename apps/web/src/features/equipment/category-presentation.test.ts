@@ -125,6 +125,25 @@ describe('registre de présentation des catégories', () => {
     ).toEqual([]);
   });
 
+  it('présente le pédalo avec le socle nautique neutre et sa capacité optionnelle', () => {
+    const presentation = getCategoryPresentation('pedalboat');
+
+    expect(presentation.singularLabel).toBe('pédalo');
+    expect(presentation.pluralLabel).toBe('pédalos');
+    expect(presentation.icon).toBe('🛶');
+    expect(presentation.specificSections).toEqual([]);
+    expect(getDisplayableCharacteristics({ capacity: '4 places' }, presentation)).toEqual([
+      { label: 'Capacité', value: '4 places' },
+    ]);
+    expect(
+      getDisplayableCharacteristics(
+        { capacity: '4 places', photoCoach: true, safety: 'life-jacket' },
+        presentation,
+      ),
+    ).toEqual([{ label: 'Capacité', value: '4 places' }]);
+    expect(getCategoryDisplayLabel('pedalboat', 'Pédalos')).toBe('pédalo');
+  });
+
   it('active paddleboard sous une seule famille et conserve le slug historique neutre', () => {
     expect(PADDLEBOARD_CATEGORY_PRESENTATION.status).toBe('ACTIVE');
     expect(PADDLEBOARD_CATEGORY_PRESENTATION.slug).toBe('paddleboard');
@@ -160,7 +179,7 @@ describe('registre de présentation des catégories', () => {
 
   it('retombe sur une présentation générique pour toute catégorie inconnue', () => {
     expect(getCategoryPresentation('unknown-family')).toBe(GENERIC_CATEGORY_PRESENTATION);
-    expect(getCategoryPresentation('pedalboat')).toBe(GENERIC_CATEGORY_PRESENTATION);
+    expect(getCategoryPresentation('pedalboat')).not.toBe(GENERIC_CATEGORY_PRESENTATION);
     expect(getCategoryPresentation(undefined)).toBe(GENERIC_CATEGORY_PRESENTATION);
   });
 

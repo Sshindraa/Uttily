@@ -4,6 +4,7 @@ const MVP_CATEGORY_LABELS_EN: Readonly<Record<string, string>> = {
   equipment: 'Equipment',
   kayak: 'Kayak',
   canoe: 'Canoe',
+  pedalboat: 'Pedal boat',
   surf: 'Surf',
   paddle: 'Paddleboarding',
   paddleboard: 'Stand-up paddle',
@@ -19,6 +20,7 @@ const MVP_CATEGORY_LABELS_EN: Readonly<Record<string, string>> = {
 const MVP_CATEGORY_LABELS_FR: Readonly<Record<string, string>> = {
   kayak: 'Kayak',
   canoe: 'Canoë',
+  pedalboat: 'Pédalo',
   paddleboard: 'Paddle',
   ski: 'Ski',
   snowboard: 'Snowboard',

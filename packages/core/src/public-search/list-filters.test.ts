@@ -13,6 +13,7 @@ describe('filtrage des catégories publiques', () => {
 
     expect(filterPublicSearchCategories(rows)).toEqual([
       { id: 'paddleboard', slug: 'paddleboard', name: 'Paddle' },
+      { id: 'pedalboat', slug: 'pedalboat', name: 'Pédalo' },
       { id: 'kayak', slug: 'kayak', name: 'Kayak' },
     ]);
   });

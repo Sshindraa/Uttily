@@ -252,7 +252,7 @@ groupées, ni de nouvelles règles métier spécifiques à une catégorie.
 
 **Cadrage livré le 2026-09-01 :** ADR-035 et le registre Core ferment le
 périmètre commercial aux quatre univers Cycle, Kayak/canoë/pagaie, Surf/glisse
-nautique et Neige/glisse. `bike`, `kayak`, `canoe`, `paddleboard`, `surf`, `ski` et `snowboard` sont `ACTIVE`,
+nautique et Neige/glisse. `bike`, `kayak`, `canoe`, `paddleboard`, `pedalboat`, `surf`, `ski` et `snowboard` sont `ACTIVE`,
 `equipment` reste un fallback interne et
 les valeurs inconnues sont `UNSUPPORTED`. Aucune catégorie camping, outdoor
 technique, sport généraliste, outillage, jardin, événementiel, audiovisuel ou
@@ -337,7 +337,8 @@ idempotente, le slug historique `paddle` et les produits `equipment` ne sont
 pas convertis, et le seed local n'ajoute aucun produit publié. Les parcours
 loueur/public réutilisent les invariants génériques, les trois photos valides,
 la recherche, le hold, le paiement TEST et la réservation, sans Photo Coach,
-slot vélo, règle kayak/canoë ou moteur de packs. Le pédalo reste inactif.
+slot vélo, règle kayak/canoë ou moteur de packs. La préparation du pédalo est
+remplacée par son activation dans le lot suivant.
 
 **Taxonomy enforcement livré le 2026-09-01 :** le registre fermé serveur est
 désormais l'autorité commerciale des familles `bike`, `kayak`, `canoe`,
@@ -351,15 +352,25 @@ historiques restent lisibles sans conversion ni suppression et ne peuvent pas
 disponibilité, tenant, maintenance, réservation ou paiement n'est modifié.
 
 **Préparation pédalo livrée le 2026-09-01 :** le slug interne proposé
-`pedalboat` reste une préparation `INACTIVE`, hors du registre commercial actif
-et hors des sept familles publiables. Le contrat prévoit une famille unique,
+`pedalboat` a d'abord été préparé hors du registre commercial actif et hors des
+sept familles publiables. Le contrat prévoit une famille unique,
 les libellés « Pédalo » / « Pedal boat », une capacité éventuellement portée
 par les attributs de variante existants, le modèle Produit → Variante →
-Exemplaire et une présentation nautique générique avec photos neutres. Aucun
-schéma, migration, fixture publiée, filtre de recherche, onboarding, offre
-réservable ou moteur de compléments n'est ajouté ; `equipment`, `paddle` et les
-données historiques restent inchangés. L'activation exige une décision produit
-explicite et des preuves dédiées.
+Exemplaire et une présentation nautique générique avec photos neutres. Cette
+préparation est conservée comme historique par ADR-036 ; `equipment`, `paddle`
+et les données historiques restent inchangés.
+
+**Activation pédalo livrée le 2026-09-01 :** `pedalboat` est désormais `ACTIVE`
+comme famille unique de l'univers nautique, avec « Pédalo » / « Pedal boat » et
+une capacité facultative dans les attributs de variante existants lorsqu'elle
+est disponible. La migration idempotente 0055 assure la catégorie canonique,
+sans conversion historique ni fixture publiée. Les parcours loueur/public
+réutilisent Produit → Variante → Exemplaire, les photos neutres et le seuil
+universel de trois photos valides, le tarif, la disponibilité, la publication,
+la recherche, le hold, le paiement TEST et la réservation. Aucun Photo Coach,
+slot vélo, règle kayak/paddle, pack, supplément ou autre catégorie n'est activé.
+La PR #56 est ouverte vers `main` et sa CI complète est verte, Browser Clerk
+TEST compris.
 
 ### 7.2 Onboarding autonome
 
@@ -706,8 +717,8 @@ Chaque catégorie définit avant activation :
 - documents ;
 - critères de publication.
 
-Ordre d'activation encadré par ADR-035 : `bike`, `kayak`, `canoe`, `paddleboard`,
-`surf`, `ski` et `snowboard` actifs ; les autres familles pagaie, les familles neige
+Ordre d'activation encadré par ADR-035 et ADR-037 : `bike`, `kayak`, `canoe`,
+`paddleboard`, `pedalboat`, `surf`, `ski` et `snowboard` actifs ; les autres familles pagaie, les familles neige
 non activées et les familles hors taxonomie fermée sont exclues.
 
 ### 13.2 Kit d'activation pays

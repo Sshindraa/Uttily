@@ -25,6 +25,7 @@
 | [ADR-031](decisions/ADR-031-category-photo-requirements-and-publication-gate.md) | Slots photo obligatoires du pilote vélo ; règle générique conservée pour les autres catégories. |
 | [ADR-035](decisions/ADR-035-closed-outdoor-equipment-taxonomy.md) | Taxonomie commerciale outdoor fermée et registre serveur des familles. |
 | [ADR-036](decisions/ADR-036-pedalboat-preparation.md) | Préparation du pédalo sans activation commerciale. |
+| [ADR-037](decisions/ADR-037-pedalboat-activation.md) | Activation du pédalo sous le slug canonique `pedalboat`. |
 
 ## Règle de maintenance
 
