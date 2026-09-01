@@ -16,7 +16,7 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm test:fast",
     "test:fast": "SKIP_INTEGRATION_TESTS=1 pnpm -r --parallel --workspace-concurrency=6 --if-present run test:fast",
-    "test:full": "pnpm -r test",
+    "test:full": "pnpm -r --workspace-concurrency=1 test",
     "test:postgres": "pnpm --filter @uttily/database test:postgres",
     "check:fast": "pnpm test:dev-local && pnpm test:scripts && pnpm check:scripts && pnpm test:fast && pnpm typecheck",
     "check:scripts": "node scripts/verify-workspace-scripts.mjs",

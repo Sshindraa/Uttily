@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 import { tmpdir } from 'node:os';
@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import {
   extractScriptFileReferences,
   findMissingScriptFiles,
+  REPOSITORY_ROOT,
   verifyWorkspaceScripts,
 } from './verify-workspace-scripts.mjs';
 
@@ -46,4 +47,9 @@ test('signale une référence de script manquante', () => {
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }
+});
+
+test('test:full séquence les workspaces pour isoler PostgreSQL', () => {
+  const manifest = JSON.parse(readFileSync(join(REPOSITORY_ROOT, 'package.json'), 'utf8'));
+  assert.equal(manifest.scripts?.['test:full'], 'pnpm -r --workspace-concurrency=1 test');
 });
