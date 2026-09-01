@@ -2,6 +2,7 @@ export type PublicLabelLocale = 'fr' | 'en';
 
 const MVP_CATEGORY_LABELS_EN: Readonly<Record<string, string>> = {
   equipment: 'Equipment',
+  kayak: 'Kayak',
   surf: 'Surf',
   paddle: 'Paddleboarding',
   bike: 'Bikes',
@@ -14,6 +15,7 @@ const MVP_CATEGORY_LABELS_EN: Readonly<Record<string, string>> = {
 };
 
 const MVP_CATEGORY_LABELS_FR: Readonly<Record<string, string>> = {
+  kayak: 'Kayak',
   ski: 'Ski',
   snowboard: 'Snowboard',
 };
