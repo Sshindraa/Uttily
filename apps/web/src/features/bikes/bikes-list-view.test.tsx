@@ -16,7 +16,9 @@ const summary = (categorySlug: string): UnifiedBikeSummary => ({
           ? 'Ski & Snowboard'
           : categorySlug === 'snowboard'
             ? 'Snowboard'
-            : 'Kayak',
+            : categorySlug === 'canoe'
+              ? 'Canoës'
+              : 'Kayak',
   categorySlug,
   variantName: 'Standard',
   variantId: 'variant-1',
@@ -88,6 +90,18 @@ describe('Mes équipements — liste', () => {
     expect(html).toContain('Snowboard');
     expect(html).toContain('2/3 photos');
     expect(html).not.toContain('🎿');
+    expect(html).not.toContain('vues requises');
+  });
+
+  it('présente le canoë avec les photos neutres et sans règles kayak spécialisées', () => {
+    const html = renderToStaticMarkup(
+      <BikesListView organizationId="org-1" bikes={[summary('canoe')]} canManage />,
+    );
+
+    expect(html).toContain('🛶');
+    expect(html).toContain('canoë');
+    expect(html).toContain('2/3 photos');
+    expect(html).not.toContain('Photo Coach');
     expect(html).not.toContain('vues requises');
   });
 });

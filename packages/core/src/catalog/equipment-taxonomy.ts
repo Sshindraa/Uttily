@@ -38,7 +38,8 @@ export interface EquipmentCharacteristicDefinition {
   readonly allowedValues?: readonly string[];
 }
 
-export type EquipmentFamilySlug = 'bike' | 'kayak' | 'surf' | 'ski' | 'snowboard' | 'equipment';
+export type EquipmentFamilySlug =
+  'bike' | 'kayak' | 'canoe' | 'surf' | 'ski' | 'snowboard' | 'equipment';
 export type CommercialEquipmentFamilySlug = Exclude<EquipmentFamilySlug, 'equipment'>;
 
 export interface EquipmentFamilyDefinition {
@@ -93,6 +94,15 @@ export const EQUIPMENT_FAMILY_REGISTRY: readonly EquipmentFamilyDefinition[] = O
       { key: 'construction', allowedValues: ['rigid', 'inflatable'] },
       { key: 'practice', allowedValues: ['sea', 'touring', 'whitewater'] },
     ],
+  },
+  {
+    slug: 'canoe',
+    universe: 'paddle',
+    status: 'ACTIVE',
+    singularLabel: 'canoë',
+    pluralLabel: 'canoës',
+    subtypes: [],
+    characteristics: [],
   },
   {
     slug: 'surf',

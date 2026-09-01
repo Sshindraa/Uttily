@@ -10,7 +10,7 @@ univers outdoor fermés :
 | Univers | Slug d’univers | Familles prévues | Statut dans cette tranche |
 | --- | --- | --- | --- |
 | Cycle | `cycle` | `bike` | `ACTIVE` |
-| Kayak, canoë et pagaie | `paddle` | `kayak` | `ACTIVE` |
+| Kayak, canoë et pagaie | `paddle` | `kayak`, `canoe` | `ACTIVE` |
 | Surf et glisse nautique | `surf` | `surf` | `ACTIVE` |
 | Neige et glisse | `snow` | `ski`, `snowboard` | `ACTIVE` |
 
@@ -27,8 +27,8 @@ La taxonomie sépare strictement :
 
 1. **Univers** : regroupement commercial fermé (`cycle`, `paddle`, `surf`,
    `snow`).
-2. **Famille d'équipement** : slug stable du produit (`bike`, `kayak`, `surf`,
-   `ski`, `snowboard`).
+2. **Famille d'équipement** : slug stable du produit (`bike`, `kayak`, `canoe`,
+   `surf`, `ski`, `snowboard`).
 3. **Caractéristiques ou sous-types** : valeurs descriptives de la famille,
    jamais des catégories ni des slugs indépendants.
 
@@ -36,13 +36,15 @@ La taxonomie sépare strictement :
 | --- | --- |
 | `bike` | sous-types `city`, `vtc`, `mtb`, `road`, `gravel`, `electric`, `cargo`, `child`, `tandem`, `fatbike` ; caractéristiques `size`, `autonomy` |
 | `kayak` | `capacity` ; construction `rigid` ou `inflatable` ; pratique `sea`, `touring` ou `whitewater` |
+| `canoe` | aucun sous-type ou caractéristique spécialisé dans cette tranche |
 | `surf` | sous-types `classic`, `longboard`, `softboard`, `bodyboard`, `skimboard` |
 | `ski` | sous-types `alpine`, `touring`, `cross-country` |
 | `snowboard` | aucun sous-type ou caractéristique spécialisé dans cette tranche |
 
-Le fait de couvrir l'univers « Kayak, canoë et pagaie » ne crée pas de slugs
-`canoe` ou `paddle` dans cette tranche. Toute famille distincte devra être
-explicitement approuvée avant son activation.
+Le fait de couvrir l'univers « Kayak, canoë et pagaie » n'active pas le slug
+`paddle`. La famille `canoe` est désormais active sous son slug canonique ;
+toute autre famille distincte devra être explicitement approuvée avant son
+activation.
 
 ## Registre fermé côté serveur
 
@@ -51,7 +53,7 @@ La source de vérité typée est
 Elle distingue :
 
 - `ACTIVE` : familles activées commercialement ; aujourd'hui `bike`, `kayak`,
-  `surf`, `ski` et `snowboard` ;
+  `canoe`, `surf`, `ski` et `snowboard` ;
 - `APPROVED_NEXT` : famille approuvée pour le prochain lot ; aucune après
   l'activation du kayak ;
 - `APPROVED_LATER` : familles approuvées mais différées ; aucune dans le
@@ -83,6 +85,12 @@ L'activation snowboard ajoute la catégorie canonique `snowboard` via la
 migration 0052, sans conversion des produits historiques `equipment`. Aucun
 sous-type, champ ou caractéristique spécialisée n'est introduit. Le parcours
 générique et les photos neutres sont réutilisés, sans règle vélo ou ski.
+
+L'activation canoë ajoute la catégorie canonique `canoe` via la migration 0053,
+sans conversion des produits historiques `equipment`. Aucun sous-type, champ
+ou caractéristique spécialisée n'est introduit. Le parcours générique et la
+présentation nautique neutre sont réutilisés, sans Photo Coach, slot vélo,
+règle kayak ou accessoire autonome.
 
 ## Compléments
 

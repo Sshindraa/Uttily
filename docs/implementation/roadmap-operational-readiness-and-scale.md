@@ -252,7 +252,7 @@ groupées, ni de nouvelles règles métier spécifiques à une catégorie.
 
 **Cadrage livré le 2026-09-01 :** ADR-035 et le registre Core ferment le
 périmètre commercial aux quatre univers Cycle, Kayak/canoë/pagaie, Surf/glisse
-nautique et Neige/glisse. `bike`, `kayak`, `surf`, `ski` et `snowboard` sont `ACTIVE`,
+nautique et Neige/glisse. `bike`, `kayak`, `canoe`, `surf`, `ski` et `snowboard` sont `ACTIVE`,
 `equipment` reste un fallback interne et
 les valeurs inconnues sont `UNSUPPORTED`. Aucune catégorie camping, outdoor
 technique, sport généraliste, outillage, jardin, événementiel, audiovisuel ou
@@ -318,6 +318,15 @@ invariants génériques Produit → Variante → Exemplaire, le tarif, la
 disponibilité, les photos neutres, la publication, la recherche, le hold, le
 paiement TEST et la confirmation. Aucun Photo Coach, slot photo vélo, règle ski,
 pack ou moteur de supplément n'est activé.
+
+**Activation canoë livrée le 2026-09-01 :** la famille `canoe` est désormais
+`ACTIVE` sous un seul slug. La migration 0053 ajoute sa catégorie canonique
+sans convertir les produits historiques `equipment`; le seed local conserve
+`kayak-dev` sur `kayak` et prépare la catégorie canoë. Les parcours loueur et
+public réutilisent les invariants génériques Produit → Variante → Exemplaire,
+le tarif, la disponibilité, les photos neutres, la publication, la recherche,
+le hold, le paiement TEST et la confirmation. Aucun sous-type, champ, Photo
+Coach, slot vélo, règle kayak, pack ou moteur de supplément n'est ajouté.
 
 ### 7.2 Onboarding autonome
 
@@ -664,9 +673,9 @@ Chaque catégorie définit avant activation :
 - documents ;
 - critères de publication.
 
-Ordre d'activation encadré par ADR-035 : `bike`, `kayak`, `surf`, `ski` et
-`snowboard` actifs ; les autres familles neige et les familles hors taxonomie
-fermée sont exclues.
+Ordre d'activation encadré par ADR-035 : `bike`, `kayak`, `canoe`, `surf`,
+`ski` et `snowboard` actifs ; les autres familles pagaie, les familles neige
+non activées et les familles hors taxonomie fermée sont exclues.
 
 ### 13.2 Kit d'activation pays
 

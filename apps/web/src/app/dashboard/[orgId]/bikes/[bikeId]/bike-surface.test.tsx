@@ -239,6 +239,25 @@ describe('Fiche vélo — surface loueur', () => {
     expect(html).not.toContain('vues requises');
   });
 
+  it('présente une fiche canoë nautique neutre sans Photo Coach ni slots vélo', async () => {
+    const canoe = buildBike();
+    canoe.product.categorySlug = 'canoe';
+    canoe.product.categoryName = 'Canoës';
+    canoe.variant.name = 'Standard';
+    canoe.variant.attributes = {};
+    canoe.photos = { count: 2, minRequired: 3, isComplete: false, items: [] };
+
+    const html = await renderBikePage(canoe);
+
+    expect(html).toContain('🛶');
+    expect(html).toContain('canoë');
+    expect(html).toContain('Photos de l’équipement');
+    expect(html).toContain('2/3 photos valides');
+    expect(html).not.toContain('Photo Coach');
+    expect(html).not.toContain('HERO_PROFILE');
+    expect(html).not.toContain('vues requises');
+  });
+
   it('associe les photos aux slots canoniques plutôt qu’à leur ordre d’insertion', async () => {
     const bike = buildBike();
     bike.product.categorySlug = 'bike';

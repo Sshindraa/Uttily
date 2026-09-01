@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   GENERIC_CATEGORY_PRESENTATION,
+  GENERIC_WATERCRAFT_CATEGORY_PRESENTATION,
   getCategoryDisplayLabel,
   getCategoryPresentation,
   getDisplayableCharacteristics,
@@ -43,6 +44,20 @@ describe('registre de présentation des catégories', () => {
       { label: 'Construction', value: 'inflatable' },
       { label: 'Pratique', value: 'touring' },
     ]);
+  });
+
+  it('présente le canoë avec le socle nautique neutre', () => {
+    const presentation = getCategoryPresentation('canoe');
+
+    expect(presentation).toBe(GENERIC_WATERCRAFT_CATEGORY_PRESENTATION);
+    expect(presentation.singularLabel).toBe('canoë');
+    expect(presentation.pluralLabel).toBe('canoës');
+    expect(presentation.icon).toBe('🛶');
+    expect(presentation.characteristics).toEqual([]);
+    expect(presentation.specificSections).toEqual([]);
+    expect(
+      getDisplayableCharacteristics({ capacity: 'triple', practice: 'sea' }, presentation),
+    ).toEqual([]);
   });
 
   it('normalise le libellé historique pluriel du kayak en contexte singulier', () => {
@@ -110,7 +125,7 @@ describe('registre de présentation des catégories', () => {
   });
 
   it('retombe sur une présentation générique pour toute catégorie inconnue', () => {
-    expect(getCategoryPresentation('canoe')).toBe(GENERIC_CATEGORY_PRESENTATION);
+    expect(getCategoryPresentation('unknown-family')).toBe(GENERIC_CATEGORY_PRESENTATION);
     expect(getCategoryPresentation(undefined)).toBe(GENERIC_CATEGORY_PRESENTATION);
   });
 

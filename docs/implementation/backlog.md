@@ -328,6 +328,7 @@ disponibilité transactionnelle, les prix et les URLs restent inchangés.
 | 21-U2-H — Activation ski | famille `ski` active avec sous-types `alpine`, `touring`, `cross-country` ; parcours génériques loueur/public et présentation ski neutre, sans snowboard ni règle vélo | **Livré le 2026-09-01 — tests ciblés Core/Web, typechecks et `check:fast` ; catégorie déjà seedée, aucune migration** |
 | 21-U2-I — Hardening ski des surfaces existantes | audit des surfaces loueur/public, variantes, photos et maintenance ; libellé historique normalisé dans création/édition, doublon de fiche supprimé, fallback et règles vélo conservés | **Livré le 2026-09-01 — correction minimale, tests ciblés Web/Core et typecheck ; aucune migration ni nouvelle catégorie** |
 | 21-U2-J — Activation snowboard | famille `snowboard` active sous un seul slug ; parcours loueur/public génériques, migration canonique 0052 sans conversion de `equipment`, photos neutres et aucun sous-type ou champ spécialisé | **Livré le 2026-09-01 — tests ciblés registre/Web/Core/Database, typechecks et `check:fast` ; intégrations exhaustives déléguées à la CI** |
+| 21-U2-K — Activation canoë | famille `canoe` active sous un seul slug ; parcours loueur/public génériques, migration canonique 0053 sans conversion de `equipment`, présentation nautique neutre et aucun sous-type ou champ spécialisé | **En cours le 2026-09-01 — validation ciblée et CI à venir ; paddle et pédalo restent inactifs** |
 
 ### Recherche par intention — UX accueil et résultats (2026-08-31)
 

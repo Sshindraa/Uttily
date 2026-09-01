@@ -29,6 +29,17 @@ export const GENERIC_CATEGORY_PRESENTATION: CategoryPresentation = {
   setupActionLabel: 'Continuer la configuration',
 };
 
+/** Présentation nautique neutre pour les familles sans attribut spécialisé. */
+export const GENERIC_WATERCRAFT_CATEGORY_PRESENTATION: CategoryPresentation = {
+  singularLabel: 'canoë',
+  pluralLabel: 'canoës',
+  icon: '🛶',
+  characteristics: [],
+  specificSections: [],
+  primaryActionLabel: 'Gérer l’équipement',
+  setupActionLabel: 'Continuer la configuration',
+};
+
 const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
   bike: {
     singularLabel: 'vélo',
@@ -63,6 +74,7 @@ const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
     primaryActionLabel: 'Gérer l’équipement',
     setupActionLabel: 'Continuer la configuration',
   },
+  canoe: GENERIC_WATERCRAFT_CATEGORY_PRESENTATION,
   surf: {
     singularLabel: 'planche de surf',
     pluralLabel: 'planches de surf',
@@ -137,7 +149,7 @@ export function getCategoryDisplayLabel(
   categorySlug: string | null | undefined,
   storedName: string,
 ): string {
-  if (categorySlug === 'ski' || categorySlug === 'kayak') {
+  if (categorySlug === 'ski' || categorySlug === 'kayak' || categorySlug === 'canoe') {
     return getCategoryPresentation(categorySlug).singularLabel;
   }
   return storedName;
