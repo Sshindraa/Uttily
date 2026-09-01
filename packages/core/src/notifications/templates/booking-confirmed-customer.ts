@@ -40,9 +40,9 @@ export function renderBookingConfirmedCustomer(data: BookingConfirmedCustomerDat
         <span class="metric-label">Lieu de retrait :</span>
         <span class="metric-value">${escapeHtml(data.locationName)}${data.locationAddress ? ` (${escapeHtml(data.locationAddress)})` : ''}</span>
       </div>
-      <div class="metric-row" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+      <div class="metric-row" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #d1e1e5;">
         <span class="metric-label">Montant payé :</span>
-        <span class="metric-value" style="color: #059669; font-size: 16px;">${escapeHtml(formatEur(data.totalAmountMinor))}</span>
+        <span class="metric-value" style="color: #247a4b; font-size: 16px;">${escapeHtml(formatEur(data.totalAmountMinor))}</span>
       </div>
     </div>
 

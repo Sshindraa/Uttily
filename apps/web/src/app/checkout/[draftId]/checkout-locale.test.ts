@@ -3,11 +3,8 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PAGE_PATH = join(__dirname, 'page.tsx');
-const CLIENT_PATH = join(__dirname, 'checkout-client.tsx');
-const FORM_PATH = join(
-  __dirname,
-  '../../[locale]/offers/[publicProductId]/[publicLocationId]/offer-booking-form.tsx',
-);
+const CLIENT_PATH = join(__dirname, '../../../features/checkout/checkout-client.tsx');
+const FORM_PATH = join(__dirname, '../../../features/offers/offer-booking-form.tsx');
 
 describe('checkout locale continuity', () => {
   const pageSource = readFileSync(PAGE_PATH, 'utf8');
@@ -27,5 +24,12 @@ describe('checkout locale continuity', () => {
   it('formats checkout amounts and dates using the carried locale', () => {
     expect(clientSource).toContain('locale: localeOverride');
     expect(clientSource).toContain('getIntlLocale(locale)');
+  });
+
+  it('keeps the checkout route focused on server orchestration', () => {
+    expect(pageSource).toContain('<CheckoutPageView');
+    expect(pageSource).toContain('<CheckoutStatus');
+    expect(pageSource).not.toContain('<CheckoutClient');
+    expect(pageSource).not.toContain('style={{');
   });
 });

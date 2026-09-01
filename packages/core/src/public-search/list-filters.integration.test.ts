@@ -100,6 +100,26 @@ describe.skipIf(shouldSkipIntegrationTests())('listPublicSearchFilterOptions', (
     expect(result.destinations.map((item) => item.label)).toEqual(['Bruxelles', 'Lyon']);
     expect(result.categories.length).toBeGreaterThan(0);
     expect(result.categories.every((category) => category.id && category.name)).toBe(true);
+    expect(result.categories.every((category) => 'parentId' in category)).toBe(true);
+  });
+
+  it('expose les liens parent-enfant réels sans catégorie inactive', async () => {
+    if (!db || !rawSql) throw new Error('db absent');
+    const [parent] = await rawSql`
+      INSERT INTO categories (slug, name) VALUES ('search-test-parent', 'Famille test') RETURNING id
+    `;
+    const [child] = await rawSql`
+      INSERT INTO categories (slug, name, parent_id)
+      VALUES ('search-test-child', 'Sous-famille test', ${parent!.id}) RETURNING id
+    `;
+    const [inactive] = await rawSql`
+      INSERT INTO categories (slug, name, parent_id, is_active)
+      VALUES ('search-test-inactive', 'Inactive', ${parent!.id}, false) RETURNING id
+    `;
+    const result = await listPublicSearchFilterOptions(db, 'fr');
+    expect(result.categories.find((item) => item.id === parent!.id)?.parentId).toBeNull();
+    expect(result.categories.find((item) => item.id === child!.id)?.parentId).toBe(parent!.id);
+    expect(result.categories.some((item) => item.id === inactive!.id)).toBe(false);
   });
 
   it('sélectionne explicitement la traduction EN sans fallback implicite', async () => {

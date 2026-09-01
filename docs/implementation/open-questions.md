@@ -86,6 +86,23 @@ Questions ouvertes issues de l'ADR-013 (groupe de décision et de conception uni
 - MVP pilote : retrait en établissement uniquement, pas de livraison ni point relais.
 - Invitations : table `organization_invitations` distincte, aucun utilisateur créé avant acceptation.
 
+## Recherche par intention — configurations de groupe (2026-08-31)
+
+La nouvelle barre conserve `peopleCount` comme contexte visible, sans calculer de
+quantité, de capacité ou de prix de groupe. Avant les recommandations V3–V5,
+Produit doit valider avec Technique :
+
+- l'autorité et les catégories prioritaires des capacités par variante (places,
+  adultes/enfants, contraintes de poids et de sécurité si applicables) ;
+- les accessoires réellement inclus, obligatoires ou optionnels et leur stock ;
+- les combinaisons autorisées chez un seul loueur et la façon de les classer ;
+- le contrat de prix et de disponibilité par configuration complète.
+
+**Statut : ouvert, bloquant pour la composition automatique, pas pour l'UX ni
+les synonymes livrés.** Aucune capacité n'est déduite d'un nom de produit.
+Une ADR est nécessaire avant schéma et moteur. Voir
+[home-search-next-level.md](home-search-next-level.md).
+
 ## Décisions produit Lot 4 (approuvées, validations juridique/finance en attente)
 
 - Politiques d'annulation : trois politiques prédéfinies (Flexible par défaut, Modérée, Ferme). Validation juridique de la conformité et de la base remboursable requise avant activation en production.
@@ -116,7 +133,7 @@ future.
 | Formats autorisés (JPEG/PNG/WebP uniquement ? HEIC/AVIF ? Refus SVG/GIF/BMP/TIFF confirmé ?) | G7F-B upload réel | Technique / produit | **Résolu par ADR-026 (G8B-1)** — JPEG, PNG et WebP uniquement, après validation des octets réels. HEIC, AVIF, SVG, GIF, BMP et TIFF sont refusés. |
 | Modération automatique (NSFW, copyright) | G7F-B upload réel ou activation production | Produit / juridique | Ouvert — modération manuelle pour le MVP ? Détection automatique reportée à G7F-B. |
 | Règles précises par catégorie (nombre minimum, vues requises, angles) | G8B-3B4 | Produit / technique | **Résolu pour le pilote vélo par ADR-031** — la catégorie `bike` exige `HERO_PROFILE`, `THREE_QUARTER_FRONT` et `SECONDARY_VIEW`, plus trois checksums distincts ; contrat, UI, persistance `0040`, allow-list et gate Core/PostgreSQL/public `0050` sont alignés. Les règles des autres catégories restent ouvertes. |
-| Profil public et badge loueur | G8B-3B4 | Produit / privacy / technique | Direction acceptée — organisation professionnelle au premier plan, intitulé « loueur professionnel vérifié », présence humaine facultative avec consentement. Restent à décider et implémenter : calcul auditable, retrait du badge, données de profil, preuve d'expérience et politique privacy. Aucun badge de performance avant données réelles. |
+| Profil public et badge loueur | G8B-3B4 | Produit / privacy / technique | Calcul auditable et retrait fail-closed livrés par ADR-032. Restent à décider : données de profil complémentaires, preuve d'expérience et politique privacy. Aucun badge de performance avant données réelles. |
 | Parcours et conseils locaux | G8B-3E | Produit / juridique / modération | Différé après les premiers partenaires — contenu structuré, public, actualisable et assorti d'informations de sécurité. Responsabilité, signalement, modération et suppression du contenu obsolète à décider avant implémentation. |
 | Durée de conservation des objets R2 supprimés (soft delete → suppression physique) | G7F-B ou activation production | Technique / juridique | **Résolu techniquement par ADR-026 (G8B-1)** — suppression physique après le commit du soft delete, avec rejeu idempotent en cas d’échec ; une politique de rétention juridique ultérieure pourra ajouter un délai. |
 | Re-encoding des images (stripper EXIF et re-encoder) | G7F-B | Technique / produit | **Résolu** — reporté à G7F-B avec `sharp`/imagor (ADR-020 §F.3). |

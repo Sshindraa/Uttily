@@ -29,12 +29,12 @@ export function renderOrganizationInvitation(data: OrganizationInvitationData): 
     </div>
 
     <div style="text-align: center; margin: 2rem 0;">
-      <a href="${escapeHtml(data.acceptUrl)}" style="background-color: #2563eb; color: #ffffff; padding: 0.75rem 1.5rem; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">
+      <a href="${escapeHtml(data.acceptUrl)}" style="background-color: #465b5f; color: #ffffff; padding: 0.75rem 1.5rem; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">
         Rejoindre l’équipe
       </a>
     </div>
 
-    <p style="font-size: 0.85rem; color: #64748b;">
+    <p style="font-size: 0.85rem; color: #546d72;">
       Cette invitation est valable ${days} jours. Si vous n’attendiez pas cette invitation, vous pouvez ignorer cet email.
     </p>
   `;

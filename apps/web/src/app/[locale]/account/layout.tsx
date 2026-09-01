@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { ClientShell } from '@/components/client-shell';
+import { ClientShell } from '@/components/shells/client-shell';
 
 export default async function AccountLayout({
   children,

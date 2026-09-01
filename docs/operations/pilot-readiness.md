@@ -86,7 +86,7 @@ et le drill local ne valent pas une approbation humaine ou commerciale.
 | Sujet | État technique | État documentaire | Owner du sign-off | Preuve / lien | Bloque pilote |
 | --- | --- | --- | --- | --- | --- |
 | CGU / CGV (texte client) | `TECHNICALLY_VERIFIED` | `BLOCKED` | Juridique + Porteur produit | Version et snapshot persistés et validés (`payments.legal_terms_version`, `bookings.legal_terms_version`, `terms_acceptance_snapshot` ; validation règle 15 dans `packages/core/src/financial-terms/resolve-financial-terms.ts:215`). **Aucun texte de CGU/CGV n'existe** : aucune page, aucun fichier, aucune occurrence dans `apps/`, `packages/` ou `public/`. | **Oui** |
-| Versions des terms | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique | Version `v1` codée en dur côté serveur (`apps/web/src/lib/payment-config.ts`, `legalTermsVersion: 'v1'`) et côté client (`apps/web/src/app/checkout/[draftId]/checkout-client.tsx:223`). Voir C3-F1. | **Oui** |
+| Versions des terms | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique | Version `v1` codée en dur côté serveur (`apps/web/src/lib/payment-config.ts`, `legalTermsVersion: 'v1'`) et côté client (`apps/web/src/features/checkout/checkout-client.tsx:219`). Voir C3-F1. | **Oui** |
 | Snapshot d'acceptation | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique | `{ termsVersion, userId, acceptedAt }` persisté (`packages/database/src/schema.ts:1133-1134`, `1312`). Le snapshot est une tautologie : il prouve l'acceptation d'un document inexistant. Voir C3-F1. | **Oui** |
 | Conditions Pro (contrat loueur) | `BLOCKED` | `BLOCKED` | Juridique + Porteur produit | Aucun mécanisme d'acceptation des conditions Pro, aucun texte. Aucune occurrence détectée. | **Oui** |
 | Annulation — politiques | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique | Implémentation conforme aux tableaux Lot 4 : `FLEXIBLE` / `MODERATE` / `FIRM` dans `packages/core/src/cancellations/preview-booking-cancellation.ts:139-178`, fenêtre de grâce `GRACE_WINDOW_24H` (≥ 7 j d'avance, ≤ 24 h après confirmation) lignes 134-138, fuseau IANA du lieu de retrait. Document de validation `docs/product/lot4-legal-validation.md` — statut « en attente de validation juridique ». | **Oui** |
@@ -159,7 +159,7 @@ Le pipeline persiste et valide une version de terms qui ne correspond à aucun
 document.
 
 - `apps/web/src/lib/payment-config.ts` : `legalTermsVersion: 'v1'`.
-- `apps/web/src/app/checkout/[draftId]/checkout-client.tsx:223` : `termsVersion: 'v1'`
+- `apps/web/src/features/checkout/checkout-client.tsx:219` : `termsVersion: 'v1'`
   envoyé par le client.
 - `packages/core/src/financial-terms/resolve-financial-terms.ts:215` : la règle 15
   valide que `acceptance.termsVersion === config.legalTermsVersion`.

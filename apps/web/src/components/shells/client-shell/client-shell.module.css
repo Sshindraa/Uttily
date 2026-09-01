@@ -1,0 +1,140 @@
+.shell {
+  min-height: 100vh;
+  color: var(--ut-color-ink);
+}
+
+.header {
+  background: var(--ut-color-surface-translucent);
+  border-bottom: var(--ut-border-thin);
+  position: sticky;
+  top: 0;
+  z-index: var(--ut-z-sticky);
+  backdrop-filter: blur(16px);
+}
+
+.headerInner,
+.footerInner {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin: 0 auto;
+  max-width: 76rem;
+  padding: var(--ut-space-4) var(--ut-space-6);
+}
+
+.brand {
+  align-items: center;
+  color: var(--ut-color-ink-strong);
+  display: inline-flex;
+  font-size: 1.25rem;
+  font-weight: var(--ut-weight-bold);
+  gap: var(--ut-space-2);
+  letter-spacing: normal;
+  text-decoration: none;
+}
+
+.brandLogo {
+  display: block;
+  flex: 0 0 auto;
+  height: 2rem;
+  object-fit: contain;
+  width: 2rem;
+}
+
+.nav {
+  align-items: center;
+  display: flex;
+  gap: var(--ut-space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.navLink {
+  align-items: center;
+  border-radius: var(--ut-radius-md);
+  color: var(--ut-color-ink-muted);
+  display: inline-flex;
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  gap: var(--ut-space-2);
+  min-height: 44px;
+  padding: 0 var(--ut-space-3);
+  line-height: var(--ut-leading-ui);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background var(--ut-motion-fast) var(--ut-ease-standard),
+    color var(--ut-motion-fast) var(--ut-ease-standard);
+}
+
+.navLink:hover {
+  background: var(--ut-color-surface-soft);
+  color: var(--ut-color-ink-strong);
+}
+
+.footer {
+  border-top: var(--ut-border-thin);
+  color: var(--ut-color-ink-muted);
+  font-size: var(--ut-text-sm);
+  margin-top: var(--ut-space-16);
+}
+
+.footerBrand {
+  color: var(--ut-color-ink-strong);
+  font-weight: var(--ut-weight-bold);
+}
+
+@media (max-width: 48rem) {
+  .headerInner,
+  .footerInner {
+    padding-inline: var(--ut-space-4);
+  }
+
+  .navLink:first-child {
+    font-size: 0;
+    gap: 0;
+    min-width: 44px;
+    padding-inline: var(--ut-space-2);
+  }
+
+  .navLink:first-child svg {
+    height: 1.25rem;
+    width: 1.25rem;
+  }
+}
+
+@media (max-width: 26rem) {
+  .headerInner {
+    flex-wrap: wrap;
+    row-gap: var(--ut-space-2);
+  }
+
+  .nav {
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: 100%;
+    min-width: 0;
+    row-gap: var(--ut-space-2);
+  }
+
+  .nav > * {
+    min-width: 0;
+  }
+
+  .navLink:nth-child(2) {
+    font-size: 0;
+    padding-inline: var(--ut-space-2);
+  }
+
+  .navLink:nth-child(2)::before {
+    content: 'Mes locations';
+    font-size: var(--ut-text-sm);
+  }
+
+  .footerInner {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--ut-space-1);
+  }
+}

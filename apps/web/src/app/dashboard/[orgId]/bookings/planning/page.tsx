@@ -1,7 +1,6 @@
 import { getOperationalPlanning, listLocations } from '@uttily/core';
 import { requireFulfillmentOperatorOf } from '@/lib/fulfillment-auth';
-import { PlanningView } from './planning-view';
-import styles from './planning.module.css';
+import { PlanningView } from '@/features/planning';
 
 /**
  * Planning opérationnel — intégré à la section **Réservations** (Chantier 17).
@@ -34,13 +33,11 @@ export default async function BookingPlanningPage({
   });
 
   return (
-    <main className={styles.main}>
-      <PlanningView
-        orgId={organizationId}
-        planning={planning}
-        locations={locations.map((l) => ({ id: l.id, name: l.name }))}
-        selectedLocationId={selectedLocationId}
-      />
-    </main>
+    <PlanningView
+      orgId={organizationId}
+      planning={planning}
+      locations={locations.map((l) => ({ id: l.id, name: l.name }))}
+      selectedLocationId={selectedLocationId}
+    />
   );
 }

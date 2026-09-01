@@ -1,0 +1,124 @@
+.hero {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: flex-end;
+  min-height: 600px;
+  height: calc(100svh - 88px);
+  max-height: 1000px;
+  background: var(--ut-color-ink-strong);
+  color: var(--ut-color-ink-on-dark);
+}
+
+.visual {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+/* Mobile panels must remain above the header, including their close control. */
+.hero:has([role='dialog']) {
+  z-index: var(--ut-z-drawer);
+}
+
+.photo {
+  object-fit: cover;
+  object-position: center 74%;
+}
+
+.shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    var(--ut-color-overlay-dark),
+    transparent 52%,
+    color-mix(in srgb, var(--ut-color-ink-strong) 56%, transparent) 100%
+  );
+}
+
+.heroContent {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 0 clamp(24px, 4.5vw, 80px) 48px;
+}
+.searchPosition {
+  width: min(780px, 100%);
+  margin-inline: auto;
+  margin-top: calc(clamp(120px, 22vh, 240px) + 36px);
+  order: 1;
+}
+
+.caption {
+  width: 100%;
+  margin-top: auto;
+  order: 2;
+}
+.copy {
+  max-width: 760px;
+}
+.caption h1 {
+  margin: 0;
+  font-size: clamp(52px, 4.6vw, 70px);
+  font-weight: var(--ut-weight-semibold);
+  letter-spacing: var(--ut-tracking-display);
+  line-height: 1.12;
+  color: var(--ut-color-ink-on-dark);
+}
+.caption h1 span {
+  display: block;
+}
+.description {
+  max-width: 620px;
+  margin: 14px 0 0;
+  color: var(--ut-color-ink-on-dark);
+  font-size: clamp(16px, 1.15vw, 18px);
+  line-height: 1.5;
+}
+@media (max-width: 64rem) {
+  .searchPosition {
+    width: 100%;
+  }
+  .heroContent {
+    gap: 18px;
+    padding-bottom: 32px;
+  }
+  .visual {
+    bottom: 0;
+  }
+}
+@media (max-width: 48rem) {
+  .hero {
+    min-height: 740px;
+    height: auto;
+  }
+  .visual {
+    bottom: 0;
+  }
+  .photo {
+    object-position: 25% 70%;
+  }
+  .heroContent {
+    gap: 16px;
+    padding-inline: 16px;
+    padding-bottom: 24px;
+  }
+  .searchPosition {
+    width: 100%;
+    margin-top: 36px;
+  }
+  .caption h1 {
+    font-size: clamp(34px, 7vw, 52px);
+  }
+  .description {
+    max-width: 28rem;
+    margin-top: 10px;
+  }
+}

@@ -10,10 +10,10 @@ import {
   products,
   organizations,
 } from '@uttily/database';
-import { CheckoutClient } from './checkout-client';
 import { getPublicAppUrl } from '@/lib/public-app-url';
-import { ClientShell } from '@/components/client-shell';
+import { ClientShell } from '@/components/shells/client-shell';
 import { getCheckoutCopy } from '@/lib/checkout-copy';
+import { CheckoutPageView, CheckoutStatus } from '@/features/checkout';
 
 /**
  * Page de checkout — récapitulatif du panier de réservation puis paiement sécurisé Stripe.
@@ -62,12 +62,10 @@ export default async function CheckoutPage({
   if (draft.length === 0) {
     return (
       <ClientShell localeOverride={locale}>
-        <main style={{ maxWidth: 640, margin: '4rem auto', padding: '1rem', textAlign: 'center' }}>
-          <h1>{copy.summary.missingBookingTitle}</h1>
-          <p style={{ color: 'var(--ut-color-ink-muted)' }}>
-            {copy.summary.missingBookingDescription}
-          </p>
-        </main>
+        <CheckoutStatus
+          title={copy.summary.missingBookingTitle}
+          description={copy.summary.missingBookingDescription}
+        />
       </ClientShell>
     );
   }
@@ -76,12 +74,10 @@ export default async function CheckoutPage({
   if (d.customerUserId !== user.id) {
     return (
       <ClientShell localeOverride={locale}>
-        <main style={{ maxWidth: 640, margin: '4rem auto', padding: '1rem', textAlign: 'center' }}>
-          <h1>{copy.summary.accessDeniedTitle}</h1>
-          <p style={{ color: 'var(--ut-color-ink-muted)' }}>
-            {copy.summary.accessDeniedDescription}
-          </p>
-        </main>
+        <CheckoutStatus
+          title={copy.summary.accessDeniedTitle}
+          description={copy.summary.accessDeniedDescription}
+        />
       </ClientShell>
     );
   }
@@ -128,21 +124,19 @@ export default async function CheckoutPage({
 
   return (
     <ClientShell localeOverride={locale}>
-      <main style={{ maxWidth: 540, margin: '2rem auto', padding: '1rem' }}>
-        <CheckoutClient
-          draftId={draftId}
-          returnUrl={`${publicAppUrl}/checkout/${draftId}?locale=${locale}`}
-          baseAmountMinor={marketplaceFeeBaseAmountMinor}
-          customerServiceFeeAmountMinor={customerServiceFeeAmountMinor}
-          customerTotalAmountMinor={customerTotalAmountMinor}
-          hasMarketplaceFeeSnapshot={marketplaceFeeSnapshot !== null}
-          currency={d.currency}
-          lines={formattedLines}
-          renterName={renterName}
-          expiresAt={d.expiresAt ? d.expiresAt.toISOString() : null}
-          locale={locale}
-        />
-      </main>
+      <CheckoutPageView
+        draftId={draftId}
+        returnUrl={`${publicAppUrl}/checkout/${draftId}?locale=${locale}`}
+        baseAmountMinor={marketplaceFeeBaseAmountMinor}
+        customerServiceFeeAmountMinor={customerServiceFeeAmountMinor}
+        customerTotalAmountMinor={customerTotalAmountMinor}
+        hasMarketplaceFeeSnapshot={marketplaceFeeSnapshot !== null}
+        currency={d.currency}
+        lines={formattedLines}
+        renterName={renterName}
+        expiresAt={d.expiresAt ? d.expiresAt.toISOString() : null}
+        locale={locale}
+      />
     </ClientShell>
   );
 }

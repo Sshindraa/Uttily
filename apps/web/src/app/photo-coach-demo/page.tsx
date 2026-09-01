@@ -205,8 +205,8 @@ export default function PhotoCoachDemoPage(): ReactElement {
                 display: 'block',
                 marginBottom: '12px',
                 fontSize: '0.95rem',
-                fontWeight: 600,
-                color: '#cbd5e1',
+                fontWeight: 'var(--ut-weight-semibold)',
+                color: 'var(--ut-color-ink-on-dark-muted)',
               }}
             >
               Sélectionnez un cadrage à réaliser :
@@ -231,7 +231,7 @@ export default function PhotoCoachDemoPage(): ReactElement {
                       style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}
                     >
                       <SlotIcon slotType={slotKey} />
-                      <span style={{ fontWeight: 700 }}>
+                      <span style={{ fontWeight: 'var(--ut-weight-bold)' }}>
                         {isDone ? '✓ ' : ''}
                         {slot.title}
                       </span>

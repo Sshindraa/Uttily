@@ -140,7 +140,7 @@ organisation individuelle.
 | Organisation | création, rôles et invitations | édition du nom public à rendre explicite |
 | Établissement | formulaire complet, coordonnées PostGIS, horaires, retrait et publication fail-closed | validation fonctionnelle à faire avec un loueur pilote |
 | Catalogue | produit, catégorie, description, variantes | traduction du contenu libre non décidée |
-| Photos | upload R2, validation, suppression, Photo Coach et slots persistés | l’allow-list serveur, les surfaces Photo Coach et le gate par slots vélo utilisent les noms canoniques ; le badge professionnel reste à implémenter |
+| Photos | upload R2, validation, suppression, Photo Coach et slots persistés | l’allow-list serveur, les surfaces Photo Coach et le gate par slots vélo utilisent les noms canoniques ; le badge professionnel auditable est livré par ADR-032 |
 | Exemplaires | création, état, statut, lieu, transfert | aucun écart bloquant technique connu |
 | Tarification | moteur, schéma et UI loueur pour créer/activer les plans tarifaires | validation fonctionnelle à faire avec un loueur pilote |
 | Paiement | onboarding Stripe Connect et readiness | LIVE reste bloqué par finance/juridique |

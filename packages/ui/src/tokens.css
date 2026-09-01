@@ -1,76 +1,101 @@
+@font-face {
+  font-family: 'Sora';
+  src: url('/fonts/sora/sora-variable.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+}
+
 /* Uttily UI foundation — stable tokens for 21-U0. */
 :root {
   color-scheme: light;
 
-  --ut-color-ink-strong: #102a43;
-  --ut-color-ink: #243b53;
-  --ut-color-ink-muted: #627d98;
-  --ut-color-ink-subtle: #829ab1;
+  /* Brand palette approved 2026-08-31: #8cb6bf and its supplied tints/shades.
+     The base is an accent fill; dark shades carry readable text and white-label actions. */
+  --ut-color-brand-mist: #dce9eb;
+  --ut-color-brand-mist-translucent: rgb(220 233 235 / 0.12);
+  --ut-color-brand-mist-translucent-strong: rgb(220 233 235 / 0.24);
+  --ut-color-brand-teal: #8cb6bf;
+  --ut-color-brand-teal-strong: #7ea3ab;
+  --ut-color-on-brand: #1c2426;
+  --ut-color-brand-white: #ffffff;
+  /* Compatibility names now share the Uttily palette. */
+  --ut-color-home-brand: #8cb6bf;
+  --ut-color-home-ink: #1c2426;
+  --ut-color-home-muted: #546d72;
+  --ut-color-home-control: #f3f7f8;
+  --ut-color-home-avatar: #dce9eb;
+  --ut-color-home-avatar-ink: #465b5f;
+  --ut-color-brand-charcoal: #1c2426;
+  --ut-color-ink-strong: #1c2426;
+  --ut-color-ink: #2a3639;
+  --ut-color-ink-muted: #465b5f;
+  --ut-color-ink-subtle: #546d72;
   --ut-color-surface: #ffffff;
   --ut-color-surface-translucent: rgb(255 255 255 / 0.88);
-  --ut-color-surface-raised: #f7f9fc;
-  --ut-color-surface-soft: #eef5f5;
-  --ut-color-border: #d9e2ec;
-  --ut-color-border-strong: #bcccdc;
-  --ut-color-primary: #0f766e;
-  --ut-color-primary-strong: #115e59;
-  --ut-color-primary-soft: #ccfbf1;
-  --ut-color-accent: #ea580c;
-  --ut-color-accent-strong: #c2410c;
-  --ut-color-accent-soft: #ffedd5;
-  --ut-color-success: #15803d;
-  --ut-color-success-strong: #166534;
-  --ut-color-success-soft: #dcfce7;
-  --ut-color-warning: #a16207;
-  --ut-color-warning-strong: #b45309;
-  --ut-color-warning-surface: #fffbeb;
-  --ut-color-warning-soft: #fef9c3;
+  --ut-color-surface-raised: #f3f7f8;
+  --ut-color-surface-soft: #e8f0f2;
+  --ut-color-surface-muted: #dce9eb;
+  --ut-color-border: #d1e1e5;
+  --ut-color-border-strong: #627f85;
+  --ut-color-primary: #465b5f;
+  --ut-color-primary-strong: #38484c;
+  --ut-color-primary-soft: #dce9eb;
+  /* Functional feedback retains distinct success, warning and danger hues. */
+  --ut-color-success: #247a4b;
+  --ut-color-success-strong: #1d623c;
+  --ut-color-success-soft: #e8f4ec;
+  --ut-color-warning: #a76414;
+  --ut-color-warning-strong: #87510f;
+  --ut-color-warning-surface: #fff7eb;
+  --ut-color-warning-soft: #fce8c5;
   --ut-color-danger: #b42318;
   --ut-color-danger-border: #fca5a5;
   --ut-color-danger-soft: #fee4e2;
-  --ut-color-focus: #0e7490;
-  --ut-color-focus-ring: rgb(14 116 144 / 0.3);
-  --ut-color-focus-ring-strong: rgb(14 116 144 / 0.45);
-  --ut-color-primary-translucent: rgb(15 118 110 / 0.06);
-  --ut-shadow-card-subtle: 0 4px 12px rgb(16 42 67 / 0.03);
-  --ut-shadow-primary-subtle: 0 8px 24px rgb(15 118 110 / 0.08);
-  --ut-shadow-primary-ring: 0 0 0 3px rgb(15 118 110 / 0.15);
-  --ut-shadow-warning: 0 4px 12px rgb(161 98 7 / 0.25);
-  --ut-color-surface-dark: #102a43;
-  --ut-color-surface-dark-raised: #163a5a;
+  --ut-color-focus: #38484c;
+  --ut-color-focus-ring: rgb(56 72 76 / 0.22);
+  --ut-color-focus-ring-strong: rgb(56 72 76 / 0.36);
+  --ut-color-primary-translucent: rgb(70 91 95 / 0.06);
+  --ut-shadow-card-subtle: 0 4px 12px rgb(14 18 19 / 0.03);
+  --ut-shadow-primary-subtle: 0 8px 24px rgb(14 18 19 / 0.08);
+  --ut-shadow-primary-ring: 0 0 0 3px rgb(56 72 76 / 0.15);
+  --ut-shadow-warning: 0 4px 12px rgb(167 100 20 / 0.25);
+  --ut-color-surface-dark: #0e1213;
+  --ut-color-surface-dark-raised: #1c2426;
   --ut-color-ink-on-dark: #ffffff;
-  --ut-color-overlay: rgb(16 42 67 / 0.55);
-  --ut-color-ink-on-dark-muted: #bcccdc;
-  --ut-color-ink-on-dark-subtle: #9fb3c8;
-  --ut-color-border-on-dark: rgb(255 255 255 / 0.14);
+  --ut-color-overlay: rgb(14 18 19 / 0.55);
+  --ut-color-ink-on-dark-muted: #dce9eb;
+  --ut-color-ink-on-dark-subtle: #aecbd2;
+  --ut-color-border-on-dark: rgb(255 255 255 / 0.12);
   --ut-color-surface-dark-translucent: rgb(255 255 255 / 0.09);
   --ut-color-surface-dark-translucent-strong: rgb(255 255 255 / 0.1);
   --ut-color-border-on-dark-muted: rgb(255 255 255 / 0.12);
-  --ut-color-border-on-dark-strong: rgb(255 255 255 / 0.3);
-  --ut-color-overlay-dark: rgb(16 42 67 / 0.5);
-  --ut-color-support-background: #0b0f19;
-  --ut-color-support-surface: #111827;
-  --ut-color-support-navigation: #161f30;
-  --ut-color-support-navigation-alt: #162032;
-  --ut-color-support-elevated: #1e293b;
-  --ut-color-support-panel: #151e2e;
-  --ut-color-support-deep: #090d16;
-  --ut-color-support-deep-alt: #0d1320;
-  --ut-color-support-footer: #0f172a;
-  --ut-color-support-border: #1f2937;
-  --ut-color-support-border-strong: #243048;
-  --ut-color-support-border-muted: #334155;
-  --ut-color-support-border-light: #475569;
-  --ut-color-support-ink: #f1f5f9;
-  --ut-color-support-ink-strong: #f8fafc;
-  --ut-color-support-ink-soft: #cbd5e1;
-  --ut-color-support-muted: #94a3b8;
-  --ut-color-support-subtle: #64748b;
-  --ut-color-support-primary: #0284c7;
-  --ut-color-support-primary-strong: #0369a1;
-  --ut-color-support-primary-soft: #1e3a5f;
-  --ut-color-support-primary-ink: #e0f2fe;
-  --ut-color-support-link: #38bdf8;
+  --ut-color-border-on-dark-strong: rgb(255 255 255 / 0.24);
+  --ut-color-overlay-dark: rgb(14 18 19 / 0.5);
+  /* Dark tools use the same hue family, with light text and links. */
+  --ut-color-support-background: #0e1213;
+  --ut-color-support-surface: #1c2426;
+  --ut-color-support-navigation: #1c2426;
+  --ut-color-support-navigation-alt: #2a3639;
+  --ut-color-support-elevated: #2a3639;
+  --ut-color-support-panel: #1c2426;
+  --ut-color-support-deep: #0e1213;
+  --ut-color-support-deep-alt: #0e1213;
+  --ut-color-support-footer: #0e1213;
+  --ut-color-support-border: #38484c;
+  --ut-color-support-border-strong: #546d72;
+  --ut-color-support-border-muted: #465b5f;
+  --ut-color-support-border-light: #709198;
+  --ut-color-support-ink: #f3f7f8;
+  --ut-color-support-ink-strong: #ffffff;
+  --ut-color-support-ink-soft: #dce9eb;
+  --ut-color-support-muted: #aecbd2;
+  --ut-color-support-subtle: #8cb6bf;
+  --ut-color-support-primary: #465b5f;
+  --ut-color-support-primary-strong: #38484c;
+  --ut-color-support-primary-soft: #2a3639;
+  --ut-color-support-primary-ink: #c5dadf;
+  --ut-color-support-link: #8cb6bf;
   --ut-color-support-success: #4ade80;
   --ut-color-support-success-solid: #22c55e;
   --ut-color-support-warning: #fbbf24;
@@ -81,42 +106,67 @@
   --ut-color-support-danger: #f87171;
   --ut-color-support-danger-soft: #fca5a5;
   --ut-color-support-danger-strong: #dc2626;
-  --ut-color-support-border-alt: #27354d;
+  --ut-color-support-border-alt: #38484c;
   --ut-color-support-success-bg: rgb(34 197 94 / 0.15);
   --ut-color-support-warning-bg: rgb(245 158 11 / 0.15);
   --ut-color-support-danger-bg: rgb(239 68 68 / 0.15);
-  --ut-color-support-link-bg: rgb(56 189 248 / 0.05);
+  --ut-color-support-link-bg: rgb(140 182 191 / 0.05);
   --ut-color-support-success-border: rgb(34 197 94 / 0.3);
   --ut-color-support-warning-bg-subtle: rgb(245 158 11 / 0.04);
   --ut-color-support-warning-border-alpha: rgb(245 158 11 / 0.3);
   --ut-color-support-danger-bg-subtle: rgb(239 68 68 / 0.1);
   --ut-color-support-danger-border: rgb(239 68 68 / 0.3);
   --ut-color-support-danger-border-strong: rgb(239 68 68 / 0.5);
-  --ut-color-support-link-focus: rgb(56 189 248 / 0.2);
-  --ut-color-support-neutral-bg: rgb(148 163 184 / 0.15);
+  --ut-color-support-link-focus: rgb(140 182 191 / 0.2);
+  --ut-color-support-neutral-bg: rgb(140 182 191 / 0.15);
   --ut-shadow-support-header: 0 4px 20px rgb(0 0 0 / 0.4);
   --ut-shadow-support-card: 0 10px 25px rgb(0 0 0 / 0.3);
   --ut-shadow-support-danger: 0 0 10px rgb(220 38 38 / 0.4);
-  --ut-shadow-success: 0 2px 10px rgb(21 128 113 / 0.3);
+  --ut-shadow-success: 0 2px 10px rgb(36 122 75 / 0.3);
 
   --ut-font-sans:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    'Sora', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --ut-font-display: var(--ut-font-sans);
+  --ut-font-body: var(--ut-font-sans);
+  --ut-font-ui: var(--ut-font-sans);
   --ut-text-xs: 0.75rem;
   --ut-text-sm: 0.875rem;
   --ut-text-md: 1rem;
   --ut-text-lg: 1.125rem;
   --ut-text-xl: 1.375rem;
   --ut-text-2xl: 1.75rem;
-  --ut-text-3xl: clamp(2.25rem, 5vw, 4.5rem);
+  /* Sora: compact headings, comfortable reading and fluid display sizes. */
+  --ut-text-title-sm: 1.25rem;
+  --ut-text-title-md: 1.5rem;
+  --ut-text-title-lg: 2rem;
+  --ut-text-3xl: clamp(2.25rem, 4.4vw, 4rem);
+  --ut-text-display: var(--ut-text-3xl);
+  --ut-text-body: var(--ut-text-md);
+  --ut-text-control: var(--ut-text-md);
+  --ut-text-label: var(--ut-text-sm);
+  --ut-text-caption: 0.8125rem;
   --ut-weight-regular: 400;
   --ut-weight-medium: 500;
   --ut-weight-semibold: 600;
   --ut-weight-bold: 700;
-  --ut-weight-black: 800;
-  --ut-leading-tight: 1.1;
+  --ut-weight-black: var(--ut-weight-bold);
+  --ut-weight-heading: var(--ut-weight-semibold);
+  --ut-weight-action: var(--ut-weight-semibold);
+  --ut-weight-label: var(--ut-weight-medium);
+  --ut-leading-display: 1.12;
+  --ut-leading-heading: 1.25;
+  --ut-leading-tight: var(--ut-leading-heading);
   --ut-leading-normal: 1.5;
-  --ut-leading-relaxed: 1.7;
+  --ut-leading-relaxed: 1.6;
+  --ut-leading-ui: 1.45;
+  --ut-leading-body: 1.5;
+  --ut-leading-copy: 1.65;
+  --ut-tracking-display: -0.035em;
+  --ut-tracking-heading: -0.02em;
+  --ut-tracking-body: 0;
+  --ut-tracking-label: 0;
+  --ut-tracking-eyebrow: 0.06em;
+  --ut-numerals: lining-nums tabular-nums;
 
   --ut-space-1: 0.25rem;
   --ut-space-2: 0.5rem;
@@ -135,10 +185,11 @@
   --ut-radius-lg: 1rem;
   --ut-radius-xl: 1.5rem;
   --ut-radius-pill: 999px;
-  --ut-shadow-sm: 0 1px 2px rgb(16 42 67 / 0.06);
-  --ut-shadow-md: 0 8px 24px rgb(16 42 67 / 0.08);
-  --ut-shadow-lg: 0 18px 50px rgb(16 42 67 / 0.12);
+  --ut-shadow-sm: 0 1px 2px rgb(14 18 19 / 0.06);
+  --ut-shadow-md: 0 8px 24px rgb(14 18 19 / 0.08);
+  --ut-shadow-lg: 0 18px 50px rgb(14 18 19 / 0.12);
   --ut-border-thin: 1px solid var(--ut-color-border);
+  --ut-border-control: 1px solid var(--ut-color-border-strong);
 
   --ut-breakpoint-sm: 40rem;
   --ut-breakpoint-md: 48rem;
@@ -164,6 +215,7 @@ html {
   background: var(--ut-color-surface-raised);
   font-family: var(--ut-font-sans);
   text-rendering: optimizeLegibility;
+  font-synthesis: none;
 }
 
 body {
@@ -172,6 +224,9 @@ body {
   color: var(--ut-color-ink);
   font-size: var(--ut-text-md);
   line-height: var(--ut-leading-normal);
+  font-family: var(--ut-font-body);
+  font-weight: var(--ut-weight-regular);
+  letter-spacing: var(--ut-tracking-body);
 }
 
 a {
@@ -183,6 +238,49 @@ input,
 select,
 textarea {
   font: inherit;
+  font-family: var(--ut-font-ui);
+  letter-spacing: var(--ut-tracking-label);
+}
+
+input:not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+  font-size: var(--ut-text-control);
+  line-height: var(--ut-leading-body);
+}
+
+table,
+time,
+input[type='number'],
+input[type='date'],
+input[type='datetime-local'] {
+  font-variant-numeric: var(--ut-numerals);
+}
+
+strong,
+b {
+  font-weight: var(--ut-weight-bold);
+}
+small {
+  font-size: var(--ut-text-caption);
+  line-height: var(--ut-leading-body);
+}
+
+code,
+kbd,
+samp,
+pre {
+  font-family: var(--ut-font-sans);
+  font-variant-numeric: var(--ut-numerals);
+}
+
+@media (max-width: 48rem) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    /* Keep editable text readable and avoid automatic zoom on mobile Safari. */
+    font-size: var(--ut-text-control) !important;
+  }
 }
 
 button:not([class]) {
@@ -194,8 +292,9 @@ button:not([class]) {
   cursor: pointer;
   display: inline-flex;
   font-size: var(--ut-text-sm);
-  font-weight: var(--ut-weight-semibold);
+  font-weight: var(--ut-weight-medium);
   justify-content: center;
+  line-height: var(--ut-leading-ui);
   min-height: 44px;
   padding: 0 var(--ut-space-4);
   transition:
@@ -214,12 +313,18 @@ input:not([class]):not([type='checkbox']):not([type='radio']),
 select:not([class]),
 textarea:not([class]) {
   background: var(--ut-color-surface);
-  border: var(--ut-border-thin);
+  border: var(--ut-border-control);
   border-radius: var(--ut-radius-md);
   color: var(--ut-color-ink-strong);
   min-height: 48px;
   padding: 0 var(--ut-space-3);
   width: 100%;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--ut-color-ink-subtle);
+  opacity: 1;
 }
 
 textarea:not([class]) {
@@ -250,7 +355,7 @@ label:not([class]) {
   color: var(--ut-color-ink-strong);
   display: inline-block;
   font-size: var(--ut-text-sm);
-  font-weight: var(--ut-weight-semibold);
+  font-weight: var(--ut-weight-medium);
   margin-block: var(--ut-space-2) var(--ut-space-1);
 }
 
@@ -272,9 +377,16 @@ legend {
 
 h1,
 h2,
-h3 {
+h3,
+h4,
+h5,
+h6 {
   color: var(--ut-color-ink-strong);
   font-family: var(--ut-font-display);
+  font-weight: var(--ut-weight-heading);
+  letter-spacing: var(--ut-tracking-heading);
+  line-height: var(--ut-leading-heading);
+  text-wrap: balance;
 }
 
 .sr-only {

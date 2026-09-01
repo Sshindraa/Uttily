@@ -12,7 +12,11 @@
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  background: radial-gradient(circle at center, #1e293b 0%, #090d16 100%);
+  background: radial-gradient(
+    circle at center,
+    var(--ut-color-surface-dark-raised) 0%,
+    var(--ut-color-surface-dark) 100%
+  );
   border-radius: 20px;
   overflow: hidden;
   display: flex;
@@ -21,15 +25,15 @@
   box-shadow:
     0 25px 35px -10px rgba(0, 0, 0, 0.6),
     inset 0 1px 1px rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  border: 1px solid var(--ut-color-border-on-dark);
 }
 
 .bikeGraphic {
   width: 100%;
   height: 100%;
   animation: recoilMotion 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  color: #38bdf8;
-  filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.4));
+  color: var(--ut-color-ink-on-dark-muted);
+  filter: drop-shadow(0 0 16px var(--ut-color-brand-mist-translucent-strong));
 }
 
 @keyframes recoilMotion {
@@ -54,11 +58,11 @@
 .guideFrame {
   position: absolute;
   inset: 16px;
-  border: 2px dashed rgba(56, 189, 248, 0.5);
+  border: 2px dashed var(--ut-color-border-on-dark-strong);
   border-radius: 16px;
   pointer-events: none;
   animation: frameFadeIn 1.5s ease forwards;
-  box-shadow: inset 0 0 20px rgba(56, 189, 248, 0.15);
+  box-shadow: inset 0 0 20px var(--ut-color-brand-mist-translucent);
 }
 
 @keyframes frameFadeIn {
@@ -76,14 +80,14 @@
 .badgeAlert {
   position: absolute;
   top: 16px;
-  background: rgba(239, 68, 68, 0.95);
+  background: var(--ut-color-danger);
   backdrop-filter: blur(8px);
-  color: #ffffff;
+  color: var(--ut-color-ink-on-dark);
   padding: 6px 16px;
   border-radius: 20px;
   font-size: 0.85rem;
-  font-weight: 700;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+  font-weight: var(--ut-weight-bold);
+  box-shadow: 0 4px 12px rgb(180 35 24 / 0.4);
   animation: alertFadeOut 1.5s ease forwards;
 }
 
@@ -106,14 +110,14 @@
 .badgeDrivetrain {
   position: absolute;
   top: 16px;
-  background: rgba(56, 189, 248, 0.95);
+  background: var(--ut-color-brand-mist);
   backdrop-filter: blur(8px);
-  color: #0f172a;
+  color: var(--ut-color-ink-strong);
   padding: 6px 16px;
   border-radius: 20px;
   font-size: 0.85rem;
-  font-weight: 700;
-  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.4);
+  font-weight: var(--ut-weight-bold);
+  box-shadow: 0 4px 12px var(--ut-color-brand-mist-translucent-strong);
   animation: drivetrainFadeInOut 1.5s ease forwards;
 }
 
@@ -138,14 +142,14 @@
 .badgeSuccess {
   position: absolute;
   top: 16px;
-  background: rgba(16, 185, 129, 0.95);
+  background: var(--ut-color-success);
   backdrop-filter: blur(8px);
-  color: #ffffff;
+  color: var(--ut-color-ink-on-dark);
   padding: 6px 16px;
   border-radius: 20px;
   font-size: 0.85rem;
-  font-weight: 700;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  font-weight: var(--ut-weight-bold);
+  box-shadow: 0 4px 12px rgb(36 122 75 / 0.4);
   animation: successFadeIn 1.5s ease forwards;
 }
 
@@ -172,14 +176,14 @@
 
 .title {
   font-size: 1.25rem;
-  font-weight: 700;
-  color: #0f172a;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-ink-strong);
   margin: 0;
 }
 
 .hint {
   font-size: 0.95rem;
-  color: #475569;
+  color: var(--ut-color-ink-muted);
   margin: 0;
 }
 
@@ -191,32 +195,32 @@
 }
 
 .primaryBtn {
-  background: #0284c7;
-  color: #ffffff;
+  background: var(--ut-color-primary);
+  color: var(--ut-color-ink-on-dark);
   padding: 10px 24px;
   border-radius: 8px;
-  font-weight: 600;
+  font-weight: var(--ut-weight-semibold);
   border: none;
   cursor: pointer;
   transition: background 0.2s ease;
 }
 
 .primaryBtn:hover {
-  background: #0369a1;
+  background: var(--ut-color-primary-strong);
 }
 
 .skipBtn {
   background: transparent;
-  color: #64748b;
+  color: var(--ut-color-ink-muted);
   padding: 10px 16px;
   border-radius: 8px;
-  font-weight: 500;
-  border: 1px solid #cbd5e1;
+  font-weight: var(--ut-weight-medium);
+  border: 1px solid var(--ut-color-border-strong);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .skipBtn:hover {
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--ut-color-surface-soft);
+  color: var(--ut-color-ink-strong);
 }

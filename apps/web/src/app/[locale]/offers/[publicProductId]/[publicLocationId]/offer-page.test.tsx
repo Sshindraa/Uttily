@@ -1,6 +1,8 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import * as auth from '@/lib/auth';
 import * as core from '@uttily/core';
 import type { PublicOfferDetails } from '@uttily/core';
@@ -9,7 +11,9 @@ import {
   OfferBookingForm,
   computeBookingFormFingerprint,
   getOrCreateIdempotencyKey,
-} from './offer-booking-form';
+} from '@/features/offers';
+
+const PAGE_SOURCE = readFileSync(join(__dirname, 'page.tsx'), 'utf8');
 
 vi.mock('@/lib/auth', () => ({
   getAuthenticatedUser: vi.fn(),
@@ -137,6 +141,39 @@ describe('PublicOfferPage & OfferBookingForm — SSR et Idempotence', () => {
     );
   });
 
+  it('affiche le badge uniquement lorsque le read model serveur est eligible', async () => {
+    vi.mocked(auth.getAuthenticatedUser).mockResolvedValue(null);
+    vi.mocked(core.getPublicOfferDetails).mockResolvedValue({
+      kind: 'SUCCESS',
+      offer: { ...mockOffer, professionalVerificationStatus: 'eligible' },
+    });
+
+    const page = await PublicOfferPage({
+      params: Promise.resolve({ locale: 'fr', publicProductId, publicLocationId }),
+      searchParams: Promise.resolve({}),
+    });
+
+    const html = renderToStaticMarkup(page);
+    expect(html).toContain('Loueur professionnel vérifié');
+  });
+
+  it('masque le badge pour les statuts pending et ineligible', async () => {
+    vi.mocked(auth.getAuthenticatedUser).mockResolvedValue(null);
+    for (const status of ['pending', 'ineligible'] as const) {
+      vi.mocked(core.getPublicOfferDetails).mockResolvedValue({
+        kind: 'SUCCESS',
+        offer: { ...mockOffer, professionalVerificationStatus: status },
+      });
+
+      const page = await PublicOfferPage({
+        params: Promise.resolve({ locale: 'fr', publicProductId, publicLocationId }),
+        searchParams: Promise.resolve({}),
+      });
+
+      expect(renderToStaticMarkup(page)).not.toContain('Loueur professionnel vérifié');
+    }
+  });
+
   it('2. Sentinelles : prouve qu’aucun ID interne ou secret n’apparaît dans le HTML SSR', async () => {
     const internalOrgId = '99999999-9999-4999-8999-999999999999';
     const internalVariantId = '88888888-8888-4888-8888-888888888888';
@@ -255,6 +292,13 @@ describe('PublicOfferPage & OfferBookingForm — SSR et Idempotence', () => {
     expect(html).not.toContain('40.00 EUR');
     expect(html).not.toContain('50.00 EUR');
     expect(html).toContain('Réserver');
+  });
+
+  it('garde la route comme orchestration et délègue la présentation à la feature', () => {
+    expect(PAGE_SOURCE).toContain('<OfferPageView');
+    expect(PAGE_SOURCE).not.toContain('<OfferBookingForm');
+    expect(PAGE_SOURCE).not.toContain('className=');
+    expect(PAGE_SOURCE).not.toContain('.module.css');
   });
 
   describe('Fonctions pures d’idempotence de formulaire', () => {

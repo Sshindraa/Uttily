@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const LAYOUT_PATH = join(__dirname, '[orgId]', 'pro-shell.tsx');
+const LAYOUT_PATH = join(
+  __dirname,
+  '..',
+  '..',
+  'components',
+  'shells',
+  'pro-shell',
+  'pro-shell.tsx',
+);
 
 describe('Dashboard — Navigation IA Pro définitive', () => {
   const layout = readFileSync(LAYOUT_PATH, 'utf8');

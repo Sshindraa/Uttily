@@ -1,5 +1,5 @@
 import { SignUp } from '@clerk/nextjs';
-import { ClientShell } from '@/components/client-shell';
+import { ClientShell } from '@/components/shells/client-shell';
 import styles from '../../auth-page.module.css';
 
 export default function SignUpPage(): React.ReactElement {

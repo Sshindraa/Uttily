@@ -174,7 +174,7 @@ export function PhotoCoachModal({
               style={{
                 fontSize: '0.85rem',
                 color: 'var(--ut-color-ink-muted)',
-                fontWeight: 500,
+                fontWeight: 'var(--ut-weight-medium)',
               }}
             >
               — {slot.title}

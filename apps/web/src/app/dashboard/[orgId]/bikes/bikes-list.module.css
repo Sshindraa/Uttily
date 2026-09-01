@@ -21,7 +21,7 @@
 
 .pageTitle {
   font-size: 1.85rem;
-  font-weight: 900;
+  font-weight: var(--ut-weight-bold);
   color: var(--ut-color-ink-strong);
   margin: 0;
   letter-spacing: -0.02em;
@@ -41,7 +41,7 @@
   background: var(--ut-color-primary);
   color: var(--ut-color-surface);
   border-radius: 12px;
-  font-weight: 700;
+  font-weight: var(--ut-weight-bold);
   font-size: 0.95rem;
   text-decoration: none;
   box-shadow: var(--ut-shadow-primary-subtle);
@@ -92,7 +92,7 @@
 
 .bikeName {
   font-size: 1.25rem;
-  font-weight: 800;
+  font-weight: var(--ut-weight-bold);
   color: var(--ut-color-ink-strong);
   margin: 0 0 4px 0;
 }
@@ -112,7 +112,7 @@
   border: 1px solid var(--ut-color-success-soft);
   color: var(--ut-color-success);
   border-radius: 9999px;
-  font-weight: 800;
+  font-weight: var(--ut-weight-bold);
   font-size: 0.78rem;
   white-space: nowrap;
 }
@@ -126,7 +126,7 @@
   border: 1px solid var(--ut-color-danger-soft);
   color: var(--ut-color-danger);
   border-radius: 9999px;
-  font-weight: 800;
+  font-weight: var(--ut-weight-bold);
   font-size: 0.78rem;
   white-space: nowrap;
 }
@@ -140,7 +140,7 @@
   border: 1px solid var(--ut-color-success-soft);
   color: var(--ut-color-success-strong);
   border-radius: 9999px;
-  font-weight: 800;
+  font-weight: var(--ut-weight-bold);
   font-size: 0.78rem;
   white-space: nowrap;
 }
@@ -154,7 +154,7 @@
   border: 1px solid var(--ut-color-warning-soft);
   color: var(--ut-color-warning);
   border-radius: 9999px;
-  font-weight: 800;
+  font-weight: var(--ut-weight-bold);
   font-size: 0.78rem;
   white-space: nowrap;
 }
@@ -168,7 +168,7 @@
   border: 1px solid var(--ut-color-border-strong);
   color: var(--ut-color-ink-muted);
   border-radius: 9999px;
-  font-weight: 800;
+  font-weight: var(--ut-weight-bold);
   font-size: 0.78rem;
   white-space: nowrap;
 }
@@ -192,12 +192,12 @@
 
 .summaryKey {
   color: var(--ut-color-ink-muted);
-  font-weight: 600;
+  font-weight: var(--ut-weight-semibold);
 }
 
 .summaryVal {
   color: var(--ut-color-ink-strong);
-  font-weight: 700;
+  font-weight: var(--ut-weight-bold);
 }
 
 .cardActionLink {
@@ -209,7 +209,7 @@
   background: var(--ut-color-surface-soft);
   color: var(--ut-color-primary-strong);
   border-radius: 10px;
-  font-weight: 700;
+  font-weight: var(--ut-weight-bold);
   font-size: 0.9rem;
   text-decoration: none;
   transition: all 0.15s ease;

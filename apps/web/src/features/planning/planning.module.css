@@ -1,0 +1,337 @@
+.main {
+  width: 100%;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.pageTitle {
+  font-size: 1.85rem;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-ink-strong);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.pageSubtitle {
+  font-size: 0.95rem;
+  color: var(--ut-color-ink-muted);
+  margin: 4px 0 0 0;
+}
+
+.controlsRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.locationSelect {
+  padding: 8px 14px;
+  border: 1px solid var(--ut-color-border-strong);
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-ink-strong);
+  background: var(--ut-color-surface);
+  cursor: pointer;
+}
+
+.viewToggle {
+  display: flex;
+  background: var(--ut-color-surface-soft);
+  padding: 4px;
+  border-radius: 12px;
+  gap: 4px;
+}
+
+.toggleBtn {
+  padding: 8px 16px;
+  font-size: 0.88rem;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-ink-muted);
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toggleActive {
+  background: var(--ut-color-surface);
+  color: var(--ut-color-ink-strong);
+  box-shadow: var(--ut-shadow-sm);
+}
+
+/* Chiffres clés */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.statCard {
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--ut-shadow-sm);
+}
+
+.statNumber {
+  font-size: 1.6rem;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-ink-strong);
+}
+
+.statGreen {
+  color: var(--ut-color-success);
+}
+
+.statBlue {
+  color: var(--ut-color-primary);
+}
+
+.statAmber {
+  color: var(--ut-color-warning);
+}
+
+.statLabel {
+  font-size: 0.85rem;
+  color: var(--ut-color-ink-muted);
+  font-weight: var(--ut-weight-semibold);
+}
+
+/* VUE 1 : PLANNING JOUR PAR JOUR */
+.daysGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.dayColumn {
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
+  border-radius: 16px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 280px;
+  box-shadow: var(--ut-shadow-sm);
+}
+
+.dayHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-bottom: 1px solid var(--ut-color-surface-soft);
+  padding-bottom: 8px;
+}
+
+.dayHeader h3 {
+  font-size: 0.95rem;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-ink-strong);
+  margin: 0;
+}
+
+.dayBadge {
+  font-size: 0.75rem;
+  color: var(--ut-color-ink-subtle);
+  font-weight: var(--ut-weight-semibold);
+}
+
+.dayEvents {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.emptyDay {
+  font-size: 0.8rem;
+  color: var(--ut-color-border-strong);
+  text-align: center;
+  padding: 24px 0;
+  font-style: italic;
+}
+
+.eventCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.eventCard:hover {
+  transform: translateY(-1px);
+}
+
+.eventPickup {
+  background: var(--ut-color-success-soft);
+  border: 1px solid var(--ut-color-success-soft);
+  color: var(--ut-color-success-strong);
+}
+
+.eventReturn {
+  background: var(--ut-color-primary-soft);
+  border: 1px solid var(--ut-color-primary-soft);
+  color: var(--ut-color-primary-strong);
+}
+
+.eventMaintenance {
+  background: var(--ut-color-warning-soft);
+  border: 1px solid var(--ut-color-warning-soft);
+  color: var(--ut-color-warning);
+}
+
+.eventHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.eventTime {
+  font-size: 0.75rem;
+  font-weight: var(--ut-weight-bold);
+  text-transform: uppercase;
+}
+
+.eventSku {
+  font-family: var(--ut-font-sans);
+  font-variant-numeric: var(--ut-numerals);
+  font-size: 0.75rem;
+  font-weight: var(--ut-weight-bold);
+  background: var(--ut-color-surface-translucent);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.eventTitle {
+  font-size: 0.85rem;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-ink-strong);
+}
+
+.eventClient {
+  font-size: 0.75rem;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* VUE 2 : GRILLE DE FLOTTE */
+.fleetTableWrapper {
+  background: var(--ut-color-surface);
+  border: 1px solid var(--ut-color-border);
+  border-radius: 16px;
+  overflow-x: auto;
+  box-shadow: var(--ut-shadow-card-subtle);
+}
+
+.fleetTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.88rem;
+}
+
+.fleetTable th {
+  background: var(--ut-color-surface-raised);
+  padding: 12px 14px;
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-ink-muted);
+  border-bottom: 1px solid var(--ut-color-border);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.bikeColHeader {
+  min-width: 180px;
+}
+
+.dayColHeader {
+  min-width: 110px;
+  text-align: center;
+}
+
+.fleetTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ut-color-surface-soft);
+}
+
+.bikeCell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bikeSku {
+  font-family: var(--ut-font-sans);
+  font-variant-numeric: var(--ut-numerals);
+  font-weight: var(--ut-weight-bold);
+  color: var(--ut-color-primary);
+  font-size: 0.9rem;
+}
+
+.bikeName {
+  font-size: 0.78rem;
+  color: var(--ut-color-ink-muted);
+}
+
+.cellDay {
+  text-align: center;
+}
+
+.fleetCellBadge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: var(--ut-weight-bold);
+  text-decoration: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+}
+
+.fleetCellBadge:hover {
+  transform: translateY(-1px);
+}
+
+.cellAvail {
+  background: var(--ut-color-success-soft);
+  color: var(--ut-color-success-strong);
+  border: 1px solid var(--ut-color-success-soft);
+}
+
+.cellRented {
+  background: var(--ut-color-primary-soft);
+  color: var(--ut-color-primary-strong);
+  border: 1px solid var(--ut-color-primary-soft);
+}
+
+.cellMaint {
+  background: var(--ut-color-warning-soft);
+  color: var(--ut-color-warning);
+  border: 1px solid var(--ut-color-warning-soft);
+}

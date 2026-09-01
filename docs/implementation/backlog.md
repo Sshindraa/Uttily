@@ -2,6 +2,11 @@
 
 Les lots sont séquentiels. Ne pas commencer un lot dépendant avant que ses invariants soient testés.
 
+> La trajectoire globale des travaux restants est organisée dans la
+> [roadmap de préparation opérationnelle et de passage à l'échelle](roadmap-operational-readiness-and-scale.md).
+> Le présent backlog reste l'autorité des lots effectivement approuvés, en cours
+> ou livrés ; la roadmap ne transforme pas une capacité future en lot autorisé.
+
 ## Lot 0 — Fondation du dépôt
 
 **But** : créer le monorepo et l'outillage sans logique métier.
@@ -232,15 +237,77 @@ complet sont validés dans
 | G8B-1 — Upload réel des photos produit | upload R2 sécurisé, validation serveur, trois photos avant publication, suppression/remplacement idempotents, URLs publiques contrôlées, UI accessible et tests | G7F-A2, ADR-026 | **Terminé le 2026-08-27 ; smoke test staging R2 validé** |
 | G8B-2 — Géocodage réel | registre local-first, autocomplétion, benchmark fournisseur, cache et droits documentés, recherche réelle | ADR-017, ADR-021, ADR-027 | **En cours — G8B-2A, G8B-2B et G8B-2D livrés le 2026-08-27 ; moteur runtime PostgreSQL/PostGIS retenu, ingestion externe différée** |
 | G8B-2D — Élargissement géographique PostGIS | paliers exact → 10 km → 25 km → 50 km, alternatives séparées, contrat de curseur versionné et tests PostgreSQL/UI | G8B-2A, G8B-2B, ADR-021, ADR-027 | **Terminé le 2026-08-27 ; validation locale Core/Web, PostgreSQL, lint, format, types et build** |
-| G8B-3 — Pilote vélo France / Lyon | particuliers en location ponctuelle, vélos de ville et électriques, cible 2 loueurs/20 vélos, kit d'onboarding, contenu réel, juridique/RGPD et Go/No-Go | cadrage G8B-3, décision commerciale et juridique | **En cours — G8B-3A cadré le 2026-08-27 ; G8B-3B1/B2/B3 livrés ; G8B-3B4 partiellement livré ; G8B-3C bloqué faute de partenaire** |
-| G8B-3B — Onboarding accompagné vélo | collecte structurée, déroulé opérateur, checklist et audit du dashboard | G8B-3A | **En cours — kit, établissement, plans tarifaires, readiness et gate sémantique vélo livrés ; badge professionnel restant** |
+| G8B-3 — Pilote vélo France / Lyon | particuliers en location ponctuelle, vélos de ville et électriques, cible 2 loueurs/20 vélos, kit d'onboarding, contenu réel, juridique/RGPD et Go/No-Go | cadrage G8B-3, décision commerciale et juridique | **En cours — G8B-3A cadré le 2026-08-27 ; G8B-3B1/B2/B3 livrés ; G8B-3B4 clôturé techniquement ; G8B-3C bloqué faute de partenaire** |
+| G8B-3B — Onboarding accompagné vélo | collecte structurée, déroulé opérateur, checklist et audit du dashboard | G8B-3A | **Terminé techniquement le 2026-08-31 — kit, établissement, plans tarifaires, readiness, gate sémantique vélo et badge professionnel auditable livrés ; validation externe du pilote restante** |
 | G8B-3B1 — Établissement publiable | formulaire complet adresse, coordonnées, horaires, retrait et publication fail-closed | G8B-3B | **Terminé le 2026-08-27 — Core, dashboard et tests ciblés** |
 | G8B-3B2 — Plans tarifaires loueur | création DRAFT, fenêtres, traductions, paliers et activation via dashboard | G8B-3B1, schéma G7P-A | **Terminé le 2026-08-27 — Core, dashboard, tests d'intégration et actions serveur** |
 | G8B-3B3 — Readiness accompagnée | checklist serveur par organisation et liens vers les éléments manquants | G8B-3B1, G8B-3B2 | **Terminé le 2026-08-27 — Core, composant OnboardingReadinessCard, 7 jalons et tests** |
-| G8B-3B4 — Standard visuel et confiance vélo | trois vues guidées et validées côté serveur, identité professionnelle factuelle, conception du badge vérifié | G8B-3B2, ADR-020, ADR-026, ADR-031 | **Partiellement livré : Photo Coach UI, overlays, checklist, contrat `BIKE_PHOTO_SLOTS`, migration `0040`, persistance `slot_type`, allow-list canonique et gate de publication par slots vélo (`0050`) sont en place. Le badge professionnel reste à implémenter ; aucune analyse IA n’est activée.** |
+| G8B-3B4 — Standard visuel et confiance vélo | trois vues guidées et validées côté serveur, identité professionnelle factuelle, conception du badge vérifié | G8B-3B2, ADR-020, ADR-026, ADR-031, ADR-032 | **Terminé techniquement le 2026-08-31 : Photo Coach UI, overlays, checklist, contrat `BIKE_PHOTO_SLOTS`, migrations `0040`/`0050`, read model `getProfessionalVerification`, affichage public conditionnel et diagnostic dashboard ; aucune analyse IA n’est activée.** |
 | G8B-3C — Contenu réel pilote | deux loueurs professionnels et vingt vélos réels publiables à Lyon | G8B-3B, partenaires signés | Bloqué — aucun partenaire engagé |
 | G8B-3D — Go/No-Go LIVE | finance, juridique, RGPD, Stripe LIVE, observabilité et smoke final | G8B-3C, validations externes | Bloqué par décisions finance/juridique/RGPD |
 | G8B-3E — Parcours locaux vélo | conseils structurés, sécurité, modération et actualisation | premiers partenaires, décision responsabilité/modération | Différé après les premiers partenaires |
+
+## Chantier 21-U1 — Frontend par routes, features et UI
+
+**Statut : Phase 0 techniquement finalisée le 2026-09-01 — ADR-033 accepté le 2026-08-31.** Les tranches livrées
+séparent les primitives UI, officialisent les shells, extraient le cockpit
+loueur et structurent la recherche, le checkout, les réservations, l'offre publique,
+l'onboarding, la flotte, les établissements et la maintenance par domaine sans modifier
+l'API publique de `@uttily/ui`, les URLs ou le comportement métier des routes. Le
+checkout courant ajoute aussi les extractions accueil, sélection d'organisation
+et support interne, supprime les façades devenues mortes et documente les
+assets retirés. Les tests, builds et validations navigateur locales sont verts ;
+PostgreSQL réel, recovery réel, CI et intégration Git restent à prouver dans
+leur environnement autorisé.
+
+| Lot | Périmètre | Statut |
+| --- | --- | --- |
+| 21-U1-A — Primitives UI Button/Icon | modules `button/` et `icon/`, exports racine et sous-chemins stables, tests conservés | **Terminé le 2026-08-31** |
+| 21-U1-A2 — Primitives UI restantes | extraire `Input`, `Textarea`, `Select`, `Field`, `Card`, `Badge`, `Alert`, `Dialog`, `Tabs` et les états de chargement en modules composant-owned | **Terminé le 2026-08-31** |
+| 21-U1-B — Shells applicatifs | déplacer les layouts de navigation vers `apps/web/src/components/shells/` | **Terminé le 2026-08-31** |
+| 21-U1-C — Feature cockpit | extraire le dashboard loueur dans `apps/web/src/features/dashboard/` en gardant les actions côté serveur | **Terminé le 2026-08-31** |
+| 21-U1-D — Extraction par domaine | migrer progressivement recherche, réservation, onboarding, flotte, établissements, maintenance et checkout ; aucune réécriture globale | **Terminé techniquement le 2026-09-01 — recherche, checkout, réservations, offre publique, onboarding, planning, opérations, amendements, équipe, réglages, finances, cockpit, accueil, sélection d'organisation, support interne, fiches, paiements, notifications, audit, écrans flotte, établissements et maintenance livrés ; façades mortes et assets non utilisés nettoyés** |
+| 21-U1-D1 — Feature search | déplacer la présentation de recherche dans `apps/web/src/features/search/` et garder la route comme orchestration | **Terminé le 2026-08-31** |
+| 21-U1-D2 — Feature checkout | déplacer les clients Stripe et les états de checkout initial/supplément dans `apps/web/src/features/checkout/` et garder les routes comme orchestration | **Terminé le 2026-08-31** |
+| 21-U1-D3 — Feature réservations client | déplacer la liste, le détail et l'annulation dans `apps/web/src/features/bookings/` et garder les routes comme orchestration | **Terminé le 2026-08-31** |
+| 21-U1-D4 — Feature offre publique | déplacer la fiche offre, le formulaire de réservation et ses styles dans `apps/web/src/features/offers/` et garder la route comme orchestration | **Terminé le 2026-08-31** |
+| 21-U1-D5 — Feature onboarding | déplacer l’entrée organisation et le parcours unifié loueur dans `apps/web/src/features/onboarding/` et garder les routes comme orchestration | **Terminé le 2026-08-31** |
+| 21-U1-D6 — Feature liste flotte | déplacer la présentation de la liste « Mes équipements » dans `apps/web/src/features/bikes/` et garder la route comme orchestration | **Terminé le 2026-08-31** |
+| 21-U1-D7 — Feature fiche équipement | déplacer la fiche unifiée, ses cartes d’action et ses styles dans `apps/web/src/features/bikes/` et garder la route comme orchestration | **Terminé le 2026-08-31** |
+| 21-U1-D8 — Feature assistant équipement | déplacer le wizard de configuration (identité, photos, tarif, stock, publication) dans `apps/web/src/features/bikes/setup/` et garder la route comme orchestration | **Terminé le 2026-08-31** |
+| 21-U1-D9 — Feature liste établissements | déplacer la liste des points de retrait dans `apps/web/src/features/locations/` et garder la route comme orchestration | **Terminé le 2026-08-31** |
+| 21-U1-D10 — Feature formulaire établissement | déplacer les champs partagés, le parsing et le parcours de création dans `apps/web/src/features/locations/` et garder les actions serveur dans la route | **Terminé le 2026-08-31** |
+| 21-U1-D11 — Feature détail établissement | déplacer le détail, les horaires exceptionnels et les styles dans `apps/web/src/features/locations/` et injecter les actions serveur | **Terminé le 2026-08-31** |
+| 21-U1-D12 — Feature flotte physique | déplacer la liste unitaire, les synthèses et l’ouverture de maintenance dans `apps/web/src/features/fleet/` et garder la route comme orchestration | **Terminé le 2026-08-31** |
+| 21-U1-D13 — Feature atelier | déplacer la liste des interventions et l'historique dans `apps/web/src/features/fleet/maintenance/` et garder la lecture Core dans la route | **Terminé le 2026-08-31** |
+| 21-U1-D14 — Feature dossier maintenance | déplacer le détail du dossier et la remise en service dans `apps/web/src/features/fleet/maintenance/` et garder l'autorisation/lecture dans la route | **Terminé le 2026-08-31** |
+| 21-U1-D15 — Feature planning opérationnel | déplacer la vue planning et la vue flotte hebdomadaire dans `apps/web/src/features/planning/` et garder l'autorisation, les filtres et la lecture Core dans la route | **Terminé le 2026-08-31** |
+| 21-U1-D16 — Feature opérations réservation | déplacer la fiche opérationnelle et les flux de départ, retour et annulation dans `apps/web/src/features/operations/` et garder l'autorisation et la lecture Core dans la route | **Terminé le 2026-08-31** |
+| 21-U1-D17 — Feature équipe | déplacer la présentation des membres et invitations dans `apps/web/src/features/team/` et garder la lecture, les permissions et les Server Actions dans la route | **Terminé le 2026-08-31** |
+| 21-U1-D18 — Feature réglages | déplacer les vues entreprise et politiques dans `apps/web/src/features/settings/` et garder l'authentification, la lecture et les Server Actions dans les routes | **Terminé le 2026-08-31** |
+| 21-U1-D19 — Feature amendements loueur | déplacer la vue d’amendement, le formulaire, la prévisualisation et les helpers dans `apps/web/src/features/operations/amendment/` et garder l’autorisation, les contrôles d’état et les lectures Core/DB dans la route | **Terminé le 2026-08-31** |
+| 21-U1-D20 — Feature finances loueur | déplacer le hub revenus, versements et onboarding Stripe Connect dans `apps/web/src/features/finances/` et garder l'authentification, le read model et la résolution de statut dans la route | **Terminé le 2026-08-31** |
+| 21-U1-D21 — Feature support interne | déplacer le cockpit support et sa recherche dans `apps/web/src/features/internal/` et garder la garde plateforme et les lectures Core dans la route | **Terminé le 2026-08-31** |
+| 21-U1-D22 — Fiches support internes | déplacer les fiches organisation et réservation, leurs styles et leurs actions client dans `apps/web/src/features/internal/` et garder la garde plateforme, les lectures Core et les 404 dans les routes | **Terminé le 2026-08-31** |
+| 21-U1-D23 — Consoles support internes | déplacer les consoles paiements, notifications et audit, leurs styles et leurs actions client dans `apps/web/src/features/internal/` et garder la garde plateforme, les filtres et les lectures Core dans les routes | **Terminé le 2026-08-31** |
+
+### Recherche par intention — UX accueil et résultats (2026-08-31)
+
+Palette transversale mise à jour à la demande du porteur de produit : gamme
+`#8CB6BF`, rôles et contrastes dans le [design system](../product/design-system.md).
+Propagation par les tokens Client/Pro/Support, apparences embarquées et modèles
+email ; Sora, composition des pages et règles métier inchangées.
+
+Périmètre et limites : [home-search-next-level.md](home-search-next-level.md).
+
+- Chantier 1 : quatre critères, panneaux dédiés, calendrier inclusif avec horaires
+  facultatifs, résultats directs et barre fixe au défilement de l'accueil.
+- Chantier 2 : synonymes FR/EN contrôlés, catégories hiérarchiques actives réelles,
+  destinations récentes de session et contexte `peopleCount` sans effet sur la
+  quantité ni sur le prix. Aucun élargissement silencieux des demandes précises.
+- La composition automatique, les capacités et les accessoires inclus (V3–V5 du
+  document produit) ne sont **pas livrés** : décisions produit et ADR requises.
+  Les prix publics restent ceux d'un équipement, avec avertissement pour les groupes.
 
 ## Chantier 20-B — Recovery & Disaster Readiness
 

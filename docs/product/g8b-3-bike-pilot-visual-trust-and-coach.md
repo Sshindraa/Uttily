@@ -1,6 +1,6 @@
 # G8B-3 — Pilote Vélo Lyon, Confiance Publique & Spécification Photo Coach
 
-- **Statut** : standard visuel vélo validé ; enforcement serveur livré ; badge professionnel restant
+- **Statut** : standard visuel vélo validé ; enforcement serveur et badge professionnel auditable livrés
 - **Date** : 2026-08-27
 - **Périmètre** : Cadrage commercial Lyon (G8B-3A), Standard de confiance & vérité produit, Expérience & Moteur technique Photo Coach
 - **Relie à** : ADR-002, ADR-010, ADR-014, ADR-017, ADR-020, ADR-026, G8B-1, G8B-3B, G8B-3B1, G8B-3B4, `docs/product/mvp-scope.md`, `docs/product/lot5-finance-legal-validation.md`
@@ -17,10 +17,11 @@ L'enforcement serveur du standard sémantique est livré par l'ADR-031 : pour la
 catégorie `bike`, le gate PostgreSQL, Core et la visibilité publique exigent les
 trois slots canoniques `HERO_PROFILE`, `THREE_QUARTER_FRONT` et
 `SECONDARY_VIEW`, en plus de trois checksums distincts. L’action serveur et
-l’ancienne surface « Mes vélos » utilisent les noms canoniques. Le badge
-« loueur professionnel vérifié » reste une spécification ; aucun statut de
-vérification ni calcul auditable n’est encore implémenté. Aucune analyse
-d’image par IA n’est activée.
+l’ancienne surface « Mes vélos » utilisent les noms canoniques. L’ADR-032 livre
+`getProfessionalVerification` : le statut `eligible` est calculé côté serveur
+à partir de l’organisation, d’un établissement public et d’un compte Stripe
+LIVE opérationnel ; les états `pending` et `ineligible` restent masqués
+publiquement. Aucune analyse d’image par IA n’est activée.
 
 ---
 

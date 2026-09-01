@@ -7,7 +7,7 @@ import {
 } from '@uttily/core';
 import { requireCatalogManagerOf } from '@/lib/catalog-auth';
 import type { PricingPlanType } from '@/lib/status-presentation';
-import { BikeSetupWizard, type SetupBikeDTO } from './bike-setup-wizard';
+import { BikeSetupWizard, type SetupBikeDTO } from '@/features/bikes';
 
 export default async function BikeSetupPage({
   params,

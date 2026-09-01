@@ -16,6 +16,9 @@ Avant toute tâche, lire `AGENTS.md`, puis dans cet ordre :
 6. [Backlog de démarrage](docs/implementation/backlog.md)
 7. Le lot et les [décisions d'architecture](docs/decisions/)
 
+Pour planifier les travaux au-delà du lot courant, consulter la
+[roadmap de préparation opérationnelle et de passage à l'échelle](docs/implementation/roadmap-operational-readiness-and-scale.md).
+
 Pour les frais marketplace, consulter ensuite l'[état canonique du modèle
 13/7](docs/operations/marketplace-fees-current-state.md) puis
 [ADR-029](docs/decisions/ADR-029-marketplace-fee-split-13-7.md).

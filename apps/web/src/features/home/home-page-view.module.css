@@ -1,0 +1,131 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ut-space-16);
+  padding-bottom: var(--ut-space-16);
+}
+
+.eyebrow {
+  color: var(--ut-color-primary);
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  letter-spacing: var(--ut-tracking-eyebrow);
+  line-height: var(--ut-leading-ui);
+  text-transform: uppercase;
+}
+
+.howItWorks,
+.valueGrid {
+  width: min(100%, 76rem);
+  padding-inline: var(--ut-space-6);
+  margin-inline: auto;
+}
+
+.howItWorks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ut-space-8);
+}
+
+.sectionHeader {
+  text-align: center;
+}
+
+.sectionHeader h2 {
+  color: var(--ut-color-ink-strong);
+  font-size: var(--ut-text-title-lg);
+  font-weight: var(--ut-weight-semibold);
+  letter-spacing: var(--ut-tracking-heading);
+  line-height: var(--ut-leading-heading);
+  margin: var(--ut-space-2) 0 0;
+}
+
+.stepsGrid {
+  display: grid;
+  gap: var(--ut-space-6);
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.stepCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ut-space-3);
+}
+
+.stepNumber {
+  align-items: center;
+  background: var(--ut-color-primary);
+  border-radius: var(--ut-radius-pill);
+  color: var(--ut-color-ink-on-dark);
+  display: inline-flex;
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-bold);
+  height: 2rem;
+  justify-content: center;
+  width: 2rem;
+}
+
+.stepCard h3 {
+  color: var(--ut-color-ink-strong);
+  font-size: var(--ut-text-title-sm);
+  font-weight: var(--ut-weight-semibold);
+  letter-spacing: var(--ut-tracking-heading);
+  line-height: var(--ut-leading-heading);
+  margin: 0;
+}
+
+.stepCard p {
+  color: var(--ut-color-ink-muted);
+  font-size: var(--ut-text-md);
+  line-height: var(--ut-leading-body);
+  margin: 0;
+}
+
+.valueGrid {
+  display: grid;
+  gap: var(--ut-space-6);
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.valueGrid h2 {
+  color: var(--ut-color-ink-strong);
+  font-size: var(--ut-text-title-sm);
+  font-weight: var(--ut-weight-semibold);
+  letter-spacing: var(--ut-tracking-heading);
+  line-height: var(--ut-leading-heading);
+  margin: var(--ut-space-4) 0 var(--ut-space-2);
+}
+
+.valueGrid p {
+  color: var(--ut-color-ink-muted);
+  font-size: var(--ut-text-md);
+  line-height: var(--ut-leading-body);
+  margin: 0;
+}
+
+.valueIcon {
+  align-items: center;
+  background: var(--ut-color-primary-soft);
+  border-radius: var(--ut-radius-md);
+  color: var(--ut-color-primary-strong);
+  display: inline-flex;
+  height: 2.5rem;
+  justify-content: center;
+  width: 2.5rem;
+}
+
+@media (max-width: 48rem) {
+  .page {
+    gap: var(--ut-space-12);
+  }
+
+  .howItWorks,
+  .valueGrid {
+    padding-inline: var(--ut-space-4);
+  }
+
+  .stepsGrid,
+  .valueGrid {
+    grid-template-columns: 1fr;
+  }
+}

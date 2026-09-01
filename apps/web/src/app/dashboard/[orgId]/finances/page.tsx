@@ -9,7 +9,7 @@ import {
   getMerchantFinanceOverview,
 } from '@uttily/core';
 import { getConnectedAccountReadinessAction } from '@/app/actions/connected-accounts';
-import { FinancesHub } from './finances-hub';
+import { FinancesHub } from '@/features/finances';
 
 export default async function FinancesPage({
   params,

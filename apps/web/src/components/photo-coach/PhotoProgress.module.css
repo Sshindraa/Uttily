@@ -4,10 +4,10 @@
   align-items: center;
   gap: 10px;
   padding: 14px 20px;
-  background: rgba(15, 23, 42, 0.75);
+  background: var(--ut-color-overlay-dark);
   backdrop-filter: blur(12px);
   border-radius: 18px;
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  border: 1px solid var(--ut-color-border-on-dark);
   box-shadow:
     0 10px 25px -5px rgba(0, 0, 0, 0.3),
     inset 0 1px 1px rgba(255, 255, 255, 0.1);
@@ -19,16 +19,16 @@
   width: 320px;
   max-width: 100%;
   height: 135px;
-  color: #38bdf8;
-  filter: drop-shadow(0 0 18px rgba(56, 189, 248, 0.65))
+  color: var(--ut-color-brand-mist);
+  filter: drop-shadow(0 0 18px var(--ut-color-brand-mist-translucent-strong))
     drop-shadow(0 0 4px rgba(255, 255, 255, 0.4));
   transition: all 0.3s ease;
 }
 
 .statusText {
   font-size: 1rem;
-  font-weight: 600;
-  color: #f1f5f9;
+  font-weight: var(--ut-weight-semibold);
+  color: var(--ut-color-ink-on-dark);
   letter-spacing: -0.01em;
 }
 
@@ -46,12 +46,12 @@
 }
 
 .dotActive {
-  background: #38bdf8;
-  box-shadow: 0 0 10px #38bdf8;
+  background: var(--ut-color-brand-mist);
+  box-shadow: 0 0 10px var(--ut-color-brand-mist-translucent-strong);
   transform: scale(1.15);
 }
 
 .dotDone {
-  background: #10b981;
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+  background: var(--ut-color-success);
+  box-shadow: 0 0 8px rgb(36 122 75 / 0.8);
 }

@@ -19,7 +19,7 @@ export function renderBookingCancelledCustomer(data: BookingCancelledCustomerDat
       ? `<div class="card">
           <div class="metric-row">
             <span class="metric-label">Remboursement demandé :</span>
-            <span class="metric-value" style="color: #059669; font-size: 16px;">${escapeHtml(formatEur(data.refundAmountMinor))}</span>
+            <span class="metric-value" style="color: #247a4b; font-size: 16px;">${escapeHtml(formatEur(data.refundAmountMinor))}</span>
           </div>
           ${
             data.retainedAmountMinor > 0
