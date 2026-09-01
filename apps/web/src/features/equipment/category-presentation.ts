@@ -54,6 +54,15 @@ const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
     primaryActionLabel: 'Gérer l’équipement',
     setupActionLabel: 'Continuer la configuration',
   },
+  surf: {
+    singularLabel: 'planche de surf',
+    pluralLabel: 'planches de surf',
+    icon: '🏄',
+    characteristics: [],
+    specificSections: [],
+    primaryActionLabel: 'Gérer l’équipement',
+    setupActionLabel: 'Continuer la configuration',
+  },
   equipment: GENERIC_CATEGORY_PRESENTATION,
 };
 

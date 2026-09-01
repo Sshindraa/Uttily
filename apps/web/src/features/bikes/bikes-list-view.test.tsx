@@ -7,7 +7,8 @@ const summary = (categorySlug: string): UnifiedBikeSummary => ({
   id: 'product-1',
   name: 'Kayak de démonstration',
   slug: 'kayak-de-demonstration',
-  categoryName: categorySlug === 'equipment' ? 'Équipements' : 'Kayak',
+  categoryName:
+    categorySlug === 'equipment' ? 'Équipements' : categorySlug === 'surf' ? 'Surf' : 'Kayak',
   categorySlug,
   variantName: 'Standard',
   variantId: 'variant-1',
@@ -45,5 +46,16 @@ describe('Mes équipements — liste', () => {
 
     expect(html).toContain('🚲');
     expect(html).toContain('2/3 vues requises');
+  });
+
+  it('présente le socle surf avec le gestionnaire photo neutre', () => {
+    const html = renderToStaticMarkup(
+      <BikesListView organizationId="org-1" bikes={[summary('surf')]} canManage />,
+    );
+
+    expect(html).toContain('🏄');
+    expect(html).toContain('Surf');
+    expect(html).toContain('2/3 photos');
+    expect(html).not.toContain('vues requises');
   });
 });

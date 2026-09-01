@@ -70,18 +70,29 @@ describe('présentation catégorie — flotte et maintenance', () => {
     expect(html).not.toContain('🚲 vélo');
   });
 
-  it('adapte les libellés de maintenance pour le vélo et le kayak', () => {
+  it('affiche la présentation surf dans la flotte', () => {
+    const html = renderToStaticMarkup(
+      <FleetListView organizationId="org-1" items={[inventoryItem('surf')]} canManage={false} />,
+    );
+
+    expect(html).toContain('🏄 planche de surf');
+    expect(html).toContain('Disponible');
+    expect(html).not.toContain('🚲 vélo');
+  });
+
+  it('adapte les libellés de maintenance pour le vélo, le kayak et le surf', () => {
     const html = renderToStaticMarkup(
       <MaintenanceListView
         organizationId="org-1"
-        cases={[maintenanceCase('bike'), maintenanceCase('kayak')]}
+        cases={[maintenanceCase('bike'), maintenanceCase('kayak'), maintenanceCase('surf')]}
       />,
     );
 
     expect(html).toContain('🚲 vélo');
     expect(html).toContain('🛶 kayak');
+    expect(html).toContain('🏄 planche de surf');
     expect(html).toContain('À traiter');
-    expect(html).toContain('Interventions à traiter (2)');
+    expect(html).toContain('Interventions à traiter (3)');
   });
 
   it('conserve la disponibilité et la transition de remise en service', () => {

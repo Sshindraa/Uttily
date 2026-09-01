@@ -97,10 +97,10 @@ export const EQUIPMENT_FAMILY_REGISTRY: readonly EquipmentFamilyDefinition[] = O
   {
     slug: 'surf',
     universe: 'surf',
-    status: 'APPROVED_LATER',
+    status: 'ACTIVE',
     singularLabel: 'planche de surf',
     pluralLabel: 'planches de surf',
-    subtypes: ['classic', 'longboard', 'softboard'],
+    subtypes: ['classic', 'longboard', 'softboard', 'bodyboard', 'skimboard'],
     characteristics: [],
   },
   {

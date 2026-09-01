@@ -11,7 +11,7 @@ univers outdoor fermés :
 | --- | --- | --- | --- |
 | Cycle | `cycle` | `bike` | `ACTIVE` |
 | Kayak, canoë et pagaie | `paddle` | `kayak` | `ACTIVE` |
-| Surf et glisse nautique | `surf` | `surf` | `APPROVED_LATER` |
+| Surf et glisse nautique | `surf` | `surf` | `ACTIVE` |
 | Neige et glisse | `snow` | `ski` | `APPROVED_LATER` |
 
 Le registre n'autorise pas les catégories camping, outdoor technique, sports
@@ -36,7 +36,7 @@ La taxonomie sépare strictement :
 | --- | --- |
 | `bike` | sous-types `city`, `vtc`, `mtb`, `road`, `gravel`, `electric`, `cargo`, `child`, `tandem`, `fatbike` ; caractéristiques `size`, `autonomy` |
 | `kayak` | `capacity` ; construction `rigid` ou `inflatable` ; pratique `sea`, `touring` ou `whitewater` |
-| `surf` | sous-types `classic`, `longboard`, `softboard` |
+| `surf` | sous-types `classic`, `longboard`, `softboard`, `bodyboard`, `skimboard` |
 | `ski` | sous-types `alpine`, `touring`, `cross-country` |
 
 Le fait de couvrir l'univers « Kayak, canoë et pagaie » ne crée pas de slugs
@@ -49,12 +49,11 @@ La source de vérité typée est
 [`packages/core/src/catalog/equipment-taxonomy.ts`](../../packages/core/src/catalog/equipment-taxonomy.ts).
 Elle distingue :
 
-- `ACTIVE` : familles activées commercialement ; aujourd'hui `bike` et
-  `kayak` ;
+- `ACTIVE` : familles activées commercialement ; aujourd'hui `bike`, `kayak` et
+  `surf` ;
 - `APPROVED_NEXT` : famille approuvée pour le prochain lot ; aucune après
   l'activation du kayak ;
-- `APPROVED_LATER` : famille approuvée mais différée ; aujourd'hui `surf` et
-  `ski` ;
+- `APPROVED_LATER` : famille approuvée mais différée ; aujourd'hui `ski` ;
 - `INTERNAL_FALLBACK` : `equipment`, compatibilité technique uniquement ;
 - valeur inconnue : résolution `UNSUPPORTED`, sans conversion en catégorie
   commerciale.
@@ -64,6 +63,12 @@ met à jour uniquement la fixture locale `kayak-dev`. Les produits historiques
 `equipment` ne sont pas convertis. Le kayak réutilise les données, la
 recherche, la publication et les parcours de réservation existants ; ses
 caractéristiques descriptives ne sont affichées que si elles sont présentes.
+
+L'activation surf réutilise la catégorie déjà seedée `surf`, sans migration et
+sans conversion des produits `equipment`. Elle active uniquement la famille
+et ses sous-types descriptifs `classic`, `longboard`, `softboard`, `bodyboard`
+et `skimboard`. Aucun champ dimensions, volume ou niveau, aucune règle
+spécialisée de glisse et aucun moteur d'accessoires n'est ajouté.
 
 ## Compléments
 

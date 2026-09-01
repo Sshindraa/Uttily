@@ -23,7 +23,7 @@ describe('closed outdoor equipment taxonomy', () => {
     expect(EQUIPMENT_FAMILY_REGISTRY.map(({ slug, status }) => [slug, status])).toEqual([
       ['bike', 'ACTIVE'],
       ['kayak', 'ACTIVE'],
-      ['surf', 'APPROVED_LATER'],
+      ['surf', 'ACTIVE'],
       ['ski', 'APPROVED_LATER'],
       ['equipment', 'INTERNAL_FALLBACK'],
     ]);
@@ -57,6 +57,8 @@ describe('closed outdoor equipment taxonomy', () => {
       'classic',
       'longboard',
       'softboard',
+      'bodyboard',
+      'skimboard',
     ]);
     expect(ski.kind === 'SUPPORTED' && ski.definition.subtypes).toEqual([
       'alpine',
@@ -72,6 +74,7 @@ describe('closed outdoor equipment taxonomy', () => {
     expect(resolveEquipmentFamily('equipment').kind).toBe('SUPPORTED');
     expect(isCommerciallyActiveEquipmentFamily('bike')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('kayak')).toBe(true);
+    expect(isCommerciallyActiveEquipmentFamily('surf')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('equipment')).toBe(false);
     expect(isCommerciallyActiveEquipmentFamily('unknown')).toBe(false);
   });

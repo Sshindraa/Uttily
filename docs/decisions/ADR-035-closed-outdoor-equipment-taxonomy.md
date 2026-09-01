@@ -1,6 +1,6 @@
 # ADR-035 — Taxonomie commerciale outdoor fermée
 
-**Statut :** Accepted — kayak activé comme première famille non-vélo.
+**Statut :** Accepted — surf activé comme deuxième famille non-vélo.
 
 **Date :** 2026-09-01
 
@@ -16,8 +16,8 @@ implicite de publier n'importe quelle catégorie.
 
 Le produit doit donc distinguer l'universalité du modèle
 Produit → Variante → Exemplaire d'un périmètre commercial volontairement
-fermé. Cette décision encadre l'activation du kayak sans convertir les
-produits historiques qui utilisent `equipment`.
+fermé. Cette décision encadre l'activation du kayak puis du surf sans
+convertir les produits historiques qui utilisent `equipment`.
 
 ## Décision
 
@@ -41,22 +41,31 @@ Le registre serveur fermé et typé est porté par
 
 | Statut | Familles |
 | --- | --- |
-| `ACTIVE` | `bike`, `kayak` |
+| `ACTIVE` | `bike`, `kayak`, `surf` |
 | `APPROVED_NEXT` | — |
-| `APPROVED_LATER` | `surf`, `ski` |
+| `APPROVED_LATER` | `ski` |
 | `INTERNAL_FALLBACK` | `equipment`, compatibilité technique seulement |
 
 Toute autre valeur est résolue comme `UNSUPPORTED`. Le fallback interne ne
 peut pas être considéré comme une famille commerciale active. La migration
-0051 ajoute uniquement la catégorie canonique `kayak`; elle ne met à jour
-aucun produit existant utilisant `equipment`. La fixture `kayak-dev` est la
-seule fixture locale explicitement rattachée à cette catégorie.
+0051 ajoute uniquement la catégorie canonique `kayak`; la catégorie `surf`
+existait déjà dans le seed initial. Aucun produit existant utilisant
+`equipment` n'est converti et aucune migration surf n'est nécessaire. La
+fixture `kayak-dev` reste explicitement rattachée à `kayak`.
 
 Le kayak consomme les parcours génériques déjà en place : Produit → Variante
 → Exemplaire, prix, disponibilité, photos, publication, recherche, hold,
 paiement et réservation. Ses attributs descriptifs `capacity`, `construction`
 et `practice` ne sont affichés que lorsqu'ils existent dans les attributs de
 la variante. Ils n'introduisent aucune validation ou colonne nouvelle.
+
+Le surf est actif uniquement pour la famille `surf` et les sous-types
+descriptifs `classic`, `longboard`, `softboard`, `bodyboard` et `skimboard`.
+Ces valeurs ne créent aucun slug commercial supplémentaire. Les dimensions,
+le volume, le niveau et les règles spécialisées windsurf, wingfoil, kitesurf
+ou foil ne sont pas introduits. Le parcours surf réutilise les mêmes
+invariants génériques et le gestionnaire photo neutre ; aucune règle Photo
+Coach, slot ou sécurité vélo ne lui est appliquée.
 
 ## Compléments
 
@@ -84,10 +93,15 @@ résolu exclusivement par le registre serveur de cette ADR.
   gestionnaire photo neutre, le seuil universel de trois photos valides et les
   règles de disponibilité, publication et réservation existantes ; aucun Photo
   Coach, slot ou bloc de sécurité vélo ne lui est appliqué.
-- Surf et ski sont explicitement approuvés pour plus tard, sans activation.
+- Le surf est actif comme deuxième famille non-vélo avec le même seuil
+  universel de trois photos valides et sans règles spécialisées supplémentaires.
+  Ses sous-types sont descriptifs et restent portés par les variantes ou les
+  données déjà disponibles.
+- Le ski reste explicitement approuvé pour plus tard, sans activation.
 - Les catégories hors périmètre et les valeurs inconnues doivent être refusées
   par les futurs flux commerciaux plutôt que converties silencieusement en
   `equipment`.
-- Les familles surf et ski devront ajouter leurs propres décisions et tests
-  avant activation. Les accessoires kayak restent des compléments non
+- Les accessoires des familles kayak et surf restent des compléments non
   publiables seuls par défaut ; leur moteur de supplément n'est pas livré.
+- Les familles windsurf, wingfoil, kitesurf et foil ne sont pas activées par
+  cette décision.
