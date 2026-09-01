@@ -1,4 +1,4 @@
-import { isPaddleReadinessCategorySlug, listCategories } from '@uttily/core';
+import { isHistoricalPaddleCategorySlug, listCategories } from '@uttily/core';
 import { requireCatalogManagerOf } from '@/lib/catalog-auth';
 import { NewBikeForm } from '@/features/bikes';
 
@@ -12,7 +12,7 @@ export default async function NewBikePage({
 
   const categories = await listCategories(db);
   const categoriesList = categories
-    .filter((c) => !isPaddleReadinessCategorySlug(c.slug))
+    .filter((c) => !isHistoricalPaddleCategorySlug(c.slug))
     .map((c) => ({ id: c.id, name: c.name, slug: c.slug }));
 
   return <NewBikeForm organizationId={organizationId} categories={categoriesList} />;

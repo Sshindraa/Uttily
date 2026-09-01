@@ -125,8 +125,8 @@ import {
 } from '../pricing-plans/time-utils';
 import { findDayRangeWindow } from '../pricing-plans/windows';
 import {
-  PADDLE_READINESS_CONTRACT,
-  isPaddleReadinessCategorySlug,
+  PADDLE_CATEGORY_CONTRACT,
+  isHistoricalPaddleCategorySlug,
 } from '../catalog/equipment-taxonomy';
 import type {
   CandidateRow,
@@ -773,7 +773,7 @@ async function resolveCategoryTree(db: DatabaseClient, categoryId: string): Prom
     throw new PublicSearchError('CATEGORY_INACTIVE', 'Catégorie inactive.');
   }
 
-  if (isPaddleReadinessCategorySlug(catRows[0]!.slug)) {
+  if (isHistoricalPaddleCategorySlug(catRows[0]!.slug)) {
     throw new PublicSearchError('CATEGORY_INACTIVE', 'Catégorie inactive.');
   }
 
@@ -969,8 +969,7 @@ async function loadCandidateGroups(
       AND p.deleted_at IS NULL
       AND p.public_id IS NOT NULL
       AND category.slug NOT IN (
-        ${PADDLE_READINESS_CONTRACT.historicalStorageSlugs[0]},
-        ${PADDLE_READINESS_CONTRACT.proposedSlug}
+        ${PADDLE_CATEGORY_CONTRACT.historicalStorageSlugs[0]}
       )
       AND EXISTS (
         SELECT 1

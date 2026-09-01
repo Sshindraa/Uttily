@@ -18,5 +18,9 @@ describe('getPublicCategoryLabel', () => {
     expect(getPublicCategoryLabel('fr', { slug: 'snowboard', name: 'Snowboard' })).toBe(
       'Snowboard',
     );
+    expect(getPublicCategoryLabel('en', { slug: 'paddleboard', name: 'Paddle' })).toBe(
+      'Stand-up paddle',
+    );
+    expect(getPublicCategoryLabel('fr', { slug: 'paddleboard', name: 'Paddle' })).toBe('Paddle');
   });
 });

@@ -34,29 +34,28 @@ export type AccessoryMode = (typeof ACCESSORY_MODES)[number];
 export const ACCESSORY_STANDALONE_PUBLICATION_DEFAULT = 'DISABLED_BY_DEFAULT' as const;
 
 /**
- * Préparation du paddle sans activation commerciale.
+ * Contrat canonique de la famille paddleboard.
  *
- * `paddle` est un ancien slug présent dans certaines bases et le slug de
- * l'univers pagaie. Il ne peut donc pas être promu implicitement en famille.
- * `paddleboard` est seulement une proposition de slug futur, à confirmer
- * avant toute activation ou migration.
+ * `paddle` est conservé comme slug historique dans certaines bases et ne doit
+ * jamais être promu implicitement. La famille commerciale active utilise
+ * exclusivement `paddleboard`.
  */
-export const PADDLE_READINESS_CONTRACT = Object.freeze({
-  proposedSlug: 'paddleboard',
-  status: 'INACTIVE',
-  historicalStorageSlugs: ['paddle'] as const,
+export const PADDLEBOARD_CATEGORY_SLUG = 'paddleboard' as const;
+export const HISTORICAL_PADDLE_CATEGORY_SLUG = 'paddle' as const;
+export const PADDLE_CATEGORY_CONTRACT = Object.freeze({
+  canonicalSlug: PADDLEBOARD_CATEGORY_SLUG,
+  status: 'ACTIVE',
+  historicalStorageSlugs: [HISTORICAL_PADDLE_CATEGORY_SLUG] as const,
 });
 
-export type PaddleReadinessStatus = typeof PADDLE_READINESS_CONTRACT.status;
+export type PaddleCategoryStatus = typeof PADDLE_CATEGORY_CONTRACT.status;
 
-export function isPaddleReadinessCategorySlug(slug: string | null | undefined): boolean {
-  return (
-    slug === PADDLE_READINESS_CONTRACT.proposedSlug ||
-    (typeof slug === 'string' &&
-      PADDLE_READINESS_CONTRACT.historicalStorageSlugs.includes(
-        slug as (typeof PADDLE_READINESS_CONTRACT.historicalStorageSlugs)[number],
-      ))
-  );
+export function isHistoricalPaddleCategorySlug(slug: string | null | undefined): boolean {
+  return slug === HISTORICAL_PADDLE_CATEGORY_SLUG;
+}
+
+export function isPaddleCategorySlug(slug: string | null | undefined): boolean {
+  return slug === PADDLEBOARD_CATEGORY_SLUG || isHistoricalPaddleCategorySlug(slug);
 }
 
 export interface EquipmentCharacteristicDefinition {
@@ -65,7 +64,7 @@ export interface EquipmentCharacteristicDefinition {
 }
 
 export type EquipmentFamilySlug =
-  'bike' | 'kayak' | 'canoe' | 'surf' | 'ski' | 'snowboard' | 'equipment';
+  'bike' | 'kayak' | 'canoe' | 'paddleboard' | 'surf' | 'ski' | 'snowboard' | 'equipment';
 export type CommercialEquipmentFamilySlug = Exclude<EquipmentFamilySlug, 'equipment'>;
 
 export interface EquipmentFamilyDefinition {
@@ -129,6 +128,18 @@ export const EQUIPMENT_FAMILY_REGISTRY: readonly EquipmentFamilyDefinition[] = O
     pluralLabel: 'canoës',
     subtypes: [],
     characteristics: [],
+  },
+  {
+    slug: 'paddleboard',
+    universe: 'paddle',
+    status: 'ACTIVE',
+    singularLabel: 'paddle',
+    pluralLabel: 'paddles',
+    subtypes: [],
+    characteristics: [
+      { key: 'capacity', allowedValues: ['single', 'tandem'] },
+      { key: 'construction', allowedValues: ['rigid', 'inflatable'] },
+    ],
   },
   {
     slug: 'surf',

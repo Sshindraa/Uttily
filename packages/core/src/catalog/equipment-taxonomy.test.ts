@@ -5,9 +5,10 @@ import {
   CLOSED_OUTDOOR_EQUIPMENT_TAXONOMY,
   EQUIPMENT_FAMILY_REGISTRY,
   EQUIPMENT_UNIVERSE_REGISTRY,
-  PADDLE_READINESS_CONTRACT,
+  PADDLE_CATEGORY_CONTRACT,
   isCommerciallyActiveEquipmentFamily,
-  isPaddleReadinessCategorySlug,
+  isHistoricalPaddleCategorySlug,
+  isPaddleCategorySlug,
   resolveEquipmentFamily,
 } from './equipment-taxonomy';
 
@@ -26,6 +27,7 @@ describe('closed outdoor equipment taxonomy', () => {
       ['bike', 'ACTIVE'],
       ['kayak', 'ACTIVE'],
       ['canoe', 'ACTIVE'],
+      ['paddleboard', 'ACTIVE'],
       ['surf', 'ACTIVE'],
       ['ski', 'ACTIVE'],
       ['snowboard', 'ACTIVE'],
@@ -37,6 +39,7 @@ describe('closed outdoor equipment taxonomy', () => {
     const bike = resolveEquipmentFamily('bike');
     const kayak = resolveEquipmentFamily('kayak');
     const canoe = resolveEquipmentFamily('canoe');
+    const paddleboard = resolveEquipmentFamily('paddleboard');
     const surf = resolveEquipmentFamily('surf');
     const ski = resolveEquipmentFamily('ski');
     const snowboard = resolveEquipmentFamily('snowboard');
@@ -62,6 +65,12 @@ describe('closed outdoor equipment taxonomy', () => {
     expect(canoe.kind).toBe('SUPPORTED');
     expect(canoe.kind === 'SUPPORTED' && canoe.definition.subtypes).toEqual([]);
     expect(canoe.kind === 'SUPPORTED' && canoe.definition.characteristics).toEqual([]);
+    expect(paddleboard.kind).toBe('SUPPORTED');
+    expect(paddleboard.kind === 'SUPPORTED' && paddleboard.definition.subtypes).toEqual([]);
+    expect(paddleboard.kind === 'SUPPORTED' && paddleboard.definition.characteristics).toEqual([
+      { key: 'capacity', allowedValues: ['single', 'tandem'] },
+      { key: 'construction', allowedValues: ['rigid', 'inflatable'] },
+    ]);
     expect(surf.kind === 'SUPPORTED' && surf.definition.subtypes).toEqual([
       'classic',
       'longboard',
@@ -87,6 +96,7 @@ describe('closed outdoor equipment taxonomy', () => {
     expect(isCommerciallyActiveEquipmentFamily('bike')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('kayak')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('canoe')).toBe(true);
+    expect(isCommerciallyActiveEquipmentFamily('paddleboard')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('surf')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('ski')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('snowboard')).toBe(true);
@@ -94,20 +104,22 @@ describe('closed outdoor equipment taxonomy', () => {
     expect(isCommerciallyActiveEquipmentFamily('unknown')).toBe(false);
   });
 
-  it('keeps paddle as an inactive proposal and preserves its historical slug', () => {
-    expect(PADDLE_READINESS_CONTRACT).toEqual({
-      proposedSlug: 'paddleboard',
-      status: 'INACTIVE',
+  it('active paddleboard sous un slug canonique et conserve paddle historique', () => {
+    expect(PADDLE_CATEGORY_CONTRACT).toEqual({
+      canonicalSlug: 'paddleboard',
+      status: 'ACTIVE',
       historicalStorageSlugs: ['paddle'],
     });
     expect(resolveEquipmentFamily('paddle')).toEqual({ kind: 'UNSUPPORTED', slug: 'paddle' });
     expect(resolveEquipmentFamily('paddleboard')).toEqual({
-      kind: 'UNSUPPORTED',
-      slug: 'paddleboard',
+      kind: 'SUPPORTED',
+      definition: expect.objectContaining({ slug: 'paddleboard', status: 'ACTIVE' }),
     });
-    expect(isPaddleReadinessCategorySlug('paddle')).toBe(true);
-    expect(isPaddleReadinessCategorySlug('paddleboard')).toBe(true);
-    expect(isPaddleReadinessCategorySlug('kayak')).toBe(false);
+    expect(isHistoricalPaddleCategorySlug('paddle')).toBe(true);
+    expect(isHistoricalPaddleCategorySlug('paddleboard')).toBe(false);
+    expect(isPaddleCategorySlug('paddle')).toBe(true);
+    expect(isPaddleCategorySlug('paddleboard')).toBe(true);
+    expect(isPaddleCategorySlug('kayak')).toBe(false);
     expect(isCommerciallyActiveEquipmentFamily('paddle')).toBe(false);
   });
 

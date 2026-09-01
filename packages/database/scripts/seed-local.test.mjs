@@ -61,6 +61,7 @@ describe('seed local environment guards', () => {
   it('utilise la catégorie kayak uniquement pour la fixture kayak-dev', () => {
     expect(seedSource).toContain("VALUES ('canoe', 'Canoës', true)");
     expect(seedSource).toContain("VALUES ('kayak', 'Kayaks', true)");
+    expect(seedSource).toContain("VALUES ('paddleboard', 'Paddle', true)");
     expect(seedSource).toContain("const DEMO_PRODUCT_SLUG = 'kayak-dev'");
     expect(seedSource).toContain('produit historique utilisant la catégorie equipment');
   });

@@ -1,6 +1,6 @@
 # ADR-035 — Taxonomie commerciale outdoor fermée
 
-**Statut :** Accepted — canoë activé comme deuxième famille de l'univers pagaie.
+**Statut :** Accepted — paddleboard activé comme famille de l'univers pagaie.
 
 **Date :** 2026-09-01
 
@@ -42,7 +42,7 @@ Le registre serveur fermé et typé est porté par
 
 | Statut | Familles |
 | --- | --- |
-| `ACTIVE` | `bike`, `kayak`, `canoe`, `surf`, `ski`, `snowboard` |
+| `ACTIVE` | `bike`, `kayak`, `canoe`, `paddleboard`, `surf`, `ski`, `snowboard` |
 | `APPROVED_NEXT` | — |
 | `APPROVED_LATER` | — |
 | `INTERNAL_FALLBACK` | `equipment`, compatibilité technique seulement |
@@ -52,7 +52,8 @@ peut pas être considéré comme une famille commerciale active. La migration
 0051 ajoute uniquement la catégorie canonique `kayak`; la catégorie `surf` et la
 catégorie `ski` existaient déjà dans le seed initial. La migration 0052 ajoute
 la catégorie canonique `snowboard`, et la migration 0053 ajoute la catégorie
-canonique `canoe`. Aucun produit existant utilisant `equipment` n'est converti
+canonique `canoe`. La migration 0054 ajoute la catégorie canonique
+`paddleboard`. Aucun produit existant utilisant `equipment` ou `paddle` n'est converti
 et aucune catégorie historique n'est réécrite. La
 fixture `kayak-dev` reste explicitement rattachée à `kayak`.
 
@@ -68,22 +69,22 @@ génériques Produit → Variante → Exemplaire, tarif, disponibilité, photos,
 publication, recherche, hold, paiement TEST et réservation. Aucun Photo Coach,
 slot photo ou règle spécialisée du kayak ou du vélo ne lui est appliqué.
 
-### Préparation du paddle sans activation
+### Activation paddleboard
 
-La famille paddle n'a pas encore de slug canonique approuvé. Le slug `paddle`
-du seed initial est conservé comme valeur historique ambiguë et ne doit pas
-être promu implicitement en famille commerciale. `paddleboard` est proposé
-comme slug futur, sans être imposé : il n'est pas ajouté à
-`EquipmentFamilySlug`, au registre des familles commerciales, aux migrations,
-aux fixtures publiées ou aux catégories réservables. Le contrat de préparation
-le maintient `INACTIVE`/`UNSUPPORTED` et bloque son exposition publique ainsi
-que la création ou publication d'une nouvelle offre sous le slug historique.
+La famille paddleboard est active sous le seul slug canonique `paddleboard`.
+Le slug `paddle` du seed initial reste historique et n'est ni converti ni
+publiable. La présentation affiche « Paddle » en français et « Stand-up
+paddle » en anglais. Les options descriptives sont limitées à `capacity`
+(`single` ou `tandem`) et `construction` (`rigid` ou `inflatable`) ; elles
+réutilisent les attributs de variante existants et ne créent aucun slug,
+champ obligatoire ou règle de sécurité spécialisée.
 
-L'audit des données ne trouve aucune offre ou fixture paddle publiée, ni champ
-persistant établi pour simple/tandem, rigide/gonflable, dimensions ou capacité.
-La présentation dédiée est donc neutre, sans attribut ni section spécialisée,
-et n'active ni Photo Coach ni slots photo vélo. Les alias de recherche et
-fixtures synthétiques existants ne valent pas activation.
+La migration 0054 et le seed local ajoutent la catégorie canonique sans
+produit publié ni conversion historique. Le paddle réutilise le parcours
+générique Produit → Variante → Exemplaire, les trois photos valides requises,
+la tarification, la disponibilité, la publication, la recherche, le hold, le
+paiement TEST et la réservation. Il n'active ni Photo Coach, ni slots photo
+vélo, ni règle kayak/canoë, ni moteur de packs. Le pédalo reste inactif.
 
 Le surf est actif uniquement pour la famille `surf` et les sous-types
 descriptifs `classic`, `longboard`, `softboard`, `bodyboard` et `skimboard`.
@@ -118,7 +119,7 @@ univers sont désactivés pour une publication autonome par défaut.
 Ces valeurs ne constituent pas encore un moteur de supplément, une règle de
 stock ou une mutation : aucun schéma ni calcul n'est ajouté dans cette ADR.
 
-Pour la préparation paddle, `pagaie`, `pompe`, `leash`, `gilet`, `chariot`,
+Pour le paddle, `pagaie`, `pompe`, `leash`, `gilet`, `chariot`,
 `sac étanche` et `combinaison` sont documentés comme compléments futurs. Leur
 mode pourra être inclus, obligatoire, optionnel gratuit, supplément payant ou
 louable séparément avec autorisation explicite ; ils restent non publiables
@@ -151,11 +152,14 @@ résolu exclusivement par le registre serveur de cette ADR.
   `touring` et `cross-country`.
 - Le snowboard est actif comme quatrième famille non-vélo sous le seul slug
   `snowboard`; aucun sous-type, champ spécialisé ou règle ski n'est ajouté.
+- Le paddleboard est actif comme famille unique de l'univers pagaie, sous le
+  seul slug `paddleboard`; ses options simple/tandem et rigide/gonflable sont
+  descriptives et portées par les attributs de variante existants.
 - Les autres familles neige et les catégories hors périmètre restent exclues.
 - Les catégories hors périmètre et les valeurs inconnues doivent être refusées
   par les futurs flux commerciaux plutôt que converties silencieusement en
   `equipment`.
-- Les accessoires des familles kayak, canoë, surf, ski et snowboard restent des compléments non
+- Les accessoires des familles kayak, canoë, paddleboard, surf, ski et snowboard restent des compléments non
   publiables seuls par défaut ; leur moteur de supplément n'est pas livré.
 - Les familles windsurf, wingfoil, kitesurf et foil ne sont pas activées par
   cette décision.
