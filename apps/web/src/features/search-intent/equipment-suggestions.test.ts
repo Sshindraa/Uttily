@@ -34,6 +34,12 @@ describe('deterministic equipment suggestions', () => {
     expect(rankEquipmentSuggestions(categories, 'kayak double', 'fr')).toEqual([]);
   });
 
+  it('retrouve le canoë par son slug canonique et son libellé accentué', () => {
+    const canoe = { id: 'canoe', slug: 'canoe', name: 'Canoës', parentId: null };
+
+    expect(rankEquipmentSuggestions([canoe], 'canoë', 'fr').map((c) => c.id)).toEqual(['canoe']);
+  });
+
   it('expose le ski mais jamais le snowboard via l’ancien libellé de catégorie', () => {
     expect(rankEquipmentSuggestions(categories, 'ski alpin', 'fr').map((c) => c.id)).toEqual([
       'ski',

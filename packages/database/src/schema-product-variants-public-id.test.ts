@@ -158,7 +158,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
       if (!testUrl) return;
       const sql = postgres(testUrl, { max: 1 });
       try {
-        expect(await migrationCount(sql)).toBe(52);
+        expect(await migrationCount(sql)).toBe(53);
         const rows = await sql`
         SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at
       `;

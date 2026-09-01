@@ -1,6 +1,6 @@
 # ADR-035 — Taxonomie commerciale outdoor fermée
 
-**Statut :** Accepted — snowboard activé comme quatrième famille non-vélo.
+**Statut :** Accepted — canoë activé comme deuxième famille de l'univers pagaie.
 
 **Date :** 2026-09-01
 
@@ -16,8 +16,8 @@ implicite de publier n'importe quelle catégorie.
 
 Le produit doit donc distinguer l'universalité du modèle
 Produit → Variante → Exemplaire d'un périmètre commercial volontairement
-fermé. Cette décision encadre l'activation du kayak, du surf, du ski puis du
-snowboard sans
+fermé. Cette décision encadre l'activation du kayak, du canoë, du surf, du ski
+puis du snowboard sans
 convertir les produits historiques qui utilisent `equipment`.
 
 ## Décision
@@ -42,7 +42,7 @@ Le registre serveur fermé et typé est porté par
 
 | Statut | Familles |
 | --- | --- |
-| `ACTIVE` | `bike`, `kayak`, `surf`, `ski`, `snowboard` |
+| `ACTIVE` | `bike`, `kayak`, `canoe`, `surf`, `ski`, `snowboard` |
 | `APPROVED_NEXT` | — |
 | `APPROVED_LATER` | — |
 | `INTERNAL_FALLBACK` | `equipment`, compatibilité technique seulement |
@@ -51,8 +51,9 @@ Toute autre valeur est résolue comme `UNSUPPORTED`. Le fallback interne ne
 peut pas être considéré comme une famille commerciale active. La migration
 0051 ajoute uniquement la catégorie canonique `kayak`; la catégorie `surf` et la
 catégorie `ski` existaient déjà dans le seed initial. La migration 0052 ajoute
-la catégorie canonique `snowboard`. Aucun produit existant utilisant
-`equipment` n'est converti et aucune catégorie historique n'est réécrite. La
+la catégorie canonique `snowboard`, et la migration 0053 ajoute la catégorie
+canonique `canoe`. Aucun produit existant utilisant `equipment` n'est converti
+et aucune catégorie historique n'est réécrite. La
 fixture `kayak-dev` reste explicitement rattachée à `kayak`.
 
 Le kayak consomme les parcours génériques déjà en place : Produit → Variante
@@ -60,6 +61,12 @@ Le kayak consomme les parcours génériques déjà en place : Produit → Varian
 paiement et réservation. Ses attributs descriptifs `capacity`, `construction`
 et `practice` ne sont affichés que lorsqu'ils existent dans les attributs de
 la variante. Ils n'introduisent aucune validation ou colonne nouvelle.
+
+Le canoë est actif sous le seul slug `canoe`, sans sous-type ni caractéristique
+spécifique inventé. Il utilise la présentation nautique neutre et les parcours
+génériques Produit → Variante → Exemplaire, tarif, disponibilité, photos,
+publication, recherche, hold, paiement TEST et réservation. Aucun Photo Coach,
+slot photo ou règle spécialisée du kayak ou du vélo ne lui est appliqué.
 
 Le surf est actif uniquement pour la famille `surf` et les sous-types
 descriptifs `classic`, `longboard`, `softboard`, `bodyboard` et `skimboard`.
@@ -110,6 +117,9 @@ résolu exclusivement par le registre serveur de cette ADR.
   gestionnaire photo neutre, le seuil universel de trois photos valides et les
   règles de disponibilité, publication et réservation existantes ; aucun Photo
   Coach, slot ou bloc de sécurité vélo ne lui est appliqué.
+- Le canoë est actif comme deuxième famille non-vélo de l'univers pagaie, sous
+  le seul slug `canoe`, avec une présentation nautique neutre et sans
+  caractéristique, règle ou accessoire autonome nouveau.
 - Le surf est actif comme deuxième famille non-vélo avec le même seuil
   universel de trois photos valides et sans règles spécialisées supplémentaires.
   Ses sous-types sont descriptifs et restent portés par les variantes ou les
@@ -122,7 +132,7 @@ résolu exclusivement par le registre serveur de cette ADR.
 - Les catégories hors périmètre et les valeurs inconnues doivent être refusées
   par les futurs flux commerciaux plutôt que converties silencieusement en
   `equipment`.
-- Les accessoires des familles kayak, surf, ski et snowboard restent des compléments non
+- Les accessoires des familles kayak, canoë, surf, ski et snowboard restent des compléments non
   publiables seuls par défaut ; leur moteur de supplément n'est pas livré.
 - Les familles windsurf, wingfoil, kitesurf et foil ne sont pas activées par
   cette décision.

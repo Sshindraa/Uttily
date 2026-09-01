@@ -166,8 +166,8 @@ describe('Validation statique du journal Drizzle', () => {
     }>;
   };
 
-  it('contient exactement 52 entrées', () => {
-    expect(journal.entries.length).toBe(52);
+  it('contient exactement 53 entrées', () => {
+    expect(journal.entries.length).toBe(53);
   });
 
   it('préserve 0030_audit_log_append_only à l idx 29', () => {
@@ -224,7 +224,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Structure — migration 0030', ()
     const sql = postgres(testUrl, { max: 1 });
     try {
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(52);
+      expect(rows.length).toBe(53);
     } finally {
       await sql.end();
     }
@@ -237,7 +237,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Structure — migration 0030', ()
       // Drizzle stocke un hash, pas le tag. La présence du trigger et de la FK
       // RESTRICT prouve que la migration 0030 a été appliquée.
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(52);
+      expect(rows.length).toBe(53);
 
       const fk = await sql`
         SELECT confdeltype FROM pg_constraint WHERE conname = 'audit_log_actor_user_id_users_id_fk'
@@ -704,7 +704,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Rejeu — idempotence', () => {
     const sql = postgres(testUrl, { max: 1 });
     try {
       const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-      expect(rows.length).toBe(52);
+      expect(rows.length).toBe(53);
     } finally {
       await sql.end();
     }

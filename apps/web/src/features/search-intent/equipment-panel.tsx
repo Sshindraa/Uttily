@@ -15,7 +15,7 @@ import styles from './search-intent.module.css';
 
 function FamilyIllustration({ slug }: { slug: string }): React.ReactElement {
   if (/bike|velo|vtt|vtc/.test(slug)) return <Icon name="bike" size={32} />;
-  if (/paddle|kayak|surf/.test(slug))
+  if (/paddle|kayak|canoe|surf/.test(slug))
     return (
       <svg
         aria-hidden="true"

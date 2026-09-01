@@ -365,6 +365,13 @@
       "when": 1788107362002,
       "tag": "0052_activate_snowboard_category",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1788107362003,
+      "tag": "0053_activate_canoe_category",
+      "breakpoints": true
     }
   ]
 }
