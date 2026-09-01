@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type { PhotoSlotType } from '@uttily/contracts';
 import { MAX_BULK_INVENTORY_ITEMS } from '@uttily/contracts';
 import { PhotoCoachModal } from '@/components/photo-coach/PhotoCoachModal';
-import { updateProductAction, publishBikeFromSetupAction } from '@/app/actions/products';
+import { updateProductAction, publishFirstEquipmentFromSetupAction } from '@/app/actions/products';
 import { saveDailyPricingPlanDraftAction } from '@/app/actions/pricing';
 import { bulkCreateInventoryItemsAction } from '@/app/actions/inventory';
 import {
@@ -42,7 +42,10 @@ export interface SetupBikeDTO {
   draftPricingPlanId?: string | null | undefined;
   discountTiers?: Array<{ thresholdDays: number; discountPercent: number }> | undefined;
   inventoryCount: number;
+  activeInventoryCount: number;
+  isVariantActive: boolean;
   isPublicationReady: boolean;
+  isOfferReady: boolean;
   publicationFailures: string[];
 }
 
@@ -55,11 +58,11 @@ interface BikeSetupWizardProps {
 }
 
 const STEPS: Array<{ key: SetupStep; num: number; label: string }> = [
-  { key: 'IDENTITY', num: 1, label: '1. Mon équipement' },
-  { key: 'PHOTOS', num: 2, label: '2. Mes photos' },
+  { key: 'IDENTITY', num: 1, label: '1. Catégorie, produit & variante' },
+  { key: 'INVENTORY', num: 2, label: '2. Exemplaires & lieu' },
   { key: 'PRICING', num: 3, label: '3. Mon tarif' },
-  { key: 'INVENTORY', num: 4, label: '4. Mes exemplaires' },
-  { key: 'REVIEW', num: 5, label: '5. Mettre en ligne' },
+  { key: 'PHOTOS', num: 4, label: '4. Mes photos' },
+  { key: 'REVIEW', num: 5, label: '5. Disponibilité & publication' },
 ];
 
 export function BikeSetupWizard({
@@ -77,7 +80,7 @@ export function BikeSetupWizard({
   const [categoryId, setCategoryId] = useState(bike.categoryId);
   const [description, setDescription] = useState(bike.description);
 
-  // Étape 2 : Photos
+  // Étape 4 : Photos
   const [activePhotoSlot, setActivePhotoSlot] = useState<PhotoSlotType | null>(null);
 
   // Étape 3 : Tarif
@@ -102,8 +105,10 @@ export function BikeSetupWizard({
       )
     : '—';
 
-  // Étape 4 : Flotte
-  const [fleetCount, setFleetCount] = useState(bike.inventoryCount > 0 ? bike.inventoryCount : 3);
+  // Étape 2 : Flotte et lieu
+  const [fleetCount, setFleetCount] = useState(
+    bike.activeInventoryCount > 0 ? bike.activeInventoryCount : 3,
+  );
   const [locationId, setLocationId] = useState(locations[0]?.id ?? '');
 
   const [isLoading, setIsLoading] = useState(false);
@@ -128,7 +133,7 @@ export function BikeSetupWizard({
       );
       if (!res.ok) throw new Error(res.message || 'Erreur lors de la sauvegarde.');
 
-      setCurrentStep('PHOTOS');
+      setCurrentStep('INVENTORY');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue.');
@@ -172,7 +177,7 @@ export function BikeSetupWizard({
       );
       if (!res.ok) throw new Error(res.message || 'Erreur lors de la sauvegarde du tarif.');
 
-      setCurrentStep('INVENTORY');
+      setCurrentStep('PHOTOS');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue.');
@@ -188,7 +193,7 @@ export function BikeSetupWizard({
     setIsLoading(true);
     try {
       // Si des exemplaires n'ont pas encore été créés, on les crée d'un coup
-      if (bike.inventoryCount === 0 && fleetCount > 0) {
+      if (bike.activeInventoryCount === 0 && fleetCount > 0) {
         const formData = new FormData();
         formData.set('productVariantId', bike.variantId);
         formData.set('currentLocationId', locationId);
@@ -203,7 +208,7 @@ export function BikeSetupWizard({
         if (!res.ok) throw new Error(res.message || 'Erreur lors de la création des exemplaires.');
       }
 
-      setCurrentStep('REVIEW');
+      setCurrentStep('PRICING');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue.');
@@ -223,7 +228,7 @@ export function BikeSetupWizard({
         formData.set('pricingPlanId', bike.draftPricingPlanId);
       }
 
-      const res = await publishBikeFromSetupAction(
+      const res = await publishFirstEquipmentFromSetupAction(
         organizationId,
         { ok: false, code: 'UNKNOWN', message: '' },
         formData,
@@ -249,6 +254,21 @@ export function BikeSetupWizard({
     selectedCategory?.name ?? bike.categoryName,
   );
   const hasBikePhotoModule = categoryPresentation.specificSections.includes('photo-slots');
+  const hasIdentity =
+    name.trim().length >= 2 && description.trim().length > 0 && categoryId.length > 0;
+  const hasActiveVariant = bike.isVariantActive;
+  const hasPricingForOnboarding = bike.pricingPlanType !== null;
+  const hasAvailability = bike.activeInventoryCount > 0 && selectedLocation !== undefined;
+  const canPublish = bike.isPublicationReady && bike.isOfferReady;
+  const onboardingFailures = [
+    ...bike.publicationFailures,
+    ...(!hasPricingForOnboarding
+      ? ['Un tarif actif est requis pour rendre l’offre réservable.']
+      : []),
+    ...(!hasAvailability
+      ? ['Au moins un exemplaire physique actif dans un établissement est requis.']
+      : []),
+  ];
 
   return (
     <div className={styles.container}>
@@ -407,7 +427,7 @@ export function BikeSetupWizard({
                 Quitter
               </Link>
               <button type="submit" disabled={isLoading} className={styles.primaryActionBtn}>
-                {isLoading ? 'Enregistrement…' : 'Continuer vers les photos →'}
+                {isLoading ? 'Enregistrement…' : 'Continuer vers les exemplaires →'}
               </button>
             </div>
           </form>
@@ -418,7 +438,7 @@ export function BikeSetupWizard({
       {currentStep === 'PHOTOS' && hasBikePhotoModule && (
         <div className={styles.card}>
           <div className={styles.stepTitleArea}>
-            <span className={styles.stepBadge}>Étape 2 sur 5</span>
+            <span className={styles.stepBadge}>Étape 4 sur 5</span>
             <h2 className={styles.stepTitle}>📸 Montrez votre équipement (Standard Photo Coach)</h2>
             <p className={styles.stepSubtitle}>
               Prenez 3 photos normées avec le guide de cadrage interactif pour garantir la confiance
@@ -454,7 +474,7 @@ export function BikeSetupWizard({
                 </>
               ) : (
                 <>
-                  <div style={{ fontSize: '2.2rem' }}>🚲</div>
+                  <div style={{ fontSize: '2.2rem' }}>{categoryPresentation.icon}</div>
                   <div style={{ fontWeight: 'var(--ut-weight-bold)', fontSize: '0.9rem' }}>
                     1. Profil latéral Hero
                   </div>
@@ -573,10 +593,10 @@ export function BikeSetupWizard({
             </button>
             <button
               type="button"
-              onClick={() => setCurrentStep('PRICING')}
+              onClick={() => setCurrentStep('REVIEW')}
               className={styles.primaryActionBtn}
             >
-              Continuer vers le tarif →
+              Continuer vers la vérification →
             </button>
           </div>
 
@@ -599,7 +619,7 @@ export function BikeSetupWizard({
       {currentStep === 'PHOTOS' && !hasBikePhotoModule && (
         <div className={styles.card}>
           <div className={styles.stepTitleArea}>
-            <span className={styles.stepBadge}>Étape 2 sur 5</span>
+            <span className={styles.stepBadge}>Étape 4 sur 5</span>
             <h2 className={styles.stepTitle}>📸 Ajoutez les photos de votre équipement</h2>
             <p className={styles.stepSubtitle}>
               Présentez votre équipement avec trois photos claires. Aucun cadrage ou emplacement
@@ -626,10 +646,10 @@ export function BikeSetupWizard({
             </button>
             <button
               type="button"
-              onClick={() => setCurrentStep('PRICING')}
+              onClick={() => setCurrentStep('REVIEW')}
               className={styles.primaryActionBtn}
             >
-              Continuer vers le tarif →
+              Continuer vers la vérification →
             </button>
           </div>
         </div>
@@ -804,18 +824,18 @@ export function BikeSetupWizard({
             <div className={styles.stepFooter}>
               <button
                 type="button"
-                onClick={() => setCurrentStep('PHOTOS')}
+                onClick={() => setCurrentStep('INVENTORY')}
                 className={styles.backBtn}
               >
                 ← Retour
               </button>
               <button
                 type={hasNonDailyPricingPlan ? 'button' : 'submit'}
-                onClick={hasNonDailyPricingPlan ? () => setCurrentStep('INVENTORY') : undefined}
+                onClick={hasNonDailyPricingPlan ? () => setCurrentStep('PHOTOS') : undefined}
                 disabled={isLoading}
                 className={styles.primaryActionBtn}
               >
-                {isLoading ? 'Enregistrement…' : 'Continuer vers la flotte →'}
+                {isLoading ? 'Enregistrement…' : 'Continuer vers les photos →'}
               </button>
             </div>
           </form>
@@ -826,11 +846,11 @@ export function BikeSetupWizard({
       {currentStep === 'INVENTORY' && (
         <div className={styles.card}>
           <div className={styles.stepTitleArea}>
-            <span className={styles.stepBadge}>Étape 4 sur 5</span>
-            <h2 className={styles.stepTitle}>🚲 Combien d’exemplaires avez-vous en stock ?</h2>
+            <span className={styles.stepBadge}>Étape 2 sur 5</span>
+            <h2 className={styles.stepTitle}>🧰 Combien d’exemplaires avez-vous en stock ?</h2>
             <p className={styles.stepSubtitle}>
-              Indiquez le nombre d’exemplaires disponibles dans votre boutique. Chaque exemplaire
-              sera suivi individuellement.
+              Indiquez le nombre d’exemplaires disponibles et leur lieu de retrait. Chaque
+              exemplaire sera suivi individuellement par Uttily.
             </p>
           </div>
 
@@ -899,7 +919,7 @@ export function BikeSetupWizard({
                 ← Retour
               </button>
               <button type="submit" disabled={isLoading} className={styles.primaryActionBtn}>
-                {isLoading ? 'Création des exemplaires…' : 'Continuer vers la vérification →'}
+                {isLoading ? 'Création des exemplaires…' : 'Continuer vers le tarif →'}
               </button>
             </div>
           </form>
@@ -912,10 +932,12 @@ export function BikeSetupWizard({
           <div className={styles.stepTitleArea}>
             <span className={styles.stepBadge}>Étape 5 sur 5</span>
             <h2 className={styles.stepTitle}>
-              🎉 Votre équipement est prêt pour la mise en ligne !
+              {canPublish
+                ? '🎉 Votre équipement est prêt pour la mise en ligne !'
+                : 'Vérifiez les éléments requis avant la mise en ligne'}
             </h2>
             <p className={styles.stepSubtitle}>
-              Vérifiez les informations avant de publier votre annonce sur Uttily.
+              La publication et la réservation TEST utilisent les contrôles serveur existants.
             </p>
           </div>
 
@@ -975,8 +997,8 @@ export function BikeSetupWizard({
                 </span>
               </div>
               <div style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)' }}>
-                📍 Disponible à {selectedLocation?.name ?? 'votre boutique'} ({fleetCount}{' '}
-                exemplaires)
+                📍 Disponible à {selectedLocation?.name ?? 'votre établissement'} (
+                {bike.activeInventoryCount} exemplaire(s) actif(s))
               </div>
             </div>
           </div>
@@ -998,12 +1020,24 @@ export function BikeSetupWizard({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                color: 'var(--ut-color-success)',
+                color: hasIdentity ? 'var(--ut-color-success)' : 'var(--ut-color-warning)',
                 fontWeight: 'var(--ut-weight-bold)',
                 fontSize: '0.9rem',
               }}
             >
-              <span>✓</span> Nom et description commerciale complets
+              <span>{hasIdentity ? '✓' : '○'}</span> Nom et description commerciale complets
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: hasActiveVariant ? 'var(--ut-color-success)' : 'var(--ut-color-warning)',
+                fontWeight: 'var(--ut-weight-bold)',
+                fontSize: '0.9rem',
+              }}
+            >
+              <span>{hasActiveVariant ? '✓' : '○'}</span> Variante active créée
             </div>
             <div
               style={{
@@ -1025,32 +1059,75 @@ export function BikeSetupWizard({
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                color: 'var(--ut-color-success)',
+                color: hasPricingForOnboarding
+                  ? 'var(--ut-color-success)'
+                  : 'var(--ut-color-warning)',
                 fontWeight: 'var(--ut-weight-bold)',
                 fontSize: '0.9rem',
               }}
             >
-              <span>✓</span> {getPricingPlanTypeLabel(displayedPricingPlanType)} définie (
-              {displayedPrice} {getPricingPlanUnitLabel(displayedPricingPlanType)})
+              <span>{hasPricingForOnboarding ? '✓' : '○'}</span>{' '}
+              {getPricingPlanTypeLabel(displayedPricingPlanType)} définie ({displayedPrice}{' '}
+              {getPricingPlanUnitLabel(displayedPricingPlanType)})
             </div>
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                color: 'var(--ut-color-success)',
+                color: hasAvailability ? 'var(--ut-color-success)' : 'var(--ut-color-warning)',
                 fontWeight: 'var(--ut-weight-bold)',
                 fontSize: '0.9rem',
               }}
             >
-              <span>✓</span> {fleetCount} exemplaire(s) physique(s) en service
+              <span>{hasAvailability ? '✓' : '○'}</span> {bike.activeInventoryCount} exemplaire(s)
+              physique(s) actif(s) à disposition
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: canPublish ? 'var(--ut-color-success)' : 'var(--ut-color-warning)',
+                fontWeight: 'var(--ut-weight-bold)',
+                fontSize: '0.9rem',
+              }}
+            >
+              <span>{canPublish ? '✓' : '○'}</span> Publication autorisée après validation des
+              éléments bloquants
             </div>
           </div>
+
+          {!canPublish && onboardingFailures.length > 0 && (
+            <div
+              role="alert"
+              style={{
+                padding: '12px 14px',
+                borderRadius: '10px',
+                background: 'var(--ut-color-warning-soft)',
+                color: 'var(--ut-color-warning)',
+                fontSize: '0.88rem',
+              }}
+            >
+              <strong>Éléments bloquants :</strong>
+              <ul style={{ margin: '6px 0 0', paddingLeft: '20px' }}>
+                {onboardingFailures.map((failure) => (
+                  <li key={failure}>{failure}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <p style={{ margin: 0, fontSize: '0.86rem', color: 'var(--ut-color-ink-muted)' }}>
+            Une fois en ligne, une réservation TEST peut être vérifiée depuis la recherche publique.
+            Les holds et réservations continuent d’appliquer la disponibilité transactionnelle par
+            exemplaire.
+          </p>
 
           <div className={styles.stepFooter}>
             <button
               type="button"
-              onClick={() => setCurrentStep('INVENTORY')}
+              onClick={() => setCurrentStep('PHOTOS')}
               className={styles.backBtn}
             >
               ← Retour
@@ -1058,7 +1135,7 @@ export function BikeSetupWizard({
             <button
               type="button"
               onClick={handlePublish}
-              disabled={isLoading || !bike.isPublicationReady}
+              disabled={isLoading || !canPublish}
               className={styles.primaryActionBtn}
               style={{
                 background: 'var(--ut-color-success)',

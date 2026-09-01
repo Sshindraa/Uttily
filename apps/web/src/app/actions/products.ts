@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 import { requireCatalogManagerOf } from '@/lib/catalog-auth';
 import { runAction } from '@/lib/action-mapper';
 import { isValidUuid } from '@/lib/validation';
+import type { DatabaseClient } from '@uttily/database';
 import {
   createProduct,
   updateProduct,
@@ -17,6 +18,7 @@ import {
   listVariants,
   updateVariant,
   activateDailyPricingPlan,
+  publishFirstEquipment,
   type ProductRecord,
   type CreateProductInput,
 } from '@uttily/core';
@@ -198,6 +200,78 @@ export async function restoreArchivedProductAction(
   });
 }
 
+interface CreateDraftProductInput {
+  categoryId: string;
+  name: string;
+  description: string;
+  variantName?: string;
+}
+
+async function createDraftProduct(
+  db: DatabaseClient,
+  organizationId: string,
+  input: CreateDraftProductInput,
+): Promise<ProductRecord> {
+  return createProduct(db, {
+    organizationId,
+    categoryId: input.categoryId,
+    name: input.name,
+    ...(input.description ? { description: input.description } : {}),
+    ...(input.variantName ? { initialVariantName: input.variantName } : {}),
+  });
+}
+
+/** Création guidée du premier équipement, quelle que soit sa famille active. */
+export async function createFirstEquipmentDraftAction(
+  organizationId: string,
+  _prev: ActionResult<{ equipmentId: string }>,
+  formData: FormData,
+): Promise<ActionResult<{ equipmentId: string }>> {
+  const name = String(formData.get('name') ?? '').trim();
+  const categoryId = String(formData.get('categoryId') ?? '');
+  const variantName = String(formData.get('variantName') ?? '').trim();
+  const description = String(formData.get('description') ?? '').trim();
+
+  const fieldErrors: Record<string, string> = {};
+  if (name.length < 2) {
+    fieldErrors.name = 'Le nom de l’équipement doit comporter au moins 2 caractères.';
+  }
+  if (!isValidUuid(categoryId)) {
+    fieldErrors.categoryId = 'Veuillez sélectionner une catégorie valide.';
+  }
+  if (variantName.length > 80) {
+    fieldErrors.variantName = 'Le nom de la variante est trop long.';
+  }
+
+  if (Object.keys(fieldErrors).length > 0) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Veuillez renseigner correctement les informations de l’équipement.',
+      fieldErrors,
+    };
+  }
+
+  return runAction(async () => {
+    const { db, organizationId: authorizedOrgId } = await requireCatalogManagerOf(organizationId);
+    const product = await createDraftProduct(db, authorizedOrgId, {
+      categoryId,
+      name,
+      description,
+      ...(variantName ? { variantName } : {}),
+    });
+
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${product.id}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${product.id}/setup`);
+    return { equipmentId: product.id };
+  });
+}
+
+/**
+ * Alias historique conservé pour les intégrations existantes de la route
+ * `/bikes/new`. Le nouveau parcours utilise `createFirstEquipmentDraftAction`.
+ */
 export async function createBikeDraftAction(
   organizationId: string,
   _prev: ActionResult<{ bikeId: string }>,
@@ -227,13 +301,14 @@ export async function createBikeDraftAction(
 
   return runAction(async () => {
     const { db, organizationId: authorizedOrgId } = await requireCatalogManagerOf(organizationId);
-    const product = await createProduct(db, {
-      organizationId: authorizedOrgId,
+    const product = await createDraftProduct(db, authorizedOrgId, {
       categoryId,
       name,
-      ...(description ? { description } : {}),
+      description,
     });
 
+    // Contrat historique : la taille d'un vélo reste portée par la variante
+    // et ses attributs pour les intégrations qui utilisent encore cette action.
     if (size) {
       const variants = await listVariants(db, authorizedOrgId, product.id);
       if (variants[0]) {
@@ -281,5 +356,37 @@ export async function publishBikeFromSetupAction(
     revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
     revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${productId}`);
     return { bikeId: productId };
+  });
+}
+
+/** Publication guidée avec le contrôle serveur de l'offre réservable. */
+export async function publishFirstEquipmentFromSetupAction(
+  organizationId: string,
+  _prev: ActionResult<{ equipmentId: string }>,
+  formData: FormData,
+): Promise<ActionResult<{ equipmentId: string }>> {
+  const productId = String(formData.get('productId') ?? '');
+  const pricingPlanId = String(formData.get('pricingPlanId') ?? '');
+
+  if (!isValidUuid(productId)) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Identifiant d’équipement invalide.',
+    };
+  }
+
+  return runAction(async () => {
+    const { db, organizationId: authorizedOrgId } = await requireCatalogManagerOf(organizationId);
+
+    if (isValidUuid(pricingPlanId)) {
+      await activateDailyPricingPlan(db, authorizedOrgId, pricingPlanId);
+    }
+
+    await publishFirstEquipment(db, authorizedOrgId, productId);
+
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes/${productId}`);
+    return { equipmentId: productId };
   });
 }

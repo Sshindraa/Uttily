@@ -21,18 +21,21 @@ describe('BikeSetupPage (/bikes/[bikeId]/setup)', () => {
   });
 
   it('intègre les 5 étapes dans son wizard client', () => {
-    expect(wizardSource).toContain('1. Mon équipement');
-    expect(wizardSource).toContain('2. Mes photos');
+    expect(wizardSource).toContain('1. Catégorie, produit & variante');
+    expect(wizardSource).toContain('2. Exemplaires & lieu');
     expect(wizardSource).toContain('3. Mon tarif');
-    expect(wizardSource).toContain('4. Mes exemplaires');
-    expect(wizardSource).toContain('5. Mettre en ligne');
+    expect(wizardSource).toContain('4. Mes photos');
+    expect(wizardSource).toContain('5. Disponibilité & publication');
   });
 
   it('appelle les actions de sauvegarde immédiate et de mise en ligne', () => {
     expect(wizardSource).toContain('updateProductAction');
     expect(wizardSource).toContain('saveDailyPricingPlanDraftAction');
     expect(wizardSource).toContain('bulkCreateInventoryItemsAction');
-    expect(wizardSource).toContain('publishBikeFromSetupAction');
+    expect(wizardSource).toContain('publishFirstEquipmentFromSetupAction');
+    expect(pageSource).toContain('activeInventoryCount: bike.inventory.activeCount');
+    expect(pageSource).toContain('isVariantActive: bike.variant.isActive');
+    expect(pageSource).toContain('isOfferReady:');
   });
 
   it('transmet le slug et réserve le Photo Coach au vélo', () => {
@@ -43,6 +46,8 @@ describe('BikeSetupPage (/bikes/[bikeId]/setup)', () => {
     expect(wizardSource).toContain("currentStep === 'PHOTOS' && hasBikePhotoModule");
     expect(wizardSource).toContain("currentStep === 'PHOTOS' && !hasBikePhotoModule");
     expect(wizardSource).toContain('<NeutralPhotoUploader');
+    expect(wizardSource).toContain('bike.isOfferReady');
+    expect(wizardSource).toContain('réservation TEST');
   });
 
   it('laisse la présentation et les mutations interactives au wizard de la feature bikes', () => {

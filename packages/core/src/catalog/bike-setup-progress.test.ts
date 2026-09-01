@@ -71,16 +71,16 @@ describe('BikeSetupProgress Read Model (Core Unit Tests)', () => {
     statusSummary: 'INCOMPLETE',
   };
 
-  it('indique PHOTOS comme prochaine étape si l’identité est complète mais 0 photos', () => {
+  it('indique INVENTORY comme prochaine étape pour configurer exemplaire et lieu', () => {
     const progress = resolveBikeSetupProgress(baseBike);
 
     expect(progress.completedSteps).toContain('IDENTITY');
-    expect(progress.completedSteps).not.toContain('PHOTOS');
-    expect(progress.nextStep).toBe('PHOTOS');
+    expect(progress.completedSteps).not.toContain('INVENTORY');
+    expect(progress.nextStep).toBe('INVENTORY');
     expect(progress.isPublicationReady).toBe(false);
   });
 
-  it('indique PRICING comme prochaine étape si photos complètes mais aucun tarif', () => {
+  it('indique PRICING comme prochaine étape si exemplaire configuré mais aucun tarif', () => {
     const bikeWithPhotos: UnifiedBike = {
       ...baseBike,
       photos: {
@@ -89,24 +89,32 @@ describe('BikeSetupProgress Read Model (Core Unit Tests)', () => {
         isComplete: true,
         items: [makePhoto('1', 0), makePhoto('2', 1), makePhoto('3', 2)],
       },
+      inventory: {
+        totalCount: 1,
+        activeCount: 1,
+        maintenanceCount: 0,
+        retiredCount: 0,
+        items: [],
+      },
     };
 
     const progress = resolveBikeSetupProgress(bikeWithPhotos);
 
     expect(progress.completedSteps).toContain('IDENTITY');
     expect(progress.completedSteps).toContain('PHOTOS');
+    expect(progress.completedSteps).toContain('INVENTORY');
     expect(progress.completedSteps).not.toContain('PRICING');
     expect(progress.nextStep).toBe('PRICING');
   });
 
-  it('indique INVENTORY si tarif configuré mais 0 vélo en stock', () => {
+  it('indique PHOTOS si tarif et exemplaire configurés mais aucune photo', () => {
     const bikeWithPricing: UnifiedBike = {
       ...baseBike,
       photos: {
-        count: 3,
+        count: 0,
         minRequired: 3,
-        isComplete: true,
-        items: [makePhoto('1', 0), makePhoto('2', 1), makePhoto('3', 2)],
+        isComplete: false,
+        items: [],
       },
       pricing: {
         activePlan: null,
@@ -128,15 +136,22 @@ describe('BikeSetupProgress Read Model (Core Unit Tests)', () => {
         },
         isPriced: false,
       },
+      inventory: {
+        totalCount: 1,
+        activeCount: 1,
+        maintenanceCount: 0,
+        retiredCount: 0,
+        items: [],
+      },
     };
 
     const progress = resolveBikeSetupProgress(bikeWithPricing);
 
     expect(progress.completedSteps).toContain('IDENTITY');
-    expect(progress.completedSteps).toContain('PHOTOS');
     expect(progress.completedSteps).toContain('PRICING');
-    expect(progress.completedSteps).not.toContain('INVENTORY');
-    expect(progress.nextStep).toBe('INVENTORY');
+    expect(progress.completedSteps).toContain('INVENTORY');
+    expect(progress.completedSteps).not.toContain('PHOTOS');
+    expect(progress.nextStep).toBe('PHOTOS');
   });
 
   it('indique REVIEW si toutes les étapes sont complétées', () => {
@@ -200,7 +215,7 @@ describe('BikeSetupProgress Read Model (Core Unit Tests)', () => {
 
     const progress = resolveBikeSetupProgress(fullyCompleteBike);
 
-    expect(progress.completedSteps).toEqual(['IDENTITY', 'PHOTOS', 'PRICING', 'INVENTORY']);
+    expect(progress.completedSteps).toEqual(['IDENTITY', 'INVENTORY', 'PRICING', 'PHOTOS']);
     expect(progress.nextStep).toBe('REVIEW');
     expect(progress.isPublicationReady).toBe(true);
     expect(progress.isOfferReady).toBe(true);
