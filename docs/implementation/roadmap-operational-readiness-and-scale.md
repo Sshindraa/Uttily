@@ -252,7 +252,7 @@ groupées, ni de nouvelles règles métier spécifiques à une catégorie.
 
 **Cadrage livré le 2026-09-01 :** ADR-035 et le registre Core ferment le
 périmètre commercial aux quatre univers Cycle, Kayak/canoë/pagaie, Surf/glisse
-nautique et Neige/glisse. `bike`, `kayak`, `canoe`, `surf`, `ski` et `snowboard` sont `ACTIVE`,
+nautique et Neige/glisse. `bike`, `kayak`, `canoe`, `paddleboard`, `surf`, `ski` et `snowboard` sont `ACTIVE`,
 `equipment` reste un fallback interne et
 les valeurs inconnues sont `UNSUPPORTED`. Aucune catégorie camping, outdoor
 technique, sport généraliste, outillage, jardin, événementiel, audiovisuel ou
@@ -328,14 +328,16 @@ le tarif, la disponibilité, les photos neutres, la publication, la recherche,
 le hold, le paiement TEST et la confirmation. Aucun sous-type, champ, Photo
 Coach, slot vélo, règle kayak, pack ou moteur de supplément n'est ajouté.
 
-**Préparation paddle ouverte le 2026-09-01 :** aucune famille paddle
-canonique n'est encore approuvée. `paddle` reste un slug historique ambigu,
-`paddleboard` est seulement proposé et reste `INACTIVE`/`UNSUPPORTED`. L'audit
-ne trouve aucune donnée catalogue persistante pour simple/tandem,
-rigide/gonflable, dimensions ou capacité ; une présentation interne neutre et
-les garde-fous de non-exposition sont préparés sans migration, fixture publiée,
-publication, réservation ou moteur de compléments. Une décision produit est
-requise avant l'activation.
+**Activation paddleboard livrée le 2026-09-01 :** la famille interne
+`paddleboard` est `ACTIVE` sous un seul slug canonique. L'interface affiche
+« Paddle » en français et « Stand-up paddle » en anglais ; les options
+`single`/`tandem` et `rigid`/`inflatable` sont portées par les attributs de
+variante existants, sans dimension obligatoire. La migration 0054 est
+idempotente, le slug historique `paddle` et les produits `equipment` ne sont
+pas convertis, et le seed local n'ajoute aucun produit publié. Les parcours
+loueur/public réutilisent les invariants génériques, les trois photos valides,
+la recherche, le hold, le paiement TEST et la réservation, sans Photo Coach,
+slot vélo, règle kayak/canoë ou moteur de packs. Le pédalo reste inactif.
 
 ### 7.2 Onboarding autonome
 
@@ -682,8 +684,8 @@ Chaque catégorie définit avant activation :
 - documents ;
 - critères de publication.
 
-Ordre d'activation encadré par ADR-035 : `bike`, `kayak`, `canoe`, `surf`,
-`ski` et `snowboard` actifs ; les autres familles pagaie, les familles neige
+Ordre d'activation encadré par ADR-035 : `bike`, `kayak`, `canoe`, `paddleboard`,
+`surf`, `ski` et `snowboard` actifs ; les autres familles pagaie, les familles neige
 non activées et les familles hors taxonomie fermée sont exclues.
 
 ### 13.2 Kit d'activation pays

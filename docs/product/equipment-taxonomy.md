@@ -10,7 +10,7 @@ univers outdoor fermés :
 | Univers | Slug d’univers | Familles prévues | Statut dans cette tranche |
 | --- | --- | --- | --- |
 | Cycle | `cycle` | `bike` | `ACTIVE` |
-| Kayak, canoë et pagaie | `paddle` | `kayak`, `canoe`, paddle (à décider) | `ACTIVE` pour `kayak` et `canoe` |
+| Kayak, canoë et pagaie | `paddle` | `kayak`, `canoe`, `paddleboard` | `ACTIVE` |
 | Surf et glisse nautique | `surf` | `surf` | `ACTIVE` |
 | Neige et glisse | `snow` | `ski`, `snowboard` | `ACTIVE` |
 
@@ -28,7 +28,7 @@ La taxonomie sépare strictement :
 1. **Univers** : regroupement commercial fermé (`cycle`, `paddle`, `surf`,
    `snow`).
 2. **Famille d'équipement** : slug stable du produit (`bike`, `kayak`, `canoe`,
-   `surf`, `ski`, `snowboard`).
+   `paddleboard`, `surf`, `ski`, `snowboard`).
 3. **Caractéristiques ou sous-types** : valeurs descriptives de la famille,
    jamais des catégories ni des slugs indépendants.
 
@@ -39,29 +39,33 @@ La taxonomie sépare strictement :
 | `canoe` | aucun sous-type ou caractéristique spécialisé dans cette tranche |
 | `surf` | sous-types `classic`, `longboard`, `softboard`, `bodyboard`, `skimboard` |
 | `ski` | sous-types `alpine`, `touring`, `cross-country` |
+| `paddleboard` | `capacity` (`single` ou `tandem`) ; construction `rigid` ou `inflatable` |
 | `snowboard` | aucun sous-type ou caractéristique spécialisé dans cette tranche |
 
-Le fait de couvrir l'univers « Kayak, canoë et pagaie » n'active pas le slug
-`paddle`. La famille `canoe` est désormais active sous son slug canonique ;
-toute autre famille distincte devra être explicitement approuvée avant son
-activation.
+Le slug historique `paddle` reste inchangé et n'est pas promu. La famille
+`paddleboard` est active sous un seul slug canonique ; `single` correspond au
+paddle simple et `tandem` au paddle tandem. Les options ne créent aucun slug
+enfant.
 
-### Préparation paddle (sans activation)
+### Activation paddleboard
 
-Le registre serveur ne définit pas encore de famille paddle canonique. Le slug
-`paddle` déjà présent dans le seed initial est traité comme une valeur
-historique ambiguë, sans conversion ni promotion commerciale. La proposition
-de slug futur est `paddleboard`, uniquement comme hypothèse de travail ; elle
-reste à confirmer par une décision produit et n'est pas ajoutée au registre des
-familles commerciales. Elle reste donc `INACTIVE` et `UNSUPPORTED` côté serveur.
+Le registre serveur définit `paddleboard` comme famille `ACTIVE`. L'interface
+affiche « Paddle » en français et « Stand-up paddle » en anglais. Le slug
+`paddle` déjà présent dans le seed initial reste une valeur historique
+ambiguë : aucune donnée historique n'est convertie et ce slug n'est pas
+publiable comme famille commerciale.
 
-L'inventaire actuel ne contient aucune offre ou fixture paddle publiée et aucun
-attribut persistant démontré pour distinguer paddle simple/tandem,
-rigide/gonflable, dimensions ou capacité. Les termes paddle, paddleboard, SUP
-et stand up paddle présents dans les tests de recherche sont des alias UX ou
-des données synthétiques, pas des données catalogue activées. La préparation
-ajoute seulement une présentation interne neutre, sans caractéristique,
-section, Photo Coach ou slot vélo.
+La migration 0054 ajoute ou réactive uniquement la catégorie canonique
+`paddleboard`; le seed local la prépare sans déplacer `kayak-dev` et sans
+publier de produit synthétique. Les options `capacity` (`single`, `tandem`) et
+`construction` (`rigid`, `inflatable`) réutilisent les attributs de variante
+existants lorsqu'ils sont présents ; aucune dimension obligatoire ni nouvelle
+colonne n'est ajoutée.
+
+Le paddle réutilise les parcours génériques loueur et public, les trois photos
+valides requises avant publication, la recherche, la réservation, le hold et
+le paiement TEST. Il n'active ni Photo Coach, ni slots photo vélo, ni règle
+kayak/canoë, ni moteur de packs. Le pédalo reste inactif.
 
 ## Registre fermé côté serveur
 
@@ -70,7 +74,7 @@ La source de vérité typée est
 Elle distingue :
 
 - `ACTIVE` : familles activées commercialement ; aujourd'hui `bike`, `kayak`,
-  `canoe`, `surf`, `ski` et `snowboard` ;
+  `canoe`, `paddleboard`, `surf`, `ski` et `snowboard` ;
 - `APPROVED_NEXT` : famille approuvée pour le prochain lot ; aucune après
   l'activation du kayak ;
 - `APPROVED_LATER` : familles approuvées mais différées ; aucune dans le
@@ -109,6 +113,14 @@ ou caractéristique spécialisée n'est introduit. Le parcours générique et la
 présentation nautique neutre sont réutilisés, sans Photo Coach, slot vélo,
 règle kayak ou accessoire autonome.
 
+L'activation paddle ajoute la catégorie canonique `paddleboard` via la
+migration 0054, sans conversion des produits historiques `equipment` ou
+`paddle`. Elle utilise un seul slug avec les options descriptives `single`,
+`tandem`, `rigid` et `inflatable` portées par les attributs de variante déjà
+disponibles. Sa présentation est générique nautique, avec « Paddle » en
+français et « Stand-up paddle » en anglais ; aucune règle Photo Coach, slot
+vélo, règle kayak/canoë ou dimension obligatoire n'est ajoutée.
+
 ## Compléments
 
 Les modes futurs d'un complément sont :
@@ -125,7 +137,7 @@ défaut. Aucun schéma de complément ni moteur de supplément n'est créé ici 
 règles de stock, prix, disponibilité et autorisation feront l'objet d'une
 décision avant leur implémentation.
 
-Pour le futur paddle, les compléments `pagaie`, `pompe`, `leash`, `gilet`,
+Pour le paddle, les compléments `pagaie`, `pompe`, `leash`, `gilet`,
 `chariot`, `sac étanche` et `combinaison` suivront ce même contrat : inclus,
 obligatoire, optionnel gratuit, supplément payant ou louable séparément
 uniquement si Uttily et le loueur l'autorisent. Ils restent des compléments

@@ -304,6 +304,15 @@ async function ensureCategory(tx) {
       "updated_at" = now()
   `;
 
+  await tx`
+    INSERT INTO "categories" ("slug", "name", "is_active")
+    VALUES ('paddleboard', 'Paddle', true)
+    ON CONFLICT ("slug") DO UPDATE SET
+      "name" = EXCLUDED."name",
+      "is_active" = true,
+      "updated_at" = now()
+  `;
+
   const rows = await tx`
     INSERT INTO "categories" ("slug", "name", "is_active")
     VALUES ('kayak', 'Kayaks', true)

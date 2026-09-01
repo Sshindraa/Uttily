@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   GENERIC_CATEGORY_PRESENTATION,
   GENERIC_WATERCRAFT_CATEGORY_PRESENTATION,
-  PADDLE_READINESS_PRESENTATION,
+  PADDLEBOARD_CATEGORY_PRESENTATION,
   getCategoryDisplayLabel,
   getCategoryPresentation,
   getDisplayableCharacteristics,
@@ -125,19 +125,35 @@ describe('registre de présentation des catégories', () => {
     ).toEqual([]);
   });
 
-  it('prépare le paddle sans l’activer ni lui attribuer des règles spécialisées', () => {
-    expect(PADDLE_READINESS_PRESENTATION.status).toBe('INACTIVE');
-    expect(PADDLE_READINESS_PRESENTATION.proposedSlug).toBe('paddleboard');
-    expect(getCategoryPresentation('paddle')).toBe(PADDLE_READINESS_PRESENTATION.presentation);
-    expect(getCategoryPresentation('paddleboard')).toBe(PADDLE_READINESS_PRESENTATION.presentation);
-    expect(PADDLE_READINESS_PRESENTATION.presentation.singularLabel).toBe('paddle');
-    expect(PADDLE_READINESS_PRESENTATION.presentation.characteristics).toEqual([]);
-    expect(PADDLE_READINESS_PRESENTATION.presentation.specificSections).toEqual([]);
+  it('active paddleboard sous une seule famille et conserve le slug historique neutre', () => {
+    expect(PADDLEBOARD_CATEGORY_PRESENTATION.status).toBe('ACTIVE');
+    expect(PADDLEBOARD_CATEGORY_PRESENTATION.slug).toBe('paddleboard');
+    expect(getCategoryPresentation('paddle')).not.toBe(
+      PADDLEBOARD_CATEGORY_PRESENTATION.presentation,
+    );
+    expect(getCategoryPresentation('paddleboard')).toBe(
+      PADDLEBOARD_CATEGORY_PRESENTATION.presentation,
+    );
+    expect(PADDLEBOARD_CATEGORY_PRESENTATION.presentation.singularLabel).toBe('paddle');
+    expect(PADDLEBOARD_CATEGORY_PRESENTATION.presentation.characteristics).toEqual([
+      { key: 'capacity', label: 'Capacité', allowedValues: ['single', 'tandem'] },
+      { key: 'construction', label: 'Construction', allowedValues: ['rigid', 'inflatable'] },
+    ]);
+    expect(PADDLEBOARD_CATEGORY_PRESENTATION.presentation.specificSections).toEqual([]);
     expect(getCategoryDisplayLabel('paddle', 'Paddle historique')).toBe('paddle');
     expect(
       getDisplayableCharacteristics(
         { capacity: 'tandem', construction: 'inflatable' },
-        PADDLE_READINESS_PRESENTATION.presentation,
+        PADDLEBOARD_CATEGORY_PRESENTATION.presentation,
+      ),
+    ).toEqual([
+      { label: 'Capacité', value: 'tandem' },
+      { label: 'Construction', value: 'inflatable' },
+    ]);
+    expect(
+      getDisplayableCharacteristics(
+        { capacity: 'triple', construction: 'unknown' },
+        PADDLEBOARD_CATEGORY_PRESENTATION.presentation,
       ),
     ).toEqual([]);
   });

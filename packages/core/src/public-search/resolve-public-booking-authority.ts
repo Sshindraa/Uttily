@@ -8,7 +8,7 @@ import {
   products,
   productVariants,
 } from '@uttily/database';
-import { isPaddleReadinessCategorySlug } from '../catalog/equipment-taxonomy';
+import { isHistoricalPaddleCategorySlug } from '../catalog/equipment-taxonomy';
 import type {
   PublicProductPublicationGate,
   ResolvePublicBookingAuthorityInput,
@@ -104,7 +104,7 @@ export async function resolvePublicBookingAuthority(
     return { kind: 'NOT_FOUND' };
   }
 
-  if (isPaddleReadinessCategorySlug(r.categorySlug)) {
+  if (isHistoricalPaddleCategorySlug(r.categorySlug)) {
     return { kind: 'NOT_FOUND' };
   }
 

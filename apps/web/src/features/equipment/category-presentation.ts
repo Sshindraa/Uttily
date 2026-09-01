@@ -15,19 +15,19 @@ export interface CategoryPresentation {
   readonly setupActionLabel: string;
 }
 
-export interface InactiveCategoryPresentation {
-  readonly proposedSlug: string;
-  readonly status: 'INACTIVE';
+export interface ActiveCategoryPresentation {
+  readonly slug: string;
+  readonly status: 'ACTIVE';
   readonly presentation: CategoryPresentation;
 }
 
 // Do not import the server package from client components: this is the
-// presentation mirror of the inactive Core contract, not its authority.
-const PADDLE_READINESS_PROPOSED_SLUG = 'paddleboard';
-const PADDLE_READINESS_HISTORICAL_SLUG = 'paddle';
+// presentation mirror of the Core contract, not its authority.
+const PADDLEBOARD_CATEGORY_SLUG = 'paddleboard';
+const HISTORICAL_PADDLE_CATEGORY_SLUG = 'paddle';
 
-function isPaddleReadinessCategorySlug(slug: string | null | undefined): boolean {
-  return slug === PADDLE_READINESS_PROPOSED_SLUG || slug === PADDLE_READINESS_HISTORICAL_SLUG;
+function isPaddleCategorySlug(slug: string | null | undefined): boolean {
+  return slug === PADDLEBOARD_CATEGORY_SLUG || slug === HISTORICAL_PADDLE_CATEGORY_SLUG;
 }
 
 /**
@@ -55,19 +55,37 @@ export const GENERIC_WATERCRAFT_CATEGORY_PRESENTATION: CategoryPresentation = {
   setupActionLabel: 'Continuer la configuration',
 };
 
-/** Présentation préparée uniquement pour documenter le futur paddle. */
-export const PADDLE_READINESS_PRESENTATION: InactiveCategoryPresentation = Object.freeze({
-  proposedSlug: PADDLE_READINESS_PROPOSED_SLUG,
-  status: 'INACTIVE',
+/** Présentation active de la famille paddleboard, sans règle métier dédiée. */
+export const PADDLEBOARD_CATEGORY_PRESENTATION: ActiveCategoryPresentation = Object.freeze({
+  slug: PADDLEBOARD_CATEGORY_SLUG,
+  status: 'ACTIVE',
   presentation: Object.freeze({
     singularLabel: 'paddle',
     pluralLabel: 'paddles',
     icon: '🛟',
-    characteristics: [],
+    characteristics: [
+      { key: 'capacity', label: 'Capacité', allowedValues: ['single', 'tandem'] },
+      {
+        key: 'construction',
+        label: 'Construction',
+        allowedValues: ['rigid', 'inflatable'],
+      },
+    ],
     specificSections: [],
     primaryActionLabel: 'Gérer l’équipement',
     setupActionLabel: 'Continuer la configuration',
   }),
+});
+
+/** Présentation neutre conservée pour le slug historique `paddle`. */
+const HISTORICAL_PADDLE_PRESENTATION: CategoryPresentation = Object.freeze({
+  singularLabel: 'paddle',
+  pluralLabel: 'paddles',
+  icon: '🛟',
+  characteristics: [],
+  specificSections: [],
+  primaryActionLabel: 'Gérer l’équipement',
+  setupActionLabel: 'Continuer la configuration',
 });
 
 const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
@@ -138,10 +156,10 @@ const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
     primaryActionLabel: 'Gérer l’équipement',
     setupActionLabel: 'Continuer la configuration',
   },
-  // Ces entrées servent uniquement aux données historiques ou à la préparation
-  // interne ; le registre serveur ne les considère pas comme commerciales.
-  paddle: PADDLE_READINESS_PRESENTATION.presentation,
-  [PADDLE_READINESS_PROPOSED_SLUG]: PADDLE_READINESS_PRESENTATION.presentation,
+  // L'ancien slug reste neutre pour la compatibilité ; seule la famille
+  // canonique `paddleboard` reçoit sa présentation active.
+  paddle: HISTORICAL_PADDLE_PRESENTATION,
+  [PADDLEBOARD_CATEGORY_SLUG]: PADDLEBOARD_CATEGORY_PRESENTATION.presentation,
   equipment: GENERIC_CATEGORY_PRESENTATION,
 };
 
@@ -187,7 +205,7 @@ export function getCategoryDisplayLabel(
     categorySlug === 'ski' ||
     categorySlug === 'kayak' ||
     categorySlug === 'canoe' ||
-    isPaddleReadinessCategorySlug(categorySlug)
+    isPaddleCategorySlug(categorySlug)
   ) {
     return getCategoryPresentation(categorySlug).singularLabel;
   }
