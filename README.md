@@ -1,6 +1,9 @@
 # Uttily
 
-Uttily est une plateforme de location d'équipements destinée d'abord aux loueurs professionnels : catalogue, stock physique, disponibilité, réservation, paiement et opérations de retrait/retour.
+Uttily est une plateforme fermée de location d'équipements outdoor destinée
+d'abord aux loueurs professionnels : catalogue, stock physique, disponibilité,
+réservation, paiement et opérations de retrait/retour. Son périmètre commercial
+est limité aux quatre univers définis dans la [taxonomie canonique](docs/product/equipment-taxonomy.md).
 
 Ce dépôt démarre volontairement par la documentation d'architecture. Aucun choix d'implémentation ne doit contourner les décisions documentées dans [`docs/`](docs/README.md).
 
@@ -32,7 +35,8 @@ Pour les frais marketplace, consulter ensuite l'[état canonique du modèle
 - Les prix, devises, conditions et stratégies de garantie sont figés dans la réservation.
 - Les traitements secondaires passent par une outbox et un worker.
 - La vision long terme est l'option C : OS loueur + marketplace + intelligence +
-  distribution partenaires/agents, sans élargir prématurément le MVP (ADR-019).
+  distribution partenaires/agents dans un périmètre outdoor spécialisé fermé,
+  sans élargir prématurément le MVP (ADR-019, ADR-035).
 
 ## Stack
 

@@ -6,6 +6,9 @@ Les lots sont séquentiels. Ne pas commencer un lot dépendant avant que ses inv
 > [roadmap de préparation opérationnelle et de passage à l'échelle](roadmap-operational-readiness-and-scale.md).
 > Le présent backlog reste l'autorité des lots effectivement approuvés, en cours
 > ou livrés ; la roadmap ne transforme pas une capacité future en lot autorisé.
+> La taxonomie commerciale outdoor fermée est canonique dans
+> [`docs/product/equipment-taxonomy.md`](../product/equipment-taxonomy.md) et
+> ADR-035.
 
 ## Lot 0 — Fondation du dépôt
 
@@ -304,8 +307,8 @@ aucune tâche de Phase 1 n'est engagée.
 
 ## Chantier 21-U2 — Premières surfaces universelles « Mes équipements »
 
-**Statut : tranche technique livrée le 2026-09-01 — Phase 2 ouverte uniquement
-sur ce périmètre ; aucune tâche de Phase 1 n'est modifiée.** ADR-034 ajoute un
+**Statut : tranches techniques et cadrage livrés le 2026-09-01 — Phase 2 ouverte
+uniquement sur ce périmètre ; aucune tâche de Phase 1 n'est modifiée.** ADR-034 ajoute un
 registre de présentation frontend avec fallback générique obligatoire. Les
 surfaces liste et fiche historiques `/bikes` consomment `categorySlug` pour
 présenter `equipment` et les catégories inconnues, tout en conservant les
@@ -317,7 +320,8 @@ disponibilité transactionnelle, les prix et les URLs restent inchangés.
 | --- | --- | --- |
 | 21-U2-A — Registre de présentation par catégorie | libellés singulier/pluriel, caractéristiques explicites, sections spécifiques, actions principales et fallback générique ; tests vélo, `equipment`, fallback et tenant | **Terminé le 2026-09-01 — ADR-034** |
 | 21-U2-B — Liste et fiche génériques | branchement limité aux surfaces « Mes équipements », états vides, titres, badges, synthèse photo et actions ; règles Photo Coach vélo conservées | **Terminé le 2026-09-01 — validation ciblée Web et typecheck** |
-| 21-U2-C — Photos et maintenance par catégorie | gestionnaire photo neutre hors vélo ; Photo Coach et trois slots canoniques conservés pour le vélo ; libellés du registre dans la flotte et toutes les surfaces de maintenance ; `categorySlug` exposé par les projections concernées, sans migration ni changement de mutation | **Terminé le 2026-09-01 — tests ciblés Web/Core et validations CI à venir** |
+| 21-U2-C — Photos et maintenance par catégorie | gestionnaire photo neutre hors vélo ; Photo Coach et trois slots canoniques conservés pour le vélo ; libellés du registre dans la flotte et toutes les surfaces de maintenance ; `categorySlug` exposé par les projections concernées, sans migration ni changement de mutation | **Terminé le 2026-09-01 — tests ciblés Web/Core et CI verte de la PR #42** |
+| 21-U2-D — Taxonomie outdoor fermée | contrat typé serveur : quatre univers, familles et sous-types, statuts `ACTIVE`/`APPROVED_NEXT`/`APPROVED_LATER`/`INTERNAL_FALLBACK`, inconnus `UNSUPPORTED`, modes futurs de compléments | **Livré le 2026-09-01 — ADR-035 ; aucune donnée, recherche ou publication modifiée** |
 
 ### Recherche par intention — UX accueil et résultats (2026-08-31)
 

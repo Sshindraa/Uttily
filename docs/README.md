@@ -3,14 +3,15 @@
 | Document | Rôle |
 | --- | --- |
 | [Périmètre MVP](product/mvp-scope.md) | Ce qui est inclus, exclu et reporté. |
+| [Taxonomie d'équipements](product/equipment-taxonomy.md) | Périmètre commercial outdoor fermé et statuts des familles. |
 | [Business plan et stratégie](product/business-plan.md) | Vision, positionnement, pilote, modèle économique et indicateurs. |
-| [Vision long terme](product/long-term-vision.md) | Option C : OS loueur, marketplace, intelligence et distribution agent-ready. |
+| [Vision long terme](product/long-term-vision.md) | Option C : OS loueur, marketplace outdoor spécialisée, intelligence et distribution agent-ready. |
 | [Architecture](architecture/overview.md) | Structure du système et trajectoire de croissance. |
 | [Réservation & disponibilité](architecture/booking-and-availability.md) | Règles de concurrence, holds et états. |
 | [Modèle de données](architecture/data-model.md) | Entités métier et responsabilités. |
 | [Contexte agent](implementation/agent-context.md) | Brief complet pour commencer à implémenter. |
 | [Roadmap remise à niveau et nettoyage](implementation/roadmap-remise-a-niveau-nettoyage.md) | Plan priorisé de cohérence, remise à niveau, nettoyage et optimisation. |
-| [Roadmap opérationnelle et passage à l'échelle](implementation/roadmap-operational-readiness-and-scale.md) | Trajectoire globale : LIVE, OS loueur universel, marketplace, intégrations, intelligence et expansion. |
+| [Roadmap opérationnelle et passage à l'échelle](implementation/roadmap-operational-readiness-and-scale.md) | Trajectoire globale : LIVE, OS loueur universel, marketplace outdoor spécialisée, intégrations, intelligence et expansion. |
 | [Backlog](implementation/backlog.md) | Ordre des lots et critères d'acceptation. |
 | [Invariants métier](implementation/domain-invariants.md) | Règles qui ne doivent jamais être violées. |
 | [Parcours utilisateurs](implementation/user-flows.md) | Comportements attendus côté client, loueur et administration. |
@@ -22,6 +23,7 @@
 | [ADR-019](decisions/ADR-019-ai-native-global-rental-infrastructure.md) | Direction stratégique AI-native et garde-fous durables. |
 | [ADR-030](decisions/ADR-030-split-refund-policy.md) | Politique proposée de remboursement split, soumise à validation Finance/Juridique. |
 | [ADR-031](decisions/ADR-031-category-photo-requirements-and-publication-gate.md) | Slots photo obligatoires du pilote vélo ; règle générique conservée pour les autres catégories. |
+| [ADR-035](decisions/ADR-035-closed-outdoor-equipment-taxonomy.md) | Taxonomie commerciale outdoor fermée et registre serveur des familles. |
 
 ## Règle de maintenance
 
