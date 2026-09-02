@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { OperationalPlanning, OperationalPlanningEvent } from '@uttily/core';
+import type {
+  OperationalItemCalendar,
+  OperationalPlanning,
+  OperationalPlanningEvent,
+} from '@uttily/core';
 import { getPlanningFleetDayStatus, PlanningView } from './planning-view';
 
 vi.mock('next/navigation', () => ({
@@ -154,5 +158,74 @@ describe('PlanningView — blocages manuels', () => {
     expect(
       getPlanningFleetDayStatus(planning().events, 'org-1', 'blocked-item', '2026-08-06'),
     ).toMatchObject({ status: 'BLOCKED', label: '⛔ Bloqué' });
+  });
+
+  it('affiche la timeline mono-exemplaire avec les types distincts et le fuseau du lieu', () => {
+    const base = planning();
+    const calendar: OperationalItemCalendar = {
+      from,
+      to,
+      locationId: 'location-1',
+      locationName: 'Paris',
+      locationTimeZone: 'Europe/Paris',
+      item: base.fleetItems[0]!,
+      events: [
+        event({
+          id: 'hold-detail',
+          type: 'HOLD',
+          inventoryItemId: 'rented-item',
+          categorySlug: 'surf',
+          holdId: 'hold-detail',
+          holdExpiresAt: new Date('2026-08-03T11:00:00.000Z'),
+        }) as OperationalItemCalendar['events'][number],
+        event({
+          id: 'rental-detail',
+          type: 'RENTAL',
+          inventoryItemId: 'rented-item',
+          categorySlug: 'surf',
+          bookingId: 'booking-detail',
+          customerName: 'Client détail',
+        }) as OperationalItemCalendar['events'][number],
+      ],
+    };
+
+    const html = renderToStaticMarkup(
+      <PlanningView
+        orgId="org-1"
+        planning={base}
+        locations={[{ id: 'location-1', name: 'Paris' }]}
+        selectedLocationId="location-1"
+        selectedItemCalendar={calendar}
+      />,
+    );
+
+    expect(html).toContain('Calendrier détaillé');
+    expect(html).toContain('Hold temporaire');
+    expect(html).toContain('Réservation');
+    expect(html).toContain('Europe/Paris');
+    expect(html).toContain('Ouvrir le détail');
+  });
+
+  it('affiche un état vide explicite pour une fenêtre sans événement', () => {
+    const base = planning();
+    const html = renderToStaticMarkup(
+      <PlanningView
+        orgId="org-1"
+        planning={base}
+        locations={[{ id: 'location-1', name: 'Paris' }]}
+        selectedLocationId="location-1"
+        selectedItemCalendar={{
+          from,
+          to,
+          locationId: 'location-1',
+          locationName: 'Paris',
+          locationTimeZone: 'Europe/Paris',
+          item: base.fleetItems[0]!,
+          events: [],
+        }}
+      />,
+    );
+
+    expect(html).toContain('Aucun événement sur cette fenêtre');
   });
 });

@@ -602,6 +602,7 @@ export function FleetListView({
                   const statusPresentation = getInventoryStatusPresentation(item.status, isBroken);
                   const categoryPresentation = getCategoryPresentation(item.categorySlug);
                   const bikeLink = `/dashboard/${organizationId}/bikes/${item.productId}`;
+                  const calendarLink = `/dashboard/${organizationId}/bookings/planning?locationId=${item.currentLocationId}&inventoryItemId=${item.id}`;
 
                   return (
                     <tr key={item.id} style={{ borderBottom: 'var(--ut-border-thin)' }}>
@@ -681,17 +682,37 @@ export function FleetListView({
                         📍 {item.locationName}
                       </td>
                       <td style={{ padding: '1rem', textAlign: 'right' }}>
-                        <Link
-                          href={bikeLink}
+                        <div
                           style={{
-                            fontSize: '0.85rem',
-                            color: 'var(--ut-color-primary)',
-                            fontWeight: 'var(--ut-weight-semibold)',
-                            textDecoration: 'none',
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            gap: '0.75rem',
+                            flexWrap: 'wrap',
                           }}
                         >
-                          Fiche équipement →
-                        </Link>
+                          <Link
+                            href={calendarLink}
+                            style={{
+                              fontSize: '0.85rem',
+                              color: 'var(--ut-color-primary)',
+                              fontWeight: 'var(--ut-weight-semibold)',
+                              textDecoration: 'none',
+                            }}
+                          >
+                            Calendrier →
+                          </Link>
+                          <Link
+                            href={bikeLink}
+                            style={{
+                              fontSize: '0.85rem',
+                              color: 'var(--ut-color-primary)',
+                              fontWeight: 'var(--ut-weight-semibold)',
+                              textDecoration: 'none',
+                            }}
+                          >
+                            Fiche équipement →
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );

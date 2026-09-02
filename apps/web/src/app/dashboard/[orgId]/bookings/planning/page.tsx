@@ -1,5 +1,6 @@
-import { getOperationalPlanning, listLocations } from '@uttily/core';
+import { getOperationalItemCalendar, getOperationalPlanning, listLocations } from '@uttily/core';
 import { requireFulfillmentOperatorOf } from '@/lib/fulfillment-auth';
+import { isValidUuid } from '@/lib/operations-helpers';
 import { PlanningView } from '@/features/planning';
 
 /**
@@ -14,7 +15,12 @@ export default async function BookingPlanningPage({
   searchParams,
 }: {
   params: Promise<{ orgId: string }>;
-  searchParams?: Promise<{ locationId?: string; from?: string; to?: string }>;
+  searchParams?: Promise<{
+    locationId?: string;
+    from?: string;
+    to?: string;
+    inventoryItemId?: string;
+  }>;
 }): Promise<React.ReactElement> {
   const { orgId } = await params;
   const sp = (await searchParams) ?? {};
@@ -25,12 +31,23 @@ export default async function BookingPlanningPage({
   const selectedLocationId = sp.locationId ?? locations[0]?.id ?? null;
   const fromDate = sp.from ? new Date(sp.from) : undefined;
   const toDate = sp.to ? new Date(sp.to) : undefined;
+  const requestedItemId = sp.inventoryItemId?.trim() || null;
+  const validItemId = requestedItemId && isValidUuid(requestedItemId) ? requestedItemId : null;
 
-  const planning = await getOperationalPlanning(db, organizationId, {
-    locationId: selectedLocationId ?? undefined,
-    from: fromDate,
-    to: toDate,
-  });
+  const [planning, selectedItemCalendar] = await Promise.all([
+    getOperationalPlanning(db, organizationId, {
+      locationId: selectedLocationId ?? undefined,
+      from: fromDate,
+      to: toDate,
+    }),
+    validItemId
+      ? getOperationalItemCalendar(db, organizationId, validItemId, {
+          locationId: selectedLocationId ?? undefined,
+          from: fromDate,
+          to: toDate,
+        })
+      : Promise.resolve(null),
+  ]);
 
   return (
     <PlanningView
@@ -38,6 +55,8 @@ export default async function BookingPlanningPage({
       planning={planning}
       locations={locations.map((l) => ({ id: l.id, name: l.name }))}
       selectedLocationId={selectedLocationId}
+      selectedItemCalendar={selectedItemCalendar}
+      selectedItemCalendarError={requestedItemId !== null && selectedItemCalendar === null}
     />
   );
 }

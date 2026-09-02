@@ -244,14 +244,16 @@ export async function getOperationalPlanning(
       ),
     );
 
-  // 6. Blocages manuels actifs sur la période
+  // 6. Holds et blocages manuels actifs sur la période
   const manualBlockRows = await db
     .select({
       manualBlockId: inventoryBlocks.id,
+      blockType: inventoryBlocks.type,
       recurringSeriesId: manualBlockSeriesOccurrences.seriesId,
       blockStatus: inventoryBlocks.status,
       blockedStartAt: inventoryBlocks.blockedStartAt,
       blockedEndAt: inventoryBlocks.blockedEndAt,
+      holdExpiresAt: inventoryBlocks.expiresAt,
       inventoryItemId: inventoryItems.id,
       internalSku: inventoryItems.internalSku,
       productName: products.name,
@@ -274,8 +276,8 @@ export async function getOperationalPlanning(
     .where(
       and(
         eq(inventoryBlocks.organizationId, organizationId),
-        eq(inventoryBlocks.type, 'MANUAL_BLOCK'),
-        eq(inventoryBlocks.status, 'ACTIVE'),
+        inArray(inventoryBlocks.type, ['MANUAL_BLOCK', 'HOLD']),
+        inArray(inventoryBlocks.status, ['ACTIVE', 'PAYMENT_PROCESSING']),
         isNull(inventoryBlocks.deletedAt),
         isNull(inventoryItems.deletedAt),
         isNull(productVariants.deletedAt),
@@ -386,24 +388,49 @@ export async function getOperationalPlanning(
     const clipped = clipPlanningInterval(b.blockedStartAt, b.blockedEndAt, from, to);
     if (!clipped) continue;
 
-    events.push({
-      id: `manual_block_${b.manualBlockId}`,
-      type: 'MANUAL_BLOCK',
-      manualBlockId: b.manualBlockId,
-      recurringSeriesId: b.recurringSeriesId ?? undefined,
-      inventoryItemId: b.inventoryItemId,
-      internalSku: b.internalSku,
-      productName: b.productName,
-      variantName: b.variantName,
-      categorySlug: b.categorySlug,
-      locationId: b.locationId,
-      locationName: b.locationName,
-      locationTimeZone: b.locationTimeZone,
-      startAt: clipped.startAt,
-      endAt: clipped.endAt,
-      status: b.blockStatus,
-      reason: 'Indisponibilité manuelle',
-    });
+    if (b.blockType === 'HOLD') {
+      events.push({
+        id: `hold_${b.manualBlockId}`,
+        type: 'HOLD',
+        inventoryBlockId: b.manualBlockId,
+        holdId: b.manualBlockId,
+        holdExpiresAt: b.holdExpiresAt ?? undefined,
+        inventoryItemId: b.inventoryItemId,
+        internalSku: b.internalSku,
+        productName: b.productName,
+        variantName: b.variantName,
+        categorySlug: b.categorySlug,
+        locationId: b.locationId,
+        locationName: b.locationName,
+        locationTimeZone: b.locationTimeZone,
+        startAt: clipped.startAt,
+        endAt: clipped.endAt,
+        status: b.blockStatus,
+        reason: 'Hold temporaire',
+      });
+    } else {
+      events.push({
+        id: `manual_block_${b.manualBlockId}`,
+        type: 'MANUAL_BLOCK',
+        inventoryBlockId: b.manualBlockId,
+        manualBlockId: b.manualBlockId,
+        recurringSeriesId: b.recurringSeriesId ?? undefined,
+        inventoryItemId: b.inventoryItemId,
+        internalSku: b.internalSku,
+        productName: b.productName,
+        variantName: b.variantName,
+        categorySlug: b.categorySlug,
+        locationId: b.locationId,
+        locationName: b.locationName,
+        locationTimeZone: b.locationTimeZone,
+        startAt: clipped.startAt,
+        endAt: clipped.endAt,
+        status: b.blockStatus,
+        reason: b.recurringSeriesId
+          ? 'Indisponibilité manuelle récurrente'
+          : 'Indisponibilité manuelle',
+      });
+    }
   }
 
   return {
@@ -418,7 +445,9 @@ export async function getOperationalPlanning(
       totalPickups,
       totalReturns,
       totalMaintenances: maintenanceRows.length,
-      totalManualBlocks: manualBlockRows.length,
+      totalManualBlocks: manualBlockRows.filter((block) => block.blockType === 'MANUAL_BLOCK')
+        .length,
+      totalHolds: manualBlockRows.filter((block) => block.blockType === 'HOLD').length,
     },
     fleetItems,
   };

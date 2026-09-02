@@ -485,7 +485,12 @@ Prévoir plusieurs chemins d'entrée :
   (21-U2-X livré le 2026-09-02 : séries hebdomadaires finies, occurrences
   `MANUAL_BLOCK` matérialisées, fuseau IANA/DST fail-closed, cycle de vie
   idempotent et action générique) ;
-- calendrier par exemplaire ;
+- calendrier détaillé par exemplaire (21-U2-Y livré le 2026-09-02 : read model
+  mono-exemplaire tenant-safe fondé sur les blocs existants, holds inclus,
+  fenêtre UTC bornée, affichage dans le fuseau IANA de l'établissement,
+  timeline générique flotte/planning avec états vide/chargement/erreur et liens
+  vers les détails existants ; aucune mutation, migration, nouvelle règle de
+  disponibilité ni export) ;
 - export catalogue et flotte ;
 - import avec dry-run, mapping, erreurs et rejeu idempotent.
 

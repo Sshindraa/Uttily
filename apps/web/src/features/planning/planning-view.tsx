@@ -3,9 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { OperationalPlanning, OperationalPlanningEvent } from '@uttily/core';
+import type {
+  OperationalItemCalendar,
+  OperationalPlanning,
+  OperationalPlanningEvent,
+} from '@uttily/core';
 import { formatDateTimeInTimeZone } from '@/lib/operations-helpers';
 import { getCategoryPresentation } from '@/features/equipment/category-presentation';
+import { ItemCalendarPanel } from './item-calendar-panel';
 import styles from './planning.module.css';
 
 export interface PlanningViewProps {
@@ -13,6 +18,8 @@ export interface PlanningViewProps {
   planning: OperationalPlanning;
   locations: { id: string; name: string }[];
   selectedLocationId: string | null;
+  selectedItemCalendar?: OperationalItemCalendar | null;
+  selectedItemCalendarError?: boolean;
 }
 
 function getLocalDateKey(date: Date, timeZone: string): string {
@@ -80,7 +87,7 @@ function formatLocalInterval(event: OperationalPlanningEvent): string {
   return `${start} → ${end}`;
 }
 
-export type PlanningFleetDayStatus = 'MAINTENANCE' | 'BLOCKED' | 'RENTED' | 'AVAILABLE';
+export type PlanningFleetDayStatus = 'MAINTENANCE' | 'BLOCKED' | 'HELD' | 'RENTED' | 'AVAILABLE';
 
 export function getPlanningFleetDayStatus(
   events: readonly OperationalPlanningEvent[],
@@ -114,6 +121,19 @@ export function getPlanningFleetDayStatus(
     };
   }
 
+  const isHeld = events.find((event) => {
+    if (event.type !== 'HOLD' || event.inventoryItemId !== itemId) return false;
+    return eventCoversLocalDay(event, dayDateStr);
+  });
+
+  if (isHeld) {
+    return {
+      status: 'HELD',
+      label: '⏳ Hold',
+      link: `/dashboard/${orgId}/bookings/planning?locationId=${isHeld.locationId}&inventoryItemId=${itemId}`,
+    };
+  }
+
   const isRented = events.find((event) => {
     if (event.type !== 'RENTAL' || event.inventoryItemId !== itemId) return false;
     return eventCoversLocalDay(event, dayDateStr);
@@ -139,6 +159,8 @@ export function PlanningView({
   planning,
   locations,
   selectedLocationId,
+  selectedItemCalendar,
+  selectedItemCalendarError = false,
 }: PlanningViewProps): React.ReactElement {
   const [viewMode, setViewMode] = useState<'PLANNING' | 'FLEET'>('PLANNING');
 
@@ -165,6 +187,10 @@ export function PlanningView({
     const returns = planning.events.filter(
       (e) => e.type === 'RETURN' && getLocalDateKey(e.endAt, e.locationTimeZone) === dayDateStr,
     );
+    const holds = planning.events.filter((e) => {
+      if (e.type !== 'HOLD') return false;
+      return eventCoversLocalDay(e, dayDateStr);
+    });
     const maintenances = planning.events.filter((e) => {
       if (e.type !== 'MAINTENANCE') return false;
       return eventCoversLocalDay(e, dayDateStr);
@@ -174,7 +200,7 @@ export function PlanningView({
       return eventCoversLocalDay(e, dayDateStr);
     });
 
-    return { pickUps, returns, maintenances, manualBlocks };
+    return { pickUps, returns, holds, maintenances, manualBlocks };
   }
 
   const router = useRouter();
@@ -229,6 +255,18 @@ export function PlanningView({
         </div>
       </div>
 
+      {selectedItemCalendar ? (
+        <ItemCalendarPanel orgId={orgId} calendar={selectedItemCalendar} />
+      ) : selectedItemCalendarError ? (
+        <div className={styles.itemCalendarError} role="alert">
+          <strong>Calendrier indisponible · Calendar unavailable</strong>
+          <span>
+            Cet exemplaire n’existe pas dans cet établissement ou vous n’êtes pas autorisé à le
+            consulter.
+          </span>
+        </div>
+      ) : null}
+
       {/* Chiffres clés de la semaine : les blocages restent séparés des locations et maintenances. */}
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
@@ -263,6 +301,15 @@ export function PlanningView({
           </span>
           <span className={styles.statLabel}>Blocages manuels</span>
         </div>
+
+        <div className={styles.statCard}>
+          <span className={styles.statNumber}>
+            ⏳{' '}
+            {planning.stats.totalHolds ??
+              planning.events.filter((event) => event.type === 'HOLD').length}
+          </span>
+          <span className={styles.statLabel}>Holds actifs</span>
+        </div>
       </div>
 
       {/* Contenu selon le mode sélectionné */}
@@ -270,9 +317,15 @@ export function PlanningView({
         /* VUE 1 : PLANNING JOUR PAR JOUR */
         <div className={styles.daysGrid}>
           {days.map((day) => {
-            const { pickUps, returns, maintenances, manualBlocks } = getDayEvents(day.dateStr);
+            const { pickUps, returns, holds, maintenances, manualBlocks } = getDayEvents(
+              day.dateStr,
+            );
             const totalDayEvents =
-              pickUps.length + returns.length + maintenances.length + manualBlocks.length;
+              pickUps.length +
+              returns.length +
+              holds.length +
+              maintenances.length +
+              manualBlocks.length;
 
             return (
               <div key={day.dateStr} className={styles.dayColumn}>
@@ -327,6 +380,25 @@ export function PlanningView({
                           <div className={styles.eventClient}>
                             {getEquipmentLabel(r.categorySlug)} · {r.customerName ?? 'Locataire'}
                           </div>
+                        </Link>
+                      ))}
+
+                      {/* Holds : distincts des réservations confirmées. */}
+                      {holds.map((hold) => (
+                        <Link
+                          key={hold.id}
+                          href={`/dashboard/${orgId}/bookings/planning?locationId=${hold.locationId}&inventoryItemId=${hold.inventoryItemId}`}
+                          className={`${styles.eventCard} ${styles.eventHold}`}
+                          aria-label={`Hold temporaire — ${hold.internalSku} — ${formatLocalInterval(hold)}`}
+                        >
+                          <div className={styles.eventHeader}>
+                            <span className={styles.eventTime}>
+                              ⏳ Hold temporaire · {formatLocalInterval(hold)}
+                            </span>
+                            <span className={styles.eventSku}>{hold.internalSku}</span>
+                          </div>
+                          <div className={styles.eventTitle}>{hold.productName}</div>
+                          <div className={styles.eventClient}>{hold.locationName}</div>
                         </Link>
                       ))}
 
@@ -394,7 +466,12 @@ export function PlanningView({
               {planning.fleetItems.map((item) => (
                 <tr key={item.id}>
                   <td className={styles.bikeCell}>
-                    <span className={styles.bikeSku}>{item.internalSku}</span>
+                    <Link
+                      href={`/dashboard/${orgId}/bookings/planning?locationId=${item.locationId}&inventoryItemId=${item.id}`}
+                      className={styles.bikeSku}
+                    >
+                      {item.internalSku}
+                    </Link>
                     <span className={styles.bikeName}>
                       {getEquipmentLabel(item.categorySlug)} · {item.productName} (
                       {item.variantName})
@@ -418,9 +495,11 @@ export function PlanningView({
                               ? styles.cellMaint
                               : status === 'BLOCKED'
                                 ? styles.cellBlocked
-                                : status === 'RENTED'
-                                  ? styles.cellRented
-                                  : styles.cellAvail
+                                : status === 'HELD'
+                                  ? styles.cellHold
+                                  : status === 'RENTED'
+                                    ? styles.cellRented
+                                    : styles.cellAvail
                           }`}
                         >
                           {label}
