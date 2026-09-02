@@ -328,7 +328,7 @@ describe.skipIf(shouldSkipIntegrationTests())('G7M-C4-S — transitions PostgreS
       const rows = await sql`
         SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at
       `;
-      expect(rows).toHaveLength(55);
+      expect(rows).toHaveLength(56);
       const { readFileSync } = await import('node:fs');
       const { dirname, join } = await import('node:path');
       const { fileURLToPath } = await import('node:url');
