@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   createConditionReportAction,
@@ -8,6 +8,7 @@ import {
   returnBookingAction,
 } from '@/app/actions/fulfillment';
 import { Button } from '@uttily/ui';
+import { FlowDrawer } from './flow-drawer';
 
 interface ReturnFlowProps {
   orgId: string;
@@ -30,8 +31,29 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
   const [requiresMaintenance, setRequiresMaintenance] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const idempotencyKeys = useRef<Partial<Record<'condition' | 'damage' | 'return', string>>>({});
+  const completedSteps = useRef({ condition: false, damage: false });
 
   const firstItem = items[0];
+
+  function getIdempotencyKey(step: 'condition' | 'damage' | 'return'): string {
+    const current = idempotencyKeys.current[step];
+    if (current) return current;
+    const next = crypto.randomUUID();
+    idempotencyKeys.current[step] = next;
+    return next;
+  }
+
+  function openFlow(): void {
+    idempotencyKeys.current = {};
+    completedSteps.current = { condition: false, damage: false };
+    setError(null);
+    setIsOpen(true);
+  }
+
+  function closeFlow(): void {
+    if (!loading) setIsOpen(false);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,14 +62,14 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
 
     try {
       // 1. Enregistrer le rapport d'état au retour
-      if (firstItem) {
+      if (firstItem && !completedSteps.current.condition) {
         const conditionFormData = new FormData();
         conditionFormData.append('bookingId', bookingId);
         conditionFormData.append('bookingItemId', firstItem.bookingItemId);
         conditionFormData.append('phase', 'RETURN');
         conditionFormData.append('condition', condition);
         conditionFormData.append('notes', notes);
-        conditionFormData.append('idempotencyKey', crypto.randomUUID());
+        conditionFormData.append('idempotencyKey', getIdempotencyKey('condition'));
 
         const conditionResult = await createConditionReportAction(
           orgId,
@@ -59,39 +81,45 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
           setError(
             conditionResult.message || "Erreur lors de l'enregistrement de l'état de retour",
           );
-          setLoading(false);
           return;
         }
+        completedSteps.current.condition = true;
+      }
 
-        // 2. Si un dommage est signalé
-        if (hasDamage && damageDescription.trim().length > 0) {
-          const damageFormData = new FormData();
-          damageFormData.append('bookingId', bookingId);
-          damageFormData.append('bookingItemId', firstItem.bookingItemId);
-          damageFormData.append('description', damageDescription.trim());
-          damageFormData.append('idempotencyKey', crypto.randomUUID());
-          if (requiresMaintenance) {
-            damageFormData.append('blocksInventory', 'true');
-          }
-
-          const damageResult = await createDamageReportAction(
-            orgId,
-            { ok: false, code: 'UNKNOWN', message: '' },
-            damageFormData,
-          );
-
-          if (!damageResult.ok) {
-            setError(damageResult.message || "Erreur lors de l'enregistrement du dommage");
-            setLoading(false);
-            return;
-          }
+      // 2. Si un dommage est signalé. Cette étape reste indépendante de la
+      // précédente afin qu'un retry après un échec de clôture ne la rejoue pas.
+      if (
+        firstItem &&
+        hasDamage &&
+        damageDescription.trim().length > 0 &&
+        !completedSteps.current.damage
+      ) {
+        const damageFormData = new FormData();
+        damageFormData.append('bookingId', bookingId);
+        damageFormData.append('bookingItemId', firstItem.bookingItemId);
+        damageFormData.append('description', damageDescription.trim());
+        damageFormData.append('idempotencyKey', getIdempotencyKey('damage'));
+        if (requiresMaintenance) {
+          damageFormData.append('blocksInventory', 'true');
         }
+
+        const damageResult = await createDamageReportAction(
+          orgId,
+          { ok: false, code: 'UNKNOWN', message: '' },
+          damageFormData,
+        );
+
+        if (!damageResult.ok) {
+          setError(damageResult.message || "Erreur lors de l'enregistrement du dommage");
+          return;
+        }
+        completedSteps.current.damage = true;
       }
 
       // 3. Transitionner vers RETURNED
       const transitionFormData = new FormData();
       transitionFormData.append('bookingId', bookingId);
-      transitionFormData.append('idempotencyKey', crypto.randomUUID());
+      transitionFormData.append('idempotencyKey', getIdempotencyKey('return'));
 
       const returnResult = await returnBookingAction(
         orgId,
@@ -101,7 +129,6 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
 
       if (!returnResult.ok) {
         setError(returnResult.message || 'Erreur lors de la clôture du retour');
-        setLoading(false);
         return;
       }
 
@@ -118,296 +145,231 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
 
   if (!isOpen) {
     return (
-      <Button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        variant="secondary"
-        style={{ minHeight: '44px' }}
-      >
+      <Button type="button" onClick={openFlow} variant="secondary" style={{ minHeight: '44px' }}>
         🔵 Effectuer le retour de l’équipement →
       </Button>
     );
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="return-flow-title"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'var(--ut-color-overlay)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '1rem',
-        zIndex: 50,
-      }}
+    <FlowDrawer
+      open={isOpen}
+      title="🔵 Réception & Retour de l’équipement"
+      closeDisabled={loading}
+      onClose={closeFlow}
     >
-      <div
-        style={{
-          background: 'var(--ut-color-surface)',
-          borderRadius: 'var(--ut-radius-lg)',
-          boxShadow: 'var(--ut-shadow-lg)',
-          maxWidth: '34rem',
-          width: '100%',
-          padding: '1.5rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1.25rem',
-          maxHeight: '90vh',
-          overflowY: 'auto',
-        }}
+      <form
+        onSubmit={handleSubmit}
+        style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3
-            id="return-flow-title"
+        {error && (
+          <div
             style={{
-              fontSize: '1.15rem',
-              fontWeight: 'var(--ut-weight-bold)',
-              margin: 0,
-              color: 'var(--ut-color-ink-strong)',
+              background: 'var(--ut-color-danger-soft)',
+              color: 'var(--ut-color-danger)',
+              padding: '0.75rem',
+              borderRadius: 'var(--ut-radius-md)',
+              fontSize: '0.875rem',
             }}
           >
-            🔵 Réception &amp; Retour de l’équipement
-          </h3>
-          <button
-            type="button"
-            onClick={() => setIsOpen(false)}
+            {error}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <label
+            htmlFor={`return-condition-${bookingId}`}
+            style={{
+              fontSize: '0.875rem',
+              fontWeight: 'var(--ut-weight-semibold)',
+              color: 'var(--ut-color-ink)',
+            }}
+          >
+            État de l’équipement au retour :
+          </label>
+          <select
+            id={`return-condition-${bookingId}`}
+            value={condition}
+            onChange={(e) => {
+              const val = e.target.value as 'GOOD' | 'FAIR' | 'POOR' | 'BROKEN';
+              setCondition(val);
+              if (val === 'BROKEN' || val === 'POOR') {
+                setHasDamage(true);
+                setRequiresMaintenance(true);
+              }
+            }}
             disabled={loading}
-            aria-label="Fermer"
             style={{
-              background: 'transparent',
-              border: 'none',
-              fontSize: '1.25rem',
-              cursor: 'pointer',
-              color: 'var(--ut-color-ink-muted)',
-              padding: '0.25rem',
+              width: '100%',
+              padding: '0.6rem 0.75rem',
+              borderRadius: 'var(--ut-radius-md)',
+              border: 'var(--ut-border-thin)',
+              fontSize: '0.9rem',
+              background: 'var(--ut-color-surface)',
+              color: 'var(--ut-color-ink)',
+              minHeight: '44px',
             }}
           >
-            ✕
-          </button>
+            <option value="GOOD">Très bon état / Conforme</option>
+            <option value="FAIR">Bon état (usure normale)</option>
+            <option value="POOR">À contrôler (bruit / réglage nécessaire)</option>
+            <option value="BROKEN">Endommagé / Cassé</option>
+          </select>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
-        >
-          {error && (
-            <div
-              style={{
-                background: 'var(--ut-color-danger-soft)',
-                color: 'var(--ut-color-danger)',
-                padding: '0.75rem',
-                borderRadius: 'var(--ut-radius-md)',
-                fontSize: '0.875rem',
-              }}
-            >
-              {error}
-            </div>
-          )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <label
+            htmlFor={`return-notes-${bookingId}`}
+            style={{
+              fontSize: '0.875rem',
+              fontWeight: 'var(--ut-weight-semibold)',
+              color: 'var(--ut-color-ink)',
+            }}
+          >
+            Notes de retour (facultatif) :
+          </label>
+          <input
+            id={`return-notes-${bookingId}`}
+            type="text"
+            placeholder="Ex : Propre, accessoires récupérés"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '0.6rem 0.75rem',
+              borderRadius: 'var(--ut-radius-md)',
+              border: 'var(--ut-border-thin)',
+              fontSize: '0.9rem',
+              background: 'var(--ut-color-surface)',
+              color: 'var(--ut-color-ink)',
+              minHeight: '44px',
+            }}
+          />
+        </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <label
-              htmlFor="return-condition"
-              style={{
-                fontSize: '0.875rem',
-                fontWeight: 'var(--ut-weight-semibold)',
-                color: 'var(--ut-color-ink)',
-              }}
-            >
-              État de l’équipement au retour :
-            </label>
-            <select
-              id="return-condition"
-              value={condition}
+        {/* Déclaration de dommage / incident */}
+        <div
+          style={{
+            background: 'var(--ut-color-surface-soft)',
+            padding: '1rem',
+            borderRadius: 'var(--ut-radius-md)',
+            border: 'var(--ut-border-thin)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.75rem',
+          }}
+        >
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: 'var(--ut-weight-semibold)',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={hasDamage}
               onChange={(e) => {
-                const val = e.target.value as 'GOOD' | 'FAIR' | 'POOR' | 'BROKEN';
-                setCondition(val);
-                if (val === 'BROKEN' || val === 'POOR') {
-                  setHasDamage(true);
-                  setRequiresMaintenance(true);
+                setHasDamage(e.target.checked);
+                if (e.target.checked && !damageDescription) {
+                  setDamageDescription('Signalé lors du retour locataire.');
                 }
               }}
               disabled={loading}
-              style={{
-                width: '100%',
-                padding: '0.6rem 0.75rem',
-                borderRadius: 'var(--ut-radius-md)',
-                border: 'var(--ut-border-thin)',
-                fontSize: '0.9rem',
-                background: 'var(--ut-color-surface)',
-                color: 'var(--ut-color-ink)',
-                minHeight: '44px',
-              }}
-            >
-              <option value="GOOD">Très bon état / Conforme</option>
-              <option value="FAIR">Bon état (usure normale)</option>
-              <option value="POOR">À contrôler (bruit / réglage nécessaire)</option>
-              <option value="BROKEN">Endommagé / Cassé</option>
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <label
-              htmlFor="return-notes"
-              style={{
-                fontSize: '0.875rem',
-                fontWeight: 'var(--ut-weight-semibold)',
-                color: 'var(--ut-color-ink)',
-              }}
-            >
-              Notes de retour (facultatif) :
-            </label>
-            <input
-              id="return-notes"
-              type="text"
-              placeholder="Ex : Propre, accessoires récupérés"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              disabled={loading}
-              style={{
-                width: '100%',
-                padding: '0.6rem 0.75rem',
-                borderRadius: 'var(--ut-radius-md)',
-                border: 'var(--ut-border-thin)',
-                fontSize: '0.9rem',
-                background: 'var(--ut-color-surface)',
-                color: 'var(--ut-color-ink)',
-                minHeight: '44px',
-              }}
             />
-          </div>
+            <span>⚠️ Signaler une anomalie ou un dommage constaté</span>
+          </label>
 
-          {/* Déclaration de dommage / incident */}
-          <div
-            style={{
-              background: 'var(--ut-color-surface-soft)',
-              padding: '1rem',
-              borderRadius: 'var(--ut-radius-md)',
-              border: 'var(--ut-border-thin)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.75rem',
-            }}
-          >
-            <label
+          {hasDamage && (
+            <div
               style={{
                 display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                cursor: 'pointer',
-                fontSize: '0.875rem',
-                fontWeight: 'var(--ut-weight-semibold)',
+                flexDirection: 'column',
+                gap: '0.75rem',
+                paddingTop: '0.5rem',
+                borderTop: 'var(--ut-border-thin)',
               }}
             >
-              <input
-                type="checkbox"
-                checked={hasDamage}
-                onChange={(e) => {
-                  setHasDamage(e.target.checked);
-                  if (e.target.checked && !damageDescription) {
-                    setDamageDescription('Signalé lors du retour locataire.');
-                  }
-                }}
-                disabled={loading}
-              />
-              <span>⚠️ Signaler une anomalie ou un dommage constaté</span>
-            </label>
-
-            {hasDamage && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '0.75rem',
-                  paddingTop: '0.5rem',
-                  borderTop: 'var(--ut-border-thin)',
-                }}
-              >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                  <label
-                    htmlFor="damage-desc"
-                    style={{
-                      fontSize: '0.85rem',
-                      fontWeight: 'var(--ut-weight-semibold)',
-                      color: 'var(--ut-color-ink)',
-                    }}
-                  >
-                    Description du problème constaté :
-                  </label>
-                  <textarea
-                    id="damage-desc"
-                    rows={2}
-                    placeholder="Ex : Rayure profonde, frein arrière désaligné..."
-                    value={damageDescription}
-                    onChange={(e) => setDamageDescription(e.target.value)}
-                    disabled={loading}
-                    style={{
-                      width: '100%',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: 'var(--ut-radius-md)',
-                      border: 'var(--ut-border-thin)',
-                      fontSize: '0.875rem',
-                      background: 'var(--ut-color-surface)',
-                      color: 'var(--ut-color-ink)',
-                    }}
-                  />
-                </div>
-
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                 <label
+                  htmlFor={`damage-desc-${bookingId}`}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    cursor: 'pointer',
                     fontSize: '0.85rem',
+                    fontWeight: 'var(--ut-weight-semibold)',
+                    color: 'var(--ut-color-ink)',
                   }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={requiresMaintenance}
-                    onChange={(e) => setRequiresMaintenance(e.target.checked)}
-                    disabled={loading}
-                  />
-                  <span>
-                    Retirer temporairement cet équipement de la location (envoyer en atelier)
-                  </span>
+                  Description du problème constaté :
                 </label>
+                <textarea
+                  id={`damage-desc-${bookingId}`}
+                  rows={2}
+                  placeholder="Ex : Rayure profonde, frein arrière désaligné..."
+                  value={damageDescription}
+                  onChange={(e) => setDamageDescription(e.target.value)}
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: 'var(--ut-radius-md)',
+                    border: 'var(--ut-border-thin)',
+                    fontSize: '0.875rem',
+                    background: 'var(--ut-color-surface)',
+                    color: 'var(--ut-color-ink)',
+                  }}
+                />
               </div>
-            )}
-          </div>
 
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '0.75rem',
-              marginTop: '0.5rem',
-              flexWrap: 'wrap',
-            }}
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={requiresMaintenance}
+                  onChange={(e) => setRequiresMaintenance(e.target.checked)}
+                  disabled={loading}
+                />
+                <span>
+                  Retirer temporairement cet équipement de la location (envoyer en atelier)
+                </span>
+              </label>
+            </div>
+          )}
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '0.75rem',
+            marginTop: '0.5rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <Button
+            type="button"
+            onClick={closeFlow}
+            disabled={loading}
+            variant="secondary"
+            style={{ minHeight: '44px' }}
           >
-            <Button
-              type="button"
-              onClick={() => setIsOpen(false)}
-              disabled={loading}
-              variant="secondary"
-              style={{ minHeight: '44px' }}
-            >
-              Annuler
-            </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              variant="primary"
-              style={{ minHeight: '44px' }}
-            >
-              {loading ? 'Validation en cours…' : '✓ Valider le retour'}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+            Annuler
+          </Button>
+          <Button type="submit" disabled={loading} variant="primary" style={{ minHeight: '44px' }}>
+            {loading ? 'Validation en cours…' : '✓ Valider le retour'}
+          </Button>
+        </div>
+      </form>
+    </FlowDrawer>
   );
 }

@@ -12,16 +12,22 @@ export default async function LegacyOperationsRedirect({
   searchParams,
 }: {
   params: Promise<{ orgId: string }>;
-  searchParams?: Promise<{ status?: string | string[] }>;
+  searchParams?: Promise<{
+    status?: string | string[];
+    locationId?: string | string[];
+    date?: string | string[];
+    search?: string | string[];
+  }>;
 }): Promise<never> {
   const { orgId } = await params;
   const sp = (await searchParams) ?? {};
   const query = new URLSearchParams();
-  if (sp.status) {
-    if (Array.isArray(sp.status)) {
-      for (const s of sp.status) query.append('status', s);
-    } else {
-      query.set('status', sp.status);
+  for (const key of ['status', 'locationId', 'date', 'search'] as const) {
+    const value = sp[key];
+    if (Array.isArray(value)) {
+      for (const item of value) query.append(key, item);
+    } else if (value) {
+      query.set(key, value);
     }
   }
   const suffix = query.toString();

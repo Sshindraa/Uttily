@@ -5,6 +5,9 @@ export type { OperationsBookingsViewProps } from './operations-bookings-view';
 export { DepartureFlow } from './departure-flow';
 export { ReturnFlow } from './return-flow';
 export { CancellationFlow } from './cancellation-flow';
+export { FlowDrawer } from './flow-drawer';
+export { DeskView } from './desk-view';
+export type { DeskViewProps } from './desk-view';
 export {
   AmendBookingPageView,
   AmendBookingUnavailableView,

@@ -17,3 +17,4 @@ export * from './fulfillment-shared';
 export * from './permissions';
 export * from './read-model-types';
 export * from './read-models';
+export * from './operational-desk';

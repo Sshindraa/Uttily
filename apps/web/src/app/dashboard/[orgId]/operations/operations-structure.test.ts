@@ -15,6 +15,7 @@ const OPERATION_FILES = [
   'departure-flow.tsx',
   'return-flow.tsx',
   'cancellation-flow.tsx',
+  'flow-drawer.tsx',
 ];
 
 describe('G4B — invariants structurels des opérations', () => {
@@ -40,8 +41,8 @@ describe('G4B — invariants structurels des opérations', () => {
     },
   );
 
-  it.each(['departure-flow.tsx', 'return-flow.tsx', 'cancellation-flow.tsx'])(
-    '%s reste un Client Component avec une interaction modale accessible',
+  it.each(['flow-drawer.tsx', 'cancellation-flow.tsx'])(
+    '%s porte l’interaction modale accessible',
     (file) => {
       const content = readFile(file);
       expect(content.startsWith("'use client'")).toBe(true);

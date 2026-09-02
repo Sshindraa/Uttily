@@ -162,7 +162,9 @@ export async function prepareBookingAction(
       idempotencyKey: parsed.idempotencyKey,
     });
     revalidatePath(`/dashboard/${authorizedOrgId}/operations`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings`);
     revalidatePath(`/dashboard/${authorizedOrgId}/operations/${parsed.bookingId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings/${parsed.bookingId}`);
     return result;
   });
 }
@@ -194,7 +196,9 @@ export async function pickupBookingAction(
       idempotencyKey: parsed.idempotencyKey,
     });
     revalidatePath(`/dashboard/${authorizedOrgId}/operations`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings`);
     revalidatePath(`/dashboard/${authorizedOrgId}/operations/${parsed.bookingId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings/${parsed.bookingId}`);
     return result;
   });
 }
@@ -226,7 +230,9 @@ export async function returnBookingAction(
       idempotencyKey: parsed.idempotencyKey,
     });
     revalidatePath(`/dashboard/${authorizedOrgId}/operations`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings`);
     revalidatePath(`/dashboard/${authorizedOrgId}/operations/${parsed.bookingId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings/${parsed.bookingId}`);
     return result;
   });
 }
@@ -258,7 +264,9 @@ export async function closeBookingAction(
       idempotencyKey: parsed.idempotencyKey,
     });
     revalidatePath(`/dashboard/${authorizedOrgId}/operations`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings`);
     revalidatePath(`/dashboard/${authorizedOrgId}/operations/${parsed.bookingId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings/${parsed.bookingId}`);
     return result;
   });
 }
@@ -295,6 +303,8 @@ export async function createConditionReportAction(
     });
     revalidatePath(`/dashboard/${authorizedOrgId}/operations`);
     revalidatePath(`/dashboard/${authorizedOrgId}/operations/${parsed.bookingId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings/${parsed.bookingId}`);
     return result;
   });
 }
