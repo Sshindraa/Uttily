@@ -14,6 +14,9 @@ import {
   CONDITION_REPORT_PHASES,
   INVENTORY_CONDITIONS,
   type FulfillmentTransitionResult,
+  RETURN_MAINTENANCE_DEFAULT_DURATION_MINUTES,
+  RETURN_MAINTENANCE_MIN_DURATION_MINUTES,
+  RETURN_MAINTENANCE_MAX_DURATION_MINUTES,
   type ConditionReportResult,
   type DamageReportResult,
   type ConditionReportPhase,
@@ -51,6 +54,71 @@ function parseTransitionForm(
 
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
   return { bookingId, idempotencyKey };
+}
+
+function parseReturnTransitionForm(formData: FormData):
+  | ParsedFailure
+  | {
+      bookingId: string;
+      idempotencyKey: string;
+      maintenance?: {
+        bookingItemId: string;
+        durationMinutes: number;
+        sourceDamageReportId?: string;
+      };
+    } {
+  const parsed = parseTransitionForm(formData);
+  if ('fieldErrors' in parsed) return parsed;
+
+  const fieldErrors: Record<string, string> = {};
+  const maintenanceEnabledRaw = String(formData.get('maintenanceEnabled') ?? '').toLowerCase();
+  const maintenanceEnabled = ['true', 'on', '1'].includes(maintenanceEnabledRaw);
+
+  if (!maintenanceEnabled) return parsed;
+
+  const bookingItemId = String(formData.get('maintenanceBookingItemId') ?? '').trim();
+  const durationRaw = String(formData.get('maintenanceDurationMinutes') ?? '').trim();
+  const sourceDamageReportIdRaw = String(formData.get('sourceDamageReportId') ?? '').trim();
+
+  if (!isValidUuid(bookingItemId)) {
+    fieldErrors.maintenanceBookingItemId = 'Exemplaire de retour invalide.';
+  }
+
+  let durationMinutes: number | undefined;
+  if (durationRaw.length > 0) {
+    const parsedDuration = Number(durationRaw);
+    if (
+      !Number.isSafeInteger(parsedDuration) ||
+      parsedDuration < RETURN_MAINTENANCE_MIN_DURATION_MINUTES ||
+      parsedDuration > RETURN_MAINTENANCE_MAX_DURATION_MINUTES
+    ) {
+      fieldErrors.maintenanceDurationMinutes = `La durée doit être comprise entre ${RETURN_MAINTENANCE_MIN_DURATION_MINUTES} et ${RETURN_MAINTENANCE_MAX_DURATION_MINUTES} minutes.`;
+    } else {
+      durationMinutes = parsedDuration;
+    }
+  } else {
+    durationMinutes = RETURN_MAINTENANCE_DEFAULT_DURATION_MINUTES;
+  }
+
+  let sourceDamageReportId: string | undefined;
+  if (sourceDamageReportIdRaw.length > 0) {
+    if (!isValidUuid(sourceDamageReportIdRaw)) {
+      fieldErrors.sourceDamageReportId = 'Rapport de dommage invalide.';
+    } else {
+      sourceDamageReportId = sourceDamageReportIdRaw;
+    }
+  }
+
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+  const normalizedDurationMinutes = durationMinutes ?? RETURN_MAINTENANCE_DEFAULT_DURATION_MINUTES;
+  return {
+    ...parsed,
+    maintenance: {
+      bookingItemId,
+      durationMinutes: normalizedDurationMinutes,
+      ...(sourceDamageReportId ? { sourceDamageReportId } : {}),
+    },
+  };
 }
 
 function parseConditionReportForm(formData: FormData):
@@ -284,7 +352,7 @@ export async function returnBookingAction(
   _prev: ActionResult<FulfillmentTransitionResult>,
   formData: FormData,
 ): Promise<ActionResult<FulfillmentTransitionResult>> {
-  const parsed = parseTransitionForm(formData);
+  const parsed = parseReturnTransitionForm(formData);
   if ('fieldErrors' in parsed) {
     return {
       ok: false,
@@ -304,6 +372,7 @@ export async function returnBookingAction(
       bookingId: parsed.bookingId,
       actorUserId: user.id,
       idempotencyKey: parsed.idempotencyKey,
+      ...(parsed.maintenance ? { maintenance: parsed.maintenance } : {}),
     });
     revalidatePath(`/dashboard/${authorizedOrgId}/operations`);
     revalidatePath(`/dashboard/${authorizedOrgId}/bookings`);
