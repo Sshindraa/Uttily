@@ -728,6 +728,79 @@ export const inventoryBlocks = pgTable('inventory_blocks', {
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
 
+/**
+ * Série de blocages manuels récurrents (21-U2-X / ADR-038).
+ *
+ * Le calendrier est conservé en temps civil dans le fuseau de l'établissement.
+ * Les occurrences matérialisées dans inventory_blocks restent l'autorité de
+ * disponibilité et portent le lien d'audit via manual_block_series_occurrences.
+ */
+export const manualBlockSeries = pgTable(
+  'manual_block_series',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id),
+    locationId: uuid('location_id')
+      .notNull()
+      .references(() => locations.id),
+    inventoryItemId: uuid('inventory_item_id')
+      .notNull()
+      .references(() => inventoryItems.id),
+    frequency: text('frequency').notNull().default('WEEKLY'),
+    startDate: date('start_date', { mode: 'string' }).notNull(),
+    endDate: date('end_date', { mode: 'string' }).notNull(),
+    startTime: time('start_time').notNull(),
+    endTime: time('end_time').notNull(),
+    timeZone: text('time_zone').notNull(),
+    status: text('status').notNull().default('ACTIVE'),
+    createdBy: uuid('created_by').references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (t) => [
+    check('manual_block_series_frequency_valid', sql`${t.frequency} = 'WEEKLY'`),
+    check(
+      'manual_block_series_date_bounds_valid',
+      sql`${t.endDate} >= ${t.startDate} AND ${t.endDate} - ${t.startDate} <= 84`,
+    ),
+    check('manual_block_series_time_bounds_valid', sql`${t.endTime} > ${t.startTime}`),
+    check(
+      'manual_block_series_status_valid',
+      sql`${t.status} IN ('ACTIVE', 'SUSPENDED', 'DELETED')`,
+    ),
+    check(
+      'manual_block_series_deleted_state_valid',
+      sql`(${t.status} = 'DELETED' AND ${t.deletedAt} IS NOT NULL) OR (${t.status} <> 'DELETED' AND ${t.deletedAt} IS NULL)`,
+    ),
+    index('manual_block_series_organization_idx').on(t.organizationId, t.status),
+    index('manual_block_series_item_idx').on(t.inventoryItemId, t.status),
+  ],
+);
+
+export const manualBlockSeriesOccurrences = pgTable(
+  'manual_block_series_occurrences',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    seriesId: uuid('series_id')
+      .notNull()
+      .references(() => manualBlockSeries.id, { onDelete: 'restrict' }),
+    inventoryBlockId: uuid('inventory_block_id')
+      .notNull()
+      .unique()
+      .references(() => inventoryBlocks.id, { onDelete: 'restrict' }),
+    occurrenceDate: date('occurrence_date', { mode: 'string' }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique('manual_block_series_occurrence_date_unique').on(t.seriesId, t.occurrenceDate),
+    index('manual_block_series_occurrences_series_idx').on(t.seriesId, t.occurrenceDate),
+  ],
+);
+
 // ---------------------------------------------------------------------------
 // Lot 4 — Prix, brouillon de réservation, allocations et idempotence (ADR-009).
 // ---------------------------------------------------------------------------
@@ -2387,6 +2460,10 @@ export type InventoryMovement = typeof inventoryMovements.$inferSelect;
 export type NewInventoryMovement = typeof inventoryMovements.$inferInsert;
 export type InventoryBlock = typeof inventoryBlocks.$inferSelect;
 export type NewInventoryBlock = typeof inventoryBlocks.$inferInsert;
+export type ManualBlockSeries = typeof manualBlockSeries.$inferSelect;
+export type NewManualBlockSeries = typeof manualBlockSeries.$inferInsert;
+export type ManualBlockSeriesOccurrence = typeof manualBlockSeriesOccurrences.$inferSelect;
+export type NewManualBlockSeriesOccurrence = typeof manualBlockSeriesOccurrences.$inferInsert;
 export type BookingDraft = typeof bookingDrafts.$inferSelect;
 export type NewBookingDraft = typeof bookingDrafts.$inferInsert;
 export type BookingDraftLine = typeof bookingDraftLines.$inferSelect;

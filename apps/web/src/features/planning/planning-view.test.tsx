@@ -78,6 +78,7 @@ function planning(): OperationalPlanning {
         startAt: new Date('2026-08-06T08:00:00.000Z'),
         endAt: new Date('2026-08-07T16:00:00.000Z'),
         reason: 'Indisponibilité manuelle',
+        recurringSeriesId: 'series-1',
       }),
     ],
     stats: {
@@ -140,6 +141,7 @@ describe('PlanningView — blocages manuels', () => {
     );
 
     expect(html).toContain('⛔ Indisponible');
+    expect(html).toContain('⛔ Indisponible · Récurrent');
     expect(html).toContain('🔧 Maintenance');
     expect(html).toContain('↓ Départ');
     expect(html).toContain('↑ Retour');
