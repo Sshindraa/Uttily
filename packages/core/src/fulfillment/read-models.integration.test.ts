@@ -11,6 +11,7 @@ import {
   listOperationalBookings,
   getOperationalBookingDetails,
 } from './read-models';
+import { getOperationalDeskBookings } from './operational-desk';
 import { requireFulfillmentOperator } from './permissions';
 import { AuthorizationError } from '../identity/permissions';
 import type { MembershipRecord } from '../identity/types';
@@ -328,6 +329,38 @@ async function setBookingStatus(bookingId: string, status: string): Promise<void
   await rawSql`UPDATE bookings SET status = ${status} WHERE id = ${bookingId}`;
 }
 
+async function addSecondItemToBooking(ids: BaseIds, booking: BookingIds): Promise<void> {
+  if (!rawSql) throw new Error('rawSql not initialized');
+  const sql = rawSql;
+  const item = await sql`
+    INSERT INTO "inventory_items" (
+      "organization_id", "product_variant_id", "internal_sku",
+      "current_location_id", "condition", "status"
+    )
+    VALUES (${ids.orgId}, ${ids.variantId}, ${'KAY-SECOND-' + SUFFIX()}, ${ids.locationId}, 'GOOD', 'ACTIVE')
+    RETURNING "id"
+  `.then((r) => r[0]!);
+  const block = await sql`
+    INSERT INTO "inventory_blocks" (
+      "organization_id", "inventory_item_id", "type", "status",
+      "customer_start_at", "customer_end_at",
+      "blocked_start_at", "blocked_end_at", "source_id"
+    )
+    VALUES (
+      ${ids.orgId}, ${item.id}, 'BOOKING', 'ACTIVE',
+      '2026-02-10 09:00:00+00', '2026-02-12 17:00:00+00',
+      '2026-02-10 08:30:00+00', '2026-02-12 17:30:00+00', ${booking.bookingId}
+    )
+    RETURNING "id"
+  `.then((r) => r[0]!);
+  await sql`
+    INSERT INTO "booking_items" (
+      "booking_id", "booking_line_id", "inventory_item_id", "booking_block_id"
+    )
+    VALUES (${booking.bookingId}, ${booking.lineId}, ${item.id}, ${block.id})
+  `;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers d'insertion de rapports/événements (raw SQL direct)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -495,6 +528,57 @@ describeIntegration('fulfillment read-models — listOperationalBookings', () =>
       limit: null,
     });
     expect(nextDayPickups).toHaveLength(0);
+  });
+
+  it('recherche par SKU via EXISTS sans dupliquer une réservation multi-exemplaires', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData();
+    const booking = await seedConfirmedBooking(ids, 2);
+    await addSecondItemToBooking(ids, booking);
+
+    const result = await listOperationalBookings(db, ids.orgId, {
+      search: 'KAY-SECOND-',
+      limit: null,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.id).toBe(booking.bookingId);
+    expect(result[0]!.bookingItemCount).toBe(2);
+  });
+
+  it('cockpit quotidien sépare pickup, retour du jour et retard sans doublon', async () => {
+    if (!db || !rawSql) return;
+    const ids = await seedBaseData();
+    const pickup = await seedConfirmedBooking(ids, 2);
+    const returnToday = await seedConfirmedBooking(ids, 3);
+    const overdue = await seedConfirmedBooking(ids, 1);
+    await setBookingStatus(returnToday.bookingId, 'ACTIVE');
+    await setBookingStatus(overdue.bookingId, 'ACTIVE');
+
+    const desk = await getOperationalDeskBookings(db, ids.orgId, {
+      locationId: ids.locationId,
+      targetDate: '2026-02-10',
+      now: new Date('2026-02-10T10:00:00.000Z'),
+    });
+
+    expect(desk).not.toBeNull();
+    expect(desk!.counts.PICKUPS_TODAY).toBe(1);
+    expect(desk!.counts.RETURNS_TODAY).toBe(0);
+    expect(desk!.counts.OVERDUE).toBe(1);
+    expect(desk!.counts.ONGOING).toBe(0);
+    expect(desk!.totalCount).toBe(2);
+    expect(desk!.buckets.PICKUPS_TODAY[0]!.id).toBe(pickup.bookingId);
+    expect(desk!.buckets.OVERDUE[0]!.id).toBe(overdue.bookingId);
+
+    const returnsDesk = await getOperationalDeskBookings(db, ids.orgId, {
+      locationId: ids.locationId,
+      targetDate: '2026-03-12',
+      now: new Date('2026-03-10T10:00:00.000Z'),
+    });
+    expect(returnsDesk!.counts.PICKUPS_TODAY).toBe(0);
+    expect(returnsDesk!.counts.RETURNS_TODAY).toBe(1);
+    expect(returnsDesk!.counts.OVERDUE).toBe(1);
+    expect(returnsDesk!.buckets.RETURNS_TODAY[0]!.id).toBe(returnToday.bookingId);
   });
 
   it('compte les réservations actives sans charger une liste bornée', async () => {

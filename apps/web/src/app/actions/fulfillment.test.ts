@@ -1259,7 +1259,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Server Actions — fulfillment', 
       expect(vi.mocked(revalidatePath)).toHaveBeenCalled();
     });
 
-    it('replay réussi (même clé, même payload) → revalidatePath appelée 2x (une par appel)', async () => {
+    it('replay réussi (même clé, même payload) → revalidatePath appelée 4x (une par chemin)', async () => {
       if (!testDb || !rawSql) return;
       const { booking, orgId } = await seedConfirmedBookingWithOperator('OWNER');
       // Prepare d'abord pour que le booking soit READY_FOR_PICKUP.
@@ -1281,13 +1281,13 @@ describe.skipIf(shouldSkipIntegrationTests())('Server Actions — fulfillment', 
       });
       vi.mocked(revalidatePath).mockClear();
       await createConditionReportAction(orgId, EMPTY_PREV, fd);
-      // Chaque appel d'action déclenche 2 revalidatePath (liste + détail).
-      expect(vi.mocked(revalidatePath)).toHaveBeenCalledTimes(2);
+      // Chaque appel d'action invalide les listes et détails historiques et du cockpit.
+      expect(vi.mocked(revalidatePath)).toHaveBeenCalledTimes(4);
 
       // Replay : même payload, même clé.
       vi.mocked(revalidatePath).mockClear();
       await createConditionReportAction(orgId, EMPTY_PREV, fd);
-      expect(vi.mocked(revalidatePath)).toHaveBeenCalledTimes(2);
+      expect(vi.mocked(revalidatePath)).toHaveBeenCalledTimes(4);
       // Un seul rapport en base (pas de doublon).
       expect(await countConditionReports(booking.bookingId)).toBe(1);
     });

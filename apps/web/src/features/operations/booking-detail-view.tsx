@@ -133,7 +133,12 @@ export function BookingDetailView({
           <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <Badge tone={getBookingBadgeTone(status)}>{bookingStatusLabel(status)}</Badge>
             {isPickupPending && (
-              <DepartureFlow orgId={organizationId} bookingId={bookingId} items={formItems} />
+              <DepartureFlow
+                orgId={organizationId}
+                bookingId={bookingId}
+                status={status}
+                items={formItems}
+              />
             )}
             {isReturnPending && (
               <ReturnFlow orgId={organizationId} bookingId={bookingId} items={formItems} />
