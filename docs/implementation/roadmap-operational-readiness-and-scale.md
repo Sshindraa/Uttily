@@ -400,6 +400,18 @@ refusées sans convertir ni supprimer les données existantes. Le Photo Coach et
 les slots restent limités au vélo, sans parcours bulk, import, pack ou
 supplément.
 
+**Transfert groupé d'exemplaires livré le 2026-09-02 :** depuis la flotte
+générique, un loueur autorisé peut sélectionner plusieurs exemplaires et les
+transférer vers un autre établissement de la même organisation. La mutation Core
+verrouille l'organisation, la destination et les lignes dans un ordre déterministe,
+valide le tenant avant écriture, met à jour les localisations et crée un mouvement
+par exemplaire dans une transaction unique. La clé d'idempotence couvre toute
+l'opération ; un rejeu retourne le résultat sans doublon, un conflit de destination
+est rejeté et le transfert vers le même établissement est un no-op explicite. Les
+statuts, conditions, réservations, maintenances et disponibilités restent
+inchangés. La flotte expose une sélection multiple, un résumé accessible avant
+confirmation et un résultat annoncé après exécution, sans logique vélo.
+
 ### 7.2 Onboarding autonome
 
 - organisation, identité légale et Stripe Connect ;
@@ -425,7 +437,7 @@ Prévoir plusieurs chemins d'entrée :
 - création de plusieurs exemplaires avec références déterministes (tranche Core atomique et rejouable livrée le 2026-09-02) ;
 - numéros de série et identifiants fabricant ;
 - changements groupés de statut et d'établissement ;
-- transferts multi-sites ;
+- transferts multi-sites (tranche inter-établissements groupée livrée le 2026-09-02) ;
 - inventaire physique et écarts ;
 - états ACTIVE, RETIRED, LOST et conditions physiques ;
 - blocages manuels et récurrents ;
