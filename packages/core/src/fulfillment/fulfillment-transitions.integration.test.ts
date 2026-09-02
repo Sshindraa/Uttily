@@ -11,6 +11,7 @@ import { prepareBooking } from './prepare-booking';
 import { pickupBooking } from './pickup-booking';
 import { returnBooking } from './return-booking';
 import { closeBooking } from './close-booking';
+import { createDamageReport } from './create-damage-report';
 import { FulfillmentError } from './fulfillment-errors';
 import { computeFulfillmentFingerprint } from './fingerprint';
 
@@ -1662,6 +1663,273 @@ describe.skipIf(shouldSkipIntegrationTests())(
         expect(outbox.length).toBe(1);
         const payload = outbox[0]!.payload as { occurredAt: string };
         expect(payload.occurredAt).toBe(occurredAt.toISOString());
+      });
+    });
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Lot 21-U2-AB — Incidents de retour
+    // ─────────────────────────────────────────────────────────────────────
+    describe('21-U2-AB — maintenance automatique au retour', () => {
+      it('pose un bloc borné, libère le bloc BOOKING et ne modifie aucun snapshot financier', async () => {
+        if (!db || !rawSql) return;
+        const ids = await seedBaseData();
+        const booking = await seedConfirmedBooking(ids);
+        const staffId = await seedStaffUser(ids);
+
+        await prepareBooking(db, {
+          organizationId: ids.orgId,
+          bookingId: booking.bookingId,
+          actorUserId: staffId,
+          idempotencyKey: 'ab-prep-' + SUFFIX(),
+        });
+        await pickupBooking(db, {
+          organizationId: ids.orgId,
+          bookingId: booking.bookingId,
+          actorUserId: staffId,
+          idempotencyKey: 'ab-pickup-' + SUFFIX(),
+        });
+
+        const financialBefore = await rawSql`
+          SELECT total_amount_minor, commission_amount_minor,
+                 cancellation_policy_snapshot, terms_acceptance_snapshot,
+                 payment_id
+          FROM bookings WHERE id = ${booking.bookingId}
+        `.then((rows) => rows[0]!);
+
+        const damage = await createDamageReport(db, {
+          organizationId: ids.orgId,
+          bookingId: booking.bookingId,
+          bookingItemId: booking.bookingItemId,
+          actorUserId: staffId,
+          idempotencyKey: 'ab-damage-' + SUFFIX(),
+          description: 'Frein arrière inutilisable',
+        });
+        expect(damage.kind).toBe('APPLIED');
+        if (damage.kind !== 'APPLIED') return;
+
+        const key = 'ab-return-maintenance-' + SUFFIX();
+        const result = await returnBooking(db, {
+          organizationId: ids.orgId,
+          bookingId: booking.bookingId,
+          actorUserId: staffId,
+          idempotencyKey: key,
+          maintenance: {
+            bookingItemId: booking.bookingItemId,
+            durationMinutes: 48 * 60,
+            sourceDamageReportId: damage.reportId,
+          },
+        });
+
+        expect(result).toMatchObject({
+          kind: 'APPLIED',
+          bookingId: booking.bookingId,
+          previousStatus: 'ACTIVE',
+          nextStatus: 'RETURNED',
+        });
+        expect(await getBookingStatus(booking.bookingId)).toBe('RETURNED');
+
+        const blocks = await rawSql`
+          SELECT id, type, status, source_id,
+                 (EXTRACT(EPOCH FROM (blocked_end_at - blocked_start_at)) / 60)::int AS duration_minutes
+          FROM inventory_blocks
+          WHERE inventory_item_id = ${ids.itemId}
+          ORDER BY created_at ASC, id ASC
+        `;
+        const bookingBlock = blocks.find((block) => block.type === 'BOOKING');
+        const maintenanceBlock = blocks.find((block) => block.type === 'MAINTENANCE');
+        expect(bookingBlock?.status).toBe('RELEASED');
+        expect(maintenanceBlock).toMatchObject({
+          type: 'MAINTENANCE',
+          status: 'ACTIVE',
+          source_id: damage.reportId,
+          duration_minutes: 48 * 60,
+        });
+
+        const item = await rawSql`
+          SELECT condition FROM inventory_items WHERE id = ${ids.itemId}
+        `.then((rows) => rows[0]!);
+        expect(item.condition).toBe('BROKEN');
+
+        const maintenanceCase = await rawSql`
+          SELECT id, status, source_damage_report_id, maintenance_block_id
+          FROM maintenance_cases WHERE inventory_item_id = ${ids.itemId}
+        `.then((rows) => rows[0]!);
+        expect(maintenanceCase).toMatchObject({
+          status: 'OPEN',
+          source_damage_report_id: damage.reportId,
+          maintenance_block_id: maintenanceBlock?.id,
+        });
+
+        const financialAfter = await rawSql`
+          SELECT total_amount_minor, commission_amount_minor,
+                 cancellation_policy_snapshot, terms_acceptance_snapshot,
+                 payment_id
+          FROM bookings WHERE id = ${booking.bookingId}
+        `.then((rows) => rows[0]!);
+        expect(financialAfter).toEqual(financialBefore);
+
+        const maintenanceAudit = await rawSql`
+          SELECT action, metadata FROM audit_log
+          WHERE target_id = ${ids.itemId} AND action = 'RETURN_MAINTENANCE_BLOCKED'
+        `.then((rows) => rows[0]!);
+        expect(maintenanceAudit.action).toBe('RETURN_MAINTENANCE_BLOCKED');
+        expect(maintenanceAudit.metadata).toMatchObject({
+          bookingId: booking.bookingId,
+          durationMinutes: 48 * 60,
+          financialSnapshotUntouched: true,
+        });
+
+        const allMaintenanceOutbox = await rawSql`
+          SELECT event_type, payload FROM outbox_events
+          WHERE event_type = 'MAINTENANCE_OPENED' AND aggregate_id = ${maintenanceCase.id}
+        `.then((rows) => rows[0]!);
+        expect(allMaintenanceOutbox.event_type).toBe('MAINTENANCE_OPENED');
+        expect(allMaintenanceOutbox.payload).toMatchObject({
+          bookingId: booking.bookingId,
+          maintenanceBlockId: maintenanceBlock?.id,
+          durationMinutes: 48 * 60,
+        });
+
+        const replay = await returnBooking(db, {
+          organizationId: ids.orgId,
+          bookingId: booking.bookingId,
+          actorUserId: staffId,
+          idempotencyKey: key,
+          maintenance: {
+            bookingItemId: booking.bookingItemId,
+            durationMinutes: 48 * 60,
+            sourceDamageReportId: damage.reportId,
+          },
+        });
+        expect(replay).toEqual(result);
+        expect(
+          await rawSql`SELECT count(*)::int AS count FROM inventory_blocks WHERE inventory_item_id = ${ids.itemId} AND type = 'MAINTENANCE'`.then(
+            (rows) => rows[0]!.count,
+          ),
+        ).toBe(1);
+      });
+
+      it('en cas de chevauchement futur, valide le retour et émet CONFLICT_DETECTED sans bloc incompatible', async () => {
+        if (!db || !rawSql) return;
+        const ids = await seedBaseData();
+        const booking = await seedConfirmedBooking(ids);
+        const staffId = await seedStaffUser(ids);
+
+        await prepareBooking(db, {
+          organizationId: ids.orgId,
+          bookingId: booking.bookingId,
+          actorUserId: staffId,
+          idempotencyKey: 'ab-conflict-prep-' + SUFFIX(),
+        });
+        await pickupBooking(db, {
+          organizationId: ids.orgId,
+          bookingId: booking.bookingId,
+          actorUserId: staffId,
+          idempotencyKey: 'ab-conflict-pickup-' + SUFFIX(),
+        });
+
+        await rawSql`
+          INSERT INTO inventory_blocks (
+            organization_id, inventory_item_id, type, status,
+            customer_start_at, customer_end_at, blocked_start_at, blocked_end_at, source_id
+          )
+          VALUES (
+            ${ids.orgId}, ${ids.itemId}, 'BOOKING', 'ACTIVE',
+            now() + interval '12 hours', now() + interval '36 hours',
+            now() + interval '12 hours', now() + interval '36 hours', ${randomUUID()}
+          )
+        `;
+
+        const key = 'ab-return-conflict-' + SUFFIX();
+        const result = await returnBooking(db, {
+          organizationId: ids.orgId,
+          bookingId: booking.bookingId,
+          actorUserId: staffId,
+          idempotencyKey: key,
+          maintenance: {
+            bookingItemId: booking.bookingItemId,
+            durationMinutes: 48 * 60,
+          },
+        });
+
+        expect(result.kind).toBe('APPLIED');
+        expect(await getBookingStatus(booking.bookingId)).toBe('RETURNED');
+        expect(
+          await rawSql`SELECT status FROM inventory_blocks WHERE id = ${booking.blockId}`.then(
+            (rows) => rows[0]!.status,
+          ),
+        ).toBe('RELEASED');
+        expect(
+          await rawSql`SELECT count(*)::int AS count FROM inventory_blocks WHERE inventory_item_id = ${ids.itemId} AND type = 'MAINTENANCE'`.then(
+            (rows) => rows[0]!.count,
+          ),
+        ).toBe(0);
+        expect(
+          await rawSql`SELECT condition FROM inventory_items WHERE id = ${ids.itemId}`.then(
+            (rows) => rows[0]!.condition,
+          ),
+        ).toBe('BROKEN');
+
+        const conflictAudit = await rawSql`
+          SELECT action, metadata FROM audit_log
+          WHERE target_id = ${ids.itemId} AND action = 'CONFLICT_DETECTED'
+        `.then((rows) => rows[0]!);
+        expect(conflictAudit.action).toBe('CONFLICT_DETECTED');
+        expect(conflictAudit.metadata).toMatchObject({
+          bookingId: booking.bookingId,
+          conflictType: 'RETURN_MAINTENANCE_VS_FUTURE_BOOKING',
+          requiresProactiveSubstitution: true,
+          financialSnapshotUntouched: true,
+        });
+
+        const conflictOutbox = await rawSql`
+          SELECT event_type, aggregate_type, aggregate_id, payload
+          FROM outbox_events WHERE event_type = 'CONFLICT_DETECTED'
+        `.then((rows) => rows[0]!);
+        expect(conflictOutbox).toMatchObject({
+          event_type: 'CONFLICT_DETECTED',
+          aggregate_type: 'INVENTORY_ITEM',
+          aggregate_id: ids.itemId,
+        });
+        expect(conflictOutbox.payload).toMatchObject({
+          bookingId: booking.bookingId,
+          requiresProactiveSubstitution: true,
+        });
+      });
+
+      it('un exemplaire déjà BROKEN déclenche automatiquement la maintenance par défaut', async () => {
+        if (!db || !rawSql) return;
+        const ids = await seedBaseData();
+        const booking = await seedConfirmedBooking(ids);
+        const staffId = await seedStaffUser(ids);
+
+        await prepareBooking(db, {
+          organizationId: ids.orgId,
+          bookingId: booking.bookingId,
+          actorUserId: staffId,
+          idempotencyKey: 'ab-broken-prep-' + SUFFIX(),
+        });
+        await pickupBooking(db, {
+          organizationId: ids.orgId,
+          bookingId: booking.bookingId,
+          actorUserId: staffId,
+          idempotencyKey: 'ab-broken-pickup-' + SUFFIX(),
+        });
+        await rawSql`UPDATE inventory_items SET condition = 'BROKEN' WHERE id = ${ids.itemId}`;
+
+        await returnBooking(db, {
+          organizationId: ids.orgId,
+          bookingId: booking.bookingId,
+          actorUserId: staffId,
+          idempotencyKey: 'ab-broken-return-' + SUFFIX(),
+        });
+
+        const maintenance = await rawSql`
+          SELECT (EXTRACT(EPOCH FROM (blocked_end_at - blocked_start_at)) / 60)::int AS duration_minutes
+          FROM inventory_blocks
+          WHERE inventory_item_id = ${ids.itemId} AND type = 'MAINTENANCE'
+        `.then((rows) => rows[0]!);
+        expect(maintenance.duration_minutes).toBe(24 * 60);
       });
     });
 

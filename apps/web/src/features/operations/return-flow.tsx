@@ -29,12 +29,15 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
   const [hasDamage, setHasDamage] = useState(false);
   const [damageDescription, setDamageDescription] = useState('');
   const [requiresMaintenance, setRequiresMaintenance] = useState(false);
+  const [maintenanceDurationMinutes, setMaintenanceDurationMinutes] = useState(24 * 60);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const idempotencyKeys = useRef<Partial<Record<'condition' | 'damage' | 'return', string>>>({});
   const completedSteps = useRef({ condition: false, damage: false });
+  const damageReportId = useRef<string | null>(null);
 
   const firstItem = items[0];
+  const maintenanceRequested = condition === 'BROKEN' || (hasDamage && requiresMaintenance);
 
   function getIdempotencyKey(step: 'condition' | 'damage' | 'return'): string {
     const current = idempotencyKeys.current[step];
@@ -47,6 +50,13 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
   function openFlow(): void {
     idempotencyKeys.current = {};
     completedSteps.current = { condition: false, damage: false };
+    damageReportId.current = null;
+    setCondition('GOOD');
+    setNotes('');
+    setHasDamage(false);
+    setDamageDescription('');
+    setRequiresMaintenance(false);
+    setMaintenanceDurationMinutes(24 * 60);
     setError(null);
     setIsOpen(true);
   }
@@ -88,6 +98,9 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
 
       // 2. Si un dommage est signalé. Cette étape reste indépendante de la
       // précédente afin qu'un retry après un échec de clôture ne la rejoue pas.
+      // Le bloc de maintenance est volontairement posé par returnBooking dans
+      // la transaction de restitution : créer le bloc ici entrerait en conflit
+      // avec le bloc BOOKING encore actif.
       if (
         firstItem &&
         hasDamage &&
@@ -99,9 +112,6 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
         damageFormData.append('bookingItemId', firstItem.bookingItemId);
         damageFormData.append('description', damageDescription.trim());
         damageFormData.append('idempotencyKey', getIdempotencyKey('damage'));
-        if (requiresMaintenance) {
-          damageFormData.append('blocksInventory', 'true');
-        }
 
         const damageResult = await createDamageReportAction(
           orgId,
@@ -114,12 +124,21 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
           return;
         }
         completedSteps.current.damage = true;
+        damageReportId.current = damageResult.data.reportId;
       }
 
       // 3. Transitionner vers RETURNED
       const transitionFormData = new FormData();
       transitionFormData.append('bookingId', bookingId);
       transitionFormData.append('idempotencyKey', getIdempotencyKey('return'));
+      if (firstItem && maintenanceRequested) {
+        transitionFormData.append('maintenanceEnabled', 'true');
+        transitionFormData.append('maintenanceBookingItemId', firstItem.bookingItemId);
+        transitionFormData.append('maintenanceDurationMinutes', String(maintenanceDurationMinutes));
+        if (damageReportId.current) {
+          transitionFormData.append('sourceDamageReportId', damageReportId.current);
+        }
+      }
 
       const returnResult = await returnBookingAction(
         orgId,
@@ -195,8 +214,11 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
               setCondition(val);
               if (val === 'BROKEN' || val === 'POOR') {
                 setHasDamage(true);
-                setRequiresMaintenance(true);
+                if (!damageDescription) {
+                  setDamageDescription('Signalé lors du retour locataire.');
+                }
               }
+              if (val === 'BROKEN') setRequiresMaintenance(true);
             }}
             disabled={loading}
             style={{
@@ -275,6 +297,7 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
               checked={hasDamage}
               onChange={(e) => {
                 setHasDamage(e.target.checked);
+                if (!e.target.checked) setRequiresMaintenance(false);
                 if (e.target.checked && !damageDescription) {
                   setDamageDescription('Signalé lors du retour locataire.');
                 }
@@ -335,14 +358,69 @@ export function ReturnFlow({ orgId, bookingId, items }: ReturnFlowProps): React.
               >
                 <input
                   type="checkbox"
-                  checked={requiresMaintenance}
+                  checked={maintenanceRequested}
                   onChange={(e) => setRequiresMaintenance(e.target.checked)}
-                  disabled={loading}
+                  disabled={loading || condition === 'BROKEN'}
                 />
-                <span>
-                  Retirer temporairement cet équipement de la location (envoyer en atelier)
-                </span>
+                <span>Nécessite une maintenance immédiate (retirer de la location)</span>
               </label>
+            </div>
+          )}
+
+          {maintenanceRequested && (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+                paddingTop: '0.5rem',
+                borderTop: 'var(--ut-border-thin)',
+              }}
+            >
+              <label
+                htmlFor={`return-maintenance-duration-${bookingId}`}
+                style={{
+                  fontSize: '0.85rem',
+                  fontWeight: 'var(--ut-weight-semibold)',
+                  color: 'var(--ut-color-ink)',
+                }}
+              >
+                Durée estimée d’indisponibilité :
+              </label>
+              <select
+                id={`return-maintenance-duration-${bookingId}`}
+                value={maintenanceDurationMinutes}
+                onChange={(e) => setMaintenanceDurationMinutes(Number(e.target.value))}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '0.6rem 0.75rem',
+                  borderRadius: 'var(--ut-radius-md)',
+                  border: 'var(--ut-border-thin)',
+                  fontSize: '0.875rem',
+                  background: 'var(--ut-color-surface)',
+                  color: 'var(--ut-color-ink)',
+                  minHeight: '44px',
+                }}
+              >
+                <option value={4 * 60}>4 heures</option>
+                <option value={24 * 60}>24 heures</option>
+                <option value={48 * 60}>48 heures</option>
+                <option value={7 * 24 * 60}>7 jours</option>
+              </select>
+              <p
+                role="status"
+                style={{
+                  margin: 0,
+                  color: 'var(--ut-color-ink-muted)',
+                  fontSize: '0.8rem',
+                  lineHeight: 1.4,
+                }}
+              >
+                {firstItem?.internalSku ?? 'Cet exemplaire'} sera marqué BROKEN et bloqué dès la
+                restitution. Une réservation ferme qui chevauche cette période sera signalée à
+                l’équipe pour substitution proactive.
+              </p>
             </div>
           )}
         </div>

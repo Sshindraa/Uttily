@@ -8,6 +8,7 @@ export * from './apply-fulfillment-transition';
 export * from './prepare-booking';
 export * from './pickup-booking';
 export * from './return-booking';
+export * from './return-maintenance';
 export * from './close-booking';
 export * from './report-types';
 export * from './report-fingerprints';
