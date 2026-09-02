@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { OperationalPlanning } from '@uttily/core';
+import type { OperationalPlanning, OperationalPlanningEvent } from '@uttily/core';
 import { formatDateTimeInTimeZone } from '@/lib/operations-helpers';
+import { getCategoryPresentation } from '@/features/equipment/category-presentation';
 import styles from './planning.module.css';
 
 export interface PlanningViewProps {
@@ -53,6 +54,86 @@ function formatLocalDateKey(dateKey: string): { label: string; shortLabel: strin
   };
 }
 
+function getEquipmentLabel(categorySlug: string): string {
+  const presentation = getCategoryPresentation(categorySlug);
+  return `${presentation.icon} ${presentation.singularLabel}`;
+}
+
+/** Les intervalles sont semi-ouverts : une fin à minuit ne couvre pas le jour suivant. */
+function eventCoversLocalDay(event: OperationalPlanningEvent, dayDateStr: string): boolean {
+  const inclusiveEnd =
+    event.endAt > event.startAt ? new Date(event.endAt.getTime() - 1) : event.endAt;
+  const startDate = getLocalDateKey(event.startAt, event.locationTimeZone);
+  const endDate = getLocalDateKey(inclusiveEnd, event.locationTimeZone);
+  return dayDateStr >= startDate && dayDateStr <= endDate;
+}
+
+function formatLocalInterval(event: OperationalPlanningEvent): string {
+  const start = formatDateTimeInTimeZone(event.startAt, event.locationTimeZone, {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+  const end = formatDateTimeInTimeZone(event.endAt, event.locationTimeZone, {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+  return `${start} → ${end}`;
+}
+
+export type PlanningFleetDayStatus = 'MAINTENANCE' | 'BLOCKED' | 'RENTED' | 'AVAILABLE';
+
+export function getPlanningFleetDayStatus(
+  events: readonly OperationalPlanningEvent[],
+  orgId: string,
+  itemId: string,
+  dayDateStr: string,
+): { status: PlanningFleetDayStatus; label: string; link: string } {
+  const isMaintenance = events.find((event) => {
+    if (event.type !== 'MAINTENANCE' || event.inventoryItemId !== itemId) return false;
+    return eventCoversLocalDay(event, dayDateStr);
+  });
+
+  if (isMaintenance) {
+    return {
+      status: 'MAINTENANCE',
+      label: '🔧 En maintenance',
+      link: `/dashboard/${orgId}/fleet/maintenance/${isMaintenance.maintenanceCaseId ?? ''}`,
+    };
+  }
+
+  const isManualBlock = events.find((event) => {
+    if (event.type !== 'MANUAL_BLOCK' || event.inventoryItemId !== itemId) return false;
+    return eventCoversLocalDay(event, dayDateStr);
+  });
+
+  if (isManualBlock) {
+    return {
+      status: 'BLOCKED',
+      label: '⛔ Bloqué',
+      link: `/dashboard/${orgId}/fleet`,
+    };
+  }
+
+  const isRented = events.find((event) => {
+    if (event.type !== 'RENTAL' || event.inventoryItemId !== itemId) return false;
+    return eventCoversLocalDay(event, dayDateStr);
+  });
+
+  if (isRented) {
+    return {
+      status: 'RENTED',
+      label: '🔵 Loué',
+      link: `/dashboard/${orgId}/bookings/${isRented.bookingId ?? ''}`,
+    };
+  }
+
+  return {
+    status: 'AVAILABLE',
+    label: '🟢 Disponible',
+    link: `/dashboard/${orgId}/fleet`,
+  };
+}
+
 export function PlanningView({
   orgId,
   planning,
@@ -86,51 +167,14 @@ export function PlanningView({
     );
     const maintenances = planning.events.filter((e) => {
       if (e.type !== 'MAINTENANCE') return false;
-      const mStart = getLocalDateKey(e.startAt, e.locationTimeZone);
-      const mEnd = getLocalDateKey(e.endAt, e.locationTimeZone);
-      return dayDateStr >= mStart && dayDateStr <= mEnd;
+      return eventCoversLocalDay(e, dayDateStr);
+    });
+    const manualBlocks = planning.events.filter((e) => {
+      if (e.type !== 'MANUAL_BLOCK') return false;
+      return eventCoversLocalDay(e, dayDateStr);
     });
 
-    return { pickUps, returns, maintenances };
-  }
-
-  // Vérification de l'état d'un exemplaire pour une journée donnée (Vue Flotte)
-  function getItemDayStatus(itemId: string, dayDateStr: string) {
-    const isMaintenance = planning.events.find((e) => {
-      if (e.type !== 'MAINTENANCE' || e.inventoryItemId !== itemId) return false;
-      const mStart = getLocalDateKey(e.startAt, e.locationTimeZone);
-      const mEnd = getLocalDateKey(e.endAt, e.locationTimeZone);
-      return dayDateStr >= mStart && dayDateStr <= mEnd;
-    });
-
-    if (isMaintenance) {
-      return {
-        status: 'MAINTENANCE' as const,
-        label: '🔧 En maintenance',
-        link: `/dashboard/${orgId}/fleet/maintenance/${isMaintenance.maintenanceCaseId ?? ''}`,
-      };
-    }
-
-    const isRented = planning.events.find((e) => {
-      if (e.type !== 'RENTAL' || e.inventoryItemId !== itemId) return false;
-      const rStart = getLocalDateKey(e.startAt, e.locationTimeZone);
-      const rEnd = getLocalDateKey(e.endAt, e.locationTimeZone);
-      return dayDateStr >= rStart && dayDateStr <= rEnd;
-    });
-
-    if (isRented) {
-      return {
-        status: 'RENTED' as const,
-        label: '🔵 Loué',
-        link: `/dashboard/${orgId}/bookings/${isRented.bookingId ?? ''}`,
-      };
-    }
-
-    return {
-      status: 'AVAILABLE' as const,
-      label: '🟢 Disponible',
-      link: `/dashboard/${orgId}/fleet`,
-    };
+    return { pickUps, returns, maintenances, manualBlocks };
   }
 
   const router = useRouter();
@@ -179,13 +223,13 @@ export function PlanningView({
               className={`${styles.toggleBtn} ${viewMode === 'FLEET' ? styles.toggleActive : ''}`}
               onClick={() => setViewMode('FLEET')}
             >
-              🚲 Vue Flotte
+              🧰 Vue Flotte
             </button>
           </div>
         </div>
       </div>
 
-      {/* 4 Chiffres Clés de la Semaine */}
+      {/* Chiffres clés de la semaine : les blocages restent séparés des locations et maintenances. */}
       <div className={styles.statsGrid}>
         <div className={styles.statCard}>
           <span className={`${styles.statNumber} ${styles.statGreen}`}>
@@ -212,6 +256,13 @@ export function PlanningView({
           </span>
           <span className={styles.statLabel}>Équipements en maintenance</span>
         </div>
+
+        <div className={styles.statCard}>
+          <span className={`${styles.statNumber} ${styles.statRed}`}>
+            ⛔ {planning.stats.totalManualBlocks}
+          </span>
+          <span className={styles.statLabel}>Blocages manuels</span>
+        </div>
       </div>
 
       {/* Contenu selon le mode sélectionné */}
@@ -219,8 +270,9 @@ export function PlanningView({
         /* VUE 1 : PLANNING JOUR PAR JOUR */
         <div className={styles.daysGrid}>
           {days.map((day) => {
-            const { pickUps, returns, maintenances } = getDayEvents(day.dateStr);
-            const totalDayEvents = pickUps.length + returns.length + maintenances.length;
+            const { pickUps, returns, maintenances, manualBlocks } = getDayEvents(day.dateStr);
+            const totalDayEvents =
+              pickUps.length + returns.length + maintenances.length + manualBlocks.length;
 
             return (
               <div key={day.dateStr} className={styles.dayColumn}>
@@ -251,7 +303,9 @@ export function PlanningView({
                             <span className={styles.eventSku}>{p.internalSku}</span>
                           </div>
                           <div className={styles.eventTitle}>{p.productName}</div>
-                          <div className={styles.eventClient}>{p.customerName ?? 'Locataire'}</div>
+                          <div className={styles.eventClient}>
+                            {getEquipmentLabel(p.categorySlug)} · {p.customerName ?? 'Locataire'}
+                          </div>
                         </Link>
                       ))}
 
@@ -270,7 +324,9 @@ export function PlanningView({
                             <span className={styles.eventSku}>{r.internalSku}</span>
                           </div>
                           <div className={styles.eventTitle}>{r.productName}</div>
-                          <div className={styles.eventClient}>{r.customerName ?? 'Locataire'}</div>
+                          <div className={styles.eventClient}>
+                            {getEquipmentLabel(r.categorySlug)} · {r.customerName ?? 'Locataire'}
+                          </div>
                         </Link>
                       ))}
 
@@ -286,7 +342,30 @@ export function PlanningView({
                             <span className={styles.eventSku}>{m.internalSku}</span>
                           </div>
                           <div className={styles.eventTitle}>{m.productName}</div>
-                          <div className={styles.eventClient}>« {m.reason} »</div>
+                          <div className={styles.eventClient}>
+                            {getEquipmentLabel(m.categorySlug)} · « {m.reason} »
+                          </div>
+                        </Link>
+                      ))}
+
+                      {/* Blocages manuels : distincts des locations et maintenances. */}
+                      {manualBlocks.map((block) => (
+                        <Link
+                          key={block.id}
+                          href={`/dashboard/${orgId}/fleet`}
+                          className={`${styles.eventCard} ${styles.eventManualBlock}`}
+                          aria-label={`Indisponible — ${block.productName} — ${formatLocalInterval(block)}`}
+                        >
+                          <div className={styles.eventHeader}>
+                            <span className={styles.eventTime}>
+                              ⛔ Indisponible · {formatLocalInterval(block)}
+                            </span>
+                            <span className={styles.eventSku}>{block.internalSku}</span>
+                          </div>
+                          <div className={styles.eventTitle}>{block.productName}</div>
+                          <div className={styles.eventClient}>
+                            {getEquipmentLabel(block.categorySlug)} · {block.locationName}
+                          </div>
                         </Link>
                       ))}
                     </>
@@ -311,17 +390,22 @@ export function PlanningView({
               </tr>
             </thead>
             <tbody>
-              {planning.fleetItems.map((bike) => (
-                <tr key={bike.id}>
+              {planning.fleetItems.map((item) => (
+                <tr key={item.id}>
                   <td className={styles.bikeCell}>
-                    <span className={styles.bikeSku}>{bike.internalSku}</span>
+                    <span className={styles.bikeSku}>{item.internalSku}</span>
                     <span className={styles.bikeName}>
-                      {bike.productName} ({bike.variantName})
+                      {getEquipmentLabel(item.categorySlug)} · {item.productName} ({item.variantName})
                     </span>
                   </td>
 
                   {days.map((day) => {
-                    const { status, label, link } = getItemDayStatus(bike.id, day.dateStr);
+                    const { status, label, link } = getPlanningFleetDayStatus(
+                      planning.events,
+                      orgId,
+                      item.id,
+                      day.dateStr,
+                    );
 
                     return (
                       <td key={day.dateStr} className={styles.cellDay}>
@@ -330,6 +414,8 @@ export function PlanningView({
                           className={`${styles.fleetCellBadge} ${
                             status === 'MAINTENANCE'
                               ? styles.cellMaint
+                              : status === 'BLOCKED'
+                                ? styles.cellBlocked
                               : status === 'RENTED'
                                 ? styles.cellRented
                                 : styles.cellAvail

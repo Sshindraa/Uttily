@@ -110,6 +110,10 @@
   color: var(--ut-color-warning);
 }
 
+.statRed {
+  color: var(--ut-color-danger);
+}
+
 .statLabel {
   font-size: 0.85rem;
   color: var(--ut-color-ink-muted);
@@ -201,6 +205,12 @@
   background: var(--ut-color-warning-soft);
   border: 1px solid var(--ut-color-warning-soft);
   color: var(--ut-color-warning);
+}
+
+.eventManualBlock {
+  background: var(--ut-color-danger-soft);
+  border: 1px solid var(--ut-color-danger-soft);
+  color: var(--ut-color-danger);
 }
 
 .eventHeader {
@@ -334,4 +344,10 @@
   background: var(--ut-color-warning-soft);
   color: var(--ut-color-warning);
   border: 1px solid var(--ut-color-warning-soft);
+}
+
+.cellBlocked {
+  background: var(--ut-color-danger-soft);
+  color: var(--ut-color-danger);
+  border: 1px solid var(--ut-color-danger-soft);
 }

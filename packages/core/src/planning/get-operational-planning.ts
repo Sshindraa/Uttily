@@ -3,6 +3,7 @@ import type { DatabaseClient } from '@uttily/database';
 import {
   bookings,
   bookingItems,
+  categories,
   inventoryBlocks,
   inventoryItems,
   locations,
@@ -37,6 +38,24 @@ export function getDefaultWeekWindow(asOf: Date, timeZone: string): { from: Date
     from: localDateToUtcMidnight(mondayDate, timeZone),
     to: localDateToUtcMidnight(nextMondayDate, timeZone),
   };
+}
+
+/**
+ * Coupe un intervalle UTC à la fenêtre du planning.
+ * Les événements renvoyés par le read model restent des instants UTC ; le
+ * fuseau IANA de l'établissement accompagne chaque événement pour l'affichage.
+ */
+export function clipPlanningInterval(
+  startAt: Date,
+  endAt: Date,
+  from: Date,
+  to: Date,
+): { startAt: Date; endAt: Date } | null {
+  const clippedStartAt = startAt > from ? startAt : from;
+  const clippedEndAt = endAt < to ? endAt : to;
+  return clippedEndAt > clippedStartAt
+    ? { startAt: clippedStartAt, endAt: clippedEndAt }
+    : null;
 }
 
 export async function getOperationalPlanning(
@@ -116,6 +135,7 @@ export async function getOperationalPlanning(
       serialNumber: inventoryItems.serialNumber,
       productName: products.name,
       variantName: productVariants.name,
+      categorySlug: categories.slug,
       condition: inventoryItems.condition,
       status: inventoryItems.status,
       locationId: locations.id,
@@ -124,6 +144,7 @@ export async function getOperationalPlanning(
     .from(inventoryItems)
     .innerJoin(productVariants, eq(inventoryItems.productVariantId, productVariants.id))
     .innerJoin(products, eq(productVariants.productId, products.id))
+    .innerJoin(categories, eq(products.categoryId, categories.id))
     .innerJoin(locations, eq(inventoryItems.currentLocationId, locations.id))
     .where(
       and(
@@ -141,6 +162,7 @@ export async function getOperationalPlanning(
     serialNumber: r.serialNumber,
     productName: r.productName,
     variantName: r.variantName,
+    categorySlug: r.categorySlug,
     condition: r.condition,
     status: r.status,
     locationId: r.locationId,
@@ -160,6 +182,7 @@ export async function getOperationalPlanning(
       internalSku: inventoryItems.internalSku,
       productName: products.name,
       variantName: productVariants.name,
+      categorySlug: categories.slug,
       locationId: locations.id,
       locationName: locations.name,
       locationTimeZone: locations.timeZone,
@@ -170,6 +193,7 @@ export async function getOperationalPlanning(
     .innerJoin(inventoryItems, eq(bookingItems.inventoryItemId, inventoryItems.id))
     .innerJoin(productVariants, eq(inventoryItems.productVariantId, productVariants.id))
     .innerJoin(products, eq(productVariants.productId, products.id))
+    .innerJoin(categories, eq(products.categoryId, categories.id))
     .innerJoin(locations, eq(bookings.locationId, locations.id))
     .where(
       and(
@@ -195,6 +219,7 @@ export async function getOperationalPlanning(
       internalSku: inventoryItems.internalSku,
       productName: products.name,
       variantName: productVariants.name,
+      categorySlug: categories.slug,
       locationId: locations.id,
       locationName: locations.name,
       locationTimeZone: locations.timeZone,
@@ -207,6 +232,7 @@ export async function getOperationalPlanning(
     .innerJoin(inventoryItems, eq(maintenanceCases.inventoryItemId, inventoryItems.id))
     .innerJoin(productVariants, eq(inventoryItems.productVariantId, productVariants.id))
     .innerJoin(products, eq(productVariants.productId, products.id))
+    .innerJoin(categories, eq(products.categoryId, categories.id))
     .innerJoin(locations, eq(inventoryItems.currentLocationId, locations.id))
     .where(
       and(
@@ -219,7 +245,46 @@ export async function getOperationalPlanning(
       ),
     );
 
-  // 6. Construction des événements normalisés
+  // 6. Blocages manuels actifs sur la période
+  const manualBlockRows = await db
+    .select({
+      manualBlockId: inventoryBlocks.id,
+      blockStatus: inventoryBlocks.status,
+      blockedStartAt: inventoryBlocks.blockedStartAt,
+      blockedEndAt: inventoryBlocks.blockedEndAt,
+      inventoryItemId: inventoryItems.id,
+      internalSku: inventoryItems.internalSku,
+      productName: products.name,
+      variantName: productVariants.name,
+      categorySlug: categories.slug,
+      locationId: locations.id,
+      locationName: locations.name,
+      locationTimeZone: locations.timeZone,
+    })
+    .from(inventoryBlocks)
+    .innerJoin(inventoryItems, eq(inventoryBlocks.inventoryItemId, inventoryItems.id))
+    .innerJoin(productVariants, eq(inventoryItems.productVariantId, productVariants.id))
+    .innerJoin(products, eq(productVariants.productId, products.id))
+    .innerJoin(categories, eq(products.categoryId, categories.id))
+    .innerJoin(locations, eq(inventoryItems.currentLocationId, locations.id))
+    .where(
+      and(
+        eq(inventoryBlocks.organizationId, organizationId),
+        eq(inventoryBlocks.type, 'MANUAL_BLOCK'),
+        eq(inventoryBlocks.status, 'ACTIVE'),
+        isNull(inventoryBlocks.deletedAt),
+        isNull(inventoryItems.deletedAt),
+        isNull(productVariants.deletedAt),
+        isNull(products.deletedAt),
+        isNull(locations.deletedAt),
+        locationId ? eq(inventoryItems.currentLocationId, locationId) : undefined,
+        options?.inventoryItemId ? eq(inventoryItems.id, options.inventoryItemId) : undefined,
+        sql`tstzrange(${inventoryBlocks.blockedStartAt}, ${inventoryBlocks.blockedEndAt}) && tstzrange(${from.toISOString()}::timestamptz, ${to.toISOString()}::timestamptz)`,
+      ),
+    )
+    .orderBy(asc(inventoryBlocks.blockedStartAt), asc(inventoryItems.internalSku));
+
+  // 7. Construction des événements normalisés
   const events: OperationalPlanningEvent[] = [];
   let totalPickups = 0;
   let totalReturns = 0;
@@ -234,6 +299,7 @@ export async function getOperationalPlanning(
       internalSku: b.internalSku,
       productName: b.productName,
       variantName: b.variantName,
+      categorySlug: b.categorySlug,
       locationId: b.locationId,
       locationName: b.locationName,
       locationTimeZone: b.locationTimeZone,
@@ -254,6 +320,7 @@ export async function getOperationalPlanning(
         internalSku: b.internalSku,
         productName: b.productName,
         variantName: b.variantName,
+        categorySlug: b.categorySlug,
         locationId: b.locationId,
         locationName: b.locationName,
         locationTimeZone: b.locationTimeZone,
@@ -275,6 +342,7 @@ export async function getOperationalPlanning(
         internalSku: b.internalSku,
         productName: b.productName,
         variantName: b.variantName,
+        categorySlug: b.categorySlug,
         locationId: b.locationId,
         locationName: b.locationName,
         locationTimeZone: b.locationTimeZone,
@@ -287,8 +355,9 @@ export async function getOperationalPlanning(
   }
 
   for (const m of maintenanceRows) {
-    // Clipper la date sentinelle 9999-12-31 à la date de fin de fenêtre pour l'affichage propre
-    const effectiveEndAt = m.blockedEndAt > to ? to : m.blockedEndAt;
+    // Clipper l'intervalle à la fenêtre pour un affichage propre.
+    const clipped = clipPlanningInterval(m.blockedStartAt, m.blockedEndAt, from, to);
+    if (!clipped) continue;
 
     events.push({
       id: `maint_${m.maintenanceCaseId}`,
@@ -298,13 +367,37 @@ export async function getOperationalPlanning(
       internalSku: m.internalSku,
       productName: m.productName,
       variantName: m.variantName,
+      categorySlug: m.categorySlug,
       locationId: m.locationId,
       locationName: m.locationName,
       locationTimeZone: m.locationTimeZone,
-      startAt: m.blockedStartAt,
-      endAt: effectiveEndAt,
+      startAt: clipped.startAt,
+      endAt: clipped.endAt,
       status: m.caseStatus,
       reason: m.reason,
+    });
+  }
+
+  for (const b of manualBlockRows) {
+    const clipped = clipPlanningInterval(b.blockedStartAt, b.blockedEndAt, from, to);
+    if (!clipped) continue;
+
+    events.push({
+      id: `manual_block_${b.manualBlockId}`,
+      type: 'MANUAL_BLOCK',
+      manualBlockId: b.manualBlockId,
+      inventoryItemId: b.inventoryItemId,
+      internalSku: b.internalSku,
+      productName: b.productName,
+      variantName: b.variantName,
+      categorySlug: b.categorySlug,
+      locationId: b.locationId,
+      locationName: b.locationName,
+      locationTimeZone: b.locationTimeZone,
+      startAt: clipped.startAt,
+      endAt: clipped.endAt,
+      status: b.blockStatus,
+      reason: 'Indisponibilité manuelle',
     });
   }
 
@@ -320,6 +413,7 @@ export async function getOperationalPlanning(
       totalPickups,
       totalReturns,
       totalMaintenances: maintenanceRows.length,
+      totalManualBlocks: manualBlockRows.length,
     },
     fleetItems,
   };
