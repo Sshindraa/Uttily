@@ -12,12 +12,16 @@ import {
   createProduct,
   listVariants,
   createInventoryItem,
+  updateInventoryItem,
   createInventoryBlock,
   getInventoryBlock,
   listBlocksForItem,
   releaseBlock,
   expireBlock,
   convertBlock,
+  createManualBlock,
+  releaseManualBlock,
+  COMMERCIAL_EQUIPMENT_FAMILY_SLUGS,
   findAvailableItems,
   CatalogError,
   type AuthenticatedUser,
@@ -116,9 +120,14 @@ async function createProductForOrg(
   return { productId: product.id, variantId: variants[0]!.id };
 }
 
-async function setupItem(organizationId: string, locationId: string, sku: string) {
+async function setupItem(
+  organizationId: string,
+  locationId: string,
+  sku: string,
+  categorySlug = 'surf',
+) {
   if (!db) throw new Error('db not initialized');
-  const { variantId } = await createProductForOrg(organizationId, `Product ${sku}`);
+  const { variantId } = await createProductForOrg(organizationId, `Product ${sku}`, categorySlug);
   const item = await createInventoryItem(db, {
     organizationId,
     productVariantId: variantId,
@@ -1063,5 +1072,187 @@ describe.skipIf(shouldSkipIntegrationTests())('Availability integration — Inve
       blockedEndAt: new Date('2026-08-01T13:00:00Z'),
     });
     expect(newBlock.id).not.toBe(block.id);
+  });
+
+  // -------------------------------------------------------------------------
+  // 13. Blocage manuel : use case transactionnel, fuseau et idempotence.
+  // -------------------------------------------------------------------------
+  it('blocage manuel : convertit le fuseau, bloque la recherche puis se libère', async () => {
+    if (!ctx || !db) return;
+    const { user, organizationId, locationId } = await setupOrgWithLocation(
+      'manual-block-lifecycle@example.com',
+      'Manual Block Lifecycle Org',
+    );
+    const item = await setupItem(organizationId, locationId, 'MANUAL-LIFE-001', 'bike');
+
+    const result = await createManualBlock(db, {
+      organizationId,
+      inventoryItemId: item.id,
+      locationId,
+      startAt: '2026-01-15T10:00',
+      endAt: '2026-01-15T12:00',
+      idempotencyKey: 'manual-block-lifecycle-v1',
+      actorUserId: user.id,
+    });
+    expect(result.kind).toBe('APPLIED');
+    expect(result.timeZone).toBe('Europe/Paris');
+    expect(result.blockedStartAt).toBe('2026-01-15T09:00:00.000Z');
+    expect(result.blockedEndAt).toBe('2026-01-15T11:00:00.000Z');
+
+    const blocked = await findAvailableItems(
+      db,
+      organizationId,
+      locationId,
+      new Date(result.blockedStartAt),
+      new Date(result.blockedEndAt),
+    );
+    expect(blocked.some((available) => available.id === item.id)).toBe(false);
+
+    const replay = await createManualBlock(db, {
+      organizationId,
+      inventoryItemId: item.id,
+      locationId,
+      startAt: '2026-01-15T10:00:00',
+      endAt: '2026-01-15T12:00:00',
+      idempotencyKey: 'manual-block-lifecycle-v1',
+      actorUserId: user.id,
+    });
+    expect(replay).toEqual(result);
+    expect(await listBlocksForItem(db, organizationId, item.id)).toHaveLength(1);
+
+    const released = await releaseManualBlock(db, organizationId, result.blockId);
+    expect(released.type).toBe('MANUAL_BLOCK');
+    expect(released.status).toBe('RELEASED');
+    const availableAgain = await findAvailableItems(
+      db,
+      organizationId,
+      locationId,
+      new Date(result.blockedStartAt),
+      new Date(result.blockedEndAt),
+    );
+    expect(availableAgain.some((available) => available.id === item.id)).toBe(true);
+  });
+
+  it('blocage manuel : conflits, date invalide, item inactif et clé en conflit sont refusés', async () => {
+    if (!ctx || !db) return;
+    const { user, organizationId, locationId } = await setupOrgWithLocation(
+      'manual-block-conflicts@example.com',
+      'Manual Block Conflicts Org',
+    );
+    const item = await setupItem(organizationId, locationId, 'MANUAL-CONFLICT-001');
+    const conflictStart = new Date('2026-02-10T09:00:00Z');
+    const conflictEnd = new Date('2026-02-10T11:00:00Z');
+
+    await createInventoryBlock(db, {
+      organizationId,
+      inventoryItemId: item.id,
+      type: 'BOOKING',
+      customerStartAt: conflictStart,
+      customerEndAt: conflictEnd,
+      blockedStartAt: conflictStart,
+      blockedEndAt: conflictEnd,
+    });
+    await expect(
+      createManualBlock(db, {
+        organizationId,
+        inventoryItemId: item.id,
+        locationId,
+        startAt: '2026-02-10T10:00',
+        endAt: '2026-02-10T12:00',
+        idempotencyKey: 'manual-block-conflict-booking',
+        actorUserId: user.id,
+      }),
+    ).rejects.toMatchObject({ code: 'CONFLICT_BLOCK' });
+
+    const secondItem = await setupItem(organizationId, locationId, 'MANUAL-CONFLICT-002');
+    await expect(
+      createManualBlock(db, {
+        organizationId,
+        inventoryItemId: secondItem.id,
+        locationId,
+        startAt: '2026-03-29T02:30',
+        endAt: '2026-03-29T04:00',
+        idempotencyKey: 'manual-block-dst-invalid',
+        actorUserId: user.id,
+      }),
+    ).rejects.toMatchObject({ code: 'VALIDATION' });
+
+    const thirdItem = await setupItem(organizationId, locationId, 'MANUAL-CONFLICT-003');
+    await updateInventoryItem(db, organizationId, thirdItem.id, { status: 'RETIRED' });
+    await expect(
+      createManualBlock(db, {
+        organizationId,
+        inventoryItemId: thirdItem.id,
+        locationId,
+        startAt: '2026-04-10T10:00',
+        endAt: '2026-04-10T11:00',
+        idempotencyKey: 'manual-block-inactive-item',
+        actorUserId: user.id,
+      }),
+    ).rejects.toMatchObject({ code: 'VALIDATION' });
+
+    const fourthItem = await setupItem(organizationId, locationId, 'MANUAL-CONFLICT-004');
+    await createManualBlock(db, {
+      organizationId,
+      inventoryItemId: fourthItem.id,
+      locationId,
+      startAt: '2026-05-10T10:00',
+      endAt: '2026-05-10T11:00',
+      idempotencyKey: 'manual-block-key-conflict',
+      actorUserId: user.id,
+    });
+    await expect(
+      createManualBlock(db, {
+        organizationId,
+        inventoryItemId: fourthItem.id,
+        locationId,
+        startAt: '2026-05-11T10:00',
+        endAt: '2026-05-11T11:00',
+        idempotencyKey: 'manual-block-key-conflict',
+        actorUserId: user.id,
+      }),
+    ).rejects.toMatchObject({ code: 'CONFLICT_IDEMPOTENCY' });
+  });
+
+  it('blocage manuel : accepte les huit familles et isole les organisations', async () => {
+    if (!ctx || !db) return;
+    const setupA = await setupOrgWithLocation('manual-block-families@example.com', 'Families Org');
+    const setupB = await setupOrgWithLocation('manual-block-other@example.com', 'Other Org');
+    const itemIds: string[] = [];
+
+    for (const [index, family] of COMMERCIAL_EQUIPMENT_FAMILY_SLUGS.entries()) {
+      const item = await setupItem(
+        setupA.organizationId,
+        setupA.locationId,
+        `MANUAL-${index}`,
+        family,
+      );
+      itemIds.push(item.id);
+      const day = String(10 + index).padStart(2, '0');
+      const result = await createManualBlock(db, {
+        organizationId: setupA.organizationId,
+        inventoryItemId: item.id,
+        locationId: setupA.locationId,
+        startAt: `2026-06-${day}T10:00`,
+        endAt: `2026-06-${day}T11:00`,
+        idempotencyKey: `manual-block-family-${family}`,
+        actorUserId: setupA.user.id,
+      });
+      expect(result.blockId).toBeDefined();
+    }
+
+    const otherItem = await setupItem(setupB.organizationId, setupB.locationId, 'MANUAL-OTHER');
+    await expect(
+      createManualBlock(db, {
+        organizationId: setupA.organizationId,
+        inventoryItemId: otherItem.id,
+        locationId: setupA.locationId,
+        startAt: '2026-06-30T10:00',
+        endAt: '2026-06-30T11:00',
+        idempotencyKey: 'manual-block-cross-tenant',
+        actorUserId: setupA.user.id,
+      }),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    expect(itemIds).toHaveLength(8);
   });
 });

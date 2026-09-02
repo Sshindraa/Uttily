@@ -423,14 +423,25 @@ statut de gestion du parc est modifié : conditions, mouvements, réservations,
 maintenances et disponibilités restent inchangés. La confirmation et le retour
 accessible sont communs aux huit familles, sans logique vélo.
 
-**Mise à jour groupée de l'état physique en cours :** la prochaine tranche
-réutilise la même sélection générique et la même idempotence Core pour appliquer
-`NEW`, `GOOD`, `FAIR`, `POOR` ou `BROKEN` à plusieurs exemplaires. Elle verrouille
-la sélection complète avant écriture et ne modifie ni les statuts de parc, ni les
-lieux, ni les réservations, maintenances ou mouvements. L'éligibilité future
-continue d'appliquer la règle existante qui exclut `POOR` et `BROKEN` des
-réservations ; l'interface l'annonce explicitement, sans introduire de nouvelle
-règle de réservation ni de logique vélo.
+**Mise à jour groupée de l'état physique livrée le 2026-09-02 :** la PR #62,
+fusionnée en squash dans `450f896`, réutilise la sélection générique et
+l'idempotence Core pour appliquer `NEW`, `GOOD`, `FAIR`, `POOR` ou `BROKEN` à
+plusieurs exemplaires. Elle verrouille la sélection complète avant écriture et
+ne modifie ni les statuts de parc, ni les lieux, ni les réservations,
+maintenances ou mouvements. L'éligibilité continue d'appliquer la règle
+existante qui exclut `POOR` et `BROKEN` des réservations ; l'interface l'annonce
+explicitement, sans nouvelle règle de réservation ni logique vélo.
+
+**Blocage manuel ponctuel livré le 2026-09-02 :** le use case Core crée un
+`MANUAL_BLOCK` idempotent après vérification du tenant, de l'exemplaire actif et
+de son établissement. Les dates saisies dans le fuseau IANA de l'établissement
+sont converties en UTC côté serveur ; `expiresAt` reste nul et la contrainte
+PostgreSQL `no_overlapping_blocks` refuse les chevauchements avec réservation,
+hold ou maintenance. La libération réutilise la transition `RELEASED` avec un
+garde-fou de type, et la flotte générique expose l'action ponctuelle pour toutes
+les familles sans modifier statut, condition, réservation, maintenance ou
+mouvement. Aucune migration, récurrence ou règle vélo n'est ajoutée ; la suite
+PostgreSQL ciblée reste déléguée à la CI.
 
 ### 7.2 Onboarding autonome
 
@@ -460,8 +471,8 @@ Prévoir plusieurs chemins d'entrée :
 - transferts multi-sites (tranche inter-établissements groupée livrée le 2026-09-02) ;
 - inventaire physique et écarts ;
 - états ACTIVE, RETIRED, LOST et conditions physiques (mise à jour groupée des
-  conditions en cours) ;
-- blocages manuels et récurrents ;
+  conditions livrée le 2026-09-02) ;
+- blocages manuels ponctuels (tranche Core/UI livrée le 2026-09-02) et récurrents ;
 - calendrier par exemplaire ;
 - export catalogue et flotte ;
 - import avec dry-run, mapping, erreurs et rejeu idempotent.

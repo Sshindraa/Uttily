@@ -24,7 +24,11 @@ export default async function FleetListPage({
     <FleetListView
       organizationId={organizationId}
       items={items}
-      locations={locations.map((location) => ({ id: location.id, name: location.name }))}
+      locations={locations.map((location) => ({
+        id: location.id,
+        name: location.name,
+        timeZone: location.timeZone,
+      }))}
       canManage={canManage}
     />
   );

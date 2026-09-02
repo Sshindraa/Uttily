@@ -8,4 +8,5 @@
 
 export * from './types';
 export * from './blocks';
+export * from './manual-block';
 export * from './availability';
