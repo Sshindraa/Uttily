@@ -13,7 +13,9 @@ import {
   formatDateTimeInTimeZone,
 } from '@/lib/operations-helpers';
 import { DepartureFlow } from './departure-flow';
+import { NoShowFlow } from './no-show-flow';
 import { ReturnFlow } from './return-flow';
+import { SubstitutionFlow } from './substitution-flow';
 
 const BUCKET_META: Record<
   OperationalDeskBucket,
@@ -21,7 +23,7 @@ const BUCKET_META: Record<
 > = {
   PICKUPS_TODAY: {
     label: 'Départs du jour',
-    description: 'Réservations à remettre aujourd’hui.',
+    description: 'Réservations à remettre aujourd’hui, y compris les départs en retard.',
     tone: 'info',
   },
   OVERDUE: {
@@ -90,6 +92,7 @@ function DeskBookingCard({
     booking.bucket === 'OVERDUE' ||
     booking.bucket === 'RETURNS_TODAY' ||
     booking.bucket === 'ONGOING';
+  const canReportNoShow = booking.customerStartAt.getTime() <= desk.now.getTime();
   const departureStatus: 'CONFIRMED' | 'READY_FOR_PICKUP' =
     booking.status === 'CONFIRMED' ? 'CONFIRMED' : 'READY_FOR_PICKUP';
   const query = new URLSearchParams({
@@ -187,12 +190,24 @@ function DeskBookingCard({
         }}
       >
         {isPickup && (
-          <DepartureFlow
-            orgId={organizationId}
-            bookingId={booking.id}
-            status={departureStatus}
-            items={items}
-          />
+          <>
+            <DepartureFlow
+              orgId={organizationId}
+              bookingId={booking.id}
+              status={departureStatus}
+              items={items}
+            />
+            {canReportNoShow && <NoShowFlow orgId={organizationId} bookingId={booking.id} />}
+            {items.map((item) => (
+              <SubstitutionFlow
+                key={item.bookingItemId}
+                orgId={organizationId}
+                bookingId={booking.id}
+                bookingItemId={item.bookingItemId}
+                currentSku={item.internalSku}
+              />
+            ))}
+          </>
         )}
         {isReturn && <ReturnFlow orgId={organizationId} bookingId={booking.id} items={items} />}
         <Link

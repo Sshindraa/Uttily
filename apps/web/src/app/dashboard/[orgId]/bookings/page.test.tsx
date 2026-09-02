@@ -26,5 +26,7 @@ describe('BookingsListPage (21-U2-Z — cockpit opérationnel)', () => {
     expect(featureSource).toContain("'ONGOING'");
     expect(featureSource).toContain('<DepartureFlow');
     expect(featureSource).toContain('<ReturnFlow');
+    expect(featureSource).toContain('<NoShowFlow');
+    expect(featureSource).toContain('<SubstitutionFlow');
   });
 });

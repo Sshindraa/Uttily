@@ -80,10 +80,14 @@ export function classifyOperationalDeskBooking(
 
   const startDate = getOperationalLocalCivilDate(booking.customerStartAt, booking.locationTimeZone);
   const endDate = getOperationalLocalCivilDate(booking.customerEndAt, booking.locationTimeZone);
+  const currentDate = getOperationalLocalCivilDate(now, booking.locationTimeZone);
 
   if (
     (booking.status === 'CONFIRMED' || booking.status === 'READY_FOR_PICKUP') &&
-    startDate === targetDate
+    (startDate === targetDate ||
+      (targetDate === currentDate &&
+        startDate < targetDate &&
+        booking.customerStartAt.getTime() <= now.getTime()))
   ) {
     return 'PICKUPS_TODAY';
   }

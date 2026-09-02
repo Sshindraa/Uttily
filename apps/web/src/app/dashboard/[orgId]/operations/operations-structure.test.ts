@@ -14,6 +14,8 @@ const OPERATION_FILES = [
   'booking-detail-view.tsx',
   'departure-flow.tsx',
   'return-flow.tsx',
+  'no-show-flow.tsx',
+  'substitution-flow.tsx',
   'cancellation-flow.tsx',
   'flow-drawer.tsx',
 ];
@@ -23,7 +25,7 @@ describe('G4B — invariants structurels des opérations', () => {
     expect(readFile(file)).not.toContain('dangerouslySetInnerHTML');
   });
 
-  it.each(['departure-flow.tsx', 'return-flow.tsx'])(
+  it.each(['departure-flow.tsx', 'return-flow.tsx', 'substitution-flow.tsx'])(
     '%s ne transmet pas inventoryItemId au navigateur',
     (file) => {
       expect(readFile(file)).not.toContain('inventoryItemId');
@@ -55,4 +57,15 @@ describe('G4B — invariants structurels des opérations', () => {
     const content = readFile('booking-detail-view.tsx');
     expect(content).not.toMatch(/<(?:DepartureFlow|ReturnFlow|CancellationFlow)[^>]*customerEmail/);
   });
+
+  it.each(['no-show-flow.tsx', 'substitution-flow.tsx'])(
+    '%s conserve une confirmation accessible, une clé idempotente et le refresh serveur',
+    (file) => {
+      const content = readFile(file);
+      expect(content.startsWith("'use client'")).toBe(true);
+      expect(content).toContain('FlowDrawer');
+      expect(content).toContain('crypto.randomUUID()');
+      expect(content).toContain('router.refresh()');
+    },
+  );
 });
