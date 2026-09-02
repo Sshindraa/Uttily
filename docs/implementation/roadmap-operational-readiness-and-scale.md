@@ -443,6 +443,15 @@ les familles sans modifier statut, condition, réservation, maintenance ou
 mouvement. Aucune migration, récurrence ou règle vélo n'est ajoutée ; la suite
 PostgreSQL ciblée reste déléguée à la CI.
 
+**Visibilité planning livrée le 2026-09-02 :** le read model opérationnel
+expose les `MANUAL_BLOCK` actifs qui chevauchent la fenêtre sélectionnée, avec
+filtres établissement/exemplaire, `categorySlug`, fuseau IANA et bornes
+tronquées à la fenêtre. La vue planning distingue désormais « Indisponible »
+des locations et maintenances, tandis que la vue flotte affiche « Bloqué » et
+un compteur dédié. Les compteurs de locations, départs, retours et
+maintenances restent indépendants ; aucune mutation, règle de disponibilité,
+migration ou récurrence n'est modifiée.
+
 ### 7.2 Onboarding autonome
 
 - organisation, identité légale et Stripe Connect ;

@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import type { DatabaseClient } from '@uttily/database';
-import { getDefaultWeekWindow, getOperationalPlanning } from './get-operational-planning';
+import {
+  clipPlanningInterval,
+  getDefaultWeekWindow,
+  getOperationalPlanning,
+} from './get-operational-planning';
 
 describe('Chantier 10 — getOperationalPlanning', () => {
   it('calcule la semaine par défaut dans le fuseau du lieu', () => {
@@ -24,5 +28,27 @@ describe('Chantier 10 — getOperationalPlanning', () => {
         to: new Date('2026-08-20T10:00:00Z'),
       }),
     ).rejects.toThrow('date de fin');
+  });
+
+  it('clipse les événements à la fenêtre affichée et respecte l’intervalle semi-ouvert', () => {
+    const from = new Date('2026-08-03T00:00:00Z');
+    const to = new Date('2026-08-04T00:00:00Z');
+
+    expect(
+      clipPlanningInterval(
+        new Date('2026-08-02T22:00:00Z'),
+        new Date('2026-08-04T02:00:00Z'),
+        from,
+        to,
+      ),
+    ).toEqual({ startAt: from, endAt: to });
+    expect(
+      clipPlanningInterval(
+        new Date('2026-08-04T00:00:00Z'),
+        new Date('2026-08-04T02:00:00Z'),
+        from,
+        to,
+      ),
+    ).toBeNull();
   });
 });

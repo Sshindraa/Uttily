@@ -1,14 +1,16 @@
-export type PlanningEventType = 'RENTAL' | 'MAINTENANCE' | 'PICKUP' | 'RETURN';
+export type PlanningEventType = 'RENTAL' | 'MAINTENANCE' | 'MANUAL_BLOCK' | 'PICKUP' | 'RETURN';
 
 export interface OperationalPlanningEvent {
   id: string;
   type: PlanningEventType;
   bookingId?: string | undefined;
   maintenanceCaseId?: string | undefined;
+  manualBlockId?: string | undefined;
   inventoryItemId: string;
   internalSku: string;
   productName: string;
   variantName: string;
+  categorySlug: string;
   locationId: string;
   locationName: string;
   locationTimeZone: string;
@@ -25,6 +27,7 @@ export interface OperationalPlanningFleetItem {
   serialNumber: string | null;
   productName: string;
   variantName: string;
+  categorySlug: string;
   condition: string;
   status: string;
   locationId: string;
@@ -43,6 +46,7 @@ export interface OperationalPlanning {
     totalPickups: number;
     totalReturns: number;
     totalMaintenances: number;
+    totalManualBlocks: number;
   };
   fleetItems: OperationalPlanningFleetItem[];
 }
