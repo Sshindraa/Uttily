@@ -18,3 +18,7 @@ export * from './permissions';
 export * from './read-model-types';
 export * from './read-models';
 export * from './operational-desk';
+export * from './counter-incidents-types';
+export * from './counter-incidents-fingerprint';
+export * from './record-booking-no-show';
+export * from './substitute-booking-item';

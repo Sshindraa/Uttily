@@ -83,7 +83,8 @@ export function classifyOperationalDeskBooking(
 
   if (
     (booking.status === 'CONFIRMED' || booking.status === 'READY_FOR_PICKUP') &&
-    startDate === targetDate
+    (startDate === targetDate ||
+      (startDate < targetDate && booking.customerStartAt.getTime() <= now.getTime()))
   ) {
     return 'PICKUPS_TODAY';
   }

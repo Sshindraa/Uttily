@@ -18,12 +18,20 @@ import {
   type DamageReportResult,
   type ConditionReportPhase,
   type InventoryCondition,
+  recordBookingNoShow,
+  substituteBookingItem,
+  listSubstitutionCandidates,
+  type RecordBookingNoShowResult,
+  type SubstituteBookingItemResult,
+  type SubstitutionCandidateOption,
+  FulfillmentError,
 } from '@uttily/core';
 import type { ActionResult } from '@uttily/contracts';
 import type { ParsedFailure } from './parsers';
 
 const MAX_NOTES_LENGTH = 5000;
 const MAX_DESCRIPTION_LENGTH = 5000;
+const MAX_NO_SHOW_REASON_LENGTH = 500;
 const MAX_IDEMPOTENCY_KEY_LENGTH = 200;
 
 function parseTransitionForm(
@@ -133,6 +141,74 @@ function parseDamageReportForm(formData: FormData):
 
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
   return { bookingId, bookingItemId, description, idempotencyKey, blocksInventory };
+}
+
+function parseNoShowForm(
+  formData: FormData,
+): ParsedFailure | { bookingId: string; idempotencyKey: string; reason: string | null } {
+  const fieldErrors: Record<string, string> = {};
+  const bookingId = String(formData.get('bookingId') ?? '');
+  const idempotencyKey = String(formData.get('idempotencyKey') ?? '').trim();
+  const reasonRaw = formData.get('reason');
+  const reason = reasonRaw === null ? '' : String(reasonRaw).trim();
+
+  if (!isValidUuid(bookingId)) fieldErrors.bookingId = 'Réservation invalide.';
+  if (idempotencyKey.length < 1) fieldErrors.idempotencyKey = "La clé d'idempotence est requise.";
+  if (idempotencyKey.length > MAX_IDEMPOTENCY_KEY_LENGTH) {
+    fieldErrors.idempotencyKey = `La clé ne doit pas dépasser ${MAX_IDEMPOTENCY_KEY_LENGTH} caractères.`;
+  }
+  if (reason.length > MAX_NO_SHOW_REASON_LENGTH) {
+    fieldErrors.reason = `Le motif ne doit pas dépasser ${MAX_NO_SHOW_REASON_LENGTH} caractères.`;
+  }
+
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+  return { bookingId, idempotencyKey, reason: reason.length > 0 ? reason : null };
+}
+
+function parseSubstitutionForm(formData: FormData):
+  | ParsedFailure
+  | {
+      bookingId: string;
+      bookingItemId: string;
+      replacementInventoryItemId?: string;
+      replacementSku?: string;
+      idempotencyKey: string;
+    } {
+  const fieldErrors: Record<string, string> = {};
+  const bookingId = String(formData.get('bookingId') ?? '');
+  const bookingItemId = String(formData.get('bookingItemId') ?? '');
+  const replacementInventoryItemIdRaw = String(
+    formData.get('replacementInventoryItemId') ?? '',
+  ).trim();
+  const replacementSkuRaw = String(formData.get('replacementSku') ?? '').trim();
+  const idempotencyKey = String(formData.get('idempotencyKey') ?? '').trim();
+
+  if (!isValidUuid(bookingId)) fieldErrors.bookingId = 'Réservation invalide.';
+  if (!isValidUuid(bookingItemId))
+    fieldErrors.bookingItemId = 'Exemplaire de réservation invalide.';
+  if (replacementInventoryItemIdRaw.length > 0) {
+    if (!isValidUuid(replacementInventoryItemIdRaw)) {
+      fieldErrors.replacementInventoryItemId = 'Exemplaire de remplacement invalide.';
+    }
+  } else if (replacementSkuRaw.length === 0) {
+    fieldErrors.replacementSku = 'Sélectionnez un exemplaire de remplacement.';
+  } else if (replacementSkuRaw.length > 200) {
+    fieldErrors.replacementSku = 'Le SKU ne doit pas dépasser 200 caractères.';
+  }
+  if (idempotencyKey.length < 1) fieldErrors.idempotencyKey = "La clé d'idempotence est requise.";
+  if (idempotencyKey.length > MAX_IDEMPOTENCY_KEY_LENGTH) {
+    fieldErrors.idempotencyKey = `La clé ne doit pas dépasser ${MAX_IDEMPOTENCY_KEY_LENGTH} caractères.`;
+  }
+
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+  return {
+    bookingId,
+    bookingItemId,
+    ...(replacementInventoryItemIdRaw.length > 0
+      ? { replacementInventoryItemId: replacementInventoryItemIdRaw }
+      : { replacementSku: replacementSkuRaw }),
+    idempotencyKey,
+  };
 }
 
 export async function prepareBookingAction(
@@ -267,6 +343,132 @@ export async function closeBookingAction(
     revalidatePath(`/dashboard/${authorizedOrgId}/bookings`);
     revalidatePath(`/dashboard/${authorizedOrgId}/operations/${parsed.bookingId}`);
     revalidatePath(`/dashboard/${authorizedOrgId}/bookings/${parsed.bookingId}`);
+    return result;
+  });
+}
+
+export async function recordBookingNoShowAction(
+  organizationId: string,
+  _prev: ActionResult<RecordBookingNoShowResult>,
+  formData: FormData,
+): Promise<ActionResult<RecordBookingNoShowResult>> {
+  const parsed = parseNoShowForm(formData);
+  if ('fieldErrors' in parsed) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Veuillez corriger les erreurs.',
+      fieldErrors: parsed.fieldErrors,
+    };
+  }
+  return runAction(async () => {
+    const {
+      db,
+      user,
+      organizationId: authorizedOrgId,
+    } = await requireFulfillmentOperatorOf(organizationId);
+    const result = await recordBookingNoShow(db, {
+      organizationId: authorizedOrgId,
+      bookingId: parsed.bookingId,
+      actorUserId: user.id,
+      idempotencyKey: parsed.idempotencyKey,
+      reason: parsed.reason,
+    });
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations/${parsed.bookingId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings/${parsed.bookingId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings/planning`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/planning`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/fleet`);
+    return result;
+  });
+}
+
+export async function getSubstitutionCandidatesAction(
+  organizationId: string,
+  bookingId: string,
+  bookingItemId: string,
+): Promise<ActionResult<SubstitutionCandidateOption[]>> {
+  if (!isValidUuid(bookingId) || !isValidUuid(bookingItemId)) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Réservation ou exemplaire invalide.',
+    };
+  }
+  return runAction(async () => {
+    const { db, organizationId: authorizedOrgId } =
+      await requireFulfillmentOperatorOf(organizationId);
+    const candidates = await listSubstitutionCandidates(
+      db,
+      authorizedOrgId,
+      bookingId,
+      bookingItemId,
+    );
+    return candidates.map(({ internalSku, serialNumber, condition }) => ({
+      internalSku,
+      serialNumber,
+      condition,
+    }));
+  });
+}
+
+export async function substituteBookingItemAction(
+  organizationId: string,
+  _prev: ActionResult<SubstituteBookingItemResult>,
+  formData: FormData,
+): Promise<ActionResult<SubstituteBookingItemResult>> {
+  const parsed = parseSubstitutionForm(formData);
+  if ('fieldErrors' in parsed) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Veuillez corriger les erreurs.',
+      fieldErrors: parsed.fieldErrors,
+    };
+  }
+  return runAction(async () => {
+    const {
+      db,
+      user,
+      organizationId: authorizedOrgId,
+    } = await requireFulfillmentOperatorOf(organizationId);
+    let replacementInventoryItemId = parsed.replacementInventoryItemId;
+    if (!replacementInventoryItemId && parsed.replacementSku) {
+      const candidates = await listSubstitutionCandidates(
+        db,
+        authorizedOrgId,
+        parsed.bookingId,
+        parsed.bookingItemId,
+      );
+      const candidate = candidates.find((option) => option.internalSku === parsed.replacementSku);
+      if (!candidate) {
+        throw new FulfillmentError(
+          'CONCURRENT_MODIFICATION',
+          "L'exemplaire de remplacement est devenu indisponible.",
+        );
+      }
+      replacementInventoryItemId = candidate.id;
+    }
+    if (!replacementInventoryItemId) {
+      throw new FulfillmentError('VALIDATION', 'Exemplaire de remplacement requis.');
+    }
+    const result = await substituteBookingItem(db, {
+      organizationId: authorizedOrgId,
+      bookingId: parsed.bookingId,
+      bookingItemId: parsed.bookingItemId,
+      replacementInventoryItemId,
+      actorUserId: user.id,
+      idempotencyKey: parsed.idempotencyKey,
+    });
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations/${parsed.bookingId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings/${parsed.bookingId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings/planning`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/planning`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/fleet`);
     return result;
   });
 }
