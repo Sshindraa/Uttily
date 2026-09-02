@@ -452,6 +452,14 @@ un compteur dédié. Les compteurs de locations, départs, retours et
 maintenances restent indépendants ; aucune mutation, règle de disponibilité,
 migration ou récurrence n'est modifiée.
 
+**Préparation des blocages récurrents — 2026-09-02 :** l'ADR-038 propose un
+contrat borné et fail-closed pour les fermetures répétitives : fuseau IANA de
+l'établissement, occurrences `MANUAL_BLOCK` matérialisées, vérification
+atomique des conflits et cycle de vie idempotent. La V1 recommandée est limitée
+à un exemplaire, une périodicité hebdomadaire et une date de fin obligatoire.
+Cette préparation n'ajoute ni schéma, ni migration, ni récurrence exécutable ;
+l'ADR reste `Proposed` jusqu'à confirmation produit.
+
 ### 7.2 Onboarding autonome
 
 - organisation, identité légale et Stripe Connect ;
