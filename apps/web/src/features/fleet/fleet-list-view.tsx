@@ -16,6 +16,7 @@ import {
 } from '@/app/actions/inventory';
 import { PageHeader, Card, Badge, LinkButton } from '@uttily/ui';
 import { OpenMaintenanceModal } from './open-maintenance-modal';
+import { OpenManualBlockModal } from './open-manual-block-modal';
 import styles from './fleet.module.css';
 
 function createIdempotencyKey(): string {
@@ -39,6 +40,7 @@ const BULK_CONDITION_OPTIONS: ReadonlyArray<{ value: InventoryCondition; label: 
 export interface FleetLocationOption {
   id: string;
   name: string;
+  timeZone?: string;
 }
 
 export interface FleetListViewProps {
@@ -88,8 +90,11 @@ export function FleetListView({
     internalSku: i.internalSku,
     productName: `${i.productName} (${i.variantName})`,
     categorySlug: i.categorySlug,
+    locationId: i.currentLocationId,
+    locationName: i.locationName,
   }));
   const selectedItems = items.filter((item) => selectedItemIds.has(item.id));
+  const singleSelectedItem = selectedItems.length === 1 ? selectedItems[0] : null;
   const allItemsSelected = items.length > 0 && selectedItems.length === items.length;
   const selectedStatusLabel =
     BULK_STATUS_OPTIONS.find((option) => option.value === targetStatus)?.label ?? targetStatus;
@@ -422,6 +427,23 @@ export function FleetListView({
               >
                 Modifier l’état physique des exemplaires
               </button>
+              {singleSelectedItem && (
+                <OpenManualBlockModal
+                  orgId={organizationId}
+                  item={{
+                    id: singleSelectedItem.id,
+                    internalSku: singleSelectedItem.internalSku,
+                    productName: singleSelectedItem.productName,
+                    variantName: singleSelectedItem.variantName,
+                    locationId: singleSelectedItem.currentLocationId,
+                    locationName: singleSelectedItem.locationName,
+                    locationTimeZone: locations.find(
+                      (location) => location.id === singleSelectedItem.currentLocationId,
+                    )?.timeZone,
+                  }}
+                  onCompleted={() => setSelectedItemIds(new Set())}
+                />
+              )}
             </div>
           )}
           {transferResult && (

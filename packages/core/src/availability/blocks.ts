@@ -200,6 +200,7 @@ export async function releaseBlock(
   db: DatabaseClient,
   organizationId: string,
   blockId: string,
+  expectedType?: InventoryBlockType,
 ): Promise<InventoryBlockRecord> {
   return db.transaction(async (tx) => {
     const [row] = await tx
@@ -215,6 +216,12 @@ export async function releaseBlock(
       .for('update')
       .limit(1);
     if (!row) throw new CatalogError('BLOCK_NOT_FOUND', 'Blocage introuvable.');
+    if (expectedType !== undefined && row.type !== expectedType) {
+      throw new CatalogError(
+        'BLOCK_INVALID_TRANSITION',
+        `Seul un blocage de type ${expectedType} peut être libéré par cette action.`,
+      );
+    }
     if (row.status !== 'ACTIVE' && row.status !== 'PAYMENT_PROCESSING') {
       const msg = `Transition invalide : un blocage ${row.status} ne peut pas être libéré.`;
       throw new CatalogError('BLOCK_INVALID_TRANSITION', msg);
