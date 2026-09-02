@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gte, inArray, isNotNull, lte, max, sql } from 'drizzle-orm';
+import { and, asc, count, eq, gte, inArray, isNotNull, lte, max, or, sql } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import {
   bookings,
@@ -30,6 +30,7 @@ import type {
  */
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_SEARCH_LENGTH = 200;
 
 function assertUuid(value: string, field: string): void {
   if (!UUID_REGEX.test(value)) {
@@ -56,6 +57,10 @@ export async function listOperationalBookings(
      */
     localDateAt?: Date;
     localDateField?: 'START' | 'END';
+    /** Filtre serveur sur l'UUID/référence #UT-xxxxxx ou le SKU. */
+    search?: string;
+    /** Établissement tenant-scoped à afficher. */
+    locationId?: string;
     /** null = lecture complète explicite, sans pagination implicite. */
     limit?: number | null;
   },
@@ -97,6 +102,24 @@ export async function listOperationalBookings(
     statuses = [...seen];
   }
 
+  if (options?.locationId !== undefined) {
+    if (typeof options.locationId !== 'string') {
+      throw new FulfillmentError('VALIDATION', 'locationId doit être une chaîne.');
+    }
+    assertUuid(options.locationId, 'locationId');
+  }
+
+  if (options?.search !== undefined && typeof options.search !== 'string') {
+    throw new FulfillmentError('VALIDATION', 'search doit être une chaîne.');
+  }
+  const search = options?.search?.trim() ?? '';
+  if (search.length > MAX_SEARCH_LENGTH) {
+    throw new FulfillmentError(
+      'VALIDATION',
+      `search ne doit pas dépasser ${MAX_SEARCH_LENGTH} caractères.`,
+    );
+  }
+
   // Dates : objets Date valides, dateFrom <= dateTo.
   const dateFrom = options?.dateFrom;
   const dateTo = options?.dateTo;
@@ -132,7 +155,14 @@ export async function listOperationalBookings(
   }
 
   // Query 1 : bookings + location (AUCUN champ financier).
-  const conditions = [eq(bookings.organizationId, organizationId)];
+  const conditions = [
+    eq(bookings.organizationId, organizationId),
+    // Défense en profondeur : le booking et le lieu doivent appartenir au même tenant.
+    eq(locations.organizationId, organizationId),
+  ];
+  if (options?.locationId) {
+    conditions.push(eq(bookings.locationId, options.locationId));
+  }
   if (statuses.length > 0) {
     conditions.push(inArray(bookings.status, [...statuses]));
   }
@@ -143,6 +173,25 @@ export async function listOperationalBookings(
     conditions.push(
       sql`to_char(${dateColumn} AT TIME ZONE ${locations.timeZone}, 'YYYY-MM-DD') = to_char(${localDateAt.toISOString()}::timestamptz AT TIME ZONE ${locations.timeZone}, 'YYYY-MM-DD')`,
     );
+  }
+  if (search.length > 0) {
+    // Les jokers saisis par l'utilisateur restent littéraux. La recherche SKU
+    // est un EXISTS pour ne jamais multiplier les lignes d'un booking.
+    const searchPattern = `%${search.replace(/[\\%_]/g, (character) => `\\${character}`)}%`;
+    const searchCondition = or(
+      sql`${bookings.id}::text ILIKE ${searchPattern}`,
+      sql`('#UT-' || upper(substring(${bookings.id}::text, 1, 6))) ILIKE ${searchPattern}`,
+      sql`EXISTS (
+        SELECT 1
+        FROM ${bookingItems}
+        INNER JOIN ${inventoryItems}
+          ON ${bookingItems.inventoryItemId} = ${inventoryItems.id}
+        WHERE ${bookingItems.bookingId} = ${bookings.id}
+          AND ${inventoryItems.organizationId} = ${organizationId}
+          AND ${inventoryItems.internalSku} ILIKE ${searchPattern}
+      )`,
+    );
+    if (searchCondition) conditions.push(searchCondition);
   }
 
   const bookingQuery = db

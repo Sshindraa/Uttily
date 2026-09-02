@@ -28,6 +28,52 @@ export interface OperationalBookingSummary {
   lastFulfillmentEventAt: Date | null;
 }
 
+/** Buckets mutuellement exclusifs du cockpit opérationnel quotidien. */
+export const OPERATIONAL_DESK_BUCKETS = [
+  'PICKUPS_TODAY',
+  'OVERDUE',
+  'RETURNS_TODAY',
+  'ONGOING',
+] as const;
+
+export type OperationalDeskBucket = (typeof OPERATIONAL_DESK_BUCKETS)[number];
+
+/**
+ * Résumé d'un exemplaire transmis au cockpit.
+ * Aucun champ financier ou identifiant de client n'est exposé.
+ */
+export type OperationalDeskBookingItem = Pick<
+  OperationalBookingItem,
+  | 'bookingItemId'
+  | 'inventoryItemId'
+  | 'internalSku'
+  | 'serialNumber'
+  | 'currentCondition'
+  | 'inventoryStatus'
+>;
+
+export interface OperationalDeskBooking extends OperationalBookingSummary {
+  bucket: OperationalDeskBucket;
+  items: OperationalDeskBookingItem[];
+}
+
+export type OperationalDayDeskBuckets = {
+  [K in OperationalDeskBucket]: OperationalDeskBooking[];
+};
+
+export interface OperationalDayDesk {
+  locationId: string;
+  locationName: string;
+  locationTimeZone: string;
+  /** Date civile sélectionnée dans le fuseau du lieu (YYYY-MM-DD). */
+  targetDate: string;
+  /** Instant de référence utilisé pour le classement OVERDUE. */
+  now: Date;
+  buckets: OperationalDayDeskBuckets;
+  counts: { [K in OperationalDeskBucket]: number };
+  totalCount: number;
+}
+
 export interface OperationalBookingItem {
   bookingItemId: string;
   inventoryItemId: string;
