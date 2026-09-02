@@ -3,13 +3,16 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import type { InventorySummary } from '@uttily/core';
+import type { InventoryStatus, InventorySummary } from '@uttily/core';
 import {
   getInventoryConditionPresentation,
   getInventoryStatusPresentation,
 } from '@/lib/status-presentation';
 import { getCategoryPresentation } from '@/features/equipment/category-presentation';
-import { transferInventoryItemsBatchAction } from '@/app/actions/inventory';
+import {
+  transferInventoryItemsBatchAction,
+  updateInventoryItemsStatusBatchAction,
+} from '@/app/actions/inventory';
 import { PageHeader, Card, Badge, LinkButton } from '@uttily/ui';
 import { OpenMaintenanceModal } from './open-maintenance-modal';
 import styles from './fleet.module.css';
@@ -17,6 +20,12 @@ import styles from './fleet.module.css';
 function createIdempotencyKey(): string {
   return globalThis.crypto.randomUUID();
 }
+
+const BULK_STATUS_OPTIONS: ReadonlyArray<{ value: InventoryStatus; label: string }> = [
+  { value: 'ACTIVE', label: 'En service · Disponible' },
+  { value: 'RETIRED', label: 'Retiré du parc' },
+  { value: 'LOST', label: 'Déclaré perdu / volé' },
+];
 
 export interface FleetLocationOption {
   id: string;
@@ -50,6 +59,12 @@ export function FleetListView({
   const [isTransferring, setIsTransferring] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
   const [transferResult, setTransferResult] = useState<string | null>(null);
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const [targetStatus, setTargetStatus] = useState<InventoryStatus>('ACTIVE');
+  const [statusIdempotencyKey, setStatusIdempotencyKey] = useState(() => createIdempotencyKey());
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [statusResult, setStatusResult] = useState<string | null>(null);
 
   const selectableItems = items.map((i) => ({
     id: i.id,
@@ -59,6 +74,8 @@ export function FleetListView({
   }));
   const selectedItems = items.filter((item) => selectedItemIds.has(item.id));
   const allItemsSelected = items.length > 0 && selectedItems.length === items.length;
+  const selectedStatusLabel =
+    BULK_STATUS_OPTIONS.find((option) => option.value === targetStatus)?.label ?? targetStatus;
 
   function toggleItem(itemId: string): void {
     setSelectedItemIds((current) => {
@@ -68,11 +85,13 @@ export function FleetListView({
       return next;
     });
     setTransferResult(null);
+    setStatusResult(null);
   }
 
   function toggleAllItems(): void {
     setSelectedItemIds(allItemsSelected ? new Set() : new Set(items.map((item) => item.id)));
     setTransferResult(null);
+    setStatusResult(null);
   }
 
   function openTransfer(): void {
@@ -84,6 +103,14 @@ export function FleetListView({
     setTransferError(null);
     setTransferResult(null);
     setIsTransferOpen(true);
+  }
+
+  function openStatusUpdate(): void {
+    setTargetStatus('ACTIVE');
+    setStatusIdempotencyKey(createIdempotencyKey());
+    setStatusError(null);
+    setStatusResult(null);
+    setIsStatusOpen(true);
   }
 
   async function handleTransfer(event: React.FormEvent<HTMLFormElement>): Promise<void> {
@@ -129,6 +156,46 @@ export function FleetListView({
       );
     } finally {
       setIsTransferring(false);
+    }
+  }
+
+  async function handleStatusUpdate(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (selectedItems.length === 0) return;
+
+    setIsUpdatingStatus(true);
+    setStatusError(null);
+    const formData = new FormData();
+    for (const item of selectedItems) formData.append('inventoryItemId', item.id);
+    formData.set('status', targetStatus);
+    formData.set('idempotencyKey', statusIdempotencyKey);
+
+    try {
+      const result = await updateInventoryItemsStatusBatchAction(
+        organizationId,
+        { ok: false, code: 'UNKNOWN', message: '' },
+        formData,
+      );
+      if (!result.ok) {
+        setStatusError(result.message || 'Les statuts n’ont pas pu être mis à jour.');
+        return;
+      }
+
+      const { updatedCount, noOpCount } = result.data;
+      setStatusResult(
+        noOpCount > 0
+          ? `${updatedCount} exemplaire(s) mis à jour ; ${noOpCount} déjà dans ce statut.`
+          : `${updatedCount} exemplaire(s) passé(s) au statut sélectionné.`,
+      );
+      setSelectedItemIds(new Set());
+      setIsStatusOpen(false);
+      router.refresh();
+    } catch (error) {
+      setStatusError(
+        error instanceof Error ? error.message : 'Les statuts n’ont pas pu être mis à jour.',
+      );
+    } finally {
+      setIsUpdatingStatus(false);
     }
   }
 
@@ -268,6 +335,14 @@ export function FleetListView({
               >
                 Transférer vers un établissement
               </button>
+              <button
+                type="button"
+                onClick={openStatusUpdate}
+                className={styles.maintenanceTriggerBtn}
+                aria-haspopup="dialog"
+              >
+                Modifier le statut des exemplaires
+              </button>
             </div>
           )}
           {transferResult && (
@@ -277,6 +352,15 @@ export function FleetListView({
               style={{ margin: 0, color: 'var(--ut-color-success)' }}
             >
               {transferResult}
+            </p>
+          )}
+          {statusResult && (
+            <p
+              role="status"
+              aria-live="polite"
+              style={{ margin: 0, color: 'var(--ut-color-success)' }}
+            >
+              {statusResult}
             </p>
           )}
           <Card style={{ overflowX: 'auto', padding: 0 }}>
@@ -556,6 +640,85 @@ export function FleetListView({
                       className={styles.submitBtn}
                     >
                       {isTransferring ? 'Transfert en cours…' : 'Confirmer le transfert'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+          {isStatusOpen && (
+            <div
+              className={styles.modalOverlay}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="status-inventory-title"
+              onClick={() => !isUpdatingStatus && setIsStatusOpen(false)}
+            >
+              <div className={styles.modalContent} onClick={(event) => event.stopPropagation()}>
+                <div className={styles.modalHeader}>
+                  <h3 id="status-inventory-title">Modifier le statut des exemplaires</h3>
+                  <button
+                    type="button"
+                    onClick={() => !isUpdatingStatus && setIsStatusOpen(false)}
+                    className={styles.closeBtn}
+                    disabled={isUpdatingStatus}
+                    aria-label="Fermer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <p className={styles.modalSub}>
+                  Vous allez modifier le statut de {selectedItems.length} exemplaire(s). Le nouveau
+                  statut sera : <strong>{selectedStatusLabel}</strong>.
+                </p>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                  {selectedItems.slice(0, 10).map((item) => (
+                    <li key={item.id}>
+                      {item.internalSku} · {item.productName} ({item.variantName})
+                    </li>
+                  ))}
+                  {selectedItems.length > 10 && <li>… et {selectedItems.length - 10} autre(s)</li>}
+                </ul>
+
+                <form onSubmit={handleStatusUpdate} className={styles.form}>
+                  {statusError && (
+                    <div className={styles.formError} role="alert" aria-live="assertive">
+                      {statusError}
+                    </div>
+                  )}
+                  <div className={styles.formGroup}>
+                    <label htmlFor="inventory-batch-status">Nouveau statut :</label>
+                    <select
+                      id="inventory-batch-status"
+                      value={targetStatus}
+                      onChange={(event) => setTargetStatus(event.target.value as InventoryStatus)}
+                      disabled={isUpdatingStatus}
+                      className={styles.selectInput}
+                      required
+                    >
+                      {BULK_STATUS_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <p className={styles.modalSub}>
+                    Cette action ne supprime aucun exemplaire et ne modifie ni son état physique, ni
+                    ses mouvements, réservations, maintenances ou disponibilités.
+                  </p>
+                  <div className={styles.modalFooter}>
+                    <button
+                      type="button"
+                      onClick={() => setIsStatusOpen(false)}
+                      disabled={isUpdatingStatus}
+                      className={styles.cancelBtn}
+                    >
+                      Annuler
+                    </button>
+                    <button type="submit" disabled={isUpdatingStatus} className={styles.submitBtn}>
+                      {isUpdatingStatus ? 'Mise à jour en cours…' : 'Confirmer le changement'}
                     </button>
                   </div>
                 </form>

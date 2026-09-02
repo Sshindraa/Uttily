@@ -412,6 +412,17 @@ statuts, conditions, réservations, maintenances et disponibilités restent
 inchangés. La flotte expose une sélection multiple, un résumé accessible avant
 confirmation et un résultat annoncé après exécution, sans logique vélo.
 
+**Changement groupé de statut livré le 2026-09-02 :** depuis la flotte générique,
+un loueur autorisé peut sélectionner plusieurs exemplaires et les passer à
+`ACTIVE`, `RETIRED` ou `LOST`. La mutation Core verrouille l'organisation puis
+les exemplaires dans un ordre déterministe, valide la sélection complète avant
+écriture et persiste une réponse idempotente couvrant toute l'opération. Un
+rejeu ne produit aucun effet secondaire ; une sélection introuvable, supprimée,
+hors tenant ou un statut inconnu est refusé sans écriture partielle. Seul le
+statut de gestion du parc est modifié : conditions, mouvements, réservations,
+maintenances et disponibilités restent inchangés. La confirmation et le retour
+accessible sont communs aux huit familles, sans logique vélo.
+
 ### 7.2 Onboarding autonome
 
 - organisation, identité légale et Stripe Connect ;
@@ -436,7 +447,7 @@ Prévoir plusieurs chemins d'entrée :
 - duplication contrôlée de produit, variante et paramètres ;
 - création de plusieurs exemplaires avec références déterministes (tranche Core atomique et rejouable livrée le 2026-09-02) ;
 - numéros de série et identifiants fabricant ;
-- changements groupés de statut et d'établissement ;
+- changements groupés de statut (tranche Core/UI livrée le 2026-09-02) et d'établissement ;
 - transferts multi-sites (tranche inter-établissements groupée livrée le 2026-09-02) ;
 - inventaire physique et écarts ;
 - états ACTIVE, RETIRED, LOST et conditions physiques ;
