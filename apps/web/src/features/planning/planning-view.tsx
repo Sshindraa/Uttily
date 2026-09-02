@@ -358,7 +358,8 @@ export function PlanningView({
                         >
                           <div className={styles.eventHeader}>
                             <span className={styles.eventTime}>
-                              ⛔ Indisponible · {formatLocalInterval(block)}
+                              ⛔ Indisponible{block.recurringSeriesId ? ' · Récurrent' : ''} ·{' '}
+                              {formatLocalInterval(block)}
                             </span>
                             <span className={styles.eventSku}>{block.internalSku}</span>
                           </div>

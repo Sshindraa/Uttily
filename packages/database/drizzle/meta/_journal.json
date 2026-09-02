@@ -386,6 +386,13 @@
       "when": 1788107362005,
       "tag": "0055_activate_pedalboat_category",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1788107362006,
+      "tag": "0056_recurring_manual_blocks",
+      "breakpoints": true
     }
   ]
 }

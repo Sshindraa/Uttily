@@ -7,6 +7,7 @@ import {
   inventoryBlocks,
   inventoryItems,
   locations,
+  manualBlockSeriesOccurrences,
   maintenanceCases,
   products,
   productVariants,
@@ -247,6 +248,7 @@ export async function getOperationalPlanning(
   const manualBlockRows = await db
     .select({
       manualBlockId: inventoryBlocks.id,
+      recurringSeriesId: manualBlockSeriesOccurrences.seriesId,
       blockStatus: inventoryBlocks.status,
       blockedStartAt: inventoryBlocks.blockedStartAt,
       blockedEndAt: inventoryBlocks.blockedEndAt,
@@ -265,6 +267,10 @@ export async function getOperationalPlanning(
     .innerJoin(products, eq(productVariants.productId, products.id))
     .innerJoin(categories, eq(products.categoryId, categories.id))
     .innerJoin(locations, eq(inventoryItems.currentLocationId, locations.id))
+    .leftJoin(
+      manualBlockSeriesOccurrences,
+      eq(manualBlockSeriesOccurrences.inventoryBlockId, inventoryBlocks.id),
+    )
     .where(
       and(
         eq(inventoryBlocks.organizationId, organizationId),
@@ -384,6 +390,7 @@ export async function getOperationalPlanning(
       id: `manual_block_${b.manualBlockId}`,
       type: 'MANUAL_BLOCK',
       manualBlockId: b.manualBlockId,
+      recurringSeriesId: b.recurringSeriesId ?? undefined,
       inventoryItemId: b.inventoryItemId,
       internalSku: b.internalSku,
       productName: b.productName,

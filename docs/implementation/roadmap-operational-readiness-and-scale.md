@@ -481,7 +481,10 @@ Prévoir plusieurs chemins d'entrée :
 - inventaire physique et écarts ;
 - états ACTIVE, RETIRED, LOST et conditions physiques (mise à jour groupée des
   conditions livrée le 2026-09-02) ;
-- blocages manuels ponctuels (tranche Core/UI livrée le 2026-09-02) et récurrents ;
+- blocages manuels ponctuels (tranche Core/UI livrée le 2026-09-02) et récurrents
+  (21-U2-X livré le 2026-09-02 : séries hebdomadaires finies, occurrences
+  `MANUAL_BLOCK` matérialisées, fuseau IANA/DST fail-closed, cycle de vie
+  idempotent et action générique) ;
 - calendrier par exemplaire ;
 - export catalogue et flotte ;
 - import avec dry-run, mapping, erreurs et rejeu idempotent.
