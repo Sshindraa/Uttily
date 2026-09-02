@@ -16,6 +16,7 @@ export * from './inventory';
 export * from './inventory-batch';
 export * from './inventory-transfer-batch';
 export * from './inventory-status-batch';
+export * from './inventory-condition-batch';
 export * from './movements';
 export * from './read-models';
 export * from './unified-bike';

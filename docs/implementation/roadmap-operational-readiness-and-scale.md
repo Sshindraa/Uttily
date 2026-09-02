@@ -423,6 +423,15 @@ statut de gestion du parc est modifié : conditions, mouvements, réservations,
 maintenances et disponibilités restent inchangés. La confirmation et le retour
 accessible sont communs aux huit familles, sans logique vélo.
 
+**Mise à jour groupée de l'état physique en cours :** la prochaine tranche
+réutilise la même sélection générique et la même idempotence Core pour appliquer
+`NEW`, `GOOD`, `FAIR`, `POOR` ou `BROKEN` à plusieurs exemplaires. Elle verrouille
+la sélection complète avant écriture et ne modifie ni les statuts de parc, ni les
+lieux, ni les réservations, maintenances ou mouvements. L'éligibilité future
+continue d'appliquer la règle existante qui exclut `POOR` et `BROKEN` des
+réservations ; l'interface l'annonce explicitement, sans introduire de nouvelle
+règle de réservation ni de logique vélo.
+
 ### 7.2 Onboarding autonome
 
 - organisation, identité légale et Stripe Connect ;
@@ -450,7 +459,8 @@ Prévoir plusieurs chemins d'entrée :
 - changements groupés de statut (tranche Core/UI livrée le 2026-09-02) et d'établissement ;
 - transferts multi-sites (tranche inter-établissements groupée livrée le 2026-09-02) ;
 - inventaire physique et écarts ;
-- états ACTIVE, RETIRED, LOST et conditions physiques ;
+- états ACTIVE, RETIRED, LOST et conditions physiques (mise à jour groupée des
+  conditions en cours) ;
 - blocages manuels et récurrents ;
 - calendrier par exemplaire ;
 - export catalogue et flotte ;

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import type { InventoryStatus, InventorySummary } from '@uttily/core';
+import type { InventoryCondition, InventoryStatus, InventorySummary } from '@uttily/core';
 import {
   getInventoryConditionPresentation,
   getInventoryStatusPresentation,
@@ -12,6 +12,7 @@ import { getCategoryPresentation } from '@/features/equipment/category-presentat
 import {
   transferInventoryItemsBatchAction,
   updateInventoryItemsStatusBatchAction,
+  updateInventoryItemsConditionBatchAction,
 } from '@/app/actions/inventory';
 import { PageHeader, Card, Badge, LinkButton } from '@uttily/ui';
 import { OpenMaintenanceModal } from './open-maintenance-modal';
@@ -25,6 +26,14 @@ const BULK_STATUS_OPTIONS: ReadonlyArray<{ value: InventoryStatus; label: string
   { value: 'ACTIVE', label: 'En service · Disponible' },
   { value: 'RETIRED', label: 'Retiré du parc' },
   { value: 'LOST', label: 'Déclaré perdu / volé' },
+];
+
+const BULK_CONDITION_OPTIONS: ReadonlyArray<{ value: InventoryCondition; label: string }> = [
+  { value: 'NEW', label: 'Neuf' },
+  { value: 'GOOD', label: 'Bon état' },
+  { value: 'FAIR', label: 'État correct' },
+  { value: 'POOR', label: 'Usagé · non réservable' },
+  { value: 'BROKEN', label: 'En réparation / Hors service · non réservable' },
 ];
 
 export interface FleetLocationOption {
@@ -47,7 +56,7 @@ export function FleetListView({
 }: FleetListViewProps): React.ReactElement {
   const router = useRouter();
   const availableCount = items.filter(
-    (i) => i.status === 'ACTIVE' && i.condition !== 'BROKEN',
+    (i) => i.status === 'ACTIVE' && i.condition !== 'POOR' && i.condition !== 'BROKEN',
   ).length;
   const maintenanceCount = items.filter((i) => i.condition === 'BROKEN').length;
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(() => new Set());
@@ -65,6 +74,14 @@ export function FleetListView({
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [statusResult, setStatusResult] = useState<string | null>(null);
+  const [isConditionOpen, setIsConditionOpen] = useState(false);
+  const [targetCondition, setTargetCondition] = useState<InventoryCondition>('GOOD');
+  const [conditionIdempotencyKey, setConditionIdempotencyKey] = useState(() =>
+    createIdempotencyKey(),
+  );
+  const [isUpdatingCondition, setIsUpdatingCondition] = useState(false);
+  const [conditionError, setConditionError] = useState<string | null>(null);
+  const [conditionResult, setConditionResult] = useState<string | null>(null);
 
   const selectableItems = items.map((i) => ({
     id: i.id,
@@ -76,6 +93,10 @@ export function FleetListView({
   const allItemsSelected = items.length > 0 && selectedItems.length === items.length;
   const selectedStatusLabel =
     BULK_STATUS_OPTIONS.find((option) => option.value === targetStatus)?.label ?? targetStatus;
+  const selectedConditionLabel =
+    BULK_CONDITION_OPTIONS.find((option) => option.value === targetCondition)?.label ??
+    targetCondition;
+  const conditionMakesUnavailable = targetCondition === 'POOR' || targetCondition === 'BROKEN';
 
   function toggleItem(itemId: string): void {
     setSelectedItemIds((current) => {
@@ -86,12 +107,14 @@ export function FleetListView({
     });
     setTransferResult(null);
     setStatusResult(null);
+    setConditionResult(null);
   }
 
   function toggleAllItems(): void {
     setSelectedItemIds(allItemsSelected ? new Set() : new Set(items.map((item) => item.id)));
     setTransferResult(null);
     setStatusResult(null);
+    setConditionResult(null);
   }
 
   function openTransfer(): void {
@@ -111,6 +134,14 @@ export function FleetListView({
     setStatusError(null);
     setStatusResult(null);
     setIsStatusOpen(true);
+  }
+
+  function openConditionUpdate(): void {
+    setTargetCondition('GOOD');
+    setConditionIdempotencyKey(createIdempotencyKey());
+    setConditionError(null);
+    setConditionResult(null);
+    setIsConditionOpen(true);
   }
 
   async function handleTransfer(event: React.FormEvent<HTMLFormElement>): Promise<void> {
@@ -196,6 +227,46 @@ export function FleetListView({
       );
     } finally {
       setIsUpdatingStatus(false);
+    }
+  }
+
+  async function handleConditionUpdate(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (selectedItems.length === 0) return;
+
+    setIsUpdatingCondition(true);
+    setConditionError(null);
+    const formData = new FormData();
+    for (const item of selectedItems) formData.append('inventoryItemId', item.id);
+    formData.set('condition', targetCondition);
+    formData.set('idempotencyKey', conditionIdempotencyKey);
+
+    try {
+      const result = await updateInventoryItemsConditionBatchAction(
+        organizationId,
+        { ok: false, code: 'UNKNOWN', message: '' },
+        formData,
+      );
+      if (!result.ok) {
+        setConditionError(result.message || 'Les états n’ont pas pu être mis à jour.');
+        return;
+      }
+
+      const { updatedCount, noOpCount } = result.data;
+      setConditionResult(
+        noOpCount > 0
+          ? `${updatedCount} exemplaire(s) mis à jour ; ${noOpCount} déjà dans cet état.`
+          : `${updatedCount} exemplaire(s) passé(s) à l’état sélectionné.`,
+      );
+      setSelectedItemIds(new Set());
+      setIsConditionOpen(false);
+      router.refresh();
+    } catch (error) {
+      setConditionError(
+        error instanceof Error ? error.message : 'Les états n’ont pas pu être mis à jour.',
+      );
+    } finally {
+      setIsUpdatingCondition(false);
     }
   }
 
@@ -343,6 +414,14 @@ export function FleetListView({
               >
                 Modifier le statut des exemplaires
               </button>
+              <button
+                type="button"
+                onClick={openConditionUpdate}
+                className={styles.maintenanceTriggerBtn}
+                aria-haspopup="dialog"
+              >
+                Modifier l’état physique des exemplaires
+              </button>
             </div>
           )}
           {transferResult && (
@@ -361,6 +440,15 @@ export function FleetListView({
               style={{ margin: 0, color: 'var(--ut-color-success)' }}
             >
               {statusResult}
+            </p>
+          )}
+          {conditionResult && (
+            <p
+              role="status"
+              aria-live="polite"
+              style={{ margin: 0, color: 'var(--ut-color-success)' }}
+            >
+              {conditionResult}
             </p>
           )}
           <Card style={{ overflowX: 'auto', padding: 0 }}>
@@ -719,6 +807,106 @@ export function FleetListView({
                     </button>
                     <button type="submit" disabled={isUpdatingStatus} className={styles.submitBtn}>
                       {isUpdatingStatus ? 'Mise à jour en cours…' : 'Confirmer le changement'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+          {isConditionOpen && (
+            <div
+              className={styles.modalOverlay}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="condition-inventory-title"
+              onClick={() => !isUpdatingCondition && setIsConditionOpen(false)}
+            >
+              <div className={styles.modalContent} onClick={(event) => event.stopPropagation()}>
+                <div className={styles.modalHeader}>
+                  <h3 id="condition-inventory-title">Modifier l’état physique des exemplaires</h3>
+                  <button
+                    type="button"
+                    onClick={() => !isUpdatingCondition && setIsConditionOpen(false)}
+                    className={styles.closeBtn}
+                    disabled={isUpdatingCondition}
+                    aria-label="Fermer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <p className={styles.modalSub}>
+                  Vous allez modifier l’état physique de {selectedItems.length} exemplaire(s). Le
+                  nouvel état sera : <strong>{selectedConditionLabel}</strong>.
+                </p>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                  {selectedItems.slice(0, 10).map((item) => (
+                    <li key={item.id}>
+                      {item.internalSku} · {item.productName} ({item.variantName})
+                    </li>
+                  ))}
+                  {selectedItems.length > 10 && <li>… et {selectedItems.length - 10} autre(s)</li>}
+                </ul>
+
+                <form onSubmit={handleConditionUpdate} className={styles.form}>
+                  {conditionError && (
+                    <div className={styles.formError} role="alert" aria-live="assertive">
+                      {conditionError}
+                    </div>
+                  )}
+                  <div className={styles.formGroup}>
+                    <label htmlFor="inventory-batch-condition">Nouvel état physique :</label>
+                    <select
+                      id="inventory-batch-condition"
+                      value={targetCondition}
+                      onChange={(event) =>
+                        setTargetCondition(event.target.value as InventoryCondition)
+                      }
+                      disabled={isUpdatingCondition}
+                      className={styles.selectInput}
+                      required
+                    >
+                      {BULK_CONDITION_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {conditionMakesUnavailable && (
+                    <p
+                      role="alert"
+                      aria-live="assertive"
+                      className={styles.modalSub}
+                      style={{ color: 'var(--ut-color-danger)' }}
+                    >
+                      Attention : les exemplaires en {selectedConditionLabel} seront exclus des
+                      nouvelles réservations par les règles de disponibilité existantes. Les
+                      réservations, holds, maintenances, mouvements, statuts et établissements
+                      existants ne sont pas modifiés.
+                    </p>
+                  )}
+                  {!conditionMakesUnavailable && (
+                    <p className={styles.modalSub}>
+                      Cette action ne modifie ni le statut, ni l’établissement, ni les réservations,
+                      holds, maintenances ou mouvements existants.
+                    </p>
+                  )}
+                  <div className={styles.modalFooter}>
+                    <button
+                      type="button"
+                      onClick={() => setIsConditionOpen(false)}
+                      disabled={isUpdatingCondition}
+                      className={styles.cancelBtn}
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isUpdatingCondition}
+                      className={styles.submitBtn}
+                    >
+                      {isUpdatingCondition ? 'Mise à jour en cours…' : 'Confirmer le changement'}
                     </button>
                   </div>
                 </form>

@@ -8,6 +8,7 @@ import {
   type IntegrationTestContext,
 } from '../integration/setup';
 import { createBookingDraftWithHold, BookingDraftError } from './index';
+import { updateInventoryItemsConditionBatch } from '../catalog';
 import type {
   CreateBookingDraftFailure,
   CreateBookingDraftResult,
@@ -433,10 +434,20 @@ describe.skipIf(shouldSkipIntegrationTests())(
     it('12. exclut les exemplaires en condition POOR et BROKEN', async () => {
       if (!db || !rawSql) return;
       const ids = await seedBaseData();
-      // Mettre tous les exemplaires en POOR/BROKEN.
-      await rawSql`UPDATE "inventory_items" SET "condition" = 'POOR' WHERE "id" = ${ids.itemIds[0]!}`;
-      await rawSql`UPDATE "inventory_items" SET "condition" = 'BROKEN' WHERE "id" = ${ids.itemIds[1]!}`;
-      await rawSql`UPDATE "inventory_items" SET "condition" = 'POOR' WHERE "id" = ${ids.itemIds[2]!}`;
+      // Passer tous les exemplaires en POOR/BROKEN via la mutation batch : le
+      // moteur de réservation doit conserver ses règles d'éligibilité existantes.
+      await updateInventoryItemsConditionBatch(db, {
+        organizationId: ids.orgId,
+        inventoryItemIds: [ids.itemIds[0]!, ids.itemIds[2]!],
+        condition: 'POOR',
+        idempotencyKey: 'availability-poor-' + ids.orgId,
+      });
+      await updateInventoryItemsConditionBatch(db, {
+        organizationId: ids.orgId,
+        inventoryItemIds: [ids.itemIds[1]!],
+        condition: 'BROKEN',
+        idempotencyKey: 'availability-broken-' + ids.orgId,
+      });
       const result = await createBookingDraftWithHold(db, makeInput(ids));
       expectFailure(result);
       expect(result.statusCode).toBe(409);
