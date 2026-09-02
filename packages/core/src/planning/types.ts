@@ -1,9 +1,4 @@
-export type PlanningEventType =
-  | 'RENTAL'
-  | 'MAINTENANCE'
-  | 'MANUAL_BLOCK'
-  | 'PICKUP'
-  | 'RETURN';
+export type PlanningEventType = 'RENTAL' | 'MAINTENANCE' | 'MANUAL_BLOCK' | 'PICKUP' | 'RETURN';
 
 export interface OperationalPlanningEvent {
   id: string;

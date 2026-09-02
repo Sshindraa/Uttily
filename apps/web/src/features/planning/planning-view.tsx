@@ -395,7 +395,8 @@ export function PlanningView({
                   <td className={styles.bikeCell}>
                     <span className={styles.bikeSku}>{item.internalSku}</span>
                     <span className={styles.bikeName}>
-                      {getEquipmentLabel(item.categorySlug)} · {item.productName} ({item.variantName})
+                      {getEquipmentLabel(item.categorySlug)} · {item.productName} (
+                      {item.variantName})
                     </span>
                   </td>
 
@@ -416,9 +417,9 @@ export function PlanningView({
                               ? styles.cellMaint
                               : status === 'BLOCKED'
                                 ? styles.cellBlocked
-                              : status === 'RENTED'
-                                ? styles.cellRented
-                                : styles.cellAvail
+                                : status === 'RENTED'
+                                  ? styles.cellRented
+                                  : styles.cellAvail
                           }`}
                         >
                           {label}

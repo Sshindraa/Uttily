@@ -124,7 +124,12 @@ describe.skipIf(shouldSkipIntegrationTests())('Planning — visibilité des bloc
       name: 'New York',
       timeZone: 'America/New_York',
     });
-    const parisItem = await createItem(first.organizationId, first.location.id, 'kayak', 'PLAN-PARIS');
+    const parisItem = await createItem(
+      first.organizationId,
+      first.location.id,
+      'kayak',
+      'PLAN-PARIS',
+    );
     const newYorkItem = await createItem(
       first.organizationId,
       secondLocation.id,
@@ -182,7 +187,9 @@ describe.skipIf(shouldSkipIntegrationTests())('Planning — visibilité des bloc
       from,
       to,
     });
-    expect(wrongItemPlanning.events.filter((event) => event.type === 'MANUAL_BLOCK')).toHaveLength(0);
+    expect(wrongItemPlanning.events.filter((event) => event.type === 'MANUAL_BLOCK')).toHaveLength(
+      0,
+    );
 
     const newYorkPlanning = await getOperationalPlanning(db, first.organizationId, {
       locationId: secondLocation.id,

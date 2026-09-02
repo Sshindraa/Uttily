@@ -53,9 +53,7 @@ export function clipPlanningInterval(
 ): { startAt: Date; endAt: Date } | null {
   const clippedStartAt = startAt > from ? startAt : from;
   const clippedEndAt = endAt < to ? endAt : to;
-  return clippedEndAt > clippedStartAt
-    ? { startAt: clippedStartAt, endAt: clippedEndAt }
-    : null;
+  return clippedEndAt > clippedStartAt ? { startAt: clippedStartAt, endAt: clippedEndAt } : null;
 }
 
 export async function getOperationalPlanning(
