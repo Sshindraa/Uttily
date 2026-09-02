@@ -201,6 +201,18 @@
   color: var(--ut-color-primary-strong);
 }
 
+.eventHold {
+  background: var(--ut-color-surface-soft);
+  border: 1px solid var(--ut-color-border-strong);
+  color: var(--ut-color-ink-strong);
+}
+
+.eventRental {
+  background: var(--ut-color-primary-soft);
+  border: 1px solid var(--ut-color-primary-soft);
+  color: var(--ut-color-primary-strong);
+}
+
 .eventMaintenance {
   background: var(--ut-color-warning-soft);
   border: 1px solid var(--ut-color-warning-soft);
@@ -247,6 +259,184 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* CALENDRIER DÉTAILLÉ D'UN EXEMPLAIRE */
+.itemCalendarPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid var(--ut-color-border);
+  border-radius: 16px;
+  background: var(--ut-color-surface);
+  box-shadow: var(--ut-shadow-card-subtle);
+}
+
+.itemCalendarHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.itemCalendarEyebrow {
+  margin: 0 0 4px;
+  color: var(--ut-color-ink-muted);
+  font-size: 0.76rem;
+  font-weight: var(--ut-weight-bold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.itemCalendarTitle {
+  margin: 0;
+  color: var(--ut-color-ink-strong);
+  font-size: 1.3rem;
+  font-weight: var(--ut-weight-bold);
+}
+
+.itemCalendarSubtitle {
+  margin: 5px 0 0;
+  color: var(--ut-color-ink-muted);
+  font-size: 0.92rem;
+}
+
+.itemCalendarTimeZone {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 180px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--ut-color-surface-soft);
+  color: var(--ut-color-ink-muted);
+  font-size: 0.76rem;
+}
+
+.itemCalendarTimeZone strong {
+  color: var(--ut-color-ink-strong);
+  font-size: 0.88rem;
+}
+
+.itemCalendarFacts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.itemCalendarFacts > div {
+  padding: 10px 12px;
+  border: 1px solid var(--ut-color-border);
+  border-radius: 10px;
+}
+
+.itemCalendarFacts dt {
+  color: var(--ut-color-ink-muted);
+  font-size: 0.74rem;
+  font-weight: var(--ut-weight-semibold);
+}
+
+.itemCalendarFacts dd {
+  margin: 3px 0 0;
+  color: var(--ut-color-ink-strong);
+  font-size: 0.86rem;
+  font-weight: var(--ut-weight-bold);
+}
+
+.itemCalendarEvents {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.itemCalendarEvent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 13px 14px;
+  border-radius: 12px;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.itemCalendarEvent:hover,
+.itemCalendarEvent:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: var(--ut-shadow-sm);
+}
+
+.itemCalendarEventHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.itemCalendarEventType,
+.itemCalendarEventStatus {
+  font-size: 0.74rem;
+  font-weight: var(--ut-weight-bold);
+}
+
+.itemCalendarEventStatus {
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
+.itemCalendarEventTitle {
+  color: var(--ut-color-ink-strong);
+  font-size: 0.92rem;
+}
+
+.itemCalendarEventInterval,
+.itemCalendarEventMeta,
+.itemCalendarEventLink {
+  font-size: 0.78rem;
+}
+
+.itemCalendarEventInterval {
+  font-weight: var(--ut-weight-semibold);
+}
+
+.itemCalendarEventMeta {
+  opacity: 0.8;
+}
+
+.itemCalendarEventLink {
+  margin-top: 2px;
+  font-weight: var(--ut-weight-bold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.itemCalendarEmpty,
+.itemCalendarError {
+  margin: 0;
+  padding: 18px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+}
+
+.itemCalendarEmpty {
+  border: 1px dashed var(--ut-color-border-strong);
+  color: var(--ut-color-ink-muted);
+  text-align: center;
+}
+
+.itemCalendarError {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--ut-color-danger-soft);
+  background: var(--ut-color-danger-soft);
+  color: var(--ut-color-danger);
 }
 
 /* VUE 2 : GRILLE DE FLOTTE */
@@ -340,6 +530,12 @@
   border: 1px solid var(--ut-color-primary-soft);
 }
 
+.cellHold {
+  background: var(--ut-color-surface-soft);
+  color: var(--ut-color-ink-strong);
+  border: 1px solid var(--ut-color-border-strong);
+}
+
 .cellMaint {
   background: var(--ut-color-warning-soft);
   color: var(--ut-color-warning);
@@ -350,4 +546,18 @@
   background: var(--ut-color-danger-soft);
   color: var(--ut-color-danger);
   border: 1px solid var(--ut-color-danger-soft);
+}
+
+@media (max-width: 680px) {
+  .itemCalendarPanel {
+    padding: 15px;
+  }
+
+  .itemCalendarFacts {
+    grid-template-columns: 1fr;
+  }
+
+  .itemCalendarEvents {
+    grid-template-columns: 1fr;
+  }
 }

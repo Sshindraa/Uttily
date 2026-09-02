@@ -12,6 +12,8 @@ describe('PlanningPage (Chantier 10 & 21-U1-D15)', () => {
   it('exige une autorisation fulfillment pour afficher le planning', () => {
     expect(pageSource).toContain('requireFulfillmentOperatorOf(orgId)');
     expect(pageSource).toContain('getOperationalPlanning');
+    expect(pageSource).toContain('getOperationalItemCalendar');
+    expect(pageSource).toContain('inventoryItemId');
   });
 
   it('intègre le composant interactif PlanningView', () => {
