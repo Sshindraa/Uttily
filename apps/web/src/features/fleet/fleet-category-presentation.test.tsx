@@ -18,6 +18,7 @@ vi.mock('@/app/actions/maintenance', () => ({
 vi.mock('@/app/actions/inventory', () => ({
   transferInventoryItemsBatchAction: vi.fn(),
   updateInventoryItemsStatusBatchAction: vi.fn(),
+  updateInventoryItemsConditionBatchAction: vi.fn(),
 }));
 
 const inventoryItem = (categorySlug: string): InventorySummary => ({

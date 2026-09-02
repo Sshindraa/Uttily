@@ -15,6 +15,7 @@ import {
   transferInventoryItem,
   transferInventoryItemsBatch,
   updateInventoryItemsStatusBatch,
+  updateInventoryItemsConditionBatch,
   retireInventoryItem,
   INVENTORY_CONDITIONS,
   INVENTORY_STATUSES,
@@ -24,6 +25,7 @@ import {
   type TransferInventoryItemInput,
   type TransferInventoryItemsBatchResult,
   type UpdateInventoryItemsStatusBatchResult,
+  type UpdateInventoryItemsConditionBatchResult,
 } from '@uttily/core';
 import type { ActionResult } from '@uttily/contracts';
 import { MAX_BULK_INVENTORY_ITEMS } from '@uttily/contracts';
@@ -180,6 +182,42 @@ function parseUpdateInventoryItemsStatusBatch(formData: FormData):
 
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
   return { inventoryItemIds, status: status!, idempotencyKey };
+}
+
+function parseUpdateInventoryItemsConditionBatch(formData: FormData):
+  | ParsedFailure
+  | {
+      inventoryItemIds: string[];
+      condition: (typeof INVENTORY_CONDITIONS)[number];
+      idempotencyKey: string;
+    } {
+  const fieldErrors: Record<string, string> = {};
+  const inventoryItemIds = formData.getAll('inventoryItemId').map((value) => String(value));
+  const conditionRaw = String(formData.get('condition') ?? '').trim();
+  const idempotencyKey = String(formData.get('idempotencyKey') ?? '').trim();
+
+  if (inventoryItemIds.length < 1) {
+    fieldErrors.inventoryItemIds = 'Sélectionnez au moins un exemplaire.';
+  } else if (inventoryItemIds.length > MAX_BULK_INVENTORY_ITEMS) {
+    fieldErrors.inventoryItemIds = `La sélection est limitée à ${MAX_BULK_INVENTORY_ITEMS} exemplaires.`;
+  } else if (inventoryItemIds.some((itemId) => !isValidUuid(itemId))) {
+    fieldErrors.inventoryItemIds = 'Un ou plusieurs exemplaires sont invalides.';
+  } else if (new Set(inventoryItemIds).size !== inventoryItemIds.length) {
+    fieldErrors.inventoryItemIds = 'La sélection contient un doublon.';
+  }
+
+  let condition: (typeof INVENTORY_CONDITIONS)[number] | undefined;
+  if (isOneOf(conditionRaw, INVENTORY_CONDITIONS)) {
+    condition = conditionRaw;
+  } else {
+    fieldErrors.condition = 'État invalide.';
+  }
+  if (idempotencyKey.length < 1) {
+    fieldErrors.idempotencyKey = "La clé d'idempotence est requise.";
+  }
+
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+  return { inventoryItemIds, condition: condition!, idempotencyKey };
 }
 
 function parseItemId(formData: FormData): ParsedFailure | { itemId: string } {
@@ -378,6 +416,34 @@ export async function updateInventoryItemsStatusBatchAction(
   return runAction(async () => {
     const { db, organizationId: authorizedOrgId } = await requireCatalogManagerOf(organizationId);
     const result = await updateInventoryItemsStatusBatch(db, {
+      ...parsed,
+      organizationId: authorizedOrgId,
+    });
+    revalidatePath(`/dashboard/${authorizedOrgId}/inventory`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/fleet`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);
+    return result;
+  });
+}
+
+export async function updateInventoryItemsConditionBatchAction(
+  organizationId: string,
+  _prev: ActionResult<UpdateInventoryItemsConditionBatchResult>,
+  formData: FormData,
+): Promise<ActionResult<UpdateInventoryItemsConditionBatchResult>> {
+  const parsed = parseUpdateInventoryItemsConditionBatch(formData);
+  if ('fieldErrors' in parsed) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Veuillez corriger les erreurs.',
+      fieldErrors: parsed.fieldErrors,
+    };
+  }
+
+  return runAction(async () => {
+    const { db, organizationId: authorizedOrgId } = await requireCatalogManagerOf(organizationId);
+    const result = await updateInventoryItemsConditionBatch(db, {
       ...parsed,
       organizationId: authorizedOrgId,
     });
