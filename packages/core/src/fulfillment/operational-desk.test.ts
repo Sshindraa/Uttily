@@ -88,6 +88,16 @@ describe('cockpit opérationnel quotidien', () => {
     ).toBe('PICKUPS_TODAY');
   });
 
+  it('ne déplace pas un ancien départ vers une date future sélectionnée', () => {
+    expect(
+      classifyOperationalDeskBooking(
+        booking('CONFIRMED', '2026-08-11T08:00:00Z', '2026-08-12T16:00:00Z'),
+        '2026-08-13',
+        now,
+      ),
+    ).toBeNull();
+  });
+
   it('calcule la date civile sans division par 24 heures lors des DST', () => {
     expect(getOperationalLocalCivilDate(new Date('2026-03-29T23:30:00Z'), TIME_ZONE)).toBe(
       '2026-03-30',
