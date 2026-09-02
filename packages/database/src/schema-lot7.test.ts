@@ -188,12 +188,12 @@ describe.skipIf(shouldSkipIntegrationTests())(
     // -------------------------------------------------------------------------
     // A. Migration
     // -------------------------------------------------------------------------
-    it('__drizzle_migrations a 55 entrées', async () => {
+    it('__drizzle_migrations a 56 entrées', async () => {
       if (!testUrl) return;
       const sql = postgres(testUrl, { max: 1 });
       try {
         const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-        expect(rows.length).toBe(55);
+        expect(rows.length).toBe(56);
       } finally {
         await sql.end();
       }
@@ -205,7 +205,7 @@ describe.skipIf(shouldSkipIntegrationTests())(
       const sql = postgres(testUrl, { max: 1 });
       try {
         const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-        expect(rows.length).toBe(55);
+        expect(rows.length).toBe(56);
       } finally {
         await sql.end();
       }

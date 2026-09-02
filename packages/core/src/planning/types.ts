@@ -6,6 +6,8 @@ export interface OperationalPlanningEvent {
   bookingId?: string | undefined;
   maintenanceCaseId?: string | undefined;
   manualBlockId?: string | undefined;
+  /** Série source lorsque le MANUAL_BLOCK est une occurrence récurrente. */
+  recurringSeriesId?: string | undefined;
   inventoryItemId: string;
   internalSku: string;
   productName: string;

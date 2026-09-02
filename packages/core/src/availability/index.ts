@@ -9,4 +9,6 @@
 export * from './types';
 export * from './blocks';
 export * from './manual-block';
+export * from './recurring-manual-block';
+export * from './recurring-manual-block-series';
 export * from './availability';

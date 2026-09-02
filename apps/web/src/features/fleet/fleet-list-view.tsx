@@ -3,7 +3,12 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import type { InventoryCondition, InventoryStatus, InventorySummary } from '@uttily/core';
+import type {
+  InventoryCondition,
+  InventoryStatus,
+  InventorySummary,
+  RecurringManualBlockSeriesView,
+} from '@uttily/core';
 import {
   getInventoryConditionPresentation,
   getInventoryStatusPresentation,
@@ -17,6 +22,8 @@ import {
 import { PageHeader, Card, Badge, LinkButton } from '@uttily/ui';
 import { OpenMaintenanceModal } from './open-maintenance-modal';
 import { OpenManualBlockModal } from './open-manual-block-modal';
+import { OpenRecurringManualBlockModal } from './open-recurring-manual-block-modal';
+import { RecurringManualBlockSeriesPanel } from './recurring-manual-block-series-panel';
 import styles from './fleet.module.css';
 
 function createIdempotencyKey(): string {
@@ -48,6 +55,7 @@ export interface FleetListViewProps {
   items: InventorySummary[];
   locations?: FleetLocationOption[];
   canManage: boolean;
+  recurringSeries?: RecurringManualBlockSeriesView[];
 }
 
 export function FleetListView({
@@ -55,6 +63,7 @@ export function FleetListView({
   items,
   locations = [],
   canManage,
+  recurringSeries = [],
 }: FleetListViewProps): React.ReactElement {
   const router = useRouter();
   const availableCount = items.filter(
@@ -428,21 +437,38 @@ export function FleetListView({
                 Modifier l’état physique des exemplaires
               </button>
               {singleSelectedItem && (
-                <OpenManualBlockModal
-                  orgId={organizationId}
-                  item={{
-                    id: singleSelectedItem.id,
-                    internalSku: singleSelectedItem.internalSku,
-                    productName: singleSelectedItem.productName,
-                    variantName: singleSelectedItem.variantName,
-                    locationId: singleSelectedItem.currentLocationId,
-                    locationName: singleSelectedItem.locationName,
-                    locationTimeZone: locations.find(
-                      (location) => location.id === singleSelectedItem.currentLocationId,
-                    )?.timeZone,
-                  }}
-                  onCompleted={() => setSelectedItemIds(new Set())}
-                />
+                <>
+                  <OpenManualBlockModal
+                    orgId={organizationId}
+                    item={{
+                      id: singleSelectedItem.id,
+                      internalSku: singleSelectedItem.internalSku,
+                      productName: singleSelectedItem.productName,
+                      variantName: singleSelectedItem.variantName,
+                      locationId: singleSelectedItem.currentLocationId,
+                      locationName: singleSelectedItem.locationName,
+                      locationTimeZone: locations.find(
+                        (location) => location.id === singleSelectedItem.currentLocationId,
+                      )?.timeZone,
+                    }}
+                    onCompleted={() => setSelectedItemIds(new Set())}
+                  />
+                  <OpenRecurringManualBlockModal
+                    orgId={organizationId}
+                    item={{
+                      id: singleSelectedItem.id,
+                      internalSku: singleSelectedItem.internalSku,
+                      productName: singleSelectedItem.productName,
+                      variantName: singleSelectedItem.variantName,
+                      locationId: singleSelectedItem.currentLocationId,
+                      locationName: singleSelectedItem.locationName,
+                      locationTimeZone: locations.find(
+                        (location) => location.id === singleSelectedItem.currentLocationId,
+                      )?.timeZone,
+                    }}
+                    onCompleted={() => setSelectedItemIds(new Set())}
+                  />
+                </>
               )}
             </div>
           )}
@@ -936,6 +962,13 @@ export function FleetListView({
             </div>
           )}
         </>
+      )}
+      {canManage && recurringSeries.length > 0 && (
+        <RecurringManualBlockSeriesPanel
+          organizationId={organizationId}
+          views={recurringSeries}
+          items={items}
+        />
       )}
     </div>
   );
