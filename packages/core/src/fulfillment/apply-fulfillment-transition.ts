@@ -1,5 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm';
-import type { DatabaseClient } from '@uttily/database';
+import type { DatabaseClient, DatabaseTransaction } from '@uttily/database';
 import { bookings, bookingFulfillmentEvents, outboxEvents } from '@uttily/database';
 import { lockOrganization } from '@uttily/database';
 import { reserveKey, lockKey, completeKey } from '../idempotency/idempotency';
@@ -44,6 +44,20 @@ export interface FulfillmentTransitionInput {
 }
 
 /**
+ * Contexte fourni à une opération qui doit compléter la transition dans la
+ * même transaction (par exemple la protection maintenance d'un retour).
+ */
+export interface FulfillmentAppliedContext {
+  tx: DatabaseTransaction;
+  booking: typeof bookings.$inferSelect;
+  input: FulfillmentTransitionInput;
+  previousStatus: BookingStatus;
+  nextStatus: BookingStatus;
+  fulfillmentEventId: string;
+  occurredAt: Date;
+}
+
+/**
  * Résultat rejouable d'une transition terrain.
  */
 export type FulfillmentTransitionResult =
@@ -65,6 +79,10 @@ export interface FulfillmentOperationSpec {
   requestedStatus: BookingStatus;
   auditAction: string;
   outboxEventType: string;
+  /** Empreinte spécifique lorsque l'opération possède un payload additionnel. */
+  computeRequestFingerprint?: (input: FulfillmentTransitionInput) => string;
+  /** Écritures complémentaires exécutées avant l'audit et l'outbox génériques. */
+  afterApplied?: (context: FulfillmentAppliedContext) => Promise<void>;
 }
 
 /**
@@ -94,12 +112,14 @@ export async function applyFulfillmentTransition(
 ): Promise<FulfillmentTransitionResult> {
   const idempotencyKey = validateInput(input);
 
-  const requestFingerprint = computeFulfillmentFingerprint({
-    organizationId: input.organizationId,
-    bookingId: input.bookingId,
-    actorUserId: input.actorUserId,
-    operation: spec.operation,
-  });
+  const requestFingerprint =
+    spec.computeRequestFingerprint?.(input) ??
+    computeFulfillmentFingerprint({
+      organizationId: input.organizationId,
+      bookingId: input.bookingId,
+      actorUserId: input.actorUserId,
+      operation: spec.operation,
+    });
 
   const reservation = await reserveKey(db, {
     organizationId: input.organizationId,
@@ -210,6 +230,18 @@ export async function applyFulfillmentTransition(
 
       const fulfillmentEventId = eventRows[0]!.id;
       const occurredAt = eventRows[0]!.occurredAt;
+
+      if (spec.afterApplied) {
+        await spec.afterApplied({
+          tx,
+          booking,
+          input,
+          previousStatus: transition.previousStatus,
+          nextStatus: transition.nextStatus,
+          fulfillmentEventId,
+          occurredAt,
+        });
+      }
 
       await writeAuditEntry(tx, {
         actorUserId: input.actorUserId,
