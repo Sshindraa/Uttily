@@ -128,6 +128,14 @@ export function HomeNavigation({
                   <Icon name="calendar" size={19} />
                   {fr ? 'Mes locations' : 'My bookings'}
                 </Link>
+                <Link
+                  href={'/' + locale + '/account/privacy'}
+                  aria-label={fr ? 'Confidentialité et données' : 'Privacy and data'}
+                  onClick={closeMenus}
+                >
+                  <Icon name="settings" size={19} />
+                  {fr ? 'Confidentialité & données' : 'Privacy & data'}
+                </Link>
                 <Link href="/dashboard" onClick={closeMenus}>
                   <Icon name="home" size={19} />
                   {fr ? 'Espace professionnel' : 'Professional dashboard'}

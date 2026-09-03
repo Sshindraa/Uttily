@@ -400,6 +400,13 @@
       "when": 1788107362007,
       "tag": "0057_organization_legal_and_tax_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1788107362008,
+      "tag": "0058_privacy_requests",
+      "breakpoints": true
     }
   ]
 }

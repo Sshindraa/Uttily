@@ -3357,3 +3357,129 @@ export const notifications = pgTable(
 
 export type NotificationRecord = typeof notifications.$inferSelect;
 export type NewNotificationRecord = typeof notifications.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// Lot 21-P1 — Fondation RGPD : registre des demandes de droits (migration 0058).
+// ---------------------------------------------------------------------------
+
+export const privacyRequestType = pgEnum('privacy_request_type', [
+  'ACCESS',
+  'PORTABILITY',
+  'RECTIFICATION',
+  'ERASURE',
+  'OPPOSITION',
+  'RESTRICTION',
+]);
+
+export const privacyRequestStatus = pgEnum('privacy_request_status', [
+  'RECEIVED',
+  'IDENTITY_CHECK_REQUIRED',
+  'IN_REVIEW',
+  'DECISION_READY',
+  'COMPLETED',
+  'CANCELLED',
+]);
+
+export const privacyResolutionStatus = pgEnum('privacy_resolution_status', [
+  'FULFILLED',
+  'PARTIALLY_FULFILLED',
+  'REFUSED',
+]);
+
+export const privacyDecisionReason = pgEnum('privacy_decision_reason', [
+  'LEGAL_RETENTION_OBLIGATION',
+  'LITIGATION_HOLD',
+  'IDENTITY_NOT_VERIFIED',
+  'THIRD_PARTY_RIGHTS',
+  'MANIFESTLY_UNFOUNDED',
+  'ALREADY_FULFILLED',
+  'TECHNICALLY_IMPOSSIBLE',
+]);
+
+export const privacyRequests = pgTable(
+  'privacy_requests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    requestType: privacyRequestType('request_type').notNull(),
+    status: privacyRequestStatus('status').notNull().default('RECEIVED'),
+    resolution: privacyResolutionStatus('resolution'),
+    details: text('details'),
+    decisionReasonCode: privacyDecisionReason('decision_reason_code'),
+    resolutionNotes: text('resolution_notes'),
+    decisionAt: timestamp('decision_at', { withTimezone: true }),
+    decisionByUserId: uuid('decision_by_user_id').references(() => users.id),
+    responseNotifiedAt: timestamp('response_notified_at', { withTimezone: true }),
+    responseNotifiedByUserId: uuid('response_notified_by_user_id').references(() => users.id),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+    responseDueAt: timestamp('response_due_at', { withTimezone: true }).notNull(),
+    extendedUntil: timestamp('extended_until', { withTimezone: true }),
+    extensionReason: text('extension_reason'),
+    extendedAt: timestamp('extended_at', { withTimezone: true }),
+    extendedByUserId: uuid('extended_by_user_id').references(() => users.id),
+    extensionNotifiedAt: timestamp('extension_notified_at', { withTimezone: true }),
+    resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check(
+      'privacy_requests_decision_consistency',
+      sql`(
+        ${t.status} IN ('RECEIVED', 'IDENTITY_CHECK_REQUIRED', 'IN_REVIEW')
+        AND ${t.resolution} IS NULL
+        AND ${t.decisionAt} IS NULL
+        AND ${t.decisionByUserId} IS NULL
+        AND ${t.responseNotifiedAt} IS NULL
+        AND ${t.responseNotifiedByUserId} IS NULL
+        AND ${t.resolvedAt} IS NULL
+      ) OR (
+        ${t.status} = 'DECISION_READY'
+        AND ${t.resolution} IS NOT NULL
+        AND ${t.decisionAt} IS NOT NULL
+        AND ${t.decisionByUserId} IS NOT NULL
+        AND ${t.responseNotifiedAt} IS NULL
+        AND ${t.responseNotifiedByUserId} IS NULL
+        AND ${t.resolvedAt} IS NULL
+        AND (${t.resolution} != 'REFUSED' OR ${t.decisionReasonCode} IS NOT NULL)
+      ) OR (
+        ${t.status} = 'COMPLETED'
+        AND ${t.resolution} IS NOT NULL
+        AND ${t.decisionAt} IS NOT NULL
+        AND ${t.decisionByUserId} IS NOT NULL
+        AND ${t.responseNotifiedAt} IS NOT NULL
+        AND ${t.responseNotifiedByUserId} IS NOT NULL
+        AND ${t.resolvedAt} IS NOT NULL
+        AND ${t.responseNotifiedAt} >= ${t.decisionAt}
+        AND (${t.resolution} != 'REFUSED' OR ${t.decisionReasonCode} IS NOT NULL)
+      ) OR (
+        ${t.status} = 'CANCELLED'
+        AND ${t.responseNotifiedAt} IS NULL
+      )`,
+    ),
+    check(
+      'privacy_requests_extension_consistency',
+      sql`(
+        ${t.extendedUntil} IS NULL
+        AND ${t.extendedAt} IS NULL
+        AND ${t.extensionReason} IS NULL
+        AND ${t.extendedByUserId} IS NULL
+        AND ${t.extensionNotifiedAt} IS NULL
+      ) OR (
+        ${t.extendedUntil} IS NOT NULL
+        AND ${t.extendedAt} IS NOT NULL
+        AND ${t.extensionReason} IS NOT NULL
+        AND ${t.extendedByUserId} IS NOT NULL
+        AND ${t.extendedUntil} > ${t.responseDueAt}
+        AND ${t.extendedUntil} <= (${t.responseDueAt} + interval '2 months')
+        AND (${t.extensionNotifiedAt} IS NULL OR ${t.extensionNotifiedAt} >= ${t.extendedAt})
+      )`,
+    ),
+    index('privacy_requests_user_status_idx').on(t.userId, t.status),
+  ],
+);
+
+export type PrivacyRequestRecord = typeof privacyRequests.$inferSelect;
+export type NewPrivacyRequestRecord = typeof privacyRequests.$inferInsert;
