@@ -93,6 +93,9 @@ export function ClientShell({
             <Link href={`/${locale}/rental-terms`} className={styles.footerLegalLink}>
               {fr ? 'Conditions de location' : 'Rental Terms'}
             </Link>
+            <Link href={`/${locale}/pro-terms`} className={styles.footerLegalLink}>
+              {fr ? 'Conditions Pro' : 'Partner Terms'}
+            </Link>
             <Link href={`/${locale}/privacy`} className={styles.footerLegalLink}>
               {fr ? 'Confidentialité' : 'Privacy'}
             </Link>

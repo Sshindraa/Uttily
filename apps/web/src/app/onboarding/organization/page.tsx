@@ -19,9 +19,14 @@ export default async function OnboardingOrganizationPage(): Promise<ReactElement
     const legalName = String(formData.get('legalName') ?? '');
     const slugRaw = String(formData.get('slug') ?? '');
     const defaultCurrency = String(formData.get('defaultCurrency') ?? MVP_ORGANIZATION_CURRENCY);
+    const proTermsAcceptedRaw = formData.get('proTermsAccepted');
+    const proTermsAccepted = proTermsAcceptedRaw === 'on' || proTermsAcceptedRaw === 'true';
+
     const payload: Parameters<typeof createOrganizationAction>[0] = {
       legalName,
       defaultCurrency,
+      proTermsAccepted,
+      proTermsVersion: 'v1',
     };
 
     if (slugRaw) {

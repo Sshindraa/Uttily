@@ -84,6 +84,28 @@ export function OrganizationOnboardingView({
             </p>
           </div>
 
+          <div className={styles.checkboxGroup}>
+            <input
+              id="proTermsAccepted"
+              name="proTermsAccepted"
+              type="checkbox"
+              required
+              aria-describedby="pro-terms-help"
+            />
+            <label htmlFor="proTermsAccepted" className={styles.checkboxLabel} id="pro-terms-help">
+              J’ai pris connaissance et j’accepte les{' '}
+              <Link
+                href="/fr/pro-terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.legalLink}
+              >
+                Conditions Générales Partenaires (Conditions Pro)
+              </Link>{' '}
+              d’Uttily pour le compte de mon organisation (version v1).
+            </label>
+          </div>
+
           <button type="submit" className={styles.submitButton}>
             Créer mon espace loueur
           </button>

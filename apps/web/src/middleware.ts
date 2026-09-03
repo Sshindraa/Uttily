@@ -15,10 +15,14 @@ const isPublicRoute = createRouteMatcher([
   '/en/privacy(.*)',
   '/fr/legal(.*)',
   '/en/legal(.*)',
+  '/fr/pro-terms(.*)',
+  '/en/pro-terms(.*)',
   '/cgu(.*)',
   '/cgv(.*)',
   '/politique-de-confidentialite(.*)',
   '/mentions-legales(.*)',
+  '/conditions-pro(.*)',
+  '/pro-terms(.*)',
   '/terms(.*)',
   '/privacy(.*)',
   '/legal(.*)',
@@ -46,6 +50,11 @@ export default clerkMiddleware(async (auth, req) => {
   if (pathname === '/cgv' || pathname === '/rental-terms') {
     const url = req.nextUrl.clone();
     url.pathname = '/fr/rental-terms';
+    return NextResponse.redirect(url, 308);
+  }
+  if (pathname === '/conditions-pro' || pathname === '/pro-terms') {
+    const url = req.nextUrl.clone();
+    url.pathname = '/fr/pro-terms';
     return NextResponse.redirect(url, 308);
   }
   if (pathname === '/politique-de-confidentialite' || pathname === '/privacy') {
