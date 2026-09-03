@@ -86,11 +86,12 @@ export async function createOrganizationForUser(
 
     const proTermsVersion = input.proTermsVersion ?? 'v1';
     await tx.insert(auditLog).values({
-      actorUserId: user.id,
+      actorUserId: null,
       action: 'ORGANIZATION_PRO_TERMS_ACCEPTED',
       targetType: 'ORGANIZATION',
       targetId: org.id,
       metadata: {
+        actorUserId: user.id,
         proTermsVersion,
         acceptedAt: new Date().toISOString(),
         legalName,
