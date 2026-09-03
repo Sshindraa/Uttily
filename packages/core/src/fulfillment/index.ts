@@ -24,3 +24,5 @@ export * from './counter-incidents-fingerprint';
 export * from './record-booking-no-show';
 export * from './substitute-booking-item';
 export * from './unreturned-lost';
+export * from './get-counter-available-items';
+export * from './create-counter-booking';
