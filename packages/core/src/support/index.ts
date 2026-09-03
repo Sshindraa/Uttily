@@ -9,3 +9,4 @@ export * from './actions/retry-notification';
 export * from './actions/cancel-notification';
 export * from './actions/resend-invitation-notification';
 export * from './actions/reconcile-payment';
+export * from './privacy';

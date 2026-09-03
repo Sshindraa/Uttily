@@ -14,6 +14,8 @@ export { AuditSupportView } from './audit-support-view';
 export type { AuditSupportViewProps } from './audit-support-view';
 export { AnalyticsSupportView } from './analytics-support-view';
 export { HealthSupportView } from './health-support-view';
+export { PrivacySupportView } from './privacy-support-view';
+export type { PrivacySupportViewProps } from './privacy-support-view';
 export {
   buildInternalFunnelView,
   FUNNEL_ENVIRONMENTS,
