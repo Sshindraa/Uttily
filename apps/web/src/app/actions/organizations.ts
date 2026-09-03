@@ -16,6 +16,11 @@ import {
 export async function createOrganizationAction(input: CreateOrganizationInput) {
   const user = await getAuthenticatedUser();
   if (!user) throw new Error('Non authentifié.');
+  if (input.proTermsAccepted !== true) {
+    throw new Error(
+      'L’acceptation des Conditions Générales Partenaires (Conditions Pro) est obligatoire.',
+    );
+  }
   const db = getDb();
   const { organization } = await createOrganizationForUser(db, user, input);
   revalidatePath('/dashboard');

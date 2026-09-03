@@ -6,7 +6,7 @@ import styles from './legal-page.module.css';
 
 interface LegalPageLayoutProps {
   locale: AppLocale;
-  slug: 'terms' | 'rental-terms' | 'privacy' | 'legal';
+  slug: 'terms' | 'rental-terms' | 'pro-terms' | 'privacy' | 'legal';
   title: string;
   effectiveDate: string;
   version?: string;
@@ -61,6 +61,9 @@ export function LegalPageLayout({
           </Link>
           <Link href={`/${locale}/rental-terms`}>
             {fr ? 'Conditions de location' : 'Rental Terms'}
+          </Link>
+          <Link href={`/${locale}/pro-terms`}>
+            {fr ? 'Conditions Partenaires (Pro)' : 'Partner Terms (Pro)'}
           </Link>
           <Link href={`/${locale}/privacy`}>
             {fr ? 'Politique de confidentialité' : 'Privacy Policy'}

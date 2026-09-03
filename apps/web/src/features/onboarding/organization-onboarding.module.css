@@ -140,6 +140,38 @@
   line-height: 1.4;
 }
 
+.checkboxGroup {
+  display: flex;
+  gap: var(--ut-space-3);
+  align-items: flex-start;
+  margin-top: var(--ut-space-2);
+}
+
+.checkboxGroup input[type='checkbox'] {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.15rem;
+  flex-shrink: 0;
+  accent-color: var(--ut-color-primary);
+  cursor: pointer;
+}
+
+.checkboxLabel {
+  font-size: var(--ut-text-sm);
+  color: var(--ut-color-ink-muted);
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.legalLink {
+  color: var(--ut-color-primary);
+  text-decoration: underline;
+}
+
+.legalLink:hover {
+  color: var(--ut-color-primary-strong);
+}
+
 .submitButton {
   min-height: 2.75rem;
   margin-top: var(--ut-space-2);

@@ -30,4 +30,10 @@ describe('Onboarding organisation — entrée loueur', () => {
     expect(pageSource).not.toContain('<form');
     expect(source).toContain('<form action={createOrganization}');
   });
+
+  it('impose l’acceptation des Conditions Générales Partenaires', () => {
+    expect(pageSource).toContain('proTermsAccepted');
+    expect(featureSource).toContain('name="proTermsAccepted"');
+    expect(featureSource).toContain('/fr/pro-terms');
+  });
 });

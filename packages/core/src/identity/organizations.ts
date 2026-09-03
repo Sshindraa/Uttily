@@ -1,6 +1,6 @@
 import { eq, and, isNull } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
-import { organizations, organizationMemberships } from '@uttily/database';
+import { organizations, organizationMemberships, auditLog } from '@uttily/database';
 import { isValidSlug, slugify } from './slug';
 import type { AuthenticatedUser, OrganizationRecord } from './types';
 import { AuthorizationError } from './permissions';
@@ -10,6 +10,8 @@ export interface CreateOrganizationInput {
   legalName: string;
   slug?: string;
   defaultCurrency?: string;
+  proTermsAccepted?: boolean;
+  proTermsVersion?: string;
 }
 
 export interface OrganizationRepository {
@@ -80,6 +82,20 @@ export async function createOrganizationForUser(
       role: 'OWNER',
       status: 'ACTIVE',
       acceptedAt: new Date(),
+    });
+
+    const proTermsVersion = input.proTermsVersion ?? 'v1';
+    await tx.insert(auditLog).values({
+      actorUserId: null,
+      action: 'ORGANIZATION_PRO_TERMS_ACCEPTED',
+      targetType: 'ORGANIZATION',
+      targetId: org.id,
+      metadata: {
+        actorUserId: user.id,
+        proTermsVersion,
+        acceptedAt: new Date().toISOString(),
+        legalName,
+      },
     });
 
     return { organization: mapOrganization(org) };

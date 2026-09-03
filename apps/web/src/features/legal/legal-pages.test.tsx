@@ -26,6 +26,9 @@ import PrivacyPage, {
 import LegalNoticePage, {
   generateMetadata as generateLegalMetadata,
 } from '@/app/[locale]/legal/page';
+import ProTermsPage, {
+  generateMetadata as generateProTermsMetadata,
+} from '@/app/[locale]/pro-terms/page';
 import { getCheckoutCopy } from '@/lib/checkout-copy';
 
 describe('Pages légales et contractuelles (21-L1)', () => {
@@ -108,6 +111,27 @@ describe('Pages légales et contractuelles (21-L1)', () => {
       expect(html).toContain('Vercel Inc.');
       expect(html).toContain('Neon Inc.');
       expect(html).toContain('Stripe Payments Europe, Ltd.');
+    });
+  });
+
+  describe('Conditions Partenaires Pro — /pro-terms (21-L2)', () => {
+    it('génère les métadonnées FR et EN pour les conditions pro', async () => {
+      const frMeta = await generateProTermsMetadata({ params: Promise.resolve({ locale: 'fr' }) });
+      expect(frMeta.title).toContain('Conditions Générales Partenaires');
+
+      const enMeta = await generateProTermsMetadata({ params: Promise.resolve({ locale: 'en' }) });
+      expect(enMeta.title).toContain('Partner Terms');
+    });
+
+    it('affiche le contrat pro avec les clauses marketplace, commission et substitution', async () => {
+      const element = await ProTermsPage({ params: Promise.resolve({ locale: 'fr' }) });
+      const html = renderToStaticMarkup(element);
+
+      expect(html).toContain('Conditions Générales Partenaires (Contrat Loueur Pro)');
+      expect(html).toContain('Responsabilité Civile Professionnelle');
+      expect(html).toContain('Obligation de substitution');
+      expect(html).toContain('13 % HT');
+      expect(html).toContain('Stripe Connect');
     });
   });
 
