@@ -359,14 +359,46 @@ export function CheckoutClient({
 
       <div style={cardStyle}>
         {phase === 'idle' && (
-          <button
-            type="button"
-            onClick={handleInitiate}
-            style={submitButtonStyle}
-            aria-label={copy.summary.initiate}
-          >
-            {copy.paymentForm.pay} {totalLabel}
-          </button>
+          <>
+            <p style={legalNoticeStyle}>
+              {copy.summary.legalConsentPrefix}{' '}
+              <Link
+                href={`/${locale}/rental-terms`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={legalLinkStyle}
+              >
+                {copy.summary.rentalTermsLabel}
+              </Link>
+              {locale === 'fr' ? ', les ' : ', the '}
+              <Link
+                href={`/${locale}/terms`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={legalLinkStyle}
+              >
+                {copy.summary.cguLabel}
+              </Link>
+              {locale === 'fr' ? ' et la ' : ' and the '}
+              <Link
+                href={`/${locale}/privacy`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={legalLinkStyle}
+              >
+                {copy.summary.privacyLabel}
+              </Link>{' '}
+              <span>{copy.summary.legalTermsVersionBadge}</span>.
+            </p>
+            <button
+              type="button"
+              onClick={handleInitiate}
+              style={submitButtonStyle}
+              aria-label={copy.summary.initiate}
+            >
+              {copy.paymentForm.pay} {totalLabel}
+            </button>
+          </>
         )}
 
         {phase === 'initiating' && (
@@ -499,6 +531,19 @@ const submitButtonStyle: CSSProperties = {
   borderRadius: 'var(--ut-radius-md)',
   cursor: 'pointer',
   transition: 'background var(--ut-motion-fast) var(--ut-ease-standard)',
+};
+
+const legalNoticeStyle: CSSProperties = {
+  color: 'var(--ut-color-ink-muted)',
+  fontSize: '0.8rem',
+  lineHeight: 1.5,
+  margin: '0 0 0.5rem 0',
+  textAlign: 'center',
+};
+
+const legalLinkStyle: CSSProperties = {
+  color: 'var(--ut-color-primary)',
+  textDecoration: 'underline',
 };
 
 const errorStyle: CSSProperties = {

@@ -80,10 +80,26 @@ export function ClientShell({
       {children}
       <footer className={styles.footer} lang={locale}>
         <div className={styles.footerInner}>
-          <span className={styles.footerBrand}>Uttily</span>
-          <span>
-            {fr ? 'Des équipements fiables, près de vous.' : 'Reliable equipment, near you.'}
-          </span>
+          <div className={styles.footerBrandGroup}>
+            <span className={styles.footerBrand}>Uttily</span>
+            <span>
+              {fr ? 'Des équipements fiables, près de vous.' : 'Reliable equipment, near you.'}
+            </span>
+          </div>
+          <nav aria-label={fr ? 'Liens légaux' : 'Legal links'} className={styles.footerLegalLinks}>
+            <Link href={`/${locale}/terms`} className={styles.footerLegalLink}>
+              {fr ? 'Conditions d’utilisation' : 'Terms of Service'}
+            </Link>
+            <Link href={`/${locale}/rental-terms`} className={styles.footerLegalLink}>
+              {fr ? 'Conditions de location' : 'Rental Terms'}
+            </Link>
+            <Link href={`/${locale}/privacy`} className={styles.footerLegalLink}>
+              {fr ? 'Confidentialité' : 'Privacy'}
+            </Link>
+            <Link href={`/${locale}/legal`} className={styles.footerLegalLink}>
+              {fr ? 'Mentions légales' : 'Legal Notice'}
+            </Link>
+          </nav>
         </div>
       </footer>
     </div>

@@ -39,6 +39,11 @@ export type CheckoutCopy = {
     accessDeniedDescription: string;
     fallbackEquipment: string;
     fallbackRenter: string;
+    legalConsentPrefix: string;
+    rentalTermsLabel: string;
+    cguLabel: string;
+    privacyLabel: string;
+    legalTermsVersionBadge: string;
   };
 };
 
@@ -84,6 +89,11 @@ const FR_COPY: CheckoutCopy = {
     accessDeniedDescription: 'Cette réservation appartient à un autre compte utilisateur.',
     fallbackEquipment: 'Équipement loué',
     fallbackRenter: 'Loueur partenaire',
+    legalConsentPrefix: 'En procédant au paiement, vous acceptez les',
+    rentalTermsLabel: 'Conditions Générales de Location',
+    cguLabel: 'Conditions d’Utilisation',
+    privacyLabel: 'Politique de Confidentialité',
+    legalTermsVersionBadge: '(version v1)',
   },
 };
 
@@ -103,30 +113,35 @@ const EN_COPY: CheckoutCopy = {
   success: {
     title: 'Payment confirmed!',
     description: (renterName) =>
-      `Your booking with ${renterName} is confirmed. Find all details and directions in your account.`,
+      `Your booking with ${renterName} has been confirmed. You can find full details and pickup instructions in your account.`,
     bookingsLink: 'Go to my bookings →',
   },
   error: {
     title: 'Payment interrupted',
-    generic: 'An error occurred while starting your payment.',
+    generic: 'An error occurred while preparing your payment.',
     retry: 'Retry payment',
   },
   summary: {
-    heading: 'Your equipment summary',
+    heading: 'Equipment summary',
     equipment: 'Rented equipment',
     rental: 'Rental',
     serviceFee: 'Service fee',
     total: 'Total to pay',
-    expiresAt: (date) => `Booking draft valid until ${date}`,
-    initiate: 'Start payment',
+    expiresAt: (date) => `Draft valid until ${date}`,
+    initiate: 'Initiate payment',
     preparingPayment: 'Preparing payment…',
-    unavailable: 'The payment service is temporarily unavailable. Please try again later.',
+    unavailable: 'Payment service is temporarily unavailable. Please try again later.',
     missingBookingTitle: 'Booking not found or expired',
     missingBookingDescription: 'This booking draft is no longer valid. Please start a new search.',
     accessDeniedTitle: 'Access denied',
-    accessDeniedDescription: 'This booking belongs to another user account.',
+    accessDeniedDescription: 'This booking belongs to a different user account.',
     fallbackEquipment: 'Rented equipment',
-    fallbackRenter: 'Partner renter',
+    fallbackRenter: 'Partner rental shop',
+    legalConsentPrefix: 'By proceeding to payment, you agree to the',
+    rentalTermsLabel: 'Rental Terms',
+    cguLabel: 'Terms of Service',
+    privacyLabel: 'Privacy Policy',
+    legalTermsVersionBadge: '(version v1)',
   },
 };
 
