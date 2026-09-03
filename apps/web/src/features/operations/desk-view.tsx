@@ -261,12 +261,20 @@ export function DeskView({
         title="Réservations · Cockpit opérationnel"
         description="Les départs, retours et alertes du jour sur un seul écran."
         actions={
-          <LinkButton
-            href={`/dashboard/${organizationId}/bookings/planning${selectedId ? `?locationId=${encodeURIComponent(selectedId)}` : ''}`}
-            variant="secondary"
-          >
-            📅 Vue planning
-          </LinkButton>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <LinkButton
+              href={`/dashboard/${organizationId}/bookings/planning${selectedId ? `?locationId=${encodeURIComponent(selectedId)}` : ''}`}
+              variant="secondary"
+            >
+              📅 Vue planning
+            </LinkButton>
+            <LinkButton
+              href={`/dashboard/${organizationId}/bookings/new${selectedId ? `?locationId=${encodeURIComponent(selectedId)}` : ''}`}
+              variant="primary"
+            >
+              ➕ Nouvelle location comptoir
+            </LinkButton>
+          </div>
         }
       />
 
