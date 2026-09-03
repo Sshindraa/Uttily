@@ -393,6 +393,13 @@
       "when": 1788107362006,
       "tag": "0056_recurring_manual_blocks",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1788107362007,
+      "tag": "0057_organization_legal_and_tax_identity",
+      "breakpoints": true
     }
   ]
 }

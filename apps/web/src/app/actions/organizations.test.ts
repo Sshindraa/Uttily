@@ -66,6 +66,16 @@ describe('Organizations Server Actions', () => {
         isProfessional: true,
         defaultCurrency: 'EUR',
         defaultCancellationPolicyCode: 'FLEXIBLE',
+        legalForm: null,
+        registrationNumber: null,
+        vatNumber: null,
+        registryCity: null,
+        capitalAmount: null,
+        legalRepresentativeName: null,
+        registeredOfficeAddress: null,
+        registeredOfficePostalCode: null,
+        registeredOfficeCity: null,
+        registeredOfficeCountryCode: 'FR',
       },
     });
 

@@ -6,6 +6,7 @@ import {
   bookingFulfillmentEvents,
   conditionReports,
   damageReports,
+  documents,
   inventoryItems,
   locations,
   users,
@@ -20,6 +21,7 @@ import type {
   OperationalConditionReport,
   OperationalDamageReport,
   OperationalFulfillmentEvent,
+  OperationalBookingDocument,
 } from './read-model-types';
 
 /**
@@ -433,6 +435,19 @@ export async function getOperationalBookingDetails(
     )
     .orderBy(asc(bookingFulfillmentEvents.occurredAt), asc(bookingFulfillmentEvents.id));
 
+  // Query 6 : documents (filtré par organizationId ET bookingId).
+  const docRows = await db
+    .select({
+      id: documents.id,
+      type: documents.type,
+      contentType: documents.contentType,
+      sizeBytes: documents.sizeBytes,
+      createdAt: documents.createdAt,
+    })
+    .from(documents)
+    .where(and(eq(documents.organizationId, organizationId), eq(documents.bookingId, bookingId)))
+    .orderBy(asc(documents.createdAt), asc(documents.id));
+
   return {
     id: b.id,
     status: b.status,
@@ -479,6 +494,13 @@ export async function getOperationalBookingDetails(
       nextStatus: r.nextStatus,
       actorUserId: r.actorUserId,
       occurredAt: r.occurredAt,
+    })),
+    documents: docRows.map((r): OperationalBookingDocument => ({
+      id: r.id,
+      type: r.type,
+      contentType: r.contentType,
+      sizeBytes: r.sizeBytes,
+      createdAt: r.createdAt,
     })),
   };
 }

@@ -27,6 +27,45 @@ export interface MembershipRecord {
   status: MembershipStatus;
 }
 
+export const LEGAL_FORMS = [
+  'SAS',
+  'SASU',
+  'SARL',
+  'EURL',
+  'EI',
+  'SA',
+  'SNC',
+  'ASSOCIATION',
+  'OTHER',
+] as const;
+
+export type LegalForm = (typeof LEGAL_FORMS)[number];
+
+export function getLegalFormLabel(form?: string | null): string {
+  switch (form) {
+    case 'SAS':
+      return 'Société par Actions Simplifiée (SAS)';
+    case 'SASU':
+      return 'Société par Actions Simplifiée Unipersonnelle (SASU)';
+    case 'SARL':
+      return 'Société à Responsabilité Limitée (SARL)';
+    case 'EURL':
+      return 'Entreprise Unipersonnelle à Responsabilité Limitée (EURL)';
+    case 'EI':
+      return 'Entreprise Individuelle / Micro-entreprise (EI)';
+    case 'SA':
+      return 'Société Anonyme (SA)';
+    case 'SNC':
+      return 'Société en Nom Collectif (SNC)';
+    case 'ASSOCIATION':
+      return 'Association déclarée (Loi 1901)';
+    case 'OTHER':
+      return 'Autre forme juridique';
+    default:
+      return form ? form : 'Non spécifiée';
+  }
+}
+
 export interface OrganizationRecord {
   id: string;
   legalName: string;
@@ -36,6 +75,16 @@ export interface OrganizationRecord {
   isProfessional: boolean;
   defaultCurrency: string;
   defaultCancellationPolicyCode: string;
+  legalForm: string | null;
+  registrationNumber: string | null;
+  vatNumber: string | null;
+  registryCity: string | null;
+  capitalAmount: string | null;
+  legalRepresentativeName: string | null;
+  registeredOfficeAddress: string | null;
+  registeredOfficePostalCode: string | null;
+  registeredOfficeCity: string | null;
+  registeredOfficeCountryCode: string | null;
 }
 
 export interface LocationRecord {

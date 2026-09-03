@@ -347,7 +347,10 @@ export async function loadDocumentRenderData(
 
   // 4. Charger organization.
   const orgRows = await db.execute(sql`
-    SELECT id, legal_name
+    SELECT id, legal_name, legal_form, registration_number, vat_number,
+           registry_city, capital_amount, legal_representative_name,
+           registered_office_address, registered_office_postal_code,
+           registered_office_city, registered_office_country_code
     FROM "organizations"
     WHERE "id" = ${input.organizationId}::uuid
   `);
@@ -626,6 +629,26 @@ export async function loadDocumentRenderData(
   const snapshotOrganization: SnapshotOrganization = {
     id: assertNonEmptyString(org['id'], 'organization.id'),
     legalName: assertNonEmptyString(org['legal_name'], 'organization.legal_name'),
+    legalForm: org['legal_form'] ? String(org['legal_form']) : null,
+    registrationNumber: org['registration_number'] ? String(org['registration_number']) : null,
+    vatNumber: org['vat_number'] ? String(org['vat_number']) : null,
+    registryCity: org['registry_city'] ? String(org['registry_city']) : null,
+    capitalAmount: org['capital_amount'] ? String(org['capital_amount']) : null,
+    legalRepresentativeName: org['legal_representative_name']
+      ? String(org['legal_representative_name'])
+      : null,
+    registeredOfficeAddress: org['registered_office_address']
+      ? String(org['registered_office_address'])
+      : null,
+    registeredOfficePostalCode: org['registered_office_postal_code']
+      ? String(org['registered_office_postal_code'])
+      : null,
+    registeredOfficeCity: org['registered_office_city']
+      ? String(org['registered_office_city'])
+      : null,
+    registeredOfficeCountryCode: org['registered_office_country_code']
+      ? String(org['registered_office_country_code'])
+      : null,
   };
 
   const snapshotLocation: SnapshotLocation = {

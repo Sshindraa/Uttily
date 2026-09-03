@@ -159,7 +159,13 @@ export function FinancesHub({
         title="Revenus & Versements"
         description={`Période : ${overview.period.label} · Suivi de vos encaissements, commissions et versements.`}
         actions={
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <LinkButton
+              href={`/api/dashboard/${organizationId}/finances/statement`}
+              variant="secondary"
+            >
+              📄 Décompte comptable
+            </LinkButton>
             <LinkButton
               href={`/api/dashboard/${organizationId}/finances/export-csv`}
               variant="secondary"

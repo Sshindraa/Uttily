@@ -113,6 +113,16 @@ export const organizations = pgTable(
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    legalForm: text('legal_form'),
+    registrationNumber: text('registration_number'),
+    vatNumber: text('vat_number'),
+    registryCity: text('registry_city'),
+    capitalAmount: text('capital_amount'),
+    legalRepresentativeName: text('legal_representative_name'),
+    registeredOfficeAddress: text('registered_office_address'),
+    registeredOfficePostalCode: text('registered_office_postal_code'),
+    registeredOfficeCity: text('registered_office_city'),
+    registeredOfficeCountryCode: text('registered_office_country_code').default('FR'),
   },
   (t) => [
     check('organizations_slug_format', sql`${t.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$'`),
@@ -124,6 +134,18 @@ export const organizations = pgTable(
     check(
       'organizations_public_display_name_not_empty',
       sql`${t.publicDisplayName} IS NULL OR length(btrim(${t.publicDisplayName})) > 0`,
+    ),
+    check(
+      'organizations_registration_number_format',
+      sql`${t.registrationNumber} IS NULL OR ${t.registrationNumber} ~ '^[0-9]{9}([0-9]{5})?$'`,
+    ),
+    check(
+      'organizations_vat_number_format',
+      sql`${t.vatNumber} IS NULL OR ${t.vatNumber} ~ '^[A-Z]{2}[0-9A-Z]{2,12}$'`,
+    ),
+    check(
+      'organizations_registered_office_country_code_iso',
+      sql`${t.registeredOfficeCountryCode} IS NULL OR length(${t.registeredOfficeCountryCode}) = 2`,
     ),
   ],
 );

@@ -8,7 +8,9 @@ import {
   requireCapability,
   updateOrganizationPublicSettings,
   updateOrganizationCancellationPolicy,
+  updateOrganizationLegalSettings,
   type CancellationPolicyCode,
+  type OrganizationLegalInput,
 } from '@uttily/core';
 
 export async function updateCompanySettingsAction(
@@ -23,6 +25,25 @@ export async function updateCompanySettingsAction(
   requireCapability(membership, 'organization.manage');
 
   const org = await updateOrganizationPublicSettings(db, organizationId, input);
+  revalidatePath(`/dashboard/${organizationId}/settings/company`);
+  return { organization: org };
+}
+
+export async function updateCompanyLegalSettingsAction(
+  organizationId: string,
+  input: OrganizationLegalInput,
+) {
+  const user = await getAuthenticatedUser();
+  if (!user) throw new Error('Non authentifié.');
+
+  const db = getDb();
+  const membership = await getMembership(db, organizationId, user.id);
+  requireCapability(membership, 'organization.manage');
+
+  const org = await updateOrganizationLegalSettings(db, organizationId, {
+    ...input,
+    actorUserId: user.id,
+  });
   revalidatePath(`/dashboard/${organizationId}/settings/company`);
   return { organization: org };
 }

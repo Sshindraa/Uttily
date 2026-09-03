@@ -433,6 +433,108 @@ export function BookingDetailView({
           </div>
         )}
       </Card>
+
+      {/* Pilier 5 : Documents contractuels & Reçus (Lot 21-F1) */}
+      <Card style={{ display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2
+            style={{
+              fontSize: '1.1rem',
+              fontWeight: 'var(--ut-weight-bold)',
+              margin: 0,
+              color: 'var(--ut-color-ink-strong)',
+            }}
+          >
+            📄 Documents contractuels & Reçus
+          </h2>
+          <Badge tone="neutral">
+            {details.documents?.length ?? 0} document
+            {(details.documents?.length ?? 0) > 1 ? 's' : ''}
+          </Badge>
+        </div>
+
+        {!details.documents || details.documents.length === 0 ? (
+          <p style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.9rem', margin: 0 }}>
+            Aucun document transactionnel généré pour le moment. Les documents sont édités
+            automatiquement lors de la confirmation de réservation.
+          </p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {details.documents.map((doc) => {
+              let docLabel = 'Document transactionnel';
+              let docDesc = 'Document PDF officiel';
+              let icon = '📄';
+
+              if (doc.type === 'RECEIPT') {
+                docLabel = 'Reçu de paiement & Justificatif';
+                docDesc = 'Reçu fiscal acquitté avec mentions légales du loueur';
+                icon = '🧾';
+              } else if (doc.type === 'CONTRACT') {
+                docLabel = 'Contrat de location signé';
+                docDesc = 'Contrat opposable mentionnant les conditions et équipements';
+                icon = '📜';
+              } else if (doc.type === 'CONFIRMATION') {
+                docLabel = 'Confirmation de réservation';
+                docDesc = 'Récapitulatif des dates, horaires et points de retrait';
+                icon = '✉️';
+              }
+
+              return (
+                <div
+                  key={doc.id}
+                  style={{
+                    background: 'var(--ut-color-surface-soft)',
+                    padding: '1rem',
+                    borderRadius: 'var(--ut-radius-md)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    border: 'var(--ut-border-thin)',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ fontSize: '1.5rem' }}>{icon}</span>
+                    <div>
+                      <strong style={{ fontSize: '0.95rem', color: 'var(--ut-color-ink-strong)' }}>
+                        {docLabel}
+                      </strong>
+                      <p
+                        style={{
+                          margin: '0.15rem 0 0',
+                          fontSize: '0.8rem',
+                          color: 'var(--ut-color-ink-muted)',
+                        }}
+                      >
+                        {docDesc}
+                      </p>
+                    </div>
+                  </div>
+                  <a
+                    href={`/api/dashboard/${organizationId}/bookings/${bookingId}/documents/${doc.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      padding: '0.45rem 0.85rem',
+                      background: 'var(--ut-color-surface)',
+                      border: 'var(--ut-border-thin)',
+                      borderRadius: 'var(--ut-radius-md)',
+                      color: 'var(--ut-color-ink-strong)',
+                      fontSize: '0.85rem',
+                      fontWeight: 'var(--ut-weight-semibold)',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                    }}
+                  >
+                    <span>📥</span> Télécharger
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

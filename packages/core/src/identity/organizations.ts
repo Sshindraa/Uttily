@@ -5,6 +5,10 @@ import { isValidSlug, slugify } from './slug';
 import type { AuthenticatedUser, OrganizationRecord } from './types';
 import { AuthorizationError } from './permissions';
 import type { CancellationPolicyCode } from '../cancellations/types';
+import {
+  validateOrganizationLegalInput,
+  type OrganizationLegalInput,
+} from './legal-identity-validation';
 
 export interface CreateOrganizationInput {
   legalName: string;
@@ -166,6 +170,16 @@ type OrganizationQueryRow = {
   isProfessional: boolean;
   defaultCurrency: string;
   defaultCancellationPolicyCode?: string | null;
+  legalForm?: string | null;
+  registrationNumber?: string | null;
+  vatNumber?: string | null;
+  registryCity?: string | null;
+  capitalAmount?: string | null;
+  legalRepresentativeName?: string | null;
+  registeredOfficeAddress?: string | null;
+  registeredOfficePostalCode?: string | null;
+  registeredOfficeCity?: string | null;
+  registeredOfficeCountryCode?: string | null;
 };
 
 function mapOrganization(row: OrganizationQueryRow): OrganizationRecord {
@@ -178,6 +192,16 @@ function mapOrganization(row: OrganizationQueryRow): OrganizationRecord {
     isProfessional: row.isProfessional,
     defaultCurrency: row.defaultCurrency,
     defaultCancellationPolicyCode: row.defaultCancellationPolicyCode ?? 'FLEXIBLE',
+    legalForm: row.legalForm ?? null,
+    registrationNumber: row.registrationNumber ?? null,
+    vatNumber: row.vatNumber ?? null,
+    registryCity: row.registryCity ?? null,
+    capitalAmount: row.capitalAmount ?? null,
+    legalRepresentativeName: row.legalRepresentativeName ?? null,
+    registeredOfficeAddress: row.registeredOfficeAddress ?? null,
+    registeredOfficePostalCode: row.registeredOfficePostalCode ?? null,
+    registeredOfficeCity: row.registeredOfficeCity ?? null,
+    registeredOfficeCountryCode: row.registeredOfficeCountryCode ?? 'FR',
   };
 }
 
@@ -251,4 +275,51 @@ export async function updateOrganizationCancellationPolicy(
     .returning();
   if (!row) throw new AuthorizationError('Organisation introuvable.');
   return mapOrganization(row);
+}
+
+/**
+ * Met à jour les informations légales et fiscales de l'organisation (Lot 21-O1).
+ * Conforme aux obligations légales pour l'émission de reçus, factures et contrats.
+ */
+export async function updateOrganizationLegalSettings(
+  db: DatabaseClient,
+  organizationId: string,
+  input: OrganizationLegalInput & { actorUserId?: string | null },
+): Promise<OrganizationRecord> {
+  const validation = validateOrganizationLegalInput(input);
+  if (!validation.isValid) {
+    const firstError = Object.values(validation.fieldErrors)[0];
+    throw new Error(firstError ?? 'Données légales invalides.');
+  }
+
+  const patch: Record<string, unknown> = {
+    updatedAt: new Date(),
+    ...validation.cleaned,
+  };
+
+  return await db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(organizations)
+      .set(patch)
+      .where(eq(organizations.id, organizationId))
+      .returning();
+
+    if (!row) throw new AuthorizationError('Organisation introuvable.');
+
+    await tx.insert(auditLog).values({
+      actorUserId: input.actorUserId ?? null,
+      action: 'ORGANIZATION_LEGAL_SETTINGS_UPDATED',
+      targetType: 'ORGANIZATION',
+      targetId: organizationId,
+      metadata: {
+        updatedAt: new Date().toISOString(),
+        registrationNumber: validation.cleaned.registrationNumber,
+        legalForm: validation.cleaned.legalForm,
+        registryCity: validation.cleaned.registryCity,
+        vatNumber: validation.cleaned.vatNumber,
+      },
+    });
+
+    return mapOrganization(row);
+  });
 }

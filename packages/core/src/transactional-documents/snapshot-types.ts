@@ -65,6 +65,16 @@ export interface SnapshotBookingItem {
 export interface SnapshotOrganization {
   readonly id: string;
   readonly legalName: string;
+  readonly legalForm?: string | null;
+  readonly registrationNumber?: string | null;
+  readonly vatNumber?: string | null;
+  readonly registryCity?: string | null;
+  readonly capitalAmount?: string | null;
+  readonly legalRepresentativeName?: string | null;
+  readonly registeredOfficeAddress?: string | null;
+  readonly registeredOfficePostalCode?: string | null;
+  readonly registeredOfficeCity?: string | null;
+  readonly registeredOfficeCountryCode?: string | null;
 }
 
 export interface SnapshotLocation {

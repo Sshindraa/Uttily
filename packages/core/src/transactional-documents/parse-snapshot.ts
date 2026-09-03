@@ -49,7 +49,19 @@ const ROOT_KEYS = [
   'items',
 ] as const;
 
-const ORGANIZATION_KEYS = ['id', 'legalName'] as const;
+const ORGANIZATION_BASE_KEYS = ['id', 'legalName'] as const;
+const ORGANIZATION_OPTIONAL_LEGAL_KEYS = [
+  'legalForm',
+  'registrationNumber',
+  'vatNumber',
+  'registryCity',
+  'capitalAmount',
+  'legalRepresentativeName',
+  'registeredOfficeAddress',
+  'registeredOfficePostalCode',
+  'registeredOfficeCity',
+  'registeredOfficeCountryCode',
+] as const;
 const LOCATION_KEYS = [
   'id',
   'name',
@@ -383,12 +395,76 @@ export function parseDocumentRenderSnapshotV1(value: unknown): DocumentRenderSna
 
   // organization
   const organization = assertObject(root['organization'], 'snapshot.organization');
-  assertExactKeys(organization, ORGANIZATION_KEYS, 'snapshot.organization');
+  assertExactKeys(
+    organization,
+    ORGANIZATION_BASE_KEYS,
+    'snapshot.organization',
+    undefined,
+    ORGANIZATION_OPTIONAL_LEGAL_KEYS,
+  );
   const orgId = assertUuid(organization['id'], 'snapshot.organization.id');
   const legalName = assertNonEmptyString(
     organization['legalName'],
     'snapshot.organization.legalName',
   );
+  const legalForm =
+    'legalForm' in organization
+      ? assertNullableString(organization['legalForm'], 'snapshot.organization.legalForm')
+      : null;
+  const registrationNumber =
+    'registrationNumber' in organization
+      ? assertNullableString(
+          organization['registrationNumber'],
+          'snapshot.organization.registrationNumber',
+        )
+      : null;
+  const vatNumber =
+    'vatNumber' in organization
+      ? assertNullableString(organization['vatNumber'], 'snapshot.organization.vatNumber')
+      : null;
+  const registryCity =
+    'registryCity' in organization
+      ? assertNullableString(organization['registryCity'], 'snapshot.organization.registryCity')
+      : null;
+  const capitalAmount =
+    'capitalAmount' in organization
+      ? assertNullableString(organization['capitalAmount'], 'snapshot.organization.capitalAmount')
+      : null;
+  const legalRepresentativeName =
+    'legalRepresentativeName' in organization
+      ? assertNullableString(
+          organization['legalRepresentativeName'],
+          'snapshot.organization.legalRepresentativeName',
+        )
+      : null;
+  const registeredOfficeAddress =
+    'registeredOfficeAddress' in organization
+      ? assertNullableString(
+          organization['registeredOfficeAddress'],
+          'snapshot.organization.registeredOfficeAddress',
+        )
+      : null;
+  const registeredOfficePostalCode =
+    'registeredOfficePostalCode' in organization
+      ? assertNullableString(
+          organization['registeredOfficePostalCode'],
+          'snapshot.organization.registeredOfficePostalCode',
+        )
+      : null;
+  const registeredOfficeCity =
+    'registeredOfficeCity' in organization
+      ? assertNullableString(
+          organization['registeredOfficeCity'],
+          'snapshot.organization.registeredOfficeCity',
+        )
+      : null;
+  const registeredOfficeCountryCode =
+    'registeredOfficeCountryCode' in organization
+      ? assertNullableString(
+          organization['registeredOfficeCountryCode'],
+          'snapshot.organization.registeredOfficeCountryCode',
+        )
+      : null;
 
   // location
   const location = assertObject(root['location'], 'snapshot.location');
@@ -727,7 +803,20 @@ export function parseDocumentRenderSnapshotV1(value: unknown): DocumentRenderSna
     paymentId,
     draftId,
     capturedAt,
-    organization: { id: orgId, legalName },
+    organization: {
+      id: orgId,
+      legalName,
+      legalForm,
+      registrationNumber,
+      vatNumber,
+      registryCity,
+      capitalAmount,
+      legalRepresentativeName,
+      registeredOfficeAddress,
+      registeredOfficePostalCode,
+      registeredOfficeCity,
+      registeredOfficeCountryCode,
+    },
     location: {
       id: locId,
       name: locName,
