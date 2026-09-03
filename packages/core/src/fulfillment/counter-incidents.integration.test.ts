@@ -9,6 +9,7 @@ import {
 } from '../integration/setup';
 import { recordBookingNoShow } from './record-booking-no-show';
 import { listSubstitutionCandidates, substituteBookingItem } from './substitute-booking-item';
+import { declareBookingUnreturnedLost } from './unreturned-lost';
 import { FulfillmentError } from './fulfillment-errors';
 
 let context: IntegrationTestContext | null = null;
@@ -57,6 +58,7 @@ interface SeedIds {
   customerUserId: string;
   operatorUserId: string;
   variantId: string;
+  lineId: string;
   itemId: string;
   bookingId: string;
   bookingItemId: string;
@@ -200,12 +202,37 @@ async function seedBooking(suffix = SUFFIX()): Promise<SeedIds> {
     customerUserId: customer.id,
     operatorUserId: operator.id,
     variantId: variant.id,
+    lineId: line.id,
     itemId: item.id,
     bookingId: booking.id,
     bookingItemId: bookingItem.id,
     bookingBlockId: block.id,
     paymentId: payment.id,
   };
+}
+
+async function insertAdditionalBookingItem(ids: SeedIds, sku: string): Promise<void> {
+  if (!rawSql) throw new Error('rawSql not initialized');
+  const item = await rawSql`
+    INSERT INTO inventory_items (
+      organization_id, product_variant_id, internal_sku, current_location_id, condition, status
+    ) VALUES (
+      ${ids.organizationId}, ${ids.variantId}, ${sku}, ${ids.locationId}, 'GOOD', 'ACTIVE'
+    ) RETURNING id
+  `.then((rows) => rows[0]!);
+  const block = await rawSql`
+    INSERT INTO inventory_blocks (
+      organization_id, inventory_item_id, type, status,
+      customer_start_at, customer_end_at, blocked_start_at, blocked_end_at, source_id
+    ) VALUES (
+      ${ids.organizationId}, ${item.id}, 'BOOKING', 'ACTIVE',
+      ${PAST_START}, ${PAST_END}, ${PAST_BLOCKED_START}, ${PAST_BLOCKED_END}, ${ids.bookingId}
+    ) RETURNING id
+  `.then((rows) => rows[0]!);
+  await rawSql`
+    INSERT INTO booking_items (booking_id, booking_line_id, inventory_item_id, booking_block_id)
+    VALUES (${ids.bookingId}, ${ids.lineId}, ${item.id}, ${block.id})
+  `;
 }
 
 async function insertCandidate(
@@ -435,6 +462,153 @@ describe.skipIf(shouldSkipIntegrationTests())(
           (r) => r[0]!.inventory_item_id,
         ),
       ).toBe(ids.itemId);
+    });
+  },
+);
+
+describe.skipIf(shouldSkipIntegrationTests())(
+  '21-U2-AC — non-restitution et clôture — intégration PostgreSQL',
+  () => {
+    it('déclare tous les exemplaires perdus, libère les blocs et conserve les finances', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBooking();
+      await insertAdditionalBookingItem(ids, `KAY-LOST-${SUFFIX()}`);
+      await rawSql`UPDATE bookings SET status = 'ACTIVE' WHERE id = ${ids.bookingId}`;
+      const before = await rawSql`
+        SELECT status, payment_id, currency, subtotal_amount_minor, mandatory_fees_amount_minor,
+               tax_status, tax_amount_minor, tax_rate_bps, tax_rule_snapshot,
+               commission_amount_minor, commission_rule_snapshot, total_amount_minor,
+               customer_total_amount_minor, marketplace_fee_snapshot,
+               cancellation_policy_snapshot, terms_acceptance_snapshot
+        FROM bookings WHERE id = ${ids.bookingId}
+      `.then((rows) => rows[0]!);
+      const key = `unreturned-lost-${randomUUID()}`;
+
+      const result = await declareBookingUnreturnedLost(db, {
+        organizationId: ids.organizationId,
+        bookingId: ids.bookingId,
+        actorUserId: ids.operatorUserId,
+        idempotencyKey: key,
+        reason: 'Client injoignable après échéance et relances.',
+        now: new Date('2026-02-13T09:00:00.000Z'),
+      });
+
+      expect(result).toMatchObject({
+        kind: 'APPLIED',
+        bookingId: ids.bookingId,
+        previousStatus: 'ACTIVE',
+        status: 'CLOSED',
+        lostItemCount: 2,
+        releasedBlockCount: 2,
+      });
+      const after = await rawSql`
+        SELECT status, payment_id, currency, subtotal_amount_minor, mandatory_fees_amount_minor,
+               tax_status, tax_amount_minor, tax_rate_bps, tax_rule_snapshot,
+               commission_amount_minor, commission_rule_snapshot, total_amount_minor,
+               customer_total_amount_minor, marketplace_fee_snapshot,
+               cancellation_policy_snapshot, terms_acceptance_snapshot
+        FROM bookings WHERE id = ${ids.bookingId}
+      `.then((rows) => rows[0]!);
+      expect(after.status).toBe('CLOSED');
+      expect(after).toEqual({ ...before, status: 'CLOSED' });
+
+      const items = await rawSql`
+        SELECT ii.status
+        FROM booking_items bi
+        INNER JOIN inventory_items ii ON ii.id = bi.inventory_item_id
+        WHERE bi.booking_id = ${ids.bookingId}
+        ORDER BY bi.id
+      `;
+      expect(items).toHaveLength(2);
+      expect(items.every((item) => item.status === 'LOST')).toBe(true);
+      const blocks = await rawSql`
+        SELECT status FROM inventory_blocks
+        WHERE organization_id = ${ids.organizationId} AND source_id = ${ids.bookingId}
+        ORDER BY id
+      `;
+      expect(blocks).toHaveLength(2);
+      expect(blocks.every((block) => block.status === 'RELEASED')).toBe(true);
+
+      const audit = await rawSql`
+        SELECT action, metadata FROM audit_log
+        WHERE target_id = ${ids.bookingId} AND action = 'BOOKING_DECLARED_LOST'
+      `.then((rows) => rows[0]!);
+      expect(audit.metadata).toMatchObject({
+        classification: 'UNRETURNED_LOST',
+        previousStatus: 'ACTIVE',
+        nextStatus: 'CLOSED',
+        lostItemCount: 2,
+        releasedBlockCount: 2,
+        reason: 'Client injoignable après échéance et relances.',
+        financialSnapshotUntouched: true,
+      });
+      const outbox = await rawSql`
+        SELECT event_type, payload FROM outbox_events
+        WHERE aggregate_id = ${ids.bookingId} AND event_type = 'BOOKING_DECLARED_LOST'
+      `.then((rows) => rows[0]!);
+      expect(outbox.payload).toMatchObject({
+        classification: 'UNRETURNED_LOST',
+        bookingId: ids.bookingId,
+        nextStatus: 'CLOSED',
+        lostItemCount: 2,
+      });
+
+      const replay = await declareBookingUnreturnedLost(db, {
+        organizationId: ids.organizationId,
+        bookingId: ids.bookingId,
+        actorUserId: ids.operatorUserId,
+        idempotencyKey: key,
+        reason: 'Client injoignable après échéance et relances.',
+        now: new Date('2026-02-14T09:00:00.000Z'),
+      });
+      expect(replay).toEqual(result);
+      expect(
+        await rawSql`SELECT count(*)::int AS count FROM audit_log WHERE target_id = ${ids.bookingId} AND action = 'BOOKING_DECLARED_LOST'`.then(
+          (rows) => rows[0]!.count,
+        ),
+      ).toBe(1);
+      expect(
+        await rawSql`SELECT count(*)::int AS count FROM outbox_events WHERE aggregate_id = ${ids.bookingId} AND event_type = 'BOOKING_DECLARED_LOST'`.then(
+          (rows) => rows[0]!.count,
+        ),
+      ).toBe(1);
+    });
+
+    it('refuse une réservation ACTIVE dont l’échéance n’est pas strictement dépassée', async () => {
+      if (!db || !rawSql) return;
+      const ids = await seedBooking();
+      await rawSql`UPDATE bookings SET status = 'ACTIVE' WHERE id = ${ids.bookingId}`;
+      const key = `unreturned-lost-early-${randomUUID()}`;
+
+      await expect(
+        declareBookingUnreturnedLost(db, {
+          organizationId: ids.organizationId,
+          bookingId: ids.bookingId,
+          actorUserId: ids.operatorUserId,
+          idempotencyKey: key,
+          now: new Date('2026-02-12T17:00:00.000Z'),
+        }),
+      ).rejects.toMatchObject({ code: 'INVALID_TRANSITION' });
+      expect(
+        await rawSql`SELECT status FROM bookings WHERE id = ${ids.bookingId}`.then(
+          (rows) => rows[0]!.status,
+        ),
+      ).toBe('ACTIVE');
+      expect(
+        await rawSql`SELECT status FROM inventory_items WHERE id = ${ids.itemId}`.then(
+          (rows) => rows[0]!.status,
+        ),
+      ).toBe('ACTIVE');
+      expect(
+        await rawSql`SELECT status FROM inventory_blocks WHERE id = ${ids.bookingBlockId}`.then(
+          (rows) => rows[0]!.status,
+        ),
+      ).toBe('ACTIVE');
+      expect(
+        await rawSql`SELECT status FROM idempotency_records WHERE key = ${key}`.then(
+          (rows) => rows[0]!.status,
+        ),
+      ).toBe('FAILED');
     });
   },
 );

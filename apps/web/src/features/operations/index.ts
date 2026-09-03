@@ -6,6 +6,7 @@ export { DepartureFlow } from './departure-flow';
 export { NoShowFlow } from './no-show-flow';
 export { ReturnFlow } from './return-flow';
 export { SubstitutionFlow } from './substitution-flow';
+export { UnreturnedLostFlow } from './unreturned-lost-flow';
 export { CancellationFlow } from './cancellation-flow';
 export { FlowDrawer } from './flow-drawer';
 export { DeskView } from './desk-view';

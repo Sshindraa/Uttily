@@ -16,6 +16,7 @@ import { DepartureFlow } from './departure-flow';
 import { NoShowFlow } from './no-show-flow';
 import { ReturnFlow } from './return-flow';
 import { SubstitutionFlow } from './substitution-flow';
+import { UnreturnedLostFlow } from './unreturned-lost-flow';
 
 const BUCKET_META: Record<
   OperationalDeskBucket,
@@ -210,6 +211,9 @@ function DeskBookingCard({
           </>
         )}
         {isReturn && <ReturnFlow orgId={organizationId} bookingId={booking.id} items={items} />}
+        {booking.bucket === 'OVERDUE' && (
+          <UnreturnedLostFlow orgId={organizationId} bookingId={booking.id} />
+        )}
         <Link
           href={detailHref}
           style={{
