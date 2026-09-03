@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { listLocations, getCounterAvailableItems } from '@uttily/core';
+import { EmptyState, LinkButton } from '@uttily/ui';
 import { requireFulfillmentOperatorOf } from '@/lib/fulfillment-auth';
 import { CounterBookingView } from '@/features/operations/counter-booking-view';
 
@@ -22,7 +23,19 @@ export default async function NewCounterBookingPage({
   const locations = await listLocations(db, organizationId);
 
   if (locations.length === 0) {
-    notFound();
+    return (
+      <div style={{ maxWidth: '640px', margin: '3rem auto', padding: '0 1rem' }}>
+        <EmptyState
+          title="Aucun point de retrait configuré"
+          description="Pour enregistrer une réservation au comptoir, vous devez d'abord configurer au moins un point de retrait ou établissement pour votre organisation."
+          action={
+            <LinkButton href={`/dashboard/${organizationId}/locations/new`} variant="primary">
+              Ajouter un établissement →
+            </LinkButton>
+          }
+        />
+      </div>
+    );
   }
 
   const requestedLocationId = firstSearchParam(sp.locationId);
