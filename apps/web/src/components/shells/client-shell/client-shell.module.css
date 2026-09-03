@@ -84,6 +84,32 @@
   font-weight: var(--ut-weight-bold);
 }
 
+.footerBrandGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--ut-space-3);
+  flex-wrap: wrap;
+}
+
+.footerLegalLinks {
+  display: flex;
+  align-items: center;
+  gap: var(--ut-space-4);
+  flex-wrap: wrap;
+}
+
+.footerLegalLink {
+  color: var(--ut-color-ink-muted);
+  text-decoration: none;
+  font-size: var(--ut-text-xs);
+  transition: color var(--ut-motion-fast) var(--ut-ease-standard);
+}
+
+.footerLegalLink:hover {
+  color: var(--ut-color-ink-strong);
+  text-decoration: underline;
+}
+
 @media (max-width: 48rem) {
   .headerInner,
   .footerInner {
