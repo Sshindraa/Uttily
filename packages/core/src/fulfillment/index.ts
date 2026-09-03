@@ -23,3 +23,4 @@ export * from './counter-incidents-types';
 export * from './counter-incidents-fingerprint';
 export * from './record-booking-no-show';
 export * from './substitute-booking-item';
+export * from './unreturned-lost';

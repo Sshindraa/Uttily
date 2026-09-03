@@ -27,6 +27,8 @@ import {
   type RecordBookingNoShowResult,
   type SubstituteBookingItemResult,
   type SubstitutionCandidateOption,
+  declareBookingUnreturnedLost,
+  type DeclareBookingUnreturnedLostResult,
   FulfillmentError,
 } from '@uttily/core';
 import type { ActionResult } from '@uttily/contracts';
@@ -35,6 +37,7 @@ import type { ParsedFailure } from './parsers';
 const MAX_NOTES_LENGTH = 5000;
 const MAX_DESCRIPTION_LENGTH = 5000;
 const MAX_NO_SHOW_REASON_LENGTH = 500;
+const MAX_UNRETURNED_LOST_REASON_LENGTH = 500;
 const MAX_IDEMPOTENCY_KEY_LENGTH = 200;
 
 function parseTransitionForm(
@@ -227,6 +230,28 @@ function parseNoShowForm(
   }
   if (reason.length > MAX_NO_SHOW_REASON_LENGTH) {
     fieldErrors.reason = `Le motif ne doit pas dépasser ${MAX_NO_SHOW_REASON_LENGTH} caractères.`;
+  }
+
+  if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
+  return { bookingId, idempotencyKey, reason: reason.length > 0 ? reason : null };
+}
+
+function parseUnreturnedLostForm(
+  formData: FormData,
+): ParsedFailure | { bookingId: string; idempotencyKey: string; reason: string | null } {
+  const fieldErrors: Record<string, string> = {};
+  const bookingId = String(formData.get('bookingId') ?? '');
+  const idempotencyKey = String(formData.get('idempotencyKey') ?? '').trim();
+  const reasonRaw = formData.get('reason');
+  const reason = reasonRaw === null ? '' : String(reasonRaw).trim();
+
+  if (!isValidUuid(bookingId)) fieldErrors.bookingId = 'Réservation invalide.';
+  if (idempotencyKey.length < 1) fieldErrors.idempotencyKey = "La clé d'idempotence est requise.";
+  if (idempotencyKey.length > MAX_IDEMPOTENCY_KEY_LENGTH) {
+    fieldErrors.idempotencyKey = `La clé ne doit pas dépasser ${MAX_IDEMPOTENCY_KEY_LENGTH} caractères.`;
+  }
+  if (reason.length > MAX_UNRETURNED_LOST_REASON_LENGTH) {
+    fieldErrors.reason = `Les circonstances ne doivent pas dépasser ${MAX_UNRETURNED_LOST_REASON_LENGTH} caractères.`;
   }
 
   if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
@@ -437,6 +462,44 @@ export async function recordBookingNoShowAction(
       organizationId: authorizedOrgId,
     } = await requireFulfillmentOperatorOf(organizationId);
     const result = await recordBookingNoShow(db, {
+      organizationId: authorizedOrgId,
+      bookingId: parsed.bookingId,
+      actorUserId: user.id,
+      idempotencyKey: parsed.idempotencyKey,
+      reason: parsed.reason,
+    });
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/operations/${parsed.bookingId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings/${parsed.bookingId}`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/bookings/planning`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/planning`);
+    revalidatePath(`/dashboard/${authorizedOrgId}/fleet`);
+    return result;
+  });
+}
+
+export async function declareBookingUnreturnedLostAction(
+  organizationId: string,
+  _prev: ActionResult<DeclareBookingUnreturnedLostResult>,
+  formData: FormData,
+): Promise<ActionResult<DeclareBookingUnreturnedLostResult>> {
+  const parsed = parseUnreturnedLostForm(formData);
+  if ('fieldErrors' in parsed) {
+    return {
+      ok: false,
+      code: 'VALIDATION',
+      message: 'Veuillez corriger les erreurs.',
+      fieldErrors: parsed.fieldErrors,
+    };
+  }
+  return runAction(async () => {
+    const {
+      db,
+      user,
+      organizationId: authorizedOrgId,
+    } = await requireFulfillmentOperatorOf(organizationId);
+    const result = await declareBookingUnreturnedLost(db, {
       organizationId: authorizedOrgId,
       bookingId: parsed.bookingId,
       actorUserId: user.id,
