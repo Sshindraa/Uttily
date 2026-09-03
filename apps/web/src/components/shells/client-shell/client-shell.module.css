@@ -1,6 +1,7 @@
 .shell {
   min-height: 100vh;
   color: var(--ut-color-ink);
+  font-family: var(--ut-font-sans);
 }
 
 .header {
