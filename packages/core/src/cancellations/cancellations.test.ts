@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { DbExecutor } from '@uttily/database';
+import { calculateMarketplaceFeeSnapshot } from '../marketplace-fees';
 import { previewBookingCancellation } from './preview-booking-cancellation';
 import { cancelConfirmedBooking } from './cancel-confirmed-booking';
 
@@ -91,18 +92,113 @@ describe('Chantier 12 — Domaine Annulations & Remboursements V2', () => {
     expect(result.explanationCode).toBe('FULL_REFUND_MERCHANT');
   });
 
-  it('bloque le preview si le snapshot marketplace est présent sur le paiement', async () => {
-    const result = await previewBookingCancellation(
-      createMockDb({
-        paymentMarketplaceFeeSnapshot: { ruleVersion: 'split-13-7-v1' },
-      }),
-      '00000000-0000-0000-0000-000000000001',
-      '00000000-0000-0000-0000-000000000002',
-    );
+  describe('Annulations sous le modèle Split 13/7 (ADR-030)', () => {
+    it('calcule correctement une annulation split loueur à 100%', async () => {
+      const splitSnapshot = calculateMarketplaceFeeSnapshot({ marketplaceFeeBaseAmountMinor: 10000 });
+      const result = await previewBookingCancellation(
+        createMockDb({
+          paymentMarketplaceFeeSnapshot: splitSnapshot,
+          marketplaceFeeSnapshot: splitSnapshot,
+        }),
+        '00000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000002',
+        {
+          actorReason: 'MERCHANT_CANCELLATION',
+        },
+      );
 
-    expect(result.allowed).toBe(false);
-    expect(result.explanationCode).toBe('SPLIT_REFUND_UNRESOLVED');
-    expect(result.refundAmountMinor).toBe(0);
+      expect(result.allowed).toBe(true);
+      expect(result.paidAmountMinor).toBe(10700);
+      expect(result.refundAmountMinor).toBe(10700);
+      expect(result.retainedAmountMinor).toBe(0);
+      expect(result.commissionRefundedMinor).toBe(2000);
+      expect(result.finalCommissionMinor).toBe(0);
+      expect(result.finalMerchantRevenueMinor).toBe(0);
+      expect(result.explanationCode).toBe('FULL_REFUND_MERCHANT');
+      expect(result.marketplaceFeeDelta).toBeDefined();
+      expect(result.marketplaceFeeDelta?.kind).toBe('FINAL_STATE_DELTA_PER_COMPONENT');
+    });
+
+    it('calcule correctement une annulation split client partielle à 50% (MODERATE)', async () => {
+      const splitSnapshot = calculateMarketplaceFeeSnapshot({ marketplaceFeeBaseAmountMinor: 10000 });
+      const result = await previewBookingCancellation(
+        createMockDb({
+          paymentMarketplaceFeeSnapshot: splitSnapshot,
+          marketplaceFeeSnapshot: splitSnapshot,
+          cancellationPolicySnapshot: { policy_code: 'MODERATE', policy_version: '1' },
+          confirmedAt: new Date('2026-09-01T10:00:00Z'),
+          customerStartAt: new Date('2026-09-10T10:00:00Z'),
+        }),
+        '00000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000002',
+        {
+          actorReason: 'CUSTOMER_CANCELLATION',
+          now: new Date('2026-09-08T10:00:00Z'), // 48h avant départ (entre 24h et 5j)
+        },
+      );
+
+      expect(result.allowed).toBe(true);
+      expect(result.paidAmountMinor).toBe(10700);
+      expect(result.refundAmountMinor).toBe(5350);
+      expect(result.retainedAmountMinor).toBe(5350);
+      expect(result.commissionRefundedMinor).toBe(1000);
+      expect(result.finalCommissionMinor).toBe(1000);
+      expect(result.finalMerchantRevenueMinor).toBe(4350);
+      expect(result.explanationCode).toBe('MODERATE_24H_5D');
+      expect(result.marketplaceFeeDelta).toBeDefined();
+    });
+
+    it('calcule correctement une annulation split client à 0% (< 24h)', async () => {
+      const splitSnapshot = calculateMarketplaceFeeSnapshot({ marketplaceFeeBaseAmountMinor: 10000 });
+      const result = await previewBookingCancellation(
+        createMockDb({
+          paymentMarketplaceFeeSnapshot: splitSnapshot,
+          marketplaceFeeSnapshot: splitSnapshot,
+          cancellationPolicySnapshot: { policy_code: 'FLEXIBLE', policy_version: '1' },
+          confirmedAt: new Date('2026-09-01T10:00:00Z'),
+          customerStartAt: new Date('2026-09-10T10:00:00Z'),
+        }),
+        '00000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000002',
+        {
+          actorReason: 'CUSTOMER_CANCELLATION',
+          now: new Date('2026-09-10T02:00:00Z'), // 8h avant départ
+        },
+      );
+
+      expect(result.allowed).toBe(true);
+      expect(result.paidAmountMinor).toBe(10700);
+      expect(result.refundAmountMinor).toBe(0);
+      expect(result.retainedAmountMinor).toBe(10700);
+      expect(result.commissionRefundedMinor).toBe(0);
+      expect(result.finalCommissionMinor).toBe(2000);
+      expect(result.finalMerchantRevenueMinor).toBe(8700);
+      expect(result.explanationCode).toBe('FLEXIBLE_LT_24H');
+      expect(result.marketplaceFeeDelta).toBeDefined();
+    });
+
+    it('calcule correctement la fenêtre de grâce 24h sous split', async () => {
+      const splitSnapshot = calculateMarketplaceFeeSnapshot({ marketplaceFeeBaseAmountMinor: 10000 });
+      const result = await previewBookingCancellation(
+        createMockDb({
+          paymentMarketplaceFeeSnapshot: splitSnapshot,
+          marketplaceFeeSnapshot: splitSnapshot,
+          cancellationPolicySnapshot: { policy_code: 'FIRM', policy_version: '1' },
+          confirmedAt: new Date('2026-09-01T10:00:00Z'),
+          customerStartAt: new Date('2026-09-15T10:00:00Z'), // 14j à l'avance
+        }),
+        '00000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000002',
+        {
+          actorReason: 'CUSTOMER_CANCELLATION',
+          now: new Date('2026-09-01T20:00:00Z'), // 10h après réservation
+        },
+      );
+
+      expect(result.allowed).toBe(true);
+      expect(result.refundAmountMinor).toBe(10700);
+      expect(result.explanationCode).toBe('GRACE_WINDOW_24H');
+    });
   });
 
   it('applique la politique FLEXIBLE correctement (100% si >= 24h, 0% si < 24h)', async () => {

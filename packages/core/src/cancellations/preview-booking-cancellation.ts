@@ -3,6 +3,11 @@ import { createHash } from 'node:crypto';
 import type { DbExecutor } from '@uttily/database';
 import { bookings, locations, payments } from '@uttily/database';
 import { CatalogError } from '../catalog/errors';
+import {
+  calculateSplitCancellationRefund,
+  parseMarketplaceFeeSnapshot,
+} from '../marketplace-fees';
+import type { MarketplaceFeeDeltaSnapshot } from '../marketplace-fees/types';
 import type {
   CancellationActorReason,
   CancellationPolicySnapshot,
@@ -115,43 +120,7 @@ export async function previewBookingCancellation(
     CancellationPolicySnapshot | null | undefined;
   const policyCode = (rawSnapshot?.policy_code ?? 'FLEXIBLE').toUpperCase();
 
-  // La politique de remboursement des deux composants split n'est pas encore
-  // validée Finance/Legal. Ne pas projeter silencieusement une décision globale
-  // avec reverseTransfer/refundApplicationFee : le chemin split est bloqué.
-  if (
-    (booking.marketplaceFeeSnapshot !== null && booking.marketplaceFeeSnapshot !== undefined) ||
-    (booking.paymentMarketplaceFeeSnapshot !== null &&
-      booking.paymentMarketplaceFeeSnapshot !== undefined)
-  ) {
-    return {
-      allowed: false,
-      reasonDisallowed:
-        'SPLIT_REFUND_UNRESOLVED : la politique de remboursement des frais marketplace doit être validée par Finance/Legal.',
-      bookingId,
-      paidAmountMinor:
-        booking.paymentAmountMinor ?? booking.customerTotalAmountMinor ?? booking.totalAmountMinor,
-      refundAmountMinor: 0,
-      retainedAmountMinor: 0,
-      originalCommissionMinor: 0,
-      commissionRefundedMinor: 0,
-      finalCommissionMinor: 0,
-      finalMerchantRevenueMinor: 0,
-      currency: 'EUR',
-      policyCode,
-      explanationCode: 'SPLIT_REFUND_UNRESOLVED',
-      explanationLabel:
-        'Annulation bloquée jusqu’à résolution séparée du remboursement du prix marchand et des frais de service.',
-      inventoryWillBeReleased: false,
-      customerStartAt: booking.customerStartAt,
-      locationTimeZone: booking.locationTimeZone,
-      previewFingerprint: '',
-    };
-  }
-  const paidAmountMinor = booking.totalAmountMinor;
-  const originalCommissionMinor =
-    booking.commissionAmountMinor ?? booking.paymentCommissionMinor ?? 0;
-
-  // 4. Calcul du pourcentage et code d'explication
+  // 4. Calcul du pourcentage et code d'explication selon la politique contractuelle
   let refundPercentage = 100;
   let explanationCode = 'FULL_REFUND_MERCHANT';
   let explanationLabel =
@@ -224,27 +193,56 @@ export async function previewBookingCancellation(
   }
 
   // 5. Calcul précis des montants en centimes (arithmétique sûre)
-  const refundAmountMinor = Math.round((paidAmountMinor * refundPercentage) / 100);
-  const retainedAmountMinor = paidAmountMinor - refundAmountMinor;
+  const rawSplitSnapshot =
+    booking.marketplaceFeeSnapshot ?? booking.paymentMarketplaceFeeSnapshot;
+  let paidAmountMinor: number;
+  let refundAmountMinor: number;
+  let retainedAmountMinor: number;
+  let originalCommissionMinor: number;
+  let commissionRefundedMinor: number;
+  let finalCommissionMinor: number;
+  let finalMerchantRevenueMinor: number;
+  let marketplaceFeeDelta: MarketplaceFeeDeltaSnapshot | undefined;
 
-  let commissionRefundedMinor = 0;
-  let finalCommissionMinor = 0;
-  let finalMerchantRevenueMinor = 0;
+  if (rawSplitSnapshot !== null && rawSplitSnapshot !== undefined) {
+    // Modèle Split 13/7 (ADR-029, ADR-030)
+    const splitSnapshot = parseMarketplaceFeeSnapshot(rawSplitSnapshot);
+    const splitRefund = calculateSplitCancellationRefund({
+      oldSnapshot: splitSnapshot,
+      refundPercentage,
+    });
 
-  if (refundPercentage === 100) {
-    commissionRefundedMinor = originalCommissionMinor;
-    finalCommissionMinor = 0;
-    finalMerchantRevenueMinor = 0;
-  } else if (refundPercentage === 0) {
-    commissionRefundedMinor = 0;
-    finalCommissionMinor = originalCommissionMinor;
-    finalMerchantRevenueMinor = retainedAmountMinor - finalCommissionMinor;
+    paidAmountMinor = splitSnapshot.customerTotalAmountMinor;
+    refundAmountMinor = splitRefund.customerRefundAmountMinor;
+    retainedAmountMinor = splitRefund.customerRetainedAmountMinor;
+    originalCommissionMinor = splitSnapshot.platformApplicationFeeAmountMinor;
+    commissionRefundedMinor = splitRefund.platformFeeRefundedMinor;
+    finalCommissionMinor = splitRefund.finalPlatformFeeMinor;
+    finalMerchantRevenueMinor = splitRefund.finalMerchantRevenueMinor;
+    marketplaceFeeDelta = splitRefund.deltaSnapshot;
   } else {
-    finalCommissionMinor = Math.round(
-      (originalCommissionMinor * retainedAmountMinor) / paidAmountMinor,
-    );
-    commissionRefundedMinor = originalCommissionMinor - finalCommissionMinor;
-    finalMerchantRevenueMinor = retainedAmountMinor - finalCommissionMinor;
+    // Modèle legacy historique
+    paidAmountMinor = booking.totalAmountMinor;
+    originalCommissionMinor =
+      booking.commissionAmountMinor ?? booking.paymentCommissionMinor ?? 0;
+    refundAmountMinor = Math.round((paidAmountMinor * refundPercentage) / 100);
+    retainedAmountMinor = paidAmountMinor - refundAmountMinor;
+
+    if (refundPercentage === 100) {
+      commissionRefundedMinor = originalCommissionMinor;
+      finalCommissionMinor = 0;
+      finalMerchantRevenueMinor = 0;
+    } else if (refundPercentage === 0) {
+      commissionRefundedMinor = 0;
+      finalCommissionMinor = originalCommissionMinor;
+      finalMerchantRevenueMinor = retainedAmountMinor - finalCommissionMinor;
+    } else {
+      finalCommissionMinor = Math.round(
+        (originalCommissionMinor * retainedAmountMinor) / paidAmountMinor,
+      );
+      commissionRefundedMinor = originalCommissionMinor - finalCommissionMinor;
+      finalMerchantRevenueMinor = retainedAmountMinor - finalCommissionMinor;
+    }
   }
 
   const previewFingerprint = computeCancellationPreviewFingerprint({
@@ -276,5 +274,6 @@ export async function previewBookingCancellation(
     customerStartAt: booking.customerStartAt,
     locationTimeZone: booking.locationTimeZone,
     previewFingerprint,
+    ...(marketplaceFeeDelta ? { marketplaceFeeDelta } : {}),
   };
 }

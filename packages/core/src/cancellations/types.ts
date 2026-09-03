@@ -1,3 +1,5 @@
+import type { MarketplaceFeeDeltaSnapshot } from '../marketplace-fees/types';
+
 export type CancellationActorReason =
   | 'CUSTOMER_CANCELLATION'
   | 'MERCHANT_CANCELLATION'
@@ -75,6 +77,7 @@ export interface CancellationPreviewResult {
   customerStartAt: Date;
   locationTimeZone: string;
   previewFingerprint: string;
+  marketplaceFeeDelta?: MarketplaceFeeDeltaSnapshot | undefined;
 }
 
 export interface CancelConfirmedBookingInput {

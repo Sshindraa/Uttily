@@ -240,7 +240,6 @@ export async function verifyRefundRequest(
       if (payment.environment !== environment) {
         throw new RefundRequestError('ENVIRONMENT_MISMATCH', 'Environnement paiement incohérent');
       }
-      assertNoMarketplaceFeeSnapshot(payment.marketplaceFeeSnapshot, 'le paiement');
 
       // Vérification de la réservation annulée
       const bookingRows = await tx
@@ -258,7 +257,6 @@ export async function verifyRefundRequest(
           'La réservation doit être au statut CANCELLED pour exécuter le remboursement d’annulation',
         );
       }
-      assertNoMarketplaceFeeSnapshot(booking.marketplaceFeeSnapshot, 'la réservation');
 
       // Vérification de la trace d'annulation
       const cancellationRows = await tx
@@ -280,7 +278,21 @@ export async function verifyRefundRequest(
           'Incohérence trace d’annulation / remboursement',
         );
       }
-      assertNoMarketplaceFeeSnapshot(cancellation.marketplaceFeeSnapshot, 'la trace d’annulation');
+
+      const hasSplitSnapshot =
+        payment.marketplaceFeeSnapshot !== null && payment.marketplaceFeeSnapshot !== undefined;
+      if (hasSplitSnapshot) {
+        // ADR-030: Seul le remboursement intégral d'annulation (100%) est exécutable directement par Stripe
+        // avec reverseTransfer=true et refundApplicationFee=true (destination charge).
+        // Un remboursement partiel split reste en FAILED_REQUIRES_MANUAL_ACTION (ADR-030 §3.2).
+        const isFullRefund = refund.amountMinor === cancellation.grossPaidMinor;
+        if (!isFullRefund) {
+          throw new RefundRequestError(
+            'SPLIT_REFUND_UNRESOLVED',
+            'Remboursement partiel split requiert une résolution manuelle (ADR-030 §3.2)',
+          );
+        }
+      }
 
       const attemptRows = await tx
         .select({

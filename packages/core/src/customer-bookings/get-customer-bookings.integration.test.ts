@@ -213,14 +213,14 @@ describe.skipIf(isSkipped)(
       expect(detail?.cancellation.allowed).toBe(true);
     });
 
-    it('masque l’annulation en ligne pour une réservation avec frais marketplace split', async () => {
+    it('autorise l’annulation en ligne pour une réservation avec frais marketplace split (ADR-030)', async () => {
       if (!db) throw new Error('DB non initialisée');
       const fixture = await createCustomerBookingFixture({ split: true });
 
       const detail = await getCustomerBooking(db, fixture.customerA.id, fixture.bookingA.id);
       expect(detail).not.toBeNull();
-      expect(detail?.cancellation.allowed).toBe(false);
-      expect(detail?.cancellation.reasonCode).toBe('SPLIT_REFUND_UNRESOLVED');
+      expect(detail?.cancellation.allowed).toBe(true);
+      expect(detail?.cancellation.reasonCode).toBeNull();
     });
 
     it('vérité paiement fail-closed : si le statut payment n’est pas SUCCEEDED, status est PENDING', async () => {

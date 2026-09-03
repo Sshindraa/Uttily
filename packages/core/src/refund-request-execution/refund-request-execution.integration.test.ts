@@ -856,6 +856,318 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
     expect(updatedOutbox.status).toBe('PROCESSED');
   });
 
+  it('exécute un remboursement split à 100% issu d’une annulation (ADR-030)', async () => {
+    if (!rawSql || !db) throw new Error('DB non initialisée');
+    const suffix = Math.random().toString(36).slice(2, 10);
+    const org = await rawSql`
+      INSERT INTO organizations (legal_name, slug)
+      VALUES (${'Cancel Split ' + suffix}, ${'cancel-split-' + suffix})
+      RETURNING id
+    `.then((rows) => rows[0]!);
+    const user = await rawSql`
+      INSERT INTO users (email)
+      VALUES (${'cancel-split-' + suffix + '@example.com'})
+      RETURNING id
+    `.then((rows) => rows[0]!);
+    const location = await rawSql`
+      INSERT INTO locations (organization_id, name, slug, time_zone, operating_currency)
+      VALUES (${org.id}, 'Split Loc', ${'split-loc-' + suffix}, 'Europe/Paris', 'EUR')
+      RETURNING id
+    `.then((rows) => rows[0]!);
+    const splitSnapshot = {
+      ruleVersion: 'split-13-7-v1',
+      roundingRule: 'HALF_UP_PER_COMPONENT',
+      marketplaceFeeBaseAmountMinor: 10000,
+      merchantRateBps: 1300,
+      merchantFeeAmountMinor: 1300,
+      customerRateBps: 700,
+      customerServiceFeeAmountMinor: 700,
+      customerTotalAmountMinor: 10700,
+      merchantNetAmountMinor: 8700,
+      platformApplicationFeeAmountMinor: 2000,
+    };
+    const draft = await rawSql`
+      INSERT INTO booking_drafts (
+        organization_id, location_id, customer_user_id, status,
+        customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
+        timezone, prep_buffer_minutes, cleanup_buffer_minutes,
+        subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
+        tax_status, tax_amount_minor, tax_rate_bps, commission_amount_minor,
+        billable_unit, billable_unit_count, currency, cancellation_policy_snapshot,
+        marketplace_fee_snapshot
+      ) VALUES (
+        ${org.id}, ${location.id}, ${user.id}, 'CONVERTED',
+        '2026-04-10 09:00:00+00', '2026-04-12 17:00:00+00',
+        '2026-04-10 08:30:00+00', '2026-04-12 17:30:00+00',
+        'Europe/Paris', 30, 30, 10000, 0, 10000,
+        'NOT_APPLICABLE', 0, NULL, 2000, 'DAY', 2, 'EUR',
+        ${rawSql.json({ policy_code: 'FLEXIBLE', policy_version: '1', timezone: 'Europe/Paris' })},
+        ${rawSql.json(splitSnapshot)}
+      ) RETURNING id
+    `.then((rows) => rows[0]!);
+    const payment = await rawSql`
+      INSERT INTO payments (
+        organization_id, draft_id, customer_user_id, status,
+        amount_minor, currency, tax_status, tax_amount_minor,
+        commission_amount_minor, financial_terms_version, legal_terms_version,
+        terms_acceptance_snapshot, connected_account_id, charge_model,
+        settlement_merchant_mode, environment, succeeded_at, marketplace_fee_snapshot
+      ) VALUES (
+        ${org.id}, ${draft.id}, ${user.id}, 'SUCCEEDED', 10700, 'EUR',
+        'NOT_APPLICABLE', 0, 2000, 'v1', 'v1',
+        ${rawSql.json({ version: 'v1', user_id: user.id, accepted_at: '2026-01-01T00:00:00Z' })},
+        'acct_cancel_split', 'DESTINATION', 'CONNECTED_ACCOUNT', 'TEST'::payment_environment, now(),
+        ${rawSql.json(splitSnapshot)}
+      ) RETURNING id
+    `.then((rows) => rows[0]!);
+    const booking = await rawSql`
+      INSERT INTO bookings (
+        organization_id, location_id, customer_user_id, draft_id, payment_id,
+        status, customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
+        timezone, prep_buffer_minutes, cleanup_buffer_minutes, currency,
+        subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
+        tax_status, tax_amount_minor, tax_rate_bps, commission_amount_minor,
+        billable_unit, billable_unit_count, cancellation_policy_snapshot,
+        terms_acceptance_snapshot, confirmed_at, marketplace_fee_snapshot
+      ) VALUES (
+        ${org.id}, ${location.id}, ${user.id}, ${draft.id}, ${payment.id}, 'CANCELLED',
+        '2026-04-10 09:00:00+00', '2026-04-12 17:00:00+00',
+        '2026-04-10 08:30:00+00', '2026-04-12 17:30:00+00', 'Europe/Paris', 30, 30, 'EUR',
+        10000, 0, 10000, 'NOT_APPLICABLE', 0, NULL, 2000, 'DAY', 2,
+        ${rawSql.json({ policy_code: 'FLEXIBLE', policy_version: '1', timezone: 'Europe/Paris' })},
+        ${rawSql.json({ version: 'v1', user_id: user.id, accepted_at: '2026-01-01T00:00:00Z' })}, now(),
+        ${rawSql.json(splitSnapshot)}
+      ) RETURNING id
+    `.then((rows) => rows[0]!);
+    const refund = await rawSql`
+      INSERT INTO refunds (
+        organization_id, payment_id, status,
+        reason, amount_minor, currency, provider_idempotency_key,
+        reverse_transfer, refund_application_fee, requested_at
+      ) VALUES (
+        ${org.id}, ${payment.id}, 'PENDING',
+        'MERCHANT_CANCELLATION', 10700, 'EUR', ${'refund_split_' + suffix},
+        true, true, now()
+      ) RETURNING id
+    `.then((rows) => rows[0]!);
+    await rawSql`
+      INSERT INTO booking_cancellations (
+        organization_id, booking_id, cancelled_by_user_id,
+        actor_reason, policy_code, policy_snapshot,
+        gross_paid_minor, refund_amount_minor, retained_amount_minor,
+        original_commission_minor, commission_refunded_minor,
+        final_commission_minor, final_merchant_revenue_minor,
+        currency, explanation_code, inventory_released, refund_id,
+        marketplace_fee_snapshot
+      ) VALUES (
+        ${org.id}, ${booking.id}, ${user.id},
+        'MERCHANT_CANCELLATION', 'FLEXIBLE',
+        ${rawSql.json({ policy_code: 'FLEXIBLE', policy_version: '1' })},
+        10700, 10700, 0, 2000, 2000, 0, 0,
+        'EUR', 'FULL_REFUND_MERCHANT', true, ${refund.id},
+        ${rawSql.json(splitSnapshot)}
+      ) RETURNING id
+    `;
+    const outbox = await rawSql`
+      INSERT INTO outbox_events (
+        organization_id, aggregate_type, aggregate_id,
+        event_type, event_version, payload,
+        status, attempt_count, available_at, idempotency_key
+      ) VALUES (
+        ${org.id}, 'BOOKING', ${booking.id},
+        'REFUND_REQUESTED', 'v2',
+        ${rawSql.json({
+          bookingId: booking.id,
+          origin: {
+            kind: 'BOOKING_CANCELLATION',
+            cancellationId: crypto.randomUUID(),
+          },
+        })},
+        'PENDING', 0, now() - interval '1 second',
+        ${'outbox_split_' + suffix}
+      ) RETURNING id
+    `.then((rows) => rows[0]!);
+
+    await rawSql`
+      INSERT INTO payment_attempts (
+        organization_id, payment_id, attempt_number, status,
+        provider_payment_intent_id, provider_idempotency_key, provider_status
+      ) VALUES (
+        ${org.id}, ${payment.id}, 1, 'SUCCEEDED', 'pi_intent_split_123',
+        ${'attempt_split_' + suffix}, 'succeeded'
+      )
+    `;
+
+    const provider = new RecordingRefundProvider('TEST');
+    const result = await executeRefundRequestBatch(
+      { db, provider },
+      { environment: 'TEST', batchLimit: 1 },
+    );
+
+    expect(result).toMatchObject({ claimedCount: 1, submittedCount: 1, failedCount: 0 });
+    expect(provider.calls[0]).toEqual({
+      paymentIntentId: 'pi_intent_split_123',
+      amountMinor: 10700,
+      idempotencyKey: 'refund_split_' + suffix,
+      reverseTransfer: true,
+      refundApplicationFee: true,
+      metadata: {
+        refund_id: refund.id,
+        organization_id: org.id,
+        protocol_version: 'refund-requested-v2',
+      },
+    });
+
+    const updatedRefund = await rawSql`SELECT status FROM refunds WHERE id = ${refund.id}`.then(
+      (rows) => rows[0]!,
+    );
+    expect(updatedRefund.status).toBe('SUBMITTED');
+    const updatedOutbox =
+      await rawSql`SELECT status FROM outbox_events WHERE id = ${outbox.id}`.then(
+        (rows) => rows[0]!,
+      );
+    expect(updatedOutbox.status).toBe('PROCESSED');
+  });
+
+  it('bascule en FAILED_REQUIRES_MANUAL_ACTION lors d’une annulation split partielle (ADR-030 §3.2)', async () => {
+    if (!rawSql || !db) throw new Error('DB non initialisée');
+    const suffix = Math.random().toString(36).slice(2, 10);
+    const org = await rawSql`
+      INSERT INTO organizations (legal_name, slug)
+      VALUES (${'Partial Split ' + suffix}, ${'partial-split-' + suffix})
+      RETURNING id
+    `.then((rows) => rows[0]!);
+    const user = await rawSql`
+      INSERT INTO users (email)
+      VALUES (${'partial-split-' + suffix + '@example.com'})
+      RETURNING id
+    `.then((rows) => rows[0]!);
+    const location = await rawSql`
+      INSERT INTO locations (organization_id, name, slug, time_zone, operating_currency)
+      VALUES (${org.id}, 'Partial Loc', ${'partial-loc-' + suffix}, 'Europe/Paris', 'EUR')
+      RETURNING id
+    `.then((rows) => rows[0]!);
+    const splitSnapshot = {
+      ruleVersion: 'split-13-7-v1',
+      roundingRule: 'HALF_UP_PER_COMPONENT',
+      marketplaceFeeBaseAmountMinor: 10000,
+      merchantRateBps: 1300,
+      merchantFeeAmountMinor: 1300,
+      customerRateBps: 700,
+      customerServiceFeeAmountMinor: 700,
+      customerTotalAmountMinor: 10700,
+      merchantNetAmountMinor: 8700,
+      platformApplicationFeeAmountMinor: 2000,
+    };
+    const payment = await rawSql`
+      INSERT INTO payments (
+        organization_id, draft_id, customer_user_id, status,
+        amount_minor, currency, tax_status, tax_amount_minor,
+        commission_amount_minor, financial_terms_version, legal_terms_version,
+        terms_acceptance_snapshot, connected_account_id, charge_model,
+        settlement_merchant_mode, environment, succeeded_at, marketplace_fee_snapshot
+      ) VALUES (
+        ${org.id}, ${crypto.randomUUID()}, ${user.id}, 'SUCCEEDED', 10700, 'EUR',
+        'NOT_APPLICABLE', 0, 2000, 'v1', 'v1',
+        ${rawSql.json({ version: 'v1', user_id: user.id, accepted_at: '2026-01-01T00:00:00Z' })},
+        'acct_partial_split', 'DESTINATION', 'CONNECTED_ACCOUNT', 'TEST'::payment_environment, now(),
+        ${rawSql.json(splitSnapshot)}
+      ) RETURNING id
+    `.then((rows) => rows[0]!);
+    const booking = await rawSql`
+      INSERT INTO bookings (
+        organization_id, location_id, customer_user_id, draft_id, payment_id,
+        status, customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
+        timezone, prep_buffer_minutes, cleanup_buffer_minutes, currency,
+        subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
+        tax_status, tax_amount_minor, tax_rate_bps, commission_amount_minor,
+        billable_unit, billable_unit_count, cancellation_policy_snapshot,
+        terms_acceptance_snapshot, confirmed_at, marketplace_fee_snapshot
+      ) VALUES (
+        ${org.id}, ${location.id}, ${user.id}, ${crypto.randomUUID()}, ${payment.id}, 'CANCELLED',
+        '2026-04-10 09:00:00+00', '2026-04-12 17:00:00+00',
+        '2026-04-10 08:30:00+00', '2026-04-12 17:30:00+00', 'Europe/Paris', 30, 30, 'EUR',
+        10000, 0, 10000, 'NOT_APPLICABLE', 0, NULL, 2000, 'DAY', 2,
+        ${rawSql.json({ policy_code: 'MODERATE', policy_version: '1', timezone: 'Europe/Paris' })},
+        ${rawSql.json({ version: 'v1', user_id: user.id, accepted_at: '2026-01-01T00:00:00Z' })}, now(),
+        ${rawSql.json(splitSnapshot)}
+      ) RETURNING id
+    `.then((rows) => rows[0]!);
+    // Remboursement partiel 50% (5350 au lieu de 10700)
+    const refund = await rawSql`
+      INSERT INTO refunds (
+        organization_id, payment_id, status,
+        reason, amount_minor, currency, provider_idempotency_key,
+        reverse_transfer, refund_application_fee, requested_at
+      ) VALUES (
+        ${org.id}, ${payment.id}, 'PENDING',
+        'CUSTOMER_CANCELLATION', 5350, 'EUR', ${'refund_part_' + suffix},
+        true, true, now()
+      ) RETURNING id
+    `.then((rows) => rows[0]!);
+    await rawSql`
+      INSERT INTO booking_cancellations (
+        organization_id, booking_id, cancelled_by_user_id,
+        actor_reason, policy_code, policy_snapshot,
+        gross_paid_minor, refund_amount_minor, retained_amount_minor,
+        original_commission_minor, commission_refunded_minor,
+        final_commission_minor, final_merchant_revenue_minor,
+        currency, explanation_code, inventory_released, refund_id,
+        marketplace_fee_snapshot
+      ) VALUES (
+        ${org.id}, ${booking.id}, ${user.id},
+        'CUSTOMER_CANCELLATION', 'MODERATE',
+        ${rawSql.json({ policy_code: 'MODERATE', policy_version: '1' })},
+        10700, 5350, 5350, 2000, 1000, 1000, 4350,
+        'EUR', 'MODERATE_24H_5D', true, ${refund.id},
+        ${rawSql.json(splitSnapshot)}
+      ) RETURNING id
+    `;
+    await rawSql`
+      INSERT INTO outbox_events (
+        organization_id, aggregate_type, aggregate_id,
+        event_type, event_version, payload,
+        status, attempt_count, available_at, idempotency_key
+      ) VALUES (
+        ${org.id}, 'BOOKING', ${booking.id},
+        'REFUND_REQUESTED', 'v2',
+        ${rawSql.json({
+          bookingId: booking.id,
+          origin: {
+            kind: 'BOOKING_CANCELLATION',
+            cancellationId: crypto.randomUUID(),
+          },
+        })},
+        'PENDING', 0, now() - interval '1 second',
+        ${'outbox_part_' + suffix}
+      ) RETURNING id
+    `;
+    await rawSql`
+      INSERT INTO payment_attempts (
+        organization_id, payment_id, attempt_number, status,
+        provider_payment_intent_id, provider_idempotency_key, provider_status
+      ) VALUES (
+        ${org.id}, ${payment.id}, 1, 'SUCCEEDED', 'pi_intent_part_123',
+        ${'attempt_part_' + suffix}, 'succeeded'
+      )
+    `;
+
+    const provider = new RecordingRefundProvider('TEST');
+    const result = await executeRefundRequestBatch(
+      { db, provider },
+      { environment: 'TEST', batchLimit: 1 },
+    );
+
+    expect(result).toMatchObject({ claimedCount: 1, submittedCount: 0, failedCount: 1 });
+    expect(result.anomalies[0]?.code).toBe('SPLIT_REFUND_UNRESOLVED');
+    expect(provider.calls).toHaveLength(0);
+    const updatedRefund = await rawSql`SELECT status, failure_code FROM refunds WHERE id = ${refund.id}`.then(
+      (rows) => rows[0]!,
+    );
+    expect(updatedRefund.status).toBe('FAILED_REQUIRES_MANUAL_ACTION');
+    expect(updatedRefund.failure_code).toBe('SPLIT_REFUND_UNRESOLVED');
+  });
+
   it('échec définitif d’un remboursement BOOKING_CANCELLATION passe le refund en FAILED_REQUIRES_MANUAL_ACTION', async () => {
     if (!db || !rawSql) throw new Error('DB non initialisée');
     const user = await rawSql`
