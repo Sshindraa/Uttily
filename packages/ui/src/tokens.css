@@ -216,6 +216,8 @@ html {
   font-family: var(--ut-font-sans);
   text-rendering: optimizeLegibility;
   font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
@@ -227,6 +229,18 @@ body {
   font-family: var(--ut-font-body);
   font-weight: var(--ut-weight-regular);
   letter-spacing: var(--ut-tracking-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--ut-font-display);
+  letter-spacing: var(--ut-tracking-heading);
 }
 
 a {
@@ -236,10 +250,13 @@ a {
 button,
 input,
 select,
-textarea {
+textarea,
+optgroup {
   font: inherit;
   font-family: var(--ut-font-ui);
   letter-spacing: var(--ut-tracking-label);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 input:not([type='checkbox']):not([type='radio']),

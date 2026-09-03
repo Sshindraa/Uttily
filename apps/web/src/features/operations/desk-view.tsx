@@ -299,9 +299,12 @@ export function DeskView({
               required
               style={{
                 background: 'var(--ut-color-surface)',
-                border: 'var(--ut-border-thin)',
+                border: 'var(--ut-border-control)',
                 borderRadius: 'var(--ut-radius-md)',
-                color: 'var(--ut-color-ink)',
+                color: 'var(--ut-color-ink-strong)',
+                fontFamily: 'var(--ut-font-ui)',
+                fontSize: 'var(--ut-text-control)',
+                letterSpacing: 'var(--ut-tracking-label)',
                 minHeight: '44px',
                 padding: '0.6rem 0.75rem',
               }}
@@ -326,9 +329,12 @@ export function DeskView({
               required
               style={{
                 background: 'var(--ut-color-surface)',
-                border: 'var(--ut-border-thin)',
+                border: 'var(--ut-border-control)',
                 borderRadius: 'var(--ut-radius-md)',
-                color: 'var(--ut-color-ink)',
+                color: 'var(--ut-color-ink-strong)',
+                fontFamily: 'var(--ut-font-ui)',
+                fontSize: 'var(--ut-text-control)',
+                letterSpacing: 'var(--ut-tracking-label)',
                 minHeight: '44px',
                 padding: '0.6rem 0.75rem',
               }}
@@ -346,9 +352,12 @@ export function DeskView({
               placeholder="#UT-12ABCD ou SKU-001"
               style={{
                 background: 'var(--ut-color-surface)',
-                border: 'var(--ut-border-thin)',
+                border: 'var(--ut-border-control)',
                 borderRadius: 'var(--ut-radius-md)',
-                color: 'var(--ut-color-ink)',
+                color: 'var(--ut-color-ink-strong)',
+                fontFamily: 'var(--ut-font-ui)',
+                fontSize: 'var(--ut-text-control)',
+                letterSpacing: 'var(--ut-tracking-label)',
                 minHeight: '44px',
                 padding: '0.6rem 0.75rem',
               }}
@@ -398,8 +407,11 @@ export function DeskView({
                 <div
                   style={{
                     color: 'var(--ut-color-ink-strong)',
+                    fontFamily: 'var(--ut-font-display)',
                     fontSize: '1.8rem',
                     fontWeight: 'var(--ut-weight-bold)',
+                    fontVariantNumeric: 'var(--ut-numerals)',
+                    letterSpacing: 'var(--ut-tracking-heading)',
                     lineHeight: 1.1,
                     marginTop: '0.25rem',
                   }}
