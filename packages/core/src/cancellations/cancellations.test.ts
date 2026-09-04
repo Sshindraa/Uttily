@@ -94,7 +94,9 @@ describe('Chantier 12 — Domaine Annulations & Remboursements V2', () => {
 
   describe('Annulations sous le modèle Split 13/7 (ADR-030)', () => {
     it('calcule correctement une annulation split loueur à 100%', async () => {
-      const splitSnapshot = calculateMarketplaceFeeSnapshot({ marketplaceFeeBaseAmountMinor: 10000 });
+      const splitSnapshot = calculateMarketplaceFeeSnapshot({
+        marketplaceFeeBaseAmountMinor: 10000,
+      });
       const result = await previewBookingCancellation(
         createMockDb({
           paymentMarketplaceFeeSnapshot: splitSnapshot,
@@ -120,7 +122,9 @@ describe('Chantier 12 — Domaine Annulations & Remboursements V2', () => {
     });
 
     it('calcule correctement une annulation split client partielle à 50% (MODERATE)', async () => {
-      const splitSnapshot = calculateMarketplaceFeeSnapshot({ marketplaceFeeBaseAmountMinor: 10000 });
+      const splitSnapshot = calculateMarketplaceFeeSnapshot({
+        marketplaceFeeBaseAmountMinor: 10000,
+      });
       const result = await previewBookingCancellation(
         createMockDb({
           paymentMarketplaceFeeSnapshot: splitSnapshot,
@@ -149,7 +153,9 @@ describe('Chantier 12 — Domaine Annulations & Remboursements V2', () => {
     });
 
     it('calcule correctement une annulation split client à 0% (< 24h)', async () => {
-      const splitSnapshot = calculateMarketplaceFeeSnapshot({ marketplaceFeeBaseAmountMinor: 10000 });
+      const splitSnapshot = calculateMarketplaceFeeSnapshot({
+        marketplaceFeeBaseAmountMinor: 10000,
+      });
       const result = await previewBookingCancellation(
         createMockDb({
           paymentMarketplaceFeeSnapshot: splitSnapshot,
@@ -178,7 +184,9 @@ describe('Chantier 12 — Domaine Annulations & Remboursements V2', () => {
     });
 
     it('calcule correctement la fenêtre de grâce 24h sous split', async () => {
-      const splitSnapshot = calculateMarketplaceFeeSnapshot({ marketplaceFeeBaseAmountMinor: 10000 });
+      const splitSnapshot = calculateMarketplaceFeeSnapshot({
+        marketplaceFeeBaseAmountMinor: 10000,
+      });
       const result = await previewBookingCancellation(
         createMockDb({
           paymentMarketplaceFeeSnapshot: splitSnapshot,

@@ -3,10 +3,7 @@ import { createHash } from 'node:crypto';
 import type { DbExecutor } from '@uttily/database';
 import { bookings, locations, payments } from '@uttily/database';
 import { CatalogError } from '../catalog/errors';
-import {
-  calculateSplitCancellationRefund,
-  parseMarketplaceFeeSnapshot,
-} from '../marketplace-fees';
+import { calculateSplitCancellationRefund, parseMarketplaceFeeSnapshot } from '../marketplace-fees';
 import type { MarketplaceFeeDeltaSnapshot } from '../marketplace-fees/types';
 import type {
   CancellationActorReason,
@@ -193,8 +190,7 @@ export async function previewBookingCancellation(
   }
 
   // 5. Calcul précis des montants en centimes (arithmétique sûre)
-  const rawSplitSnapshot =
-    booking.marketplaceFeeSnapshot ?? booking.paymentMarketplaceFeeSnapshot;
+  const rawSplitSnapshot = booking.marketplaceFeeSnapshot ?? booking.paymentMarketplaceFeeSnapshot;
   let paidAmountMinor: number;
   let refundAmountMinor: number;
   let retainedAmountMinor: number;
@@ -223,8 +219,7 @@ export async function previewBookingCancellation(
   } else {
     // Modèle legacy historique
     paidAmountMinor = booking.totalAmountMinor;
-    originalCommissionMinor =
-      booking.commissionAmountMinor ?? booking.paymentCommissionMinor ?? 0;
+    originalCommissionMinor = booking.commissionAmountMinor ?? booking.paymentCommissionMinor ?? 0;
     refundAmountMinor = Math.round((paidAmountMinor * refundPercentage) / 100);
     retainedAmountMinor = paidAmountMinor - refundAmountMinor;
 

@@ -1059,6 +1059,25 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
       merchantNetAmountMinor: 8700,
       platformApplicationFeeAmountMinor: 2000,
     };
+    const draft = await rawSql`
+      INSERT INTO booking_drafts (
+        organization_id, location_id, customer_user_id, status,
+        customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
+        timezone, prep_buffer_minutes, cleanup_buffer_minutes,
+        subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
+        tax_status, tax_amount_minor, tax_rate_bps, commission_amount_minor,
+        billable_unit, billable_unit_count, currency, cancellation_policy_snapshot,
+        marketplace_fee_snapshot
+      ) VALUES (
+        ${org.id}, ${location.id}, ${user.id}, 'CONVERTED',
+        '2026-04-10 09:00:00+00', '2026-04-12 17:00:00+00',
+        '2026-04-10 08:30:00+00', '2026-04-12 17:30:00+00',
+        'Europe/Paris', 30, 30, 10000, 0, 10000,
+        'NOT_APPLICABLE', 0, NULL, 2000, 'DAY', 2, 'EUR',
+        ${rawSql.json({ policy_code: 'MODERATE', policy_version: '1', timezone: 'Europe/Paris' })},
+        ${rawSql.json(splitSnapshot)}
+      ) RETURNING id
+    `.then((rows) => rows[0]!);
     const payment = await rawSql`
       INSERT INTO payments (
         organization_id, draft_id, customer_user_id, status,
@@ -1067,7 +1086,7 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         terms_acceptance_snapshot, connected_account_id, charge_model,
         settlement_merchant_mode, environment, succeeded_at, marketplace_fee_snapshot
       ) VALUES (
-        ${org.id}, ${crypto.randomUUID()}, ${user.id}, 'SUCCEEDED', 10700, 'EUR',
+        ${org.id}, ${draft.id}, ${user.id}, 'SUCCEEDED', 10700, 'EUR',
         'NOT_APPLICABLE', 0, 2000, 'v1', 'v1',
         ${rawSql.json({ version: 'v1', user_id: user.id, accepted_at: '2026-01-01T00:00:00Z' })},
         'acct_partial_split', 'DESTINATION', 'CONNECTED_ACCOUNT', 'TEST'::payment_environment, now(),
@@ -1084,7 +1103,7 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         billable_unit, billable_unit_count, cancellation_policy_snapshot,
         terms_acceptance_snapshot, confirmed_at, marketplace_fee_snapshot
       ) VALUES (
-        ${org.id}, ${location.id}, ${user.id}, ${crypto.randomUUID()}, ${payment.id}, 'CANCELLED',
+        ${org.id}, ${location.id}, ${user.id}, ${draft.id}, ${payment.id}, 'CANCELLED',
         '2026-04-10 09:00:00+00', '2026-04-12 17:00:00+00',
         '2026-04-10 08:30:00+00', '2026-04-12 17:30:00+00', 'Europe/Paris', 30, 30, 'EUR',
         10000, 0, 10000, 'NOT_APPLICABLE', 0, NULL, 2000, 'DAY', 2,
@@ -1161,9 +1180,10 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
     expect(result).toMatchObject({ claimedCount: 1, submittedCount: 0, failedCount: 1 });
     expect(result.anomalies[0]?.code).toBe('SPLIT_REFUND_UNRESOLVED');
     expect(provider.calls).toHaveLength(0);
-    const updatedRefund = await rawSql`SELECT status, failure_code FROM refunds WHERE id = ${refund.id}`.then(
-      (rows) => rows[0]!,
-    );
+    const updatedRefund =
+      await rawSql`SELECT status, failure_code FROM refunds WHERE id = ${refund.id}`.then(
+        (rows) => rows[0]!,
+      );
     expect(updatedRefund.status).toBe('FAILED_REQUIRES_MANUAL_ACTION');
     expect(updatedRefund.failure_code).toBe('SPLIT_REFUND_UNRESOLVED');
   });

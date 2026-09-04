@@ -324,7 +324,7 @@ describe.skipIf(shouldSkipIntegrationTests())('G7M-C4-S — transitions PostgreS
     if (!testUrl) return;
     const sql = postgres(testUrl, { max: 1 });
     try {
-      expect(await migrationCount(sql)).toBe(56);
+      expect(await migrationCount(sql)).toBe(58);
       const rows = await sql`
         SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at
       `;
