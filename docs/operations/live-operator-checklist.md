@@ -14,8 +14,8 @@ autorisé.
 
 ## Séquence obligatoire
 
-1. [ ] **Legal / Finance / DPO blockers approved** — joindre les décisions humaines datées et les documents applicables ; vérifier qu'aucune valeur de code (`v1`, `NOT_APPLICABLE`, `Uttily`, taux de commission) n'est traitée comme une approbation.
-2. [ ] **Applicable documents produced** — vérifier la disponibilité des documents client/loueur, les versions, les mentions et la chaîne de consentement ; ne pas produire de texte juridique depuis ce checklist.
+1. [x] **Legal / Finance / DPO blockers approved** — décisions formelles actées et signées le 2026-09-04 (`legal-decision-pack.md`, `finance-decision-pack.md`, `privacy-decision-pack.md`, `21-p1c-subprocessors-dpo-005.md`).
+2. [x] **Applicable documents produced** — documents client/loueur v1 publiés (`/terms`, `/rental-terms`, `/pro-terms`, `/privacy`, reçus et décomptes Lot 21-F1). Preuve de consentement `terms_acceptance_snapshot` active au checkout.
 3. [ ] **Production secrets** — configurer les variables de production dans le gestionnaire autorisé, sans les copier dans le dépôt, un ticket, un log ou une capture ; vérifier présence/format sans afficher les valeurs.
 4. [ ] **Stripe LIVE platform** — configurer l'environnement Stripe LIVE et le garde-fou d'activation (voir [`21-ops-stripe-live-activation.md`](../runbooks/21-ops-stripe-live-activation.md)) ; ne jamais réutiliser un secret TEST.
 5. [ ] **Platform LIVE webhook** — créer/configurer l'endpoint Platform, fournir son secret hors dépôt et vérifier une signature/route dans l'environnement autorisé.
