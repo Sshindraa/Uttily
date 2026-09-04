@@ -9,38 +9,37 @@
 
 ---
 
-## Guide d'Utilisation du Gabarit
+## ⚡ Parcours Autonome « Express & Léger » (Moins de 5 minutes chrono)
 
-Ce kit regroupe l'intégralité des informations requises pour intégrer votre magasin et votre flotte d'équipements sur la plateforme Uttily avant l'ouverture des réservations réelles.
-
-Le dossier comprend **5 volets** à renseigner :
-1. **Volet 1 : Identité Juridique & Fiscale d'Entreprise** *(nécessaire pour l'opposabilité des contrats et reçus)*
-2. **Volet 2 : Établissement Physique & Point de Retrait** *(informations présentées aux locataires)*
-3. **Volet 3 : Inventaire & Flotte d'Équipements** *(catalogue réservable et numéros de série)*
-4. **Volet 4 : Grille Tarifaire & Politique de Caution** *(tarifs publics et conditions d'annulation)*
-5. **Volet 5 : Raccordement Bancaire & Contacts d'Astreinte** *(Stripe Connect et astreinte comptoir)*
+> 💡 **Conçu pour aller vite : Aucun formulaire lourd.**  
+> Vous configurez votre magasin et vos vélos directement depuis votre tableau de bord Uttily (`/dashboard/[votre-magasin]/settings`).
+> 
+> **Seulement 4 informations légales sont obligatoires** pour que vos contrats de location soient valables face aux assurances et aux clients :
+> 1. Votre **Raison sociale** (ou nom d'enseigne)
+> 2. Votre numéro **SIREN (9 chiffres) ou SIRET (14 chiffres)**
+> 3. L'**Adresse du siège social**
+> 4. La **Ville**
+>
+> *Tous les autres champs (TVA, capital social, RCS) sont **facultatifs** ou pré-remplis automatiquement.*
 
 ---
 
-## Volet 1 : Identité Juridique & Fiscale de l'Entreprise
+## Volet 1 : Identité Légale du Magasin (Renseigné directement par le Loueur)
 
-*Ces données sont inscrites sur l'ensemble des contrats de location scellés (`RENTAL_AGREEMENT`) et sur les décomptes officiels de reversement (`COMMISSION_STATEMENT`). Elles doivent être strictement conformes à votre extrait Kbis de moins de 3 mois.*
+*À saisir dans votre espace Uttily : **Menu > Paramètres > Identité Entreprise**.*
 
-| Champ requis | Description / Format attendu | Données du Partenaire |
-| :--- | :--- | :--- |
-| **Nom commercial (Enseigne)** | Nom public affiché aux clients sur Uttily | `[Ex: Cycles des Berges]` |
-| **Raison sociale légale** | Dénomination sociale exacte (Kbis) | `[Ex: CYCLES DES BERGES SAS]` |
-| **Forme juridique** | SAS, SARL, SASU, EURL, SA, EI | `[Ex: SAS]` |
-| **Numéro SIREN (9 chiffres)** | Identifiant INSEE de l'entreprise | `[Ex: 893 456 789]` |
-| **Numéro SIRET (14 chiffres)** | SIREN + NIC du siège social (contrôle de Luhn) | `[Ex: 893 456 789 00012]` |
-| **Ville d'immatriculation au RCS** | Greffe du tribunal de commerce compétent | `[Ex: Lyon]` |
-| **Capital social (€)** | Montant du capital social libéré | `[Ex: 10 000 €]` |
-| **Numéro de TVA Intracommunautaire** | `FR` + 2 chiffres de clé + 9 chiffres SIREN *(ou cocher Franchise en base art. 293 B)* | `[Ex: FR89893456789 ou NON ASSUJETTI]` |
-| **Adresse du siège social** | Numéro et nom de voie | `[Ex: 15 Quai Victor Augagneur]` |
-| **Code postal & Ville du siège** | Code postal 5 chiffres et commune | `[Ex: 69003 Lyon]` |
-| **Pays du siège social** | Code ISO (défaut : `FR`) | `FR` |
-| **Représentant légal (Gérant)** | Prénom, Nom et Qualité | `[Ex: Jean DUPONT, Président]` |
-| **Email officiel de l'entreprise** | Email administratif et comptable | `[Ex: contact@cyclesdesberges.fr]` |
+| Champ | Statut | Comment le remplir en 30 secondes | Exemple |
+| :--- | :---: | :--- | :--- |
+| **Nom commercial (Enseigne)** | **Indispensable** | Le nom de votre magasin affiché aux clients | `Cycles des Berges` |
+| **Raison sociale légale** | **Indispensable** | Nom légal de l'entreprise (ou nom/prénom si EI) | `CYCLES DES BERGES SAS` |
+| **Numéro SIREN ou SIRET** | **Indispensable** | 9 chiffres (SIREN) ou 14 chiffres (SIRET) | `893 456 789 00012` |
+| **Adresse du siège** | **Indispensable** | Numéro et rue du siège social | `15 Quai Victor Augagneur` |
+| **Code postal & Ville** | **Indispensable** | Code postal et commune | `69003 Lyon` |
+| **Forme juridique** | Optionnel | Menu déroulant simple (SAS, SARL, EI...) | `SAS` |
+| **Numéro de TVA** | Optionnel | Laisser vide si franchise en base de TVA (art. 293 B) | `FR89893456789` ou *laisser vide* |
+| **Représentant légal** | Optionnel | Nom et prénom du gérant / président | `Jean Dupont` |
+| **Ville du RCS** | Optionnel | Ville de votre greffe (ou laisser vide) | `Lyon` |
+| **Capital social** | Optionnel | Montant libéré (ou laisser vide) | `10 000 €` |
 
 ---
 
@@ -66,7 +65,9 @@ Le dossier comprend **5 volets** à renseigner :
 
 *Chaque équipement mis en location sur Uttily est tracé de manière unitaire avec son numéro de série afin de garantir l'absence totale de surbooking.*
 
-### Tableau de Flotte (Exemple de grille de saisie)
+> 💡 **Conseil de démarrage léger :** Inutile de saisir tout votre parc d'un coup. Pour lancer le pilote rapidement, **2 à 3 vélos représentatifs suffisent** (ex: 2 VAE + 1 vélo mécanique). Vous pourrez en ajouter d'autres à tout moment depuis votre tableau de bord.
+
+### Tableau de Flotte (Exemple de saisie rapide)
 
 | Réf. Interne | Catégorie | Marque & Modèle exact | Taille cadre | Numéro de Série Cadre (SN) | État physique initial | Accessoires fournis inclus |
 | :---: | :--- | :--- | :---: | :--- | :---: | :--- |
