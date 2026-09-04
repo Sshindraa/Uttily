@@ -892,6 +892,7 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
         timezone, prep_buffer_minutes, cleanup_buffer_minutes,
         subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
+        customer_total_amount_minor,
         tax_status, tax_amount_minor, tax_rate_bps, commission_amount_minor,
         billable_unit, billable_unit_count, currency, cancellation_policy_snapshot,
         marketplace_fee_snapshot
@@ -900,6 +901,7 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         '2026-04-10 09:00:00+00', '2026-04-12 17:00:00+00',
         '2026-04-10 08:30:00+00', '2026-04-12 17:30:00+00',
         'Europe/Paris', 30, 30, 10000, 0, 10000,
+        10700,
         'NOT_APPLICABLE', 0, NULL, 2000, 'DAY', 2, 'EUR',
         ${rawSql.json({ policy_code: 'FLEXIBLE', policy_version: '1', timezone: 'Europe/Paris' })},
         ${rawSql.json(splitSnapshot)}
@@ -1065,6 +1067,7 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
         timezone, prep_buffer_minutes, cleanup_buffer_minutes,
         subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
+        customer_total_amount_minor,
         tax_status, tax_amount_minor, tax_rate_bps, commission_amount_minor,
         billable_unit, billable_unit_count, currency, cancellation_policy_snapshot,
         marketplace_fee_snapshot
@@ -1073,6 +1076,7 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         '2026-04-10 09:00:00+00', '2026-04-12 17:00:00+00',
         '2026-04-10 08:30:00+00', '2026-04-12 17:30:00+00',
         'Europe/Paris', 30, 30, 10000, 0, 10000,
+        10700,
         'NOT_APPLICABLE', 0, NULL, 2000, 'DAY', 2, 'EUR',
         ${rawSql.json({ policy_code: 'MODERATE', policy_version: '1', timezone: 'Europe/Paris' })},
         ${rawSql.json(splitSnapshot)}
@@ -1099,6 +1103,7 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         status, customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
         timezone, prep_buffer_minutes, cleanup_buffer_minutes, currency,
         subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
+        customer_total_amount_minor,
         tax_status, tax_amount_minor, tax_rate_bps, commission_amount_minor,
         billable_unit, billable_unit_count, cancellation_policy_snapshot,
         terms_acceptance_snapshot, confirmed_at, marketplace_fee_snapshot
@@ -1106,7 +1111,8 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         ${org.id}, ${location.id}, ${user.id}, ${draft.id}, ${payment.id}, 'CANCELLED',
         '2026-04-10 09:00:00+00', '2026-04-12 17:00:00+00',
         '2026-04-10 08:30:00+00', '2026-04-12 17:30:00+00', 'Europe/Paris', 30, 30, 'EUR',
-        10000, 0, 10000, 'NOT_APPLICABLE', 0, NULL, 2000, 'DAY', 2,
+        10000, 0, 10000, 10700,
+        'NOT_APPLICABLE', 0, NULL, 2000, 'DAY', 2,
         ${rawSql.json({ policy_code: 'MODERATE', policy_version: '1', timezone: 'Europe/Paris' })},
         ${rawSql.json({ version: 'v1', user_id: user.id, accepted_at: '2026-01-01T00:00:00Z' })}, now(),
         ${rawSql.json(splitSnapshot)}
