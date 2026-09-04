@@ -954,6 +954,11 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         true, true, now()
       ) RETURNING id
     `.then((rows) => rows[0]!);
+    await rawSql`
+      UPDATE refunds
+      SET provider_idempotency_key = ${'refund_' + refund.id}
+      WHERE id = ${refund.id}
+    `;
     const cancellation = await rawSql`
       INSERT INTO booking_cancellations (
         organization_id, booking_id, cancelled_by_user_id,
@@ -1012,7 +1017,7 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
     expect(provider.calls[0]).toEqual({
       paymentIntentId: 'pi_intent_split_123',
       amountMinor: 10700,
-      idempotencyKey: 'refund_split_' + suffix,
+      idempotencyKey: 'refund_' + refund.id,
       reverseTransfer: true,
       refundApplicationFee: true,
       metadata: {
@@ -1132,6 +1137,11 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         true, true, now()
       ) RETURNING id
     `.then((rows) => rows[0]!);
+    await rawSql`
+      UPDATE refunds
+      SET provider_idempotency_key = ${'refund_' + refund.id}
+      WHERE id = ${refund.id}
+    `;
     const cancellation = await rawSql`
       INSERT INTO booking_cancellations (
         organization_id, booking_id, cancelled_by_user_id,
