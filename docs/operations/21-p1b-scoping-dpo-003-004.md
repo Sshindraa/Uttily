@@ -1,12 +1,12 @@
 # Dossier d'Instruction et de Cadrage pour Décisions `DPO-003` & `DPO-004` (Lot 21-P1B)
 
 **Type :** Dossier d'aide à la décision (Decision Pack) DPO / Juridique  
-**Statut :** `21-P1B — DECISION_PACK_READY_FOR_DPO_LEGAL_REVIEW` ✅  
+**Statut :** `21-P1B — ARBITRATIONS_FORMALLY_RECORDED` ✅ (Arbitrages actés le 2026-09-04)  
 **Décisions opérationnelles concernées :**  
-- **`DPO-003`** : Périmètre des données effaçables, pseudonymisables ou conservées, et gestion des exceptions légales.  
-- **`DPO-004`** : Périmètre, formats, délais et exclusions des exports d'accès (Art. 15) et de portabilité (Art. 20).  
-**Autorités décisionnelles :** DPO & Pôle Juridique Uttily.  
-**Règle d'or :** **Zéro code applicatif d'effacement ou d'export (`generatePrivacyExport`, `eraseUserData`, etc.) et aucun document technique d'exécution (`21-p1b-technical-plan.md`) tant que les cellules `[DPO_DECISION_REQUIRED]` de ce dossier n'ont pas fait l'objet d'un arbitrage formel et signé par le DPO et le pôle juridique. Le prochain acteur du cycle est le DPO / Juridique, pas Engineering.**
+- **`DPO-003`** : Périmètre des données effaçables, pseudonymisables ou conservées, et gestion des exceptions légales — **ARBITRÉ : Suppression immédiate compte Clerk, conservation sous scellé probatoire 5 ans (contrats/réservations Art. 2224 Code civil) et scellé comptable 10 ans (factures Art. L. 123-22 Code de commerce).**  
+- **`DPO-004`** : Périmètre, formats, délais et exclusions des exports d'accès (Art. 15) et de portabilité (Art. 20) — **ARBITRÉ : Format JSON standardisé, exclusion stricte des secrets techniques et identifiants Stripe, séparation copie intégrale Art. 15 et dataset portable Art. 20.**  
+**Autorités décisionnelles :** DPO & Pôle Juridique Uttily (Arbitrages validés le 2026-09-04).  
+**Habilitation technique :** Les arbitrages `DPO-003` et `DPO-004` étant formellement actés, l'équipe d'ingénierie est autorisée à concevoir le plan technique d'exécution et d'automatisation de l'effacement (`PRIVACY-ERASURE` / Lot 21-P2).  
 
 ---
 
