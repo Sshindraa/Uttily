@@ -145,4 +145,3 @@ export class AccountDeletedError extends Error {
     this.name = 'AccountDeletedError';
   }
 }
-

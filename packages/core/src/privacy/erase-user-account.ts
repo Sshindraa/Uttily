@@ -198,12 +198,7 @@ export async function eraseUserAccount(
 
   const result = await db.transaction(async (tx) => {
     // 1. Verrou sur la ligne utilisateur
-    const [user] = await tx
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .for('update')
-      .limit(1);
+    const [user] = await tx.select().from(users).where(eq(users.id, userId)).for('update').limit(1);
 
     if (!user) {
       throw new UserErasureError('USER_NOT_FOUND', 'Utilisateur introuvable.');

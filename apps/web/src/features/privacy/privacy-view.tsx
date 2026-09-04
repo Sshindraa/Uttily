@@ -575,7 +575,9 @@ export function PrivacyView({ locale, requests }: PrivacyViewProps): React.React
             </div>
             <div>
               <h2 className={styles.dangerCardTitle}>
-                {fr ? 'Zone de danger · Suppression définitive du compte' : 'Danger Zone · Permanent Account Deletion'}
+                {fr
+                  ? 'Zone de danger · Suppression définitive du compte'
+                  : 'Danger Zone · Permanent Account Deletion'}
               </h2>
               <p className={styles.dangerCardSubtitle}>
                 {fr
@@ -588,7 +590,9 @@ export function PrivacyView({ locale, requests }: PrivacyViewProps): React.React
           {erasureResult ? (
             <div className={styles.sealedSuccessBox}>
               <h3 className={styles.sealedSuccessTitle}>
-                {fr ? '✓ Votre compte a été effacé et scellé avec succès' : '✓ Your account has been successfully erased and sealed'}
+                {fr
+                  ? '✓ Votre compte a été effacé et scellé avec succès'
+                  : '✓ Your account has been successfully erased and sealed'}
               </h3>
               <p>
                 {fr
@@ -602,7 +606,9 @@ export function PrivacyView({ locale, requests }: PrivacyViewProps): React.React
                       ? 'Responsabilité civile contractuelle (Art. 2224 Code civil) :'
                       : 'Contractual civil liability (Art. 2224 Civil Code):'}
                   </strong>{' '}
-                  {fr ? 'Archives probatoires scellées jusqu’au ' : 'Evidentiary seal active until '}
+                  {fr
+                    ? 'Archives probatoires scellées jusqu’au '
+                    : 'Evidentiary seal active until '}
                   {new Date(erasureResult.civilRetentionUntil).toLocaleDateString(locale)} (5{' '}
                   {fr ? 'ans' : 'years'}).
                 </li>
@@ -613,8 +619,9 @@ export function PrivacyView({ locale, requests }: PrivacyViewProps): React.React
                       : 'Accounting & tax obligation (Art. L. 123-22 Commercial Code):'}
                   </strong>{' '}
                   {fr ? 'Conservation scellée jusqu’au ' : 'Sealed retention until '}
-                  {new Date(erasureResult.accountingRetentionUntil).toLocaleDateString(locale)} (10{' '}
-                  {fr ? 'ans' : 'years'}).
+                  {new Date(erasureResult.accountingRetentionUntil).toLocaleDateString(
+                    locale,
+                  )} (10 {fr ? 'ans' : 'years'}).
                 </li>
               </ul>
               <div>
@@ -675,7 +682,9 @@ export function PrivacyView({ locale, requests }: PrivacyViewProps): React.React
                 id="btn-open-erasure-modal"
               >
                 <TrashIcon size={16} />
-                {fr ? 'Supprimer définitivement mon compte (Art. 17)' : 'Permanently delete my account (Art. 17)'}
+                {fr
+                  ? 'Supprimer définitivement mon compte (Art. 17)'
+                  : 'Permanently delete my account (Art. 17)'}
               </button>
             </div>
           )}

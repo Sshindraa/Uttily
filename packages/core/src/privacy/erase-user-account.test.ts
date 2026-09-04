@@ -53,7 +53,8 @@ describe('Lot 21-P2 — Privacy Erasure & Probatory Seal (Unit)', () => {
 
     it('bloque l’effacement si des réservations actives existent', async () => {
       const fakeDb = {
-        select: vi.fn()
+        select: vi
+          .fn()
           // 1. users
           .mockReturnValueOnce({
             from: vi.fn().mockReturnValue({
@@ -89,7 +90,8 @@ describe('Lot 21-P2 — Privacy Erasure & Probatory Seal (Unit)', () => {
 
     it('bloque l’effacement si des brouillons en hold ou en paiement existent', async () => {
       const fakeDb = {
-        select: vi.fn()
+        select: vi
+          .fn()
           // 1. users
           .mockReturnValueOnce({
             from: vi.fn().mockReturnValue({
@@ -125,7 +127,8 @@ describe('Lot 21-P2 — Privacy Erasure & Probatory Seal (Unit)', () => {
 
     it('bloque l’effacement si le user est le seul owner d’une org avec du matériel actif', async () => {
       const fakeDb = {
-        select: vi.fn()
+        select: vi
+          .fn()
           // 1. users
           .mockReturnValueOnce({
             from: vi.fn().mockReturnValue({
@@ -177,7 +180,8 @@ describe('Lot 21-P2 — Privacy Erasure & Probatory Seal (Unit)', () => {
 
     it('autorise l’effacement pour un utilisateur propre sans conflit', async () => {
       const fakeDb = {
-        select: vi.fn()
+        select: vi
+          .fn()
           // 1. users
           .mockReturnValueOnce({
             from: vi.fn().mockReturnValue({
@@ -241,7 +245,8 @@ describe('Lot 21-P2 — Privacy Erasure & Probatory Seal (Unit)', () => {
     it('gère l’idempotence sans seconde écriture si déjà effacé', async () => {
       const pastDate = new Date('2026-08-01T10:00:00.000Z');
       const txMock = {
-        select: vi.fn()
+        select: vi
+          .fn()
           // 1. users check
           .mockReturnValueOnce({
             from: vi.fn().mockReturnValue({
@@ -300,7 +305,8 @@ describe('Lot 21-P2 — Privacy Erasure & Probatory Seal (Unit)', () => {
       });
 
       const txMock = {
-        select: vi.fn()
+        select: vi
+          .fn()
           // 1. users
           .mockReturnValueOnce({
             from: vi.fn().mockReturnValue({
@@ -385,7 +391,9 @@ describe('Lot 21-P2 — Privacy Erasure & Probatory Seal (Unit)', () => {
 
       // Calcul des dates : 5 ans et 10 ans
       expect(res.civilRetentionUntil.getTime()).toBeGreaterThan(res.sealedAt.getTime());
-      expect(res.accountingRetentionUntil.getTime()).toBeGreaterThan(res.civilRetentionUntil.getTime());
+      expect(res.accountingRetentionUntil.getTime()).toBeGreaterThan(
+        res.civilRetentionUntil.getTime(),
+      );
 
       // Vérifie l'appel Clerk
       expect(deleteClerkSpy).toHaveBeenCalledWith('user_clerk_123');
@@ -411,9 +419,11 @@ describe('Lot 21-P2 — Privacy Erasure & Probatory Seal (Unit)', () => {
         select: vi.fn().mockReturnValue({
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([
-                { id: 'req-1', requestType: 'ACCESS', status: 'IN_REVIEW', userId: 'u-1' },
-              ]),
+              limit: vi
+                .fn()
+                .mockResolvedValue([
+                  { id: 'req-1', requestType: 'ACCESS', status: 'IN_REVIEW', userId: 'u-1' },
+                ]),
             }),
           }),
         }),
@@ -432,9 +442,11 @@ describe('Lot 21-P2 — Privacy Erasure & Probatory Seal (Unit)', () => {
         select: vi.fn().mockReturnValue({
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([
-                { id: 'req-1', requestType: 'ERASURE', status: 'RECEIVED', userId: 'u-1' },
-              ]),
+              limit: vi
+                .fn()
+                .mockResolvedValue([
+                  { id: 'req-1', requestType: 'ERASURE', status: 'RECEIVED', userId: 'u-1' },
+                ]),
             }),
           }),
         }),

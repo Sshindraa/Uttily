@@ -820,7 +820,8 @@ export function PrivacySupportView({ initialData, filters }: PrivacySupportViewP
                     }}
                   >
                     <div className={styles.sectionTitle} style={{ color: '#991b1b' }}>
-                      Exécution de l’effacement & scellement probatoire (Art. 17 / DPO-003 & DPO-004)
+                      Exécution de l’effacement & scellement probatoire (Art. 17 / DPO-003 &
+                      DPO-004)
                     </div>
                     <p
                       style={{
@@ -832,8 +833,8 @@ export function PrivacySupportView({ initialData, filters }: PrivacySupportViewP
                     >
                       Cette action irréversible pseudonymise le compte utilisateur dans la base de
                       données, purge le compte dans Clerk, calcule et scelle les données conservées
-                      au titre des obligations probatoires (5 ans civil / 10 ans comptable), et passe
-                      la demande en « DÉCISION PRÊTE » avec résolution SATISFAITE.
+                      au titre des obligations probatoires (5 ans civil / 10 ans comptable), et
+                      passe la demande en « DÉCISION PRÊTE » avec résolution SATISFAITE.
                     </p>
                     {!erasureConfirmOpen ? (
                       <button

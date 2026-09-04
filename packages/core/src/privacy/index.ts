@@ -25,4 +25,3 @@ export {
   type UserErasureErrorCode,
 } from './erase-user-account';
 export { VALID_PRIVACY_REQUEST_TYPES } from './types';
-

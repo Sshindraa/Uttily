@@ -564,7 +564,12 @@ describe('Support Privacy Operations (Unit)', () => {
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
               limit: vi.fn().mockResolvedValue([
-                { id: 'req-access', requestType: 'ACCESS', status: 'IN_REVIEW', userId: 'user-1' },
+                {
+                  id: 'req-access',
+                  requestType: 'ACCESS',
+                  status: 'IN_REVIEW',
+                  userId: 'user-1',
+                },
               ]),
             }),
           }),
@@ -585,7 +590,12 @@ describe('Support Privacy Operations (Unit)', () => {
           from: vi.fn().mockReturnValue({
             where: vi.fn().mockReturnValue({
               limit: vi.fn().mockResolvedValue([
-                { id: 'req-erasure', requestType: 'ERASURE', status: 'RECEIVED', userId: 'user-1' },
+                {
+                  id: 'req-erasure',
+                  requestType: 'ERASURE',
+                  status: 'RECEIVED',
+                  userId: 'user-1',
+                },
               ]),
             }),
           }),

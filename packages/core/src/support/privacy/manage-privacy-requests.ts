@@ -587,4 +587,3 @@ export async function executeErasurePrivacyRequest(
     deleteExternalIdentity,
   });
 }
-

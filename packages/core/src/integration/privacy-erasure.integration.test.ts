@@ -245,7 +245,7 @@ describe('Lot 21-P2: Privacy Erasure & Probatory Seal (PostgreSQL Integration)',
         blockedEndAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
         prepBufferMinutes: 30,
         cleanupBufferMinutes: 30,
-        billableUnit: 'CALENDAR_DAY',
+        billableUnit: 'DAY',
         billableUnitCount: 2,
         timezone: 'Europe/Paris',
         currency: 'EUR',
@@ -309,7 +309,9 @@ describe('Lot 21-P2: Privacy Erasure & Probatory Seal (PostgreSQL Integration)',
     expect(seal!.sealedBookingsCount).toBe(1);
     expect(seal!.triggerSource).toBe('SELF_SERVICE');
     expect(seal!.civilRetentionUntil.getTime()).toBeGreaterThan(seal!.sealedAt.getTime());
-    expect(seal!.accountingRetentionUntil.getTime()).toBeGreaterThan(seal!.civilRetentionUntil.getTime());
+    expect(seal!.accountingRetentionUntil.getTime()).toBeGreaterThan(
+      seal!.civilRetentionUntil.getTime(),
+    );
 
     // 3. Vérifier que la réservation passée et l'audit log pointent toujours vers l'utilisateur (intégrité intacte)
     const [reloadedBooking] = await db
@@ -410,7 +412,7 @@ describe('Lot 21-P2: Privacy Erasure & Probatory Seal (PostgreSQL Integration)',
       blockedEndAt: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
       prepBufferMinutes: 30,
       cleanupBufferMinutes: 30,
-      billableUnit: 'CALENDAR_DAY',
+      billableUnit: 'DAY',
       billableUnitCount: 2,
       timezone: 'Europe/Paris',
       currency: 'EUR',
@@ -455,7 +457,7 @@ describe('Lot 21-P2: Privacy Erasure & Probatory Seal (PostgreSQL Integration)',
 
     const eligibility = await checkUserErasureEligibility(db, f.user.id);
     expect(eligibility.eligible).toBe(false);
-    expect(eligibility.reasons).toContain('ORGANISATION_SOLE_OWNER');
+    expect(eligibility.reasons.some((r) => r.includes('seul propriétaire'))).toBe(true);
 
     await expect(
       eraseUserAccount(db, {

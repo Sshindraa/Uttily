@@ -206,7 +206,8 @@ export async function executeSupportErasureAction(
         } catch (clerkErr) {
           const isNotFound =
             clerkErr instanceof Error &&
-            (clerkErr.message.includes('404') || clerkErr.message.toLowerCase().includes('not found'));
+            (clerkErr.message.includes('404') ||
+              clerkErr.message.toLowerCase().includes('not found'));
           if (!isNotFound) {
             console.error('[SupportPrivacyErasure] Clerk deletion warning:', clerkErr);
           }
@@ -219,4 +220,3 @@ export async function executeSupportErasureAction(
     return handleActionError(err);
   }
 }
-

@@ -3520,4 +3520,3 @@ export const privacyProbatorySeals = pgTable(
 
 export type PrivacyProbatorySealRecord = typeof privacyProbatorySeals.$inferSelect;
 export type NewPrivacyProbatorySealRecord = typeof privacyProbatorySeals.$inferInsert;
-
