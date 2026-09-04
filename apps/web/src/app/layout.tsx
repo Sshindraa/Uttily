@@ -1,4 +1,5 @@
 import { ClerkProvider } from '@clerk/nextjs';
+import { frFR } from '@clerk/localizations';
 import type { Metadata } from 'next';
 import '@uttily/ui/tokens.css';
 import { UTTILY_FONT_FAMILY } from '@/lib/typography';
@@ -19,6 +20,7 @@ export default function RootLayout({
 }): React.ReactElement {
   return (
     <ClerkProvider
+      localization={frFR}
       appearance={{
         variables: {
           fontFamily: UTTILY_FONT_FAMILY,
