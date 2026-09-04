@@ -2,13 +2,11 @@
 
 **Référence de version :** document vivant ; vérifier le commit courant du dépôt
 avant utilisation. Les anciennes baselines `origin/main = ...` sont historiques.
-**Dernière revue de cohérence :** 2026-08-30
-**Statut :** `READY_FOR_DATA_COLLECTION`
-**Données réelles :** aucune
+**Dernière revue de cohérence :** 2026-09-04  
+**Statut :** `READY_FOR_DATA_COLLECTION` (Gabarit officiel prêt : [`pilot-partner-onboarding-kit.md`](./pilot-partner-onboarding-kit.md))  
+**Données réelles :** en cours de collecte via le kit officiel  
 
-Ce dossier est un formulaire de préparation. Il ne contient aucun nom,
-identifiant, SIRET, compte Stripe, contact, adresse ou donnée réelle de
-partenaire. Tous les champs commencent à `NOT_PROVIDED`.
+Ce dossier est le registre de suivi de collecte. Le formulaire prêt à l'emploi à transmettre au partenaire est disponible dans [`pilot-partner-onboarding-kit.md`](./pilot-partner-onboarding-kit.md). Il ne contient aucun nom, identifiant, SIRET, compte Stripe, contact, adresse ou donnée réelle de partenaire dans Git. Tous les champs commencent à `NOT_PROVIDED`.
 
 États autorisés :
 
