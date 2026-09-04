@@ -928,6 +928,7 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         status, customer_start_at, customer_end_at, blocked_start_at, blocked_end_at,
         timezone, prep_buffer_minutes, cleanup_buffer_minutes, currency,
         subtotal_amount_minor, mandatory_fees_amount_minor, total_amount_minor,
+        customer_total_amount_minor,
         tax_status, tax_amount_minor, tax_rate_bps, commission_amount_minor,
         billable_unit, billable_unit_count, cancellation_policy_snapshot,
         terms_acceptance_snapshot, confirmed_at, marketplace_fee_snapshot
@@ -935,7 +936,8 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         ${org.id}, ${location.id}, ${user.id}, ${draft.id}, ${payment.id}, 'CANCELLED',
         '2026-04-10 09:00:00+00', '2026-04-12 17:00:00+00',
         '2026-04-10 08:30:00+00', '2026-04-12 17:30:00+00', 'Europe/Paris', 30, 30, 'EUR',
-        10000, 0, 10000, 'NOT_APPLICABLE', 0, NULL, 2000, 'DAY', 2,
+        10000, 0, 10000, 10700,
+        'NOT_APPLICABLE', 0, NULL, 2000, 'DAY', 2,
         ${rawSql.json({ policy_code: 'FLEXIBLE', policy_version: '1', timezone: 'Europe/Paris' })},
         ${rawSql.json({ version: 'v1', user_id: user.id, accepted_at: '2026-01-01T00:00:00Z' })}, now(),
         ${rawSql.json(splitSnapshot)}
@@ -948,11 +950,11 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         reverse_transfer, refund_application_fee, requested_at
       ) VALUES (
         ${org.id}, ${payment.id}, 'PENDING',
-        'MERCHANT_CANCELLATION', 10700, 'EUR', ${'refund_split_' + suffix},
+        'CUSTOMER_CANCELLATION', 10700, 'EUR', ${'refund_split_' + suffix},
         true, true, now()
       ) RETURNING id
     `.then((rows) => rows[0]!);
-    await rawSql`
+    const cancellation = await rawSql`
       INSERT INTO booking_cancellations (
         organization_id, booking_id, cancelled_by_user_id,
         actor_reason, policy_code, policy_snapshot,
@@ -963,27 +965,27 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         marketplace_fee_snapshot
       ) VALUES (
         ${org.id}, ${booking.id}, ${user.id},
-        'MERCHANT_CANCELLATION', 'FLEXIBLE',
+        'CUSTOMER_CANCELLATION', 'FLEXIBLE',
         ${rawSql.json({ policy_code: 'FLEXIBLE', policy_version: '1' })},
         10700, 10700, 0, 2000, 2000, 0, 0,
         'EUR', 'FULL_REFUND_MERCHANT', true, ${refund.id},
         ${rawSql.json(splitSnapshot)}
       ) RETURNING id
-    `;
+    `.then((rows) => rows[0]!);
     const outbox = await rawSql`
       INSERT INTO outbox_events (
         organization_id, aggregate_type, aggregate_id,
         event_type, event_version, payload,
         status, attempt_count, available_at, idempotency_key
       ) VALUES (
-        ${org.id}, 'BOOKING', ${booking.id},
+        ${org.id}, 'REFUND', ${refund.id},
         'REFUND_REQUESTED', 'v2',
         ${rawSql.json({
+          organizationId: org.id,
           bookingId: booking.id,
-          origin: {
-            kind: 'BOOKING_CANCELLATION',
-            cancellationId: crypto.randomUUID(),
-          },
+          refundId: refund.id,
+          origin: 'BOOKING_CANCELLATION',
+          cancellationId: cancellation.id,
         })},
         'PENDING', 0, now() - interval '1 second',
         ${'outbox_split_' + suffix}
@@ -1130,7 +1132,7 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         true, true, now()
       ) RETURNING id
     `.then((rows) => rows[0]!);
-    await rawSql`
+    const cancellation = await rawSql`
       INSERT INTO booking_cancellations (
         organization_id, booking_id, cancelled_by_user_id,
         actor_reason, policy_code, policy_snapshot,
@@ -1147,21 +1149,21 @@ describe.skipIf(shouldSkipIntegrationTests())('refund-request-execution — Post
         'EUR', 'MODERATE_24H_5D', true, ${refund.id},
         ${rawSql.json(splitSnapshot)}
       ) RETURNING id
-    `;
+    `.then((rows) => rows[0]!);
     await rawSql`
       INSERT INTO outbox_events (
         organization_id, aggregate_type, aggregate_id,
         event_type, event_version, payload,
         status, attempt_count, available_at, idempotency_key
       ) VALUES (
-        ${org.id}, 'BOOKING', ${booking.id},
+        ${org.id}, 'REFUND', ${refund.id},
         'REFUND_REQUESTED', 'v2',
         ${rawSql.json({
+          organizationId: org.id,
           bookingId: booking.id,
-          origin: {
-            kind: 'BOOKING_CANCELLATION',
-            cancellationId: crypto.randomUUID(),
-          },
+          refundId: refund.id,
+          origin: 'BOOKING_CANCELLATION',
+          cancellationId: cancellation.id,
         })},
         'PENDING', 0, now() - interval '1 second',
         ${'outbox_part_' + suffix}
