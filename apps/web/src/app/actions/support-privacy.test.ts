@@ -7,12 +7,23 @@ import {
   recordExtensionNotificationAction,
   recordPrivacyResponseNotificationAction,
   resolvePrivacyRequestAction,
+  executeSupportErasureAction,
 } from './support-privacy';
 import * as supportAuth from '@/lib/support-auth';
 import * as core from '@uttily/core';
 
 vi.mock('@/lib/support-auth', () => ({
   requireSupportPlatformAdmin: vi.fn(),
+}));
+
+vi.mock('@clerk/nextjs/server', () => ({
+  clerkClient: vi.fn(() =>
+    Promise.resolve({
+      users: {
+        deleteUser: vi.fn(),
+      },
+    }),
+  ),
 }));
 
 vi.mock('@uttily/core', async (importOriginal) => {
@@ -25,6 +36,7 @@ vi.mock('@uttily/core', async (importOriginal) => {
     recordExtensionNotification: vi.fn(),
     recordPrivacyResponseNotification: vi.fn(),
     resolvePrivacyRequest: vi.fn(),
+    executeErasurePrivacyRequest: vi.fn(),
   };
 });
 
@@ -211,6 +223,58 @@ describe('Support Privacy Server Actions', () => {
         expect(res.data.status).toBe('COMPLETED');
         expect(res.data.responseNotifiedAt).toEqual(notifDate);
       }
+    });
+  });
+
+  describe('executeSupportErasureAction (Lot 21-P2)', () => {
+    it('échoue si l’utilisateur n’est pas administrateur', async () => {
+      vi.spyOn(supportAuth, 'requireSupportPlatformAdmin').mockRejectedValueOnce(
+        new Error('UNAUTHENTICATED'),
+      );
+
+      const res = await executeSupportErasureAction('req-erasure-1');
+      expect(res.ok).toBe(false);
+      if (!res.ok) {
+        expect(res.code).toBe('UNAUTHENTICATED');
+      }
+    });
+
+    it('exécute l’effacement et retourne le résultat de scellement probatoire', async () => {
+      vi.spyOn(supportAuth, 'requireSupportPlatformAdmin').mockResolvedValueOnce({
+        user: adminUser,
+        db: fakeDb,
+      });
+
+      const civilDate = new Date('2031-09-04T12:00:00.000Z');
+      const accountingDate = new Date('2036-09-04T12:00:00.000Z');
+
+      vi.spyOn(core, 'executeErasurePrivacyRequest').mockResolvedValueOnce({
+        ok: true,
+        alreadyErased: false,
+        userId: 'pseudonymized-user-id',
+        sealedAt: new Date('2026-09-04T12:00:00.000Z'),
+        civilRetentionUntil: civilDate,
+        accountingRetentionUntil: accountingDate,
+        sealedBookingsCount: 5,
+        sealedPaymentsCount: 5,
+        sealedDocumentsCount: 2,
+        externalIdentityDeleted: true,
+      });
+
+      const res = await executeSupportErasureAction('req-erasure-2');
+      expect(res.ok).toBe(true);
+      if (res.ok) {
+        expect(res.data.userId).toBe('pseudonymized-user-id');
+        expect(res.data.civilRetentionUntil).toEqual(civilDate);
+        expect(res.data.accountingRetentionUntil).toEqual(accountingDate);
+        expect(res.data.sealedBookingsCount).toBe(5);
+      }
+
+      expect(core.executeErasurePrivacyRequest).toHaveBeenCalledWith(fakeDb, {
+        requestId: 'req-erasure-2',
+        actorUserId: adminUser.id,
+        deleteExternalIdentity: expect.any(Function),
+      });
     });
   });
 });

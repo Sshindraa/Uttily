@@ -21,6 +21,12 @@ vi.mock('next/navigation', () => ({
   redirect: redirectMock,
 }));
 
+vi.mock('@clerk/nextjs', () => ({
+  useClerk: () => ({
+    signOut: vi.fn(),
+  }),
+}));
+
 vi.mock('@uttily/core', async () => {
   const actual = await vi.importActual<Record<string, unknown>>('@uttily/core');
   return {

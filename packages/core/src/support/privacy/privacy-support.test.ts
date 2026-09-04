@@ -5,6 +5,7 @@ import {
   flagPrivacyRequestIdentityCheck,
   resolvePrivacyRequest,
   startPrivacyRequestReview,
+  executeErasurePrivacyRequest,
 } from './manage-privacy-requests';
 import { listPrivacyRequestsSupport } from './list-privacy-requests';
 import { PrivacySupportActionError } from './types';
@@ -534,6 +535,79 @@ describe('Support Privacy Operations (Unit)', () => {
       expect(result.items[2]!.urgency).toBe('DUE_OK');
       expect(result.items[0]!.userEmail).toBe('client@example.com');
       expect(result.items[0]!.userDisplayName).toBe('Jean Dupont');
+    });
+  });
+
+  describe('executeErasurePrivacyRequest (Lot 21-P2)', () => {
+    it('lève NOT_FOUND si la demande n’existe pas', async () => {
+      const fakeDb = {
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([]),
+            }),
+          }),
+        }),
+      } as unknown as DatabaseClient;
+
+      await expect(
+        executeErasurePrivacyRequest(fakeDb, {
+          requestId: 'req-inexistant',
+          actorUserId: 'admin-1',
+        }),
+      ).rejects.toThrow('Demande RGPD introuvable');
+    });
+
+    it('lève INVALID_REQUEST_TYPE si la demande n’est pas de type ERASURE', async () => {
+      const fakeDb = {
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([
+                {
+                  id: 'req-access',
+                  requestType: 'ACCESS',
+                  status: 'IN_REVIEW',
+                  userId: 'user-1',
+                },
+              ]),
+            }),
+          }),
+        }),
+      } as unknown as DatabaseClient;
+
+      await expect(
+        executeErasurePrivacyRequest(fakeDb, {
+          requestId: 'req-access',
+          actorUserId: 'admin-1',
+        }),
+      ).rejects.toThrow('Seule une demande d’effacement (ERASURE)');
+    });
+
+    it('lève INVALID_STATE_TRANSITION si la demande n’est pas IN_REVIEW', async () => {
+      const fakeDb = {
+        select: vi.fn().mockReturnValue({
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([
+                {
+                  id: 'req-erasure',
+                  requestType: 'ERASURE',
+                  status: 'RECEIVED',
+                  userId: 'user-1',
+                },
+              ]),
+            }),
+          }),
+        }),
+      } as unknown as DatabaseClient;
+
+      await expect(
+        executeErasurePrivacyRequest(fakeDb, {
+          requestId: 'req-erasure',
+          actorUserId: 'admin-1',
+        }),
+      ).rejects.toThrow('La demande doit être en cours d’instruction (IN_REVIEW)');
     });
   });
 });

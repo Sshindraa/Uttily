@@ -138,3 +138,10 @@ export interface InvitationInput {
   invitedBy: string;
   ttlSeconds?: number;
 }
+
+export class AccountDeletedError extends Error {
+  constructor(message = 'Ce compte utilisateur a été supprimé et ne peut plus être utilisé.') {
+    super(message);
+    this.name = 'AccountDeletedError';
+  }
+}

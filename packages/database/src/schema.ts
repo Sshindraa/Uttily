@@ -3483,3 +3483,40 @@ export const privacyRequests = pgTable(
 
 export type PrivacyRequestRecord = typeof privacyRequests.$inferSelect;
 export type NewPrivacyRequestRecord = typeof privacyRequests.$inferInsert;
+
+// Lot 21-P2 — RGPD Droit à l'effacement : registre des scellements probatoires (ADR-039).
+export const privacyProbatorySeals = pgTable(
+  'privacy_probatory_seals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    sealedAt: timestamp('sealed_at', { withTimezone: true }).notNull().defaultNow(),
+    civilRetentionUntil: timestamp('civil_retention_until', { withTimezone: true }).notNull(),
+    accountingRetentionUntil: timestamp('accounting_retention_until', {
+      withTimezone: true,
+    }).notNull(),
+    sealedBookingsCount: integer('sealed_bookings_count').notNull().default(0),
+    sealedPaymentsCount: integer('sealed_payments_count').notNull().default(0),
+    sealedDocumentsCount: integer('sealed_documents_count').notNull().default(0),
+    triggerSource: text('trigger_source').notNull(),
+    privacyRequestId: uuid('privacy_request_id').references(() => privacyRequests.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('privacy_probatory_seals_user_id_idx').on(t.userId),
+    check(
+      'privacy_probatory_seals_dates_consistency',
+      sql`${t.civilRetentionUntil} > ${t.sealedAt} AND ${t.accountingRetentionUntil} >= ${t.civilRetentionUntil}`,
+    ),
+    check(
+      'privacy_probatory_seals_trigger_source_not_empty',
+      sql`length(btrim(${t.triggerSource})) > 0`,
+    ),
+  ],
+);
+
+export type PrivacyProbatorySealRecord = typeof privacyProbatorySeals.$inferSelect;
+export type NewPrivacyProbatorySealRecord = typeof privacyProbatorySeals.$inferInsert;

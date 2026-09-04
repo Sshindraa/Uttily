@@ -2,13 +2,17 @@ import { eq } from 'drizzle-orm';
 import type { DatabaseClient } from '@uttily/database';
 import { users } from '@uttily/database';
 import type { AuthenticatedUser } from './types';
+import { AccountDeletedError } from './types';
 
 /**
- * Provisioning d'un utilisateur Uttily depuis l'identité Clerk (ADR-006).
+ * Provisioning d'un utilisateur Uttily depuis l'identité Clerk (ADR-006, ADR-039).
  *
  * À la première connexion authentifiée, Uttily crée un `users` avec
  * oidc_subject + oidc_provider + email. Si l'utilisateur existe déjà
  * (par oidc_subject ou email), il est réutilisé.
+ *
+ * Si le compte a été supprimé / neutralisé (deletedAt !== null), la connexion
+ * est strictement rejetée (fail-closed, ADR-039).
  *
  * Uttily reste la source de vérité des rôles et appartenances.
  */
@@ -33,6 +37,9 @@ export async function provisionUserFromOidc(
       .limit(1);
 
     if (bySubject) {
+      if (bySubject.deletedAt !== null) {
+        throw new AccountDeletedError();
+      }
       return mapUser(bySubject);
     }
 
@@ -46,6 +53,9 @@ export async function provisionUserFromOidc(
       .limit(1);
 
     if (byEmail) {
+      if (byEmail.deletedAt !== null) {
+        throw new AccountDeletedError();
+      }
       // Relie le compte à l'identité OIDC.
       const [updated] = await tx
         .update(users)
@@ -83,10 +93,20 @@ export async function provisionUserFromOidc(
       .from(users)
       .where(eq(users.oidcSubject, input.oidcSubject))
       .limit(1);
-    if (winnerBySubject) return mapUser(winnerBySubject);
+    if (winnerBySubject) {
+      if (winnerBySubject.deletedAt !== null) {
+        throw new AccountDeletedError();
+      }
+      return mapUser(winnerBySubject);
+    }
 
     const [winnerByEmail] = await tx.select().from(users).where(eq(users.email, email)).limit(1);
-    if (winnerByEmail) return mapUser(winnerByEmail);
+    if (winnerByEmail) {
+      if (winnerByEmail.deletedAt !== null) {
+        throw new AccountDeletedError();
+      }
+      return mapUser(winnerByEmail);
+    }
 
     throw new Error('Échec de création utilisateur.');
   });

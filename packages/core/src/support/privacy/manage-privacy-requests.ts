@@ -12,6 +12,7 @@ import {
   type StartPrivacyReviewInput,
   PrivacySupportActionError,
 } from './types';
+import { eraseUserAccount, type EraseUserAccountResult } from '../../privacy/erase-user-account';
 
 const VALID_RESOLUTIONS = ['FULFILLED', 'PARTIALLY_FULFILLED', 'REFUSED'] as const;
 
@@ -535,5 +536,54 @@ export async function resolvePrivacyRequest(
     resolution,
     decisionReasonCode: input.decisionReasonCode,
     resolutionNotes: input.resolutionNotes,
+  });
+}
+
+/**
+ * 7. Exécution d'un effacement RGPD (ERASURE / Art. 17) ordonnée par le support (Lot 21-P2, ADR-039).
+ * - Vérifie que la demande est en cours d'instruction (IN_REVIEW) et porte sur un effacement (ERASURE).
+ * - Exécute l'effacement et le scellement probatoire via eraseUserAccount.
+ * - La demande passe en DECISION_READY avec la mention de rétention probatoire.
+ */
+export async function executeErasurePrivacyRequest(
+  db: DatabaseClient,
+  input: {
+    requestId: string;
+    actorUserId: string;
+    deleteExternalIdentity?: ((oidcSubject: string) => Promise<void>) | undefined;
+  },
+): Promise<EraseUserAccountResult> {
+  const { requestId, actorUserId, deleteExternalIdentity } = input;
+
+  const [req] = await db
+    .select()
+    .from(privacyRequests)
+    .where(eq(privacyRequests.id, requestId))
+    .limit(1);
+
+  if (!req) {
+    throw new PrivacySupportActionError('NOT_FOUND', 'Demande RGPD introuvable.');
+  }
+
+  if (req.requestType !== 'ERASURE') {
+    throw new PrivacySupportActionError(
+      'INVALID_REQUEST_TYPE',
+      `Seule une demande d’effacement (ERASURE) peut faire l’objet d’une exécution d’effacement (type actuel : ${req.requestType}).`,
+    );
+  }
+
+  if (req.status !== 'IN_REVIEW') {
+    throw new PrivacySupportActionError(
+      'INVALID_STATE_TRANSITION',
+      `La demande doit être en cours d’instruction (IN_REVIEW) pour exécuter l’effacement (statut actuel : ${req.status}).`,
+    );
+  }
+
+  return eraseUserAccount(db, {
+    userId: req.userId,
+    actorUserId,
+    triggerSource: 'SUPPORT_REQUEST',
+    privacyRequestId: req.id,
+    deleteExternalIdentity,
   });
 }
