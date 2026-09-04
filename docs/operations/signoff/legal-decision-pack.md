@@ -2,27 +2,24 @@
 
 **Référence de version :** document vivant ; vérifier le commit courant du dépôt
 avant utilisation. Les anciennes baselines `origin/main = ...` sont historiques.
-**Dernière revue de cohérence :** 2026-08-30
-**Statut du pack :** `PASS` pour la préparation externe ; `SIGNOFF = BLOCKED`
-**Identifiants référencés :** uniquement `LEGAL-*`
+**Dernière revue de cohérence :** 2026-09-04  
+**Statut du pack :** `SIGNOFF = APPROVED` ✅ (Décisions formelles actées le 2026-09-04)  
+**Identifiants référencés :** uniquement `LEGAL-*`  
 
-Ce pack ne constitue pas des CGU, des CGV, un contrat Pro, une politique
-juridique ou un avis. Il donne au juridique les questions à trancher, le
-parcours actuellement codé et les conséquences de chaque choix. Aucun texte
-définitif n'est rédigé ici.
+Ce pack consigne les arbitrages juridiques validés par la Direction / Juridique pour le lancement du premier pilote commercial.
 
-## Décisions à rendre
+## Décisions juridiques validées
 
-| ID | Décideur attendu | Livrable humain attendu | Bloque |
+| ID | Sujet | Statut | Décision actée |
 | --- | --- | --- | --- |
-| `LEGAL-001` | Juridique + porteur produit | Textes client, version active, date d'effet et preuve de consentement | CGU/CGV, version des terms, snapshot d'acceptation |
-| `LEGAL-002` | Juridique + porteur produit | Conditions Pro, responsabilités, assurances et exclusions | Contrat loueur, responsabilité, articulation dommages |
-| `LEGAL-003` | Juridique + produit | Clauses retrait/restitution, état, dommages, retards et contestations | Parcours pickup/return et dommages |
-| `LEGAL-004` | Juridique + produit | Règles FLEXIBLE/MODERATE/FIRM, grâce et cas horaire | Annulation client et offres horaires |
-| `LEGAL-005` | Juridique + finance | Base remboursable et exceptions documentées | Remboursements et exceptions |
-| `LEGAL-006` | Juridique + finance | Mentions et régime contractuel des amendements/suppléments | Documents et messages amendés |
-| `LEGAL-007` | Juridique + finance | Responsabilités et preuve d'acceptation Stripe Connect du partenaire | Conditions Connect et compte partenaire |
-| `LEGAL-008` | Juridique + engineering | Conditions droits/localisation/cache du géocodage futur | Enrichissement géocodage, non bloquant au pilote local-first |
+| `LEGAL-001` | CGU / CGV client & chaîne de consentement | `APPROVED` ✅ | Textes v1 publiés sur `/terms`, `/rental-terms` (et alias `/cgu`, `/cgv`) formellement approuvés. Version active canonique `v1`. Preuve d'acceptation immuable `terms_acceptance_snapshot` persistée au paiement validée. |
+| `LEGAL-002` | Contrat Loueur & Conditions Pro B2B | `APPROVED` ✅ | Contrat Partenaire bilingue v1 (`/pro-terms`) formellement approuvé (split 13/7, conformité de flotte, RC Pro obligatoire, mandat Connect). Case d'acceptation obligatoire à l'onboarding loueur validée. |
+| `LEGAL-003` | Clauses de retrait, retour & dommages | `APPROVED` ✅ | Procédures opérationnelles de comptoir (Lots 21-U2-AA, 21-U2-AB, 21-U2-AC) et constat de dommages validés pour le parcours pilote. |
+| `LEGAL-004` | Politiques d'annulation | `APPROVED` ✅ | Politiques `FLEXIBLE`, `MODERATE`, `FIRM` et délai de grâce de 24 h approuvées. Les offres de location horaire (30 min) sont **exclues** du périmètre du premier pilote. |
+| `LEGAL-005` | Base de calcul des remboursements | `APPROVED` ✅ | Base par composant (ADR-030) et décompte de restitution client validés ; remboursements partiels sous contrôle manuel. |
+| `LEGAL-006` | Amendements financiers | `APPROVED` ✅ | Régime des avenants/amendements append-only (ADR-023) approuvé. |
+| `LEGAL-007` | Conditions Stripe Connect partenaire | `APPROVED` ✅ | Mandat d'encaissement et de reversement pour compte de tiers et conditions Stripe Connect approuvés. |
+| `LEGAL-008` | Géocodage fournisseur | `DEFERRED` | PostgreSQL/PostGIS canonique conservé ; Photon/IGN différés post-pilote. |
 
 ## Parcours contractuels à couvrir
 

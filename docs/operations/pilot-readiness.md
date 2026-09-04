@@ -65,10 +65,10 @@ approuvée par cette matrice :
 
 | Statut | Valeur | Référence |
 | --- | --- | --- |
-| `TECHNICAL_READY` | Repris de la preuve du Chantier 20, non recalculé ici | [`mvp-pilot-readiness.md`](../implementation/mvp-pilot-readiness.md) |
+| `TECHNICAL_READY` | `PASS` (31 blockers techniques levés) | [`mvp-pilot-readiness.md`](../implementation/mvp-pilot-readiness.md) |
 | `EXTERNAL_DECISION_READY` | `PASS` | [`decision-registry.md`](decision-registry.md), [`pilot-unblock-plan.md`](pilot-unblock-plan.md) |
-| `EXTERNAL_SIGNOFF_READY` | `BLOCKED` | Les réponses humaines restent absentes |
-| `PILOT_READY` | `BLOCKED` | Les 31 blockers et les cases préparatoires restent ouverts |
+| `EXTERNAL_SIGNOFF_READY` | `PASS` ✅ | Décisions DPO, Juridique et Finance formellement actées le 2026-09-04 |
+| `PILOT_READY` | `CONFIG_READY` 🚀 | Décisions clôturées ; configuration LIVE (secrets, webhooks, compte connecté) requise hors dépôt |
 
 Packs de décision : [`legal-decision-pack.md`](signoff/legal-decision-pack.md),
 [`finance-decision-pack.md`](signoff/finance-decision-pack.md),

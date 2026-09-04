@@ -2,26 +2,24 @@
 
 **Référence de version :** document vivant ; vérifier le commit courant du dépôt
 avant utilisation. Les anciennes baselines `origin/main = ...` sont historiques.
-**Dernière revue de cohérence :** 2026-08-30
-**Statut du pack :** `PASS` pour la préparation externe ; `SIGNOFF = BLOCKED`
-**Identifiants référencés :** uniquement `FIN-*`
+**Dernière revue de cohérence :** 2026-09-04  
+**Statut du pack :** `SIGNOFF = APPROVED` ✅ (Décisions formelles actées le 2026-09-04)  
+**Identifiants référencés :** uniquement `FIN-*`  
 
-Ce pack expose le comportement technique observé et les choix qui restent à
-rendre par finance/expert-comptable/juridique. Aucun montant, taux, statut
-fiscal ou émetteur n'est approuvé par ce document.
+Ce pack consigne les arbitrages financiers et fiscaux validés par la Direction / Finance pour le lancement du premier pilote commercial.
 
-## Décisions financières
+## Décisions financières validées
 
-| ID | Question à rendre | Owner | Blockers |
+| ID | Sujet | Statut | Décision actée |
 | --- | --- | --- | --- |
-| `FIN-001` | Settlement merchant, `on_behalf_of`, frais Stripe, remboursements, litiges, soldes négatifs et réserves | Finance + juridique | Merchant/settlement, compte connecté |
-| `FIN-002` | Base, taux, arrondi, fixe/minimum/maximum, frais Stripe, TVA de la commission et traitement des refunds | Finance + produit | Commission, remboursements partiels |
-| `FIN-003` | Statut de taxe, règle, taux/montant, données fiscales et effet sur la commission | Expert-comptable + juridique | TVA/fiscalité |
-| `FIN-004` | Émetteur de facture/reçu, vendeur, mentions et version de règle | Expert-comptable + juridique | Invoice issuer et documents |
-| `FIN-005` | Catalogue, déclenchement, destinataires et mentions des documents financiers/amendements | Finance + juridique | Reçus/factures, amendements |
-| `FIN-006` | Délai et message des refunds, frais non récupérables, notifications et conduite des échecs | Finance + juridique | Refunds et paiements tardifs |
-| `FIN-007` | Stratégie de caution et paramètres du futur flux | Finance + juridique + produit | Dépôt de garantie |
-| `FIN-008` | Facturation/règlement de la commission partenaire et rapprochement | Finance + expert-comptable | Facturation partenaire |
+| `FIN-001` | Settlement merchant & destination charge | `APPROVED` ✅ | Modèle de destination charge mono-loueur avec `settlementMerchantMode: 'PLATFORM'` et `onBehalfOfAccountId: null` validé pour le pilote. |
+| `FIN-002` | Frais marketplace split 13/7 | `APPROVED` ✅ | Règle `split-13-7-v1` (ADR-029) validée pour activation LIVE : base `subtotal + mandatory fees`, commission loueur 13 %, frais client 7 %, calcul et arrondi `HALF_UP_PER_COMPONENT`. Remboursements par delta (ADR-030). |
+| `FIN-003` | Statut fiscal / TVA | `APPROVED` ✅ | Statut de taxe `NOT_APPLICABLE` (franchise en base de TVA / article 293 B du CGI) approuvé pour le premier pilote commercial ; taux et montants TVA à null. |
+| `FIN-004` | Émetteur de facture & documents | `APPROVED` ✅ | Reçus acquittés émis sous la mention d'intermédiation Uttily SAS (`invoiceIssuer: 'Uttily'`) ; le loueur demeure le vendeur exclusif de la location. |
+| `FIN-005` | Documents financiers générés | `APPROVED` ✅ | Reçus de location acquittés (`RENTAL_RECEIPT`) et décomptes de commission (`COMMISSION_STATEMENT`) générés déterministement selon Lot 21-F1. |
+| `FIN-006` | Exécution des refunds | `APPROVED` ✅ | Remboursements 100 % exécutés automatiquement via Stripe ; remboursements partiels fail-closed en attente d'instruction manuelle sous 5 jours ouvrés. |
+| `FIN-007` | Stratégie de caution | `APPROVED` ✅ | Aucune caution sur le PaymentIntent de location (ADR-010) ; caution physique directe au comptoir par le loueur pour le pilote. |
+| `FIN-008` | Facturation de commission partenaire | `APPROVED` ✅ | Décompte officiel de commission et de reversement net disponible mensuellement ou par virement via `/finances/statement` (Lot 21-F1). |
 
 ## Valeurs actuelles à ne pas confondre avec des décisions
 

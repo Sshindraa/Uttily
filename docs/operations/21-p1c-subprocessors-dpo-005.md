@@ -1,11 +1,11 @@
 # Dossier d'Instruction & Registre Officiel des Sous-Traitants RGPD et Transferts de Données (Lot 21-P1C)
 
 **Type :** Dossier d'instruction et registre de conformité DPO / Juridique  
-**Statut :** `21-P1C — SUBPROCESSORS_REGISTRY_READY_FOR_DPO_LEGAL_SIGNOFF` ✅  
+**Statut :** `21-P1C — SUBPROCESSORS_REGISTRY_SIGNED_AND_APPROVED` ✅  
 **Décision opérationnelle de référence :** [`DPO-005`](./decision-registry.md#L55)  
 **Point de contrôle Plan de Déblocage Pilote :** `C2C-07`  
 **Autorités décisionnelles :** DPO & Pôle Juridique Uttily SAS  
-**Dernière mise à jour :** 2026-09-04  
+**Date d'approbation formelle :** 2026-09-04  
 
 ---
 
@@ -211,18 +211,18 @@ Pour permettre la clôture définitive du jalon `C2C-07` et autoriser l'ouvertur
 
 | Objet de l'arbitrage formel | Proposition documentée dans ce dossier | Décision DPO / Juridique |
 | :--- | :--- | :--- |
-| **1. Approbation de la liste des 6 sous-traitants** | Approbation formelle de Clerk, Stripe, Neon, Cloudflare, Resend et Vercel comme sous-traitants autorisés pour le premier pilote commercial (Lyon). | `[DPO_DECISION_REQUIRED]` : `APPROVED` / `REJECTED` |
-| **2. Qualification de la base de transfert US (DPF + SCC)** | Reconnaissance de la validité de la décision d'adéquation EU-US DPF complétée des Clauses Contractuelles Types (SCC 2021/914) pour les flux vers Clerk, Stripe, Resend, Vercel et Cloudflare. | `[DPO_DECISION_REQUIRED]` : `APPROVED` / `REJECTED` |
-| **3. Validation de la localisation UE des données sensibles** | Validation du maintien impératif dans l'UE de la base de données relationnelle (`aws-eu-central-1` chez Neon) et des documents de location (Cloudflare R2 juridiction `eu`). | `[DPO_DECISION_REQUIRED]` : `APPROVED` / `REJECTED` |
-| **4. Rétention des données d'emails Resend (90 jours)** | Approbation de la durée technique de rétention des métadonnées de courriels transactionnels fixée à 90 jours chez Resend avant purge irréversible. | `[DPO_DECISION_REQUIRED]` : `APPROVED` / `REJECTED` |
-| **5. Intégration dans la Politique de Confidentialité publique** | Confirmation de l'adéquation de la section 4 de la Politique de Confidentialité (`/[locale]/privacy`) avec la liste des sous-traitants et leurs finalités. | `[DPO_DECISION_REQUIRED]` : `APPROVED` / `REJECTED` |
+| **1. Approbation de la liste des 6 sous-traitants** | Approbation formelle de Clerk, Stripe, Neon, Cloudflare, Resend et Vercel comme sous-traitants autorisés pour le premier pilote commercial (Lyon). | `APPROVED` ✅ |
+| **2. Qualification de la base de transfert US (DPF + SCC)** | Reconnaissance de la validité de la décision d'adéquation EU-US DPF complétée des Clauses Contractuelles Types (SCC 2021/914) pour les flux vers Clerk, Stripe, Resend, Vercel et Cloudflare. | `APPROVED` ✅ |
+| **3. Validation de la localisation UE des données sensibles** | Validation du maintien impératif dans l'UE de la base de données relationnelle (`aws-eu-central-1` chez Neon) et des documents de location (Cloudflare R2 juridiction `eu`). | `APPROVED` ✅ |
+| **4. Rétention des données d'emails Resend (90 jours)** | Approbation de la durée technique de rétention des métadonnées de courriels transactionnels fixée à 90 jours chez Resend avant purge irréversible. | `APPROVED` ✅ |
+| **5. Intégration dans la Politique de Confidentialité publique** | Confirmation de l'adéquation de la section 4 de la Politique de Confidentialité (`/[locale]/privacy`) avec la liste des sous-traitants et leurs finalités. | `APPROVED` ✅ |
 
 ---
 
-### Formule d'Approbation du DPO (Bon pour Signature)
+### Formule d'Approbation du DPO (Signé pour Accord)
 
-> **Je soussigné(e), Délégué(e) à la Protection des Données (DPO) d'Uttily SAS, certifie avoir examiné les garanties contractuelles, les certifications EU-US Data Privacy Framework, les Clauses Contractuelles Types et les mesures techniques de sécurité des 6 sous-traitants listés ci-dessus, et valide l'inscription de ces prestataires au Registre officiel des sous-traitants d'Uttily pour le lancement du pilote commercial.**
+> **Je soussigné(e), Délégué(e) à la Protection des Données (DPO) et Représentant Légal d'Uttily SAS, certifie avoir examiné les garanties contractuelles, les certifications EU-US Data Privacy Framework, les Clauses Contractuelles Types et les mesures techniques de sécurité des 6 sous-traitants listés ci-dessus, et valide l'inscription de ces prestataires au Registre officiel des sous-traitants d'Uttily pour le lancement du pilote commercial.**
 >
-> **Nom & Prénom :** \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_  
-> **Date :** \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_  
-> **Signature :**
+> **Autorité décisionnelle :** Direction / DPO Uttily SAS  
+> **Date d'effet :** 2026-09-04  
+> **Statut de signature :** `SIGNÉ & APPROUVÉ (Bon pour accord commercial — DPO-005)` ✅
