@@ -1483,7 +1483,7 @@ describe.skipIf(shouldSkipIntegrationTests())('G7P-B2-A — Pricing snapshot fou
       const __dirname = dirname(fileURLToPath(import.meta.url));
       const journalPath = join(__dirname, '..', 'drizzle', 'meta', '_journal.json');
       const journal = JSON.parse(readFileSync(journalPath, 'utf-8'));
-      expect(journal.entries.length).toBe(58);
+      expect(journal.entries.length).toBe(59);
       expect(journal.entries[32]!.tag).toBe('0033_g7p_b2_pricing_snapshots');
       expect(journal.entries[32]!.idx).toBe(32);
     } finally {

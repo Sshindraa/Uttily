@@ -16,4 +16,13 @@ export type {
   Article20PortableData,
   PersonalDataExport,
 } from './types';
+export {
+  eraseUserAccount,
+  checkUserErasureEligibility,
+  UserErasureError,
+  type EraseUserAccountInput,
+  type EraseUserAccountResult,
+  type UserErasureErrorCode,
+} from './erase-user-account';
 export { VALID_PRIVACY_REQUEST_TYPES } from './types';
+

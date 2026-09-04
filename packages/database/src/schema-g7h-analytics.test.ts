@@ -249,7 +249,7 @@ describe.skipIf(shouldSkipIntegrationTests())('G7H-A — Fondations analytics', 
         const __dirname = dirname(fileURLToPath(import.meta.url));
         const journalPath = join(__dirname, '..', 'drizzle', 'meta', '_journal.json');
         const journal = JSON.parse(readFileSync(journalPath, 'utf-8'));
-        expect(journal.entries.length).toBe(58);
+        expect(journal.entries.length).toBe(59);
         expect(journal.entries[34]!.tag).toBe('0035_g7h_analytics_foundations');
         expect(journal.entries[34]!.idx).toBe(34);
       } finally {

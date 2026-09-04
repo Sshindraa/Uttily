@@ -315,7 +315,7 @@ describe.skipIf(shouldSkipIntegrationTests())('G7F-A2 — Photos et gate de publ
         const __dirname = dirname(fileURLToPath(import.meta.url));
         const journalPath = join(__dirname, '..', 'drizzle', 'meta', '_journal.json');
         const journal = JSON.parse(readFileSync(journalPath, 'utf-8'));
-        expect(journal.entries.length).toBe(58);
+        expect(journal.entries.length).toBe(59);
         expect(journal.entries[33]!.tag).toBe('0034_g7f_a_product_photos');
         expect(journal.entries[33]!.idx).toBe(33);
       } finally {

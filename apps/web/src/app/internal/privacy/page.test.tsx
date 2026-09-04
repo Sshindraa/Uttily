@@ -21,6 +21,7 @@ describe('PrivacySupportPage (Lot 21-P1A)', () => {
     expect(featureSource).toContain('flagPrivacyIdentityCheckAction');
     expect(featureSource).toContain('extendPrivacyDeadlineAction');
     expect(featureSource).toContain('resolvePrivacyRequestAction');
+    expect(featureSource).toContain('executeSupportErasureAction');
     expect(featureSource).toContain('Opérations & Droits RGPD');
     expect(featureSource).toContain('Art. 12.4');
     expect(featureSource).not.toContain('requireSupportPlatformAdmin');

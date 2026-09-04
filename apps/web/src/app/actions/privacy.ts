@@ -3,8 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
+import { clerkClient } from '@clerk/nextjs/server';
 import {
   createPrivacyRequest,
+  eraseUserAccount,
+  UserErasureError,
   VALID_PRIVACY_REQUEST_TYPES,
   type PrivacyRequestType,
 } from '@uttily/core';
@@ -73,3 +76,71 @@ export async function submitPrivacyRequestAction(
     };
   }
 }
+
+export interface EraseAccountActionResult {
+  readonly userId: string;
+  readonly civilRetentionUntil: string;
+  readonly accountingRetentionUntil: string;
+}
+
+/**
+ * Server Action pour l'effacement autonome et immédiat de son propre compte (Art. 17 RGPD).
+ * Neutralise le compte dans Uttily, crée le scellé probatoire et supprime l'identité dans Clerk.
+ */
+export async function eraseMyAccountAction(): Promise<PrivacyActionResult<EraseAccountActionResult>> {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return {
+      ok: false,
+      error: 'UNAUTHENTICATED',
+      message: 'Vous devez être connecté pour supprimer votre compte.',
+    };
+  }
+
+  try {
+    const db = getDb();
+    const result = await eraseUserAccount(db, {
+      userId: user.id,
+      actorUserId: user.id,
+      triggerSource: 'SELF_SERVICE',
+      deleteExternalIdentity: async (oidcSubject: string) => {
+        try {
+          const client = await clerkClient();
+          await client.users.deleteUser(oidcSubject);
+        } catch (clerkErr) {
+          const isNotFound =
+            clerkErr instanceof Error &&
+            (clerkErr.message.includes('404') || clerkErr.message.toLowerCase().includes('not found'));
+          if (!isNotFound) {
+            console.error('[PrivacyErasure] Clerk deletion warning:', clerkErr);
+          }
+        }
+      },
+    });
+
+    revalidatePath('/', 'layout');
+
+    return {
+      ok: true,
+      data: {
+        userId: result.userId,
+        civilRetentionUntil: result.civilRetentionUntil.toISOString(),
+        accountingRetentionUntil: result.accountingRetentionUntil.toISOString(),
+      },
+    };
+  } catch (err) {
+    if (err instanceof UserErasureError) {
+      return {
+        ok: false,
+        error: err.code,
+        message: err.message,
+      };
+    }
+    return {
+      ok: false,
+      error: 'INTERNAL_ERROR',
+      message: 'Une erreur inattendue est survenue lors de l’effacement de votre compte.',
+    };
+  }
+}
+

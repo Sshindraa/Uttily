@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { useClerk } from '@clerk/nextjs';
 import type { PrivacyRequestSummary, PrivacyRequestType } from '@uttily/core';
 import { Card, Badge, PageHeader, Icon } from '@uttily/ui';
 import type { BadgeTone } from '@uttily/ui';
-import { submitPrivacyRequestAction } from '@/app/actions/privacy';
+import { eraseMyAccountAction, submitPrivacyRequestAction } from '@/app/actions/privacy';
 import styles from './privacy-view.module.css';
 
 interface PrivacyViewProps {
@@ -109,6 +110,27 @@ function AlertTriangleIcon({ size = 18 }: { size?: number }): React.ReactElement
   );
 }
 
+function TrashIcon({ size = 18 }: { size?: number }): React.ReactElement {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+      <line x1="14" y1="11" x2="14" y2="17" />
+    </svg>
+  );
+}
+
 function getStatusBadge(status: string, fr: boolean): { label: string; tone: BadgeTone } {
   switch (status) {
     case 'RECEIVED':
@@ -151,12 +173,67 @@ function getRequestTypeLabel(type: PrivacyRequestType, fr: boolean): string {
 
 export function PrivacyView({ locale, requests }: PrivacyViewProps): React.ReactElement {
   const fr = locale === 'fr';
+  const { signOut } = useClerk();
 
   const [requestType, setRequestType] = useState<PrivacyRequestType>('ACCESS');
   const [details, setDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionSuccess, setSubmissionSuccess] = useState<string | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+
+  // Self-service account erasure state (Art. 17 RGPD / Lot 21-P2)
+  const [showErasureModal, setShowErasureModal] = useState(false);
+  const [erasureConfirmInput, setErasureConfirmInput] = useState('');
+  const [isErasing, setIsErasing] = useState(false);
+  const [erasureError, setErasureError] = useState<string | null>(null);
+  const [erasureResult, setErasureResult] = useState<{
+    civilRetentionUntil: string;
+    accountingRetentionUntil: string;
+  } | null>(null);
+
+  async function handleSignOutAfterErasure(): Promise<void> {
+    try {
+      await signOut({ redirectUrl: `/${locale}` });
+    } catch {
+      window.location.href = `/${locale}`;
+    }
+  }
+
+  async function handleErasureSubmit(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    const expectedWord = fr ? 'SUPPRIMER' : 'DELETE';
+    if (erasureConfirmInput.trim().toUpperCase() !== expectedWord) {
+      setErasureError(
+        fr
+          ? `Veuillez saisir exactement « ${expectedWord} » pour confirmer.`
+          : `Please type exactly "${expectedWord}" to confirm.`,
+      );
+      return;
+    }
+
+    setIsErasing(true);
+    setErasureError(null);
+    try {
+      const res = await eraseMyAccountAction();
+      if (res.ok) {
+        setErasureResult({
+          civilRetentionUntil: res.data.civilRetentionUntil,
+          accountingRetentionUntil: res.data.accountingRetentionUntil,
+        });
+        setShowErasureModal(false);
+      } else {
+        setErasureError(res.message);
+      }
+    } catch {
+      setErasureError(
+        fr
+          ? 'Une erreur inattendue est survenue lors de l’effacement.'
+          : 'An unexpected error occurred during erasure.',
+      );
+    } finally {
+      setIsErasing(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -489,7 +566,195 @@ export function PrivacyView({ locale, requests }: PrivacyViewProps): React.React
             </p>
           </div>
         </Card>
+
+        {/* Section 5 : Zone de danger - Effacement autonome du compte (Art. 17 RGPD) */}
+        <div className={styles.dangerCard} id="section-danger-erasure">
+          <div className={styles.dangerCardHeader}>
+            <div className={styles.dangerIconCircle}>
+              <TrashIcon size={20} />
+            </div>
+            <div>
+              <h2 className={styles.dangerCardTitle}>
+                {fr ? 'Zone de danger · Suppression définitive du compte' : 'Danger Zone · Permanent Account Deletion'}
+              </h2>
+              <p className={styles.dangerCardSubtitle}>
+                {fr
+                  ? 'Exercez votre droit à l’effacement (Art. 17 RGPD) avec purge d’identité et scellement probatoire.'
+                  : 'Exercise your right to erasure (Art. 17 GDPR) with identity purge and evidentiary seal.'}
+              </p>
+            </div>
+          </div>
+
+          {erasureResult ? (
+            <div className={styles.sealedSuccessBox}>
+              <h3 className={styles.sealedSuccessTitle}>
+                {fr ? '✓ Votre compte a été effacé et scellé avec succès' : '✓ Your account has been successfully erased and sealed'}
+              </h3>
+              <p>
+                {fr
+                  ? 'Vos identifiants personnels directs ont été détruits dans notre base de données et votre session Clerk a été révoquée. Conformément aux arbitrages DPO (DPO-003 & DPO-004), les données relatives à vos transactions passées sont placées sous scellé probatoire et ne sont plus exploitables commercialement :'
+                  : 'Your direct personal identifiers have been destroyed in our database and your Clerk session has been revoked. In accordance with DPO arbitrations (DPO-003 & DPO-004), past transactional data has been placed under evidentiary seal:'}
+              </p>
+              <ul className={styles.sealedDatesList}>
+                <li>
+                  <strong>
+                    {fr
+                      ? 'Responsabilité civile contractuelle (Art. 2224 Code civil) :'
+                      : 'Contractual civil liability (Art. 2224 Civil Code):'}
+                  </strong>{' '}
+                  {fr ? 'Archives probatoires scellées jusqu’au ' : 'Evidentiary seal active until '}
+                  {new Date(erasureResult.civilRetentionUntil).toLocaleDateString(locale)} (5{' '}
+                  {fr ? 'ans' : 'years'}).
+                </li>
+                <li>
+                  <strong>
+                    {fr
+                      ? 'Obligation comptable et fiscale (Art. L. 123-22 Code de commerce) :'
+                      : 'Accounting & tax obligation (Art. L. 123-22 Commercial Code):'}
+                  </strong>{' '}
+                  {fr ? 'Conservation scellée jusqu’au ' : 'Sealed retention until '}
+                  {new Date(erasureResult.accountingRetentionUntil).toLocaleDateString(locale)} (10{' '}
+                  {fr ? 'ans' : 'years'}).
+                </li>
+              </ul>
+              <div>
+                <button
+                  type="button"
+                  className={styles.buttonPrimary}
+                  onClick={handleSignOutAfterErasure}
+                  id="btn-signout-after-erasure"
+                >
+                  {fr ? 'Terminer et quitter' : 'Finish and leave'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className={styles.dangerContent}>
+              <p>
+                {fr
+                  ? 'La suppression de votre compte est irréversible. Dès validation, votre adresse email, votre nom et vos identifiants d’authentification sont immédiatement détruits dans notre base de données et auprès de notre fournisseur d’identité Clerk.'
+                  : 'Deleting your account is irreversible. Upon confirmation, your email address, name, and authentication credentials will be immediately destroyed in our database and with Clerk.'}
+              </p>
+
+              <div className={styles.dangerNotice}>
+                <p>
+                  <strong>
+                    {fr
+                      ? 'Garanties légales probatoires (DPO-003 / DPO-004) :'
+                      : 'Statutory evidentiary safeguards (DPO-003 / DPO-004):'}
+                  </strong>
+                </p>
+                <p>
+                  {fr
+                    ? 'Conformément à l’Art. 17.3.b et e du RGPD, vos contrats de location exécutés et factures émises sont conservés sous scellé probatoire sécurisé pendant 5 ans (responsabilité civile) et 10 ans (obligation légale comptable). Ces données sont strictement séquestrées et inaccessibles aux opérations courantes.'
+                    : 'Pursuant to Art. 17.3.b and e of GDPR, completed contracts and issued invoices are retained in a secure evidentiary vault for 5 years (civil liability) and 10 years (accounting obligations). These records are quarantined and inaccessible for normal operations.'}
+                </p>
+                <p>
+                  <strong>{fr ? 'Conditions préalables :' : 'Prerequisites:'}</strong>{' '}
+                  {fr
+                    ? 'Vous ne devez avoir aucune réservation en cours (active ou confirmée à venir), ni être l’unique propriétaire d’une organisation possédant des équipements actifs.'
+                    : 'You must have no ongoing or upcoming confirmed bookings, and you must not be the sole owner of an organisation with active equipment.'}
+                </p>
+              </div>
+
+              {erasureError && !showErasureModal && (
+                <div className={styles.alertError} role="alert">
+                  <AlertTriangleIcon size={18} />
+                  <span>{erasureError}</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                className={styles.buttonDanger}
+                onClick={() => {
+                  setErasureError(null);
+                  setErasureConfirmInput('');
+                  setShowErasureModal(true);
+                }}
+                id="btn-open-erasure-modal"
+              >
+                <TrashIcon size={16} />
+                {fr ? 'Supprimer définitivement mon compte (Art. 17)' : 'Permanently delete my account (Art. 17)'}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Modal de confirmation d'effacement */}
+      {showErasureModal && (
+        <div
+          className={styles.modalOverlay}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="erasure-modal-title"
+        >
+          <div className={styles.modalContent}>
+            <h3 id="erasure-modal-title" className={styles.modalTitle}>
+              {fr ? 'Confirmer la suppression irréversible' : 'Confirm Permanent Erasure'}
+            </h3>
+            <p className={styles.modalDescription}>
+              {fr
+                ? 'Cette action est définitive. Votre profil et vos accès seront immédiatement détruits. Pour confirmer, veuillez saisir « SUPPRIMER » ci-dessous :'
+                : 'This action is final. Your profile and access will be immediately destroyed. To confirm, please type "DELETE" below:'}
+            </p>
+
+            {erasureError && (
+              <div className={styles.alertError} role="alert">
+                <AlertTriangleIcon size={18} />
+                <span>{erasureError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleErasureSubmit} className={styles.form}>
+              <div className={styles.confirmInputGroup}>
+                <label htmlFor="input-confirm-erasure">
+                  {fr ? 'Mot de confirmation :' : 'Confirmation word:'}
+                </label>
+                <input
+                  id="input-confirm-erasure"
+                  type="text"
+                  value={erasureConfirmInput}
+                  onChange={(e) => setErasureConfirmInput(e.target.value)}
+                  placeholder={fr ? 'SUPPRIMER' : 'DELETE'}
+                  className={styles.select}
+                  autoFocus
+                  required
+                />
+              </div>
+
+              <div className={styles.modalActions}>
+                <button
+                  type="button"
+                  className={styles.buttonSecondary}
+                  onClick={() => setShowErasureModal(false)}
+                  disabled={isErasing}
+                >
+                  {fr ? 'Annuler' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  className={styles.buttonDanger}
+                  disabled={
+                    isErasing ||
+                    erasureConfirmInput.trim().toUpperCase() !== (fr ? 'SUPPRIMER' : 'DELETE')
+                  }
+                  id="btn-confirm-account-erasure"
+                >
+                  {isErasing
+                    ? fr
+                      ? 'Suppression...'
+                      : 'Deleting...'
+                    : fr
+                      ? 'Confirmer la suppression'
+                      : 'Confirm deletion'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

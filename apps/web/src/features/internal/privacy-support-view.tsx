@@ -14,6 +14,7 @@ import {
   recordPrivacyResponseNotificationAction,
   resolvePrivacyRequestAction,
   startPrivacyReviewAction,
+  executeSupportErasureAction,
 } from '@/app/actions/support-privacy';
 import styles from './privacy-support.module.css';
 
@@ -64,6 +65,7 @@ export function PrivacySupportView({ initialData, filters }: PrivacySupportViewP
   const [selectedRequest, setSelectedRequest] = useState<SupportPrivacyRequestItem | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionMessage, setActionMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [erasureConfirmOpen, setErasureConfirmOpen] = useState(false);
 
   // Form states in drawer
   const [extensionDate, setExtensionDate] = useState('');
@@ -98,6 +100,7 @@ export function PrivacySupportView({ initialData, filters }: PrivacySupportViewP
     setResolutionStatus('FULFILLED');
     setDecisionReasonCode('');
     setResolutionNotes('');
+    setErasureConfirmOpen(false);
   };
 
   const closeDrawer = () => {
@@ -239,6 +242,29 @@ export function PrivacySupportView({ initialData, filters }: PrivacySupportViewP
       }
     } catch {
       setActionMessage({ ok: false, text: 'Erreur inattendue.' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleExecuteErasure = async () => {
+    if (!selectedRequest) return;
+    setActionLoading(true);
+    setActionMessage(null);
+    try {
+      const res = await executeSupportErasureAction(selectedRequest.id);
+      if (res.ok) {
+        setActionMessage({
+          ok: true,
+          text: `Effacement exécuté avec succès : compte pseudonymisé, identité Clerk purgée, scellé probatoire créé (conservation civile jusqu’au ${new Date(res.data.civilRetentionUntil).toLocaleDateString('fr-FR')}, comptable jusqu’au ${new Date(res.data.accountingRetentionUntil).toLocaleDateString('fr-FR')}). Statut passé à DÉCISION PRÊTE (SATISFAITE).`,
+        });
+        setErasureConfirmOpen(false);
+        router.refresh();
+      } else {
+        setActionMessage({ ok: false, text: res.message });
+      }
+    } catch {
+      setActionMessage({ ok: false, text: 'Erreur inattendue lors de l’effacement.' });
     } finally {
       setActionLoading(false);
     }
@@ -780,6 +806,94 @@ export function PrivacySupportView({ initialData, filters }: PrivacySupportViewP
                       : 'Enregistrer la décision interne (Étape 1/2)'}
                   </button>
                 </form>
+
+                {/* Opération d’effacement & scellement probatoire (ERASURE en IN_REVIEW) */}
+                {selectedRequest.requestType === 'ERASURE' && (
+                  <div
+                    className={styles.section}
+                    style={{
+                      borderTop: '1px solid #fee2e2',
+                      background: '#fff5f5',
+                      padding: '1rem',
+                      borderRadius: '6px',
+                      marginTop: '1rem',
+                    }}
+                  >
+                    <div className={styles.sectionTitle} style={{ color: '#991b1b' }}>
+                      Exécution de l’effacement & scellement probatoire (Art. 17 / DPO-003 & DPO-004)
+                    </div>
+                    <p
+                      style={{
+                        fontSize: '0.85rem',
+                        color: '#7f1d1d',
+                        margin: '0 0 0.75rem 0',
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      Cette action irréversible pseudonymise le compte utilisateur dans la base de
+                      données, purge le compte dans Clerk, calcule et scelle les données conservées
+                      au titre des obligations probatoires (5 ans civil / 10 ans comptable), et passe
+                      la demande en « DÉCISION PRÊTE » avec résolution SATISFAITE.
+                    </p>
+                    {!erasureConfirmOpen ? (
+                      <button
+                        type="button"
+                        className={styles.btnDanger}
+                        disabled={actionLoading}
+                        onClick={() => setErasureConfirmOpen(true)}
+                        id="btn-open-erasure-confirm"
+                      >
+                        🗑 Exécuter l’effacement et le scellement probatoire
+                      </button>
+                    ) : (
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.5rem',
+                          background: '#ffffff',
+                          padding: '0.75rem',
+                          borderRadius: '6px',
+                          border: '1px solid #fca5a5',
+                        }}
+                      >
+                        <p
+                          style={{
+                            fontSize: '0.85rem',
+                            fontWeight: 600,
+                            color: '#991b1b',
+                            margin: 0,
+                          }}
+                        >
+                          Confirmer l’effacement immédiat pour {selectedRequest.userDisplayName} (
+                          {selectedRequest.userEmail ?? selectedRequest.userId}) ?
+                        </p>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button
+                            type="button"
+                            className={styles.btnDanger}
+                            disabled={actionLoading}
+                            onClick={handleExecuteErasure}
+                            id="btn-confirm-support-erasure"
+                          >
+                            {actionLoading
+                              ? 'Exécution en cours...'
+                              : 'Oui, exécuter l’effacement irréversible'}
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.tabBtn}
+                            style={{ border: '1px solid #cbd5e1' }}
+                            disabled={actionLoading}
+                            onClick={() => setErasureConfirmOpen(false)}
+                          >
+                            Annuler
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
 

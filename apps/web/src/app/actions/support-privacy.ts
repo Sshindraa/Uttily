@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireSupportPlatformAdmin } from '@/lib/support-auth';
+import { clerkClient } from '@clerk/nextjs/server';
 import {
   extendPrivacyRequestDeadline,
   flagPrivacyRequestIdentityCheck,
@@ -9,6 +10,8 @@ import {
   recordPrivacyResponseNotification,
   resolvePrivacyRequest,
   startPrivacyRequestReview,
+  executeErasurePrivacyRequest,
+  type EraseUserAccountResult,
   PrivacySupportActionError,
 } from '@uttily/core';
 import type { ActionResult } from '@uttily/contracts';
@@ -184,3 +187,36 @@ export async function recordPrivacyResponseNotificationAction(requestId: string)
     return handleActionError(err);
   }
 }
+
+/**
+ * 6. Exécution de l'effacement RGPD et scellement probatoire (Art. 17 RGPD, ADR-039).
+ */
+export async function executeSupportErasureAction(
+  requestId: string,
+): Promise<ActionResult<EraseUserAccountResult>> {
+  try {
+    const { db, user } = await requireSupportPlatformAdmin();
+    const result = await executeErasurePrivacyRequest(db, {
+      requestId,
+      actorUserId: user.id,
+      deleteExternalIdentity: async (oidcSubject: string) => {
+        try {
+          const client = await clerkClient();
+          await client.users.deleteUser(oidcSubject);
+        } catch (clerkErr) {
+          const isNotFound =
+            clerkErr instanceof Error &&
+            (clerkErr.message.includes('404') || clerkErr.message.toLowerCase().includes('not found'));
+          if (!isNotFound) {
+            console.error('[SupportPrivacyErasure] Clerk deletion warning:', clerkErr);
+          }
+        }
+      },
+    });
+    revalidatePath('/internal/privacy');
+    return { ok: true, data: result };
+  } catch (err: unknown) {
+    return handleActionError(err);
+  }
+}
+
