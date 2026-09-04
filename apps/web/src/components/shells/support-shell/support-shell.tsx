@@ -68,6 +68,9 @@ export function SupportShell({
             <Link href="/internal/audit" className={styles.navLink}>
               📜 Journal d’audit
             </Link>
+            <Link href="/internal/privacy" className={styles.navLink}>
+              🛡️ Données & Privacy
+            </Link>
             <Link href="/internal/analytics" className={styles.navLink}>
               📊 Funnel produit
             </Link>

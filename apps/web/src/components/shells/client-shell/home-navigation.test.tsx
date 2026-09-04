@@ -102,7 +102,12 @@ describe('Uttily homepage navigation', () => {
 
   it('keeps the menu and host links within the existing Uttily routes', () => {
     const html = renderToStaticMarkup(<HomeNavigation />);
-    for (const href of ['/onboarding/organization', '/fr/account/bookings', '/dashboard']) {
+    for (const href of [
+      '/onboarding/organization',
+      '/fr/account/bookings',
+      '/fr/account/privacy',
+      '/dashboard',
+    ]) {
       expect(html).toContain(`href="${href}"`);
     }
     expect(html).toContain('<details');

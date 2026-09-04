@@ -986,4 +986,24 @@ describe('PdfLibDocumentRenderer', () => {
       }
     }
   });
+
+  it('génère un reçu de paiement avec les mentions légales complètes (SIRET, RCS, TVA, Siège)', async () => {
+    const renderer = new PdfLibDocumentRenderer();
+    const snapshot = makeValidSnapshot();
+    snapshot.organization = {
+      ...snapshot.organization,
+      legalForm: 'SAS',
+      registrationNumber: '73282932000074',
+      vatNumber: 'FR44732829320',
+      registryCity: 'Annecy',
+      capitalAmount: '10 000 €',
+      registeredOfficeAddress: '15 Quai de la Tournette',
+      registeredOfficePostalCode: '74000',
+      registeredOfficeCity: 'Annecy',
+    };
+    const rendered = await renderer.render('payment-receipt-technical-v1', snapshot);
+    expect(rendered.contentType).toBe('application/pdf');
+    expect(rendered.sizeBytes).toBeGreaterThan(1000);
+    expect(rendered.checksumSha256).toHaveLength(64);
+  });
 });

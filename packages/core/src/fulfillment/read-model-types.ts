@@ -112,6 +112,14 @@ export interface OperationalFulfillmentEvent {
   occurredAt: Date;
 }
 
+export interface OperationalBookingDocument {
+  id: string;
+  type: string;
+  contentType: string;
+  sizeBytes: number;
+  createdAt: Date;
+}
+
 export interface OperationalBookingDetails {
   id: string;
   status: BookingStatus;
@@ -125,4 +133,5 @@ export interface OperationalBookingDetails {
   conditionReports: OperationalConditionReport[];
   damageReports: OperationalDamageReport[];
   fulfillmentEvents: OperationalFulfillmentEvent[];
+  documents?: OperationalBookingDocument[];
 }

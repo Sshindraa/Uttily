@@ -39,3 +39,15 @@ export interface MarketplaceFeeDeltaSnapshot {
   readonly merchantNetDeltaAmountMinor: number;
   readonly platformApplicationFeeDeltaAmountMinor: number;
 }
+
+/** Répartition d'un remboursement d'annulation sous le modèle split 13/7 (ADR-030). */
+export interface SplitCancellationRefundAllocation {
+  readonly refundPercentage: number;
+  readonly customerRefundAmountMinor: number;
+  readonly customerRetainedAmountMinor: number;
+  readonly merchantClawbackAmountMinor: number;
+  readonly finalMerchantRevenueMinor: number;
+  readonly platformFeeRefundedMinor: number;
+  readonly finalPlatformFeeMinor: number;
+  readonly deltaSnapshot: MarketplaceFeeDeltaSnapshot;
+}

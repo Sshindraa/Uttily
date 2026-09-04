@@ -68,19 +68,25 @@ Les champs historiques restent nécessaires pour lire les réservations legacy :
 Les réservations legacy ne sont pas recalculées et ne sont pas converties au
 modèle 13/7.
 
-## Remboursements et activation
+## Remboursements et annulations split (ADR-030)
 
-Les remboursements, annulations en baisse et compensations tardives portant sur
-un snapshot split échouent volontairement fermés avec
-`SPLIT_REFUND_UNRESOLVED`. Le comportement legacy est conservé.
+Le moteur de calcul d'annulation composant par composant est désormais
+implémenté conformément à [`ADR-030`](../decisions/ADR-030-split-refund-policy.md) :
+- `calculateSplitCancellationRefund` calcule la répartition exacte : remboursement
+  client, reprise loueur (13 %), restitution Uttily (13 % + 7 %) et montants retenus,
+  avec la règle d'arrondi `HALF_UP_PER_COMPONENT` ;
+- `previewBookingCancellation` et `cancelConfirmedBooking` autorisent l'annulation
+  des réservations split et enregistrent le `marketplaceFeeDelta` dans la table
+  `booking_cancellations` ;
+- les annulations intégrales (100 %) sont exécutées directement sur le provider
+  (adéquation parfaite de la destination charge avec `reverse_transfer` et
+  `refund_application_fee`) ; les annulations partielles basculent en
+  `FAILED_REQUIRES_MANUAL_ACTION` conformément à l'ADR-030 §3.2 pour traitement manuel audité.
 
 Avant une activation LIVE, `FIN-002` doit encore fixer et faire approuver la
 base fiscale, la date d'effet, la TVA, les frais Stripe, le settlement, les
-chargebacks, les responsabilités et le traitement de chaque composant lors
-des remboursements. La proposition de politique par delta entre états effectifs
-est formalisée dans [ADR-030](../decisions/ADR-030-split-refund-policy.md), mais
-son statut `Proposed` ne vaut pas validation externe. La présence du moteur et
-de ses tests ne vaut pas validation externe.
+chargebacks et les responsabilités. La présence du moteur et de ses tests ne vaut
+pas validation externe.
 
 ## Vérification rapide par un agent
 

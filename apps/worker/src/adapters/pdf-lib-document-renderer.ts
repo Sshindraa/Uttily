@@ -210,7 +210,17 @@ export interface RendererViewModel {
     readonly paymentId: string;
     readonly draftId: string;
   };
-  readonly organization: { readonly legalName: string };
+  readonly organization: {
+    readonly legalName: string;
+    readonly legalForm: string | null;
+    readonly registrationNumber: string | null;
+    readonly vatNumber: string | null;
+    readonly registryCity: string | null;
+    readonly capitalAmount: string | null;
+    readonly registeredOfficeAddress: string | null;
+    readonly registeredOfficePostalCode: string | null;
+    readonly registeredOfficeCity: string | null;
+  };
   readonly location: {
     readonly name: string;
     readonly addressLine1: string | null;
@@ -307,6 +317,14 @@ export function buildViewModel(
     },
     organization: {
       legalName: snapshot.organization.legalName,
+      legalForm: snapshot.organization.legalForm ?? null,
+      registrationNumber: snapshot.organization.registrationNumber ?? null,
+      vatNumber: snapshot.organization.vatNumber ?? null,
+      registryCity: snapshot.organization.registryCity ?? null,
+      capitalAmount: snapshot.organization.capitalAmount ?? null,
+      registeredOfficeAddress: snapshot.organization.registeredOfficeAddress ?? null,
+      registeredOfficePostalCode: snapshot.organization.registeredOfficePostalCode ?? null,
+      registeredOfficeCity: snapshot.organization.registeredOfficeCity ?? null,
     },
     location: {
       name: snapshot.location.name,
@@ -823,10 +841,22 @@ function renderRentalContract(ctx: LayoutContext, vm: RendererViewModel): void {
 
   drawSpacer(ctx, 4);
   drawSubheading(ctx, 'Parties');
-  drawKeyValueBlock(ctx, [
-    { label: 'Loueur (organisme)', value: vm.organization.legalName },
-    { label: 'Locataire', value: vm.customer.displayName ?? '—' },
-  ]);
+  const loueurDesc = vm.organization.legalForm
+    ? `${vm.organization.legalName} (${vm.organization.legalForm})`
+    : vm.organization.legalName;
+  const partiesEntries: { label: string; value: string }[] = [
+    { label: 'Loueur (organisme)', value: loueurDesc },
+  ];
+  if (vm.organization.registrationNumber) {
+    partiesEntries.push({
+      label: 'SIRET / RCS',
+      value: vm.organization.registryCity
+        ? `${vm.organization.registrationNumber} · RCS ${vm.organization.registryCity}`
+        : vm.organization.registrationNumber,
+    });
+  }
+  partiesEntries.push({ label: 'Locataire', value: vm.customer.displayName ?? '—' });
+  drawKeyValueBlock(ctx, partiesEntries);
 
   drawSpacer(ctx, 6);
   drawSubheading(ctx, 'Références');
@@ -926,18 +956,50 @@ function renderPaymentReceipt(ctx: LayoutContext, vm: RendererViewModel): void {
   ]);
 
   drawSpacer(ctx, 6);
-  drawKeyValueBlock(ctx, [
-    { label: 'Organisme', value: vm.organization.legalName },
-    { label: 'Lieu', value: vm.location.name },
-  ]);
+  const orgEntries: { label: string; value: string }[] = [
+    {
+      label: 'Loueur émetteur',
+      value: vm.organization.legalForm
+        ? `${vm.organization.legalName} (${vm.organization.legalForm})`
+        : vm.organization.legalName,
+    },
+  ];
+  if (vm.organization.registrationNumber) {
+    orgEntries.push({
+      label: 'SIRET / RCS',
+      value: vm.organization.registryCity
+        ? `${vm.organization.registrationNumber} · RCS ${vm.organization.registryCity}`
+        : vm.organization.registrationNumber,
+    });
+  }
+  if (vm.organization.vatNumber) {
+    orgEntries.push({ label: 'N° TVA', value: vm.organization.vatNumber });
+  } else if (vm.organization.registrationNumber) {
+    orgEntries.push({ label: 'TVA', value: 'Non applicable, art. 293 B du CGI' });
+  }
+  if (vm.organization.registeredOfficeAddress) {
+    const address = [
+      vm.organization.registeredOfficeAddress,
+      vm.organization.registeredOfficePostalCode,
+      vm.organization.registeredOfficeCity,
+    ]
+      .filter(Boolean)
+      .join(' ');
+    orgEntries.push({ label: 'Siège social', value: address });
+  }
+  orgEntries.push({ label: 'Lieu de retrait', value: vm.location.name });
+  drawKeyValueBlock(ctx, orgEntries);
 
-  // Pas une facture fiscale. Pas de TVA inventée.
   drawSpacer(ctx, 8);
-  drawWrappedText(ctx, 'Reçu technique — ne constitue pas une facture fiscale.', {
-    size: 9,
-    color: COLOR_MEDIUM_GRAY,
-    gapAfter: 2,
-  });
+  drawWrappedText(
+    ctx,
+    'Reçu délivré via la plateforme Uttily · Opérateur technique Uttily SAS · Justificatif de règlement.',
+    {
+      size: 8,
+      color: COLOR_MEDIUM_GRAY,
+      gapAfter: 2,
+    },
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

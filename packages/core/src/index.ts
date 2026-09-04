@@ -18,6 +18,7 @@ export * from './identity/schedule';
 export * from './identity/public-app-url';
 export * from './identity/audit';
 export * from './identity/provisioning';
+export * from './identity/legal-identity-validation';
 
 // Lot 2A — Catalogue et inventaire physique.
 export * from './catalog/index';
@@ -202,3 +203,6 @@ export * from './support';
 
 // Chantier 20-A — Contrôle non destructif de readiness LIVE.
 export * from './live-readiness';
+
+// Lot 21-P1 — Fondation RGPD : droits d'accès, portabilité & registre.
+export * from './privacy';

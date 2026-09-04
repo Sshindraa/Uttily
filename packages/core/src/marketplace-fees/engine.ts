@@ -3,6 +3,7 @@ import type {
   MarketplaceFeeDeltaSnapshot,
   MarketplaceFeeRule,
   MarketplaceFeeSnapshot,
+  SplitCancellationRefundAllocation,
 } from './types';
 
 export const MARKETPLACE_FEE_RULE_VERSION = 'split-13-7-v1';
@@ -306,4 +307,118 @@ export function parseMarketplaceFeeDeltaSnapshot(value: unknown): MarketplaceFee
     }
   }
   return expected;
+}
+
+/**
+ * Calcule la répartition financière composant par composant d'une annulation
+ * sous le modèle split 13/7 conformément à ADR-030.
+ *
+ * Invariants économiques préservés au centime près :
+ * - customerRefundAmountMinor = merchantClawbackAmountMinor + platformFeeRefundedMinor
+ * - oldSnapshot.customerTotalAmountMinor = customerRefundAmountMinor + customerRetainedAmountMinor
+ * - oldSnapshot.merchantNetAmountMinor = merchantClawbackAmountMinor + finalMerchantRevenueMinor
+ * - oldSnapshot.platformApplicationFeeAmountMinor = platformFeeRefundedMinor + finalPlatformFeeMinor
+ */
+export function calculateSplitCancellationRefund(input: {
+  oldSnapshot: MarketplaceFeeSnapshot;
+  refundPercentage: number;
+}): SplitCancellationRefundAllocation {
+  const { oldSnapshot, refundPercentage } = input;
+  if (!Number.isSafeInteger(refundPercentage) || refundPercentage < 0 || refundPercentage > 100) {
+    throw new MarketplaceFeeError(
+      'INVALID_AMOUNT',
+      `refundPercentage doit être un entier entre 0 et 100 (reçu : ${refundPercentage}).`,
+    );
+  }
+
+  // Cas 100% de remboursement : base résiduelle = 0
+  if (refundPercentage === 100) {
+    const delta = calculateMarketplaceFeeDelta({
+      oldBaseAmountMinor: oldSnapshot.marketplaceFeeBaseAmountMinor,
+      nextBaseAmountMinor: 0,
+      ruleVersion: oldSnapshot.ruleVersion,
+    });
+
+    return Object.freeze({
+      refundPercentage: 100,
+      customerRefundAmountMinor: oldSnapshot.customerTotalAmountMinor,
+      customerRetainedAmountMinor: 0,
+      merchantClawbackAmountMinor: oldSnapshot.merchantNetAmountMinor,
+      finalMerchantRevenueMinor: 0,
+      platformFeeRefundedMinor: oldSnapshot.platformApplicationFeeAmountMinor,
+      finalPlatformFeeMinor: 0,
+      deltaSnapshot: delta,
+    });
+  }
+
+  // Cas 0% de remboursement : aucune restitution, base résiduelle = base initiale
+  if (refundPercentage === 0) {
+    const delta = calculateMarketplaceFeeDelta({
+      oldBaseAmountMinor: oldSnapshot.marketplaceFeeBaseAmountMinor,
+      nextBaseAmountMinor: oldSnapshot.marketplaceFeeBaseAmountMinor,
+      ruleVersion: oldSnapshot.ruleVersion,
+    });
+
+    return Object.freeze({
+      refundPercentage: 0,
+      customerRefundAmountMinor: 0,
+      customerRetainedAmountMinor: oldSnapshot.customerTotalAmountMinor,
+      merchantClawbackAmountMinor: 0,
+      finalMerchantRevenueMinor: oldSnapshot.merchantNetAmountMinor,
+      platformFeeRefundedMinor: 0,
+      finalPlatformFeeMinor: oldSnapshot.platformApplicationFeeAmountMinor,
+      deltaSnapshot: delta,
+    });
+  }
+
+  // Cas remboursement partiel (ex: 50%) :
+  // Le taux de base conservée est (100 - refundPercentage) en bps: (100 - P) * 100
+  // La base résiduelle conservée est calculée avec arrondi HALF_UP
+  const retainedBaseBps = (100 - refundPercentage) * 100;
+  const nextBaseAmountMinor = roundHalfUpPerComponent(
+    oldSnapshot.marketplaceFeeBaseAmountMinor,
+    retainedBaseBps,
+  );
+
+  const delta = calculateMarketplaceFeeDelta({
+    oldBaseAmountMinor: oldSnapshot.marketplaceFeeBaseAmountMinor,
+    nextBaseAmountMinor,
+    ruleVersion: oldSnapshot.ruleVersion,
+  });
+
+  const customerRefundAmountMinor = -delta.customerTotalDeltaAmountMinor;
+  const customerRetainedAmountMinor = delta.next.customerTotalAmountMinor;
+  const merchantClawbackAmountMinor = -delta.merchantNetDeltaAmountMinor;
+  const finalMerchantRevenueMinor = delta.next.merchantNetAmountMinor;
+  const platformFeeRefundedMinor = -delta.platformApplicationFeeDeltaAmountMinor;
+  const finalPlatformFeeMinor = delta.next.platformApplicationFeeAmountMinor;
+
+  // Contrôle strict des invariants économiques
+  if (customerRefundAmountMinor !== merchantClawbackAmountMinor + platformFeeRefundedMinor) {
+    throw new MarketplaceFeeError(
+      'INVARIANT_VIOLATION',
+      'Le remboursement client split ne correspond pas à la somme de la reprise loueur et de la restitution plateforme.',
+    );
+  }
+
+  if (
+    oldSnapshot.customerTotalAmountMinor !==
+    customerRefundAmountMinor + customerRetainedAmountMinor
+  ) {
+    throw new MarketplaceFeeError(
+      'INVARIANT_VIOLATION',
+      'La somme remboursée et retenue ne correspond pas au total client initial.',
+    );
+  }
+
+  return Object.freeze({
+    refundPercentage,
+    customerRefundAmountMinor,
+    customerRetainedAmountMinor,
+    merchantClawbackAmountMinor,
+    finalMerchantRevenueMinor,
+    platformFeeRefundedMinor,
+    finalPlatformFeeMinor,
+    deltaSnapshot: delta,
+  });
 }

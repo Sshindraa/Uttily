@@ -324,11 +324,11 @@ describe.skipIf(shouldSkipIntegrationTests())('G7M-C4-S — transitions PostgreS
     if (!testUrl) return;
     const sql = postgres(testUrl, { max: 1 });
     try {
-      expect(await migrationCount(sql)).toBe(56);
+      expect(await migrationCount(sql)).toBe(58);
       const rows = await sql`
         SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at
       `;
-      expect(rows).toHaveLength(56);
+      expect(rows).toHaveLength(58);
       const { readFileSync } = await import('node:fs');
       const { dirname, join } = await import('node:path');
       const { fileURLToPath } = await import('node:url');

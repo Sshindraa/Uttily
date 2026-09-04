@@ -25,6 +25,9 @@ export interface ReadinessMilestone {
     count?: number | undefined;
     required?: number | undefined;
     info?: string | undefined;
+    isLegalIdentityComplete?: boolean | undefined;
+    hasRegistrationNumber?: boolean | undefined;
+    hasRegisteredOffice?: boolean | undefined;
   };
 }
 
@@ -52,12 +55,21 @@ export async function getOrganizationOnboardingReadiness(
       id: organizations.id,
       legalName: organizations.legalName,
       slug: organizations.slug,
+      registrationNumber: organizations.registrationNumber,
+      legalForm: organizations.legalForm,
+      registeredOfficeCity: organizations.registeredOfficeCity,
     })
     .from(organizations)
     .where(eq(organizations.id, organizationId))
     .limit(1);
 
   const orgCompleted = !!(org && org.legalName.trim().length >= 2 && org.slug.trim().length >= 2);
+  const isLegalIdentityComplete = !!(
+    org &&
+    org.legalName.trim().length >= 2 &&
+    org.registrationNumber?.trim() &&
+    org.registeredOfficeCity?.trim()
+  );
 
   // 2. JALON 2 : BOUTIQUE (LOCATION)
   const locRows = await db
@@ -248,7 +260,12 @@ export async function getOrganizationOnboardingReadiness(
     {
       key: 'ORGANIZATION',
       completed: orgCompleted,
-      details: { targetId: organizationId },
+      details: {
+        targetId: organizationId,
+        isLegalIdentityComplete,
+        hasRegistrationNumber: !!org?.registrationNumber?.trim(),
+        hasRegisteredOffice: !!org?.registeredOfficeCity?.trim(),
+      },
     },
     {
       key: 'LOCATION',

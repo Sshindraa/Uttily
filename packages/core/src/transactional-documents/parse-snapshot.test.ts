@@ -822,4 +822,27 @@ describe('parseDocumentRenderSnapshotV1', () => {
     };
     expect(parseDocumentRenderSnapshotV1(s).booking.taxStatus).toBe('APPLIED');
   });
+
+  it('organization avec mentions légales complètes (Lot 21-F1) est validée et fidèlement transmise', () => {
+    const s = baseSnapshot();
+    s.organization = {
+      ...s.organization,
+      legalForm: 'SAS',
+      registrationNumber: '73282932000074',
+      vatNumber: 'FR44732829320',
+      registryCity: 'Annecy',
+      capitalAmount: '10 000 €',
+      legalRepresentativeName: 'Camille Martin',
+      registeredOfficeAddress: '15 Quai de la Tournette',
+      registeredOfficePostalCode: '74000',
+      registeredOfficeCity: 'Annecy',
+      registeredOfficeCountryCode: 'FR',
+    };
+    const parsed = parseDocumentRenderSnapshotV1(s);
+    expect(parsed.organization.legalForm).toBe('SAS');
+    expect(parsed.organization.registrationNumber).toBe('73282932000074');
+    expect(parsed.organization.vatNumber).toBe('FR44732829320');
+    expect(parsed.organization.registryCity).toBe('Annecy');
+    expect(parsed.organization.registeredOfficeCity).toBe('Annecy');
+  });
 });
