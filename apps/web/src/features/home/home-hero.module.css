@@ -45,29 +45,30 @@
   min-height: calc(100svh - 88px);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: clamp(24px, 3.5vh, 48px);
-  padding: 0 clamp(24px, 4.5vw, 80px) 48px;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(20px, 2.8vh, 32px);
+  padding: clamp(24px, 4vh, 48px) clamp(20px, 4vw, 80px) clamp(32px, 6vh, 64px);
 }
-.searchPosition {
+
+.caption {
   width: min(780px, 100%);
   margin-inline: auto;
-  margin-top: auto;
-  margin-bottom: auto;
+  text-align: center;
   z-index: 1;
   order: 1;
 }
 
-.caption {
-  width: 100%;
-  margin-top: 0;
-  padding-top: 16px;
-  z-index: 1;
-  order: 2;
-}
-
 .copy {
   max-width: 760px;
+  margin-inline: auto;
+}
+
+.searchPosition {
+  width: min(780px, 100%);
+  margin-inline: auto;
+  z-index: 1;
+  order: 2;
 }
 .caption h1,
 .heading {
@@ -102,7 +103,7 @@
 
 .description {
   max-width: 620px;
-  margin: 16px 0 0;
+  margin: 14px auto 0;
   font-family:
     -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Helvetica Neue', sans-serif;
   font-size: clamp(16px, 1.1vw, 18px);
@@ -145,14 +146,16 @@
   .heroContent {
     gap: 16px;
     padding-inline: 16px;
+    padding-top: 32px;
     padding-bottom: 24px;
+    justify-content: flex-start;
   }
   .searchPosition {
     width: 100%;
-    margin-top: 36px;
+    margin-top: 0;
   }
   .caption h1 {
-    font-size: clamp(34px, 7vw, 52px);
+    font-size: clamp(32px, 6.8vw, 46px);
   }
   .description {
     max-width: 28rem;
