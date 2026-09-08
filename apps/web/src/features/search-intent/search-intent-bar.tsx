@@ -235,6 +235,8 @@ export function SearchIntentBar({
       ref={anchor}
       className={[styles.anchor, pinned ? styles.anchorPinned : ''].filter(Boolean).join(' ')}
     >
+      {middleSlot}
+
       <SmartSearchAssistant
         locale={locale}
         onApplyProposal={handleApplyAiProposal}
@@ -253,8 +255,6 @@ export function SearchIntentBar({
           router.push(`/${locale}/search?${result.query}`);
         }}
       />
-
-      {middleSlot}
 
       <div
         ref={shell}

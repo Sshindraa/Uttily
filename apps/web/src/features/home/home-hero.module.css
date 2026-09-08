@@ -74,7 +74,7 @@
 
 .caption h1,
 .heading {
-  margin: 4px 0 16px;
+  margin: 0 0 18px;
   font-family:
     -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Helvetica Neue', sans-serif;
   font-size: clamp(26px, 3vw, 42px);
