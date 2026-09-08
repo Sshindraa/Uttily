@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { Component, type ErrorInfo, type ReactNode, useEffect, useRef, useState } from 'react';
 import type {
   PublicOfferSearchItem,
@@ -12,8 +13,8 @@ import type {
   SolvedPackCandidate,
   SolvedPackAlternatives,
 } from '@uttily/core';
-import type { PublicUiLocale, EnrichedPublicOfferSearchItem } from '@/lib/public-search';
-import { OfferCardAirbnb } from './components/offer-card-airbnb';
+import { Icon } from '@uttily/ui';
+import type { PublicUiLocale } from '@/lib/public-search';
 import { FloatingViewToggle } from './components/floating-view-toggle';
 import { PackSolutionCard } from './components/pack-solution-card';
 import { PackConfirmationDrawer } from './components/pack-confirmation-drawer';
@@ -320,9 +321,9 @@ export function SearchResults({
                 {exactItems.length > 0 ? (
                   <div className={styles.grid}>
                     {exactItems.map((item) => (
-                      <OfferCardAirbnb
+                      <OfferSearchCard
                         key={`${item.publicProductId}:${item.publicLocationId}`}
-                        item={item as EnrichedPublicOfferSearchItem}
+                        item={item}
                         locale={locale}
                         activeSearchParams={activeSearchParams}
                         isHighlighted={hoveredProductId === item.publicProductId}
@@ -352,9 +353,9 @@ export function SearchResults({
                     </p>
                     <div className={styles.grid}>
                       {section.items.map((item) => (
-                        <OfferCardAirbnb
+                        <OfferSearchCard
                           key={`${item.publicProductId}:${item.publicLocationId}`}
-                          item={item as EnrichedPublicOfferSearchItem}
+                          item={item}
                           locale={locale}
                           activeSearchParams={activeSearchParams}
                           isHighlighted={hoveredProductId === item.publicProductId}
@@ -383,9 +384,9 @@ export function SearchResults({
                   </p>
                   <div className={styles.grid}>
                     {viewportAlternativeItems.map((item) => (
-                      <OfferCardAirbnb
+                      <OfferSearchCard
                         key={`${item.publicProductId}:${item.publicLocationId}`}
-                        item={item as EnrichedPublicOfferSearchItem}
+                        item={item}
                         locale={locale}
                         activeSearchParams={activeSearchParams}
                         isHighlighted={hoveredProductId === item.publicProductId}
@@ -458,6 +459,150 @@ function withCursor(params: string, cursor: string): string {
   const next = new URLSearchParams(params);
   next.set('cursor', cursor);
   return next.toString();
+}
+
+interface OfferSearchCardProps {
+  item: PublicOfferSearchItem;
+  locale: PublicUiLocale;
+  activeSearchParams: string;
+  isHighlighted?: boolean;
+  onHover?: (productId: string | null) => void;
+}
+
+function OfferSearchCard({
+  item,
+  locale,
+  activeSearchParams,
+  isHighlighted = false,
+  onHover,
+}: OfferSearchCardProps): React.ReactElement {
+  const fr = locale === 'fr';
+  const searchParams = new URLSearchParams(activeSearchParams);
+  searchParams.delete('cursor');
+  const offerQuery = searchParams.toString();
+  const offerUrl = `/${locale}/offers/${item.publicProductId}/${item.publicLocationId}${
+    offerQuery ? `?${offerQuery}` : ''
+  }`;
+  const [imageError, setImageError] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const coverPhotoUrl = item.coverPhotoPublicId
+    ? `/api/public/product-photos/${item.coverPhotoPublicId}`
+    : null;
+  const address = [
+    item.addressLine1,
+    item.addressLine2,
+    [item.city, item.postalCode].filter(Boolean).join(' '),
+  ]
+    .filter(Boolean)
+    .join(', ');
+
+  return (
+    <article
+      className={`${styles.card} ${isHighlighted ? styles.cardHighlighted : ''}`}
+      onMouseEnter={() => onHover?.(item.publicProductId)}
+      onMouseLeave={() => onHover?.(null)}
+      id={`offer-${item.publicProductId}`}
+    >
+      <div className={styles.cardMedia}>
+        <Link
+          href={offerUrl}
+          className={styles.cardImageLink}
+          aria-label={`${fr ? 'Voir l’offre et réserver' : 'View offer & book'} : ${item.productName}`}
+        >
+          <span className={styles.cardImageFallback} aria-hidden="true" />
+          {coverPhotoUrl && !imageError ? (
+            <img
+              src={coverPhotoUrl}
+              alt=""
+              className={styles.cardImage}
+              onError={() => setImageError(true)}
+            />
+          ) : null}
+          <span className={styles.cardImageShade} aria-hidden="true" />
+        </Link>
+
+        <div
+          className={styles.cardActions}
+          aria-label={fr ? 'Actions de l’offre' : 'Offer actions'}
+        >
+          <button
+            type="button"
+            className={`${styles.cardAction} ${isLiked ? styles.cardActionLiked : ''}`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsLiked((prev) => !prev);
+            }}
+            aria-label={
+              isLiked
+                ? fr
+                  ? 'Retirer des favoris'
+                  : 'Remove from favorites'
+                : fr
+                  ? 'Enregistrer dans les favoris'
+                  : 'Save to favorites'
+            }
+          >
+            <Icon name="heart" size={18} />
+          </button>
+          <Link
+            href={offerUrl}
+            className={`${styles.cardAction} ${styles.cardActionPrimary}`}
+            aria-label={fr ? 'Voir l’offre et réserver' : 'View offer & book'}
+          >
+            <Icon name="arrow-up-right" size={19} />
+          </Link>
+        </div>
+
+        <div className={styles.cardMeta} aria-label={fr ? 'Statut de l’offre' : 'Offer status'}>
+          <span className={`${styles.cardMetaPill} ${styles.cardAvailability}`}>
+            <span className={styles.cardStatusDot} aria-hidden="true">
+              •
+            </span>
+            {fr ? 'Disponible' : 'Available'}
+          </span>
+          <span className={`${styles.cardMetaPill} ${styles.cardTrust}`}>
+            <Icon name="check" size={14} />
+            {fr ? 'Stock réel' : 'Real stock'}
+          </span>
+        </div>
+      </div>
+
+      <div className={styles.cardBody}>
+        <div className={styles.cardTitleRow}>
+          <h4>
+            <Link href={offerUrl} className={styles.offerLink}>
+              {item.productName}
+            </Link>
+          </h4>
+          <strong className={styles.cardPrice}>
+            {formatMoney(item.price.totalAmountMinor, item.price.currency, locale)}
+          </strong>
+        </div>
+        <p className={styles.cardLocation} title={address}>
+          {address}
+        </p>
+        <p className={styles.cardRenter} title={item.organizationPublicDisplayName}>
+          {item.organizationPublicDisplayName} · {item.locationName}
+        </p>
+        <div className={styles.cardChips} aria-label={fr ? 'Détails de l’offre' : 'Offer details'}>
+          <span className={styles.cardChip}>{item.price.publicLabel}</span>
+          <span className={styles.cardChip}>{fr ? '1 équipement' : '1 item'}</span>
+          <span className={styles.cardChip}>{fr ? 'Retrait sur place' : 'Local pickup'}</span>
+          <span className={styles.cardChip}>{formatDistance(item.distanceMeters, locale)}</span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function formatMoney(amountMinor: number, currency: string, locale: PublicUiLocale): string {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(amountMinor / 100);
+}
+
+function formatDistance(distanceMeters: number, locale: PublicUiLocale): string {
+  if (distanceMeters < 1000) return `${distanceMeters} m`;
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(distanceMeters / 1000)} km`;
 }
 
 function isSearchErrorBody(

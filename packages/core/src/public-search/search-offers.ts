@@ -350,6 +350,7 @@ export async function searchPublicOffers(
     publicLocationId: o.publicLocationId,
     organizationPublicDisplayName: o.organizationPublicDisplayName,
     productName: o.productName,
+    coverPhotoPublicId: o.coverPhotoPublicId,
     locationName: o.locationName,
     addressLine1: o.addressLine1,
     addressLine2: o.addressLine2,
@@ -1053,6 +1054,7 @@ async function loadCandidateVariantRows(
     public_location_id: string;
     organization_public_display_name: string;
     product_name: string;
+    cover_photo_public_id: string | null;
     location_name: string;
     address_line1: string;
     address_line2: string | null;
@@ -1083,6 +1085,7 @@ async function loadCandidateVariantRows(
       l.public_id AS public_location_id,
       o.public_display_name AS organization_public_display_name,
       p.name AS product_name,
+      cover_photo.public_id AS cover_photo_public_id,
       l.name AS location_name,
       l.address_line1,
       l.address_line2,
@@ -1101,6 +1104,18 @@ async function loadCandidateVariantRows(
     INNER JOIN locations l ON l.id = g.location_id
     INNER JOIN organizations o ON o.id = p.organization_id
     INNER JOIN product_variants pv ON pv.product_id = p.id
+    LEFT JOIN LATERAL (
+      SELECT pp.public_id
+      FROM product_photos pp
+      WHERE pp.product_id = p.id
+        AND pp.organization_id = p.organization_id
+        AND pp.file_state = 'AVAILABLE'
+        AND pp.deleted_at IS NULL
+        AND pp.checksum_sha256 IS NOT NULL
+        AND pp.content_type IN ('image/jpeg', 'image/png', 'image/webp')
+      ORDER BY pp.sort_order ASC, pp.created_at ASC, pp.id ASC
+      LIMIT 1
+    ) cover_photo ON true
     WHERE pv.is_active = true
       AND pv.deleted_at IS NULL
       AND EXISTS (
@@ -1125,6 +1140,7 @@ async function loadCandidateVariantRows(
     publicLocationId: r.public_location_id,
     organizationPublicDisplayName: r.organization_public_display_name,
     productName: r.product_name,
+    coverPhotoPublicId: r.cover_photo_public_id,
     locationName: r.location_name,
     addressLine1: r.address_line1,
     addressLine2: r.address_line2,
@@ -1850,6 +1866,7 @@ interface GroupedOffer {
   publicLocationId: string;
   organizationPublicDisplayName: string;
   productName: string;
+  coverPhotoPublicId: string | null;
   locationName: string;
   addressLine1: string;
   addressLine2: string | null;
@@ -1912,6 +1929,7 @@ function groupAndSelectBest(
       publicLocationId: best.candidate.publicLocationId,
       organizationPublicDisplayName: best.candidate.organizationPublicDisplayName,
       productName: best.candidate.productName,
+      coverPhotoPublicId: best.candidate.coverPhotoPublicId,
       locationName: best.candidate.locationName,
       addressLine1: best.candidate.addressLine1,
       addressLine2: best.candidate.addressLine2,

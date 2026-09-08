@@ -98,6 +98,8 @@ export interface PublicOfferSearchItem {
   publicLocationId: string;
   organizationPublicDisplayName: string;
   productName: string;
+  /** Première photo publique validée, destinée à l'aperçu de la carte. */
+  coverPhotoPublicId: string | null;
   locationName: string;
   addressLine1: string;
   addressLine2: string | null;
@@ -151,6 +153,7 @@ export interface CandidateRow {
   // Affichage
   organizationPublicDisplayName: string;
   productName: string;
+  coverPhotoPublicId: string | null;
   locationName: string;
   addressLine1: string;
   addressLine2: string | null;

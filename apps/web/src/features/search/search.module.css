@@ -481,67 +481,276 @@
 }
 
 .card {
-  padding: 1.3rem;
-  border: 1px solid var(--line);
-  border-radius: 1rem;
-  background: var(--surface);
-}
-
-.cardTopline {
+  --card-background: #fbfbf8;
   display: flex;
-  justify-content: space-between;
-  color: var(--muted);
-  font-size: var(--ut-text-xs);
-  line-height: 1.3333;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgb(28 36 38 / 0.08);
+  border-radius: 1.35rem;
+  background: var(--card-background);
+  box-shadow: 0 14px 34px rgb(14 18 19 / 0.07);
+  transition:
+    transform var(--ut-motion-normal) var(--ut-ease-standard),
+    box-shadow var(--ut-motion-normal) var(--ut-ease-standard);
 }
 
-.available {
-  color: var(--accent);
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 38px rgb(14 18 19 / 0.11);
+}
+
+.cardHighlighted {
+  border-color: var(--ut-color-primary) !important;
+  box-shadow:
+    0 0 0 2px var(--ut-color-primary),
+    0 20px 40px rgba(0, 0, 0, 0.12) !important;
+  transform: translateY(-4px) !important;
+}
+
+.cardMedia {
+  position: relative;
+  min-height: 14rem;
+  aspect-ratio: 1.48;
+  isolation: isolate;
+}
+
+.cardImageLink {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: hidden;
+  border-radius: 1.35rem 1.35rem 0 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.cardImageFallback,
+.cardImage,
+.cardImageShade {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.cardImageFallback {
+  background:
+    linear-gradient(135deg, rgb(220 233 235 / 0.12), rgb(14 18 19 / 0.08)),
+    url('/images/home/cycling-sunset.jpg') center / cover;
+  filter: saturate(0.78) contrast(0.96);
+}
+
+.cardImage {
+  object-fit: cover;
+  object-position: center;
+}
+
+.cardImageShade {
+  background: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0) 38%,
+    rgb(255 255 255 / 0.12) 55%,
+    rgb(251 251 248 / 0.92) 91%,
+    var(--card-background) 100%
+  );
+  pointer-events: none;
+}
+
+.cardActions {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  z-index: 2;
+  display: flex;
+  gap: 0.55rem;
+}
+
+.cardAction {
+  display: inline-flex;
+  width: 2.4rem;
+  height: 2.4rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(28 36 38 / 0.06);
+  border-radius: 50%;
+  color: var(--ink);
+  background: rgb(247 247 243 / 0.84);
+  box-shadow: 0 3px 10px rgb(14 18 19 / 0.06);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  padding: 0;
+  transition: transform var(--ut-motion-fast) var(--ut-ease-standard);
+}
+
+.cardAction:hover {
+  transform: scale(1.08);
+}
+
+.cardActionLiked {
+  color: #ef4444 !important;
+  background: #fef2f2 !important;
+  border-color: #fecaca !important;
+}
+
+.cardActionPrimary {
+  border-color: var(--ut-color-surface-dark);
+  color: var(--ut-color-ink-on-dark);
+  background: var(--ut-color-surface-dark);
+  text-decoration: none;
+  transition:
+    background var(--ut-motion-fast) var(--ut-ease-standard),
+    transform var(--ut-motion-fast) var(--ut-ease-standard);
+}
+
+.cardActionPrimary:hover {
+  color: var(--ut-color-ink-on-dark);
+  background: var(--ut-color-primary-strong);
+  transform: rotate(4deg);
+}
+
+.cardActionPrimary:focus-visible,
+.cardImageLink:focus-visible,
+.offerLink:focus-visible {
+  outline: 3px solid var(--ut-color-focus-ring-strong);
+  outline-offset: 3px;
+}
+
+.cardMeta {
+  position: absolute;
+  right: 1rem;
+  bottom: 0.75rem;
+  left: 1rem;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.cardMetaPill {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.65rem;
+  border: 1px solid rgb(28 36 38 / 0.07);
+  border-radius: var(--ut-radius-pill);
+  color: var(--ink);
+  background: rgb(255 255 255 / 0.76);
+  font-size: 0.78rem;
   font-weight: var(--ut-weight-medium);
+  line-height: 1;
+  backdrop-filter: blur(12px);
+}
+
+.cardAvailability {
+  color: var(--ut-color-ink-strong);
+}
+
+.cardStatusDot {
+  color: var(--ut-color-success);
+  font-size: 1rem;
+  line-height: 0.5;
+}
+
+.cardTrust {
+  color: var(--ut-color-ink-strong);
+}
+
+.cardTrust svg {
+  color: var(--ut-color-success);
+  flex: 0 0 auto;
+}
+
+.cardBody {
+  display: flex;
+  min-height: 9.6rem;
+  flex: 1;
+  flex-direction: column;
+  padding: 0.15rem 1rem 1rem;
+}
+
+.cardTitleRow {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
 
 .card h4 {
-  margin: 1.5rem 0 0.3rem;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
   font-family: var(--ut-font-display);
-  font-size: var(--ut-text-title-sm);
-  font-weight: var(--ut-weight-semibold);
-  letter-spacing: var(--ut-tracking-heading);
-  line-height: var(--ut-leading-heading);
-}
-
-.card p {
-  color: var(--muted);
-  line-height: var(--ut-leading-body);
-}
-
-.card .renter {
-  margin-top: 0;
-  color: var(--ink);
+  font-size: 1.07rem;
   font-weight: var(--ut-weight-medium);
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.price {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--line);
+.offerLink {
+  color: var(--ink);
+  text-decoration: none;
 }
 
-.price strong {
-  font-size: var(--ut-text-title-sm);
-  font-weight: var(--ut-weight-semibold);
-  line-height: 1.1818;
+.offerLink:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.14em;
+}
+
+.cardPrice {
+  flex: 0 0 auto;
+  color: var(--ink);
+  font-size: 1.12rem;
+  font-weight: var(--ut-weight-medium);
+  line-height: 1.2;
   font-variant-numeric: lining-nums tabular-nums;
+  white-space: nowrap;
 }
 
-.price span {
+.cardLocation,
+.cardRenter {
+  margin: 0.3rem 0 0;
+  overflow: hidden;
   color: var(--muted);
-  font-size: var(--ut-text-xs);
-  line-height: 1.3333;
-  text-align: right;
+  font-size: 0.79rem;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardRenter {
+  margin-top: 0.1rem;
+  color: var(--ut-color-ink-subtle);
+  font-size: 0.72rem;
+}
+
+.cardChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.75rem;
+}
+
+.cardChip {
+  display: inline-flex;
+  min-height: 1.9rem;
+  align-items: center;
+  padding: 0.32rem 0.58rem;
+  border: 1px solid rgb(28 36 38 / 0.1);
+  border-radius: var(--ut-radius-pill);
+  color: var(--muted);
+  background: rgb(255 255 255 / 0.5);
+  font-size: 0.7rem;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .more {
