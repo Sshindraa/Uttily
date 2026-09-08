@@ -12,7 +12,7 @@ describe('Immersive homepage', () => {
     expect(html).toContain('Votre équipement');
     expect(html).toContain('vous');
     expect(html).toContain('attend.');
-    expect(html).toContain('cycling-sunset.jpg');
+    expect(html).toContain('mountain-lake-road.png');
     expect(html).toContain('Destination');
     expect(html).toContain('Équipement');
     expect(html).toContain('Dates');

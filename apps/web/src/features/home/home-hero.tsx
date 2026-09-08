@@ -8,11 +8,11 @@ export function HomeHero({ locale }: { locale: 'fr' | 'en' }): React.ReactElemen
     <section className={styles.hero} aria-labelledby="home-heading">
       <div className={styles.visual}>
         <Image
-          src="/images/home/cycling-sunset.jpg"
+          src="/images/home/mountain-lake-road.png"
           alt={
             fr
-              ? 'Deux personnes à vélo dans la campagne au coucher du soleil'
-              : 'Two people cycling through the countryside at sunset'
+              ? 'Route sinueuse longeant un lac de montagne face aux sommets enneigés'
+              : 'Winding road along a mountain lake facing snow-capped peaks'
           }
           fill
           priority
