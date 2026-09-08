@@ -30,7 +30,9 @@ test.describe('Pack Orchestrator E2E Real Browser Journeys', () => {
         page.getByText('Tous les équipements seront bloqués ensemble lors de votre réservation'),
       ).toBeVisible();
       await expect(
-        page.getByText('Caution selon les conditions du loueur (empreinte bancaire ou chèque au comptoir)'),
+        page.getByText(
+          'Caution selon les conditions du loueur (empreinte bancaire ou chèque au comptoir)',
+        ),
       ).toBeVisible();
 
       // Vérification du CTA vers la réservation
@@ -100,7 +102,9 @@ test.describe('Pack Orchestrator E2E Real Browser Journeys', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     // Vérifier la présence du titre principal et du formulaire de recherche
-    await expect(page.getByRole('heading', { name: 'Votre équipement vous attend.' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Votre équipement vous attend.' }),
+    ).toBeVisible();
     await expect(page.getByRole('button', { name: /Rechercher/i })).toBeVisible();
   });
 });

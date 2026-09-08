@@ -49,10 +49,7 @@ export function createAccessorySubstitutionRepair(
   };
 }
 
-export function createDateShiftRepair(
-  originalDate: string,
-  proposedDate: string,
-): PackRepair {
+export function createDateShiftRepair(originalDate: string, proposedDate: string): PackRepair {
   return {
     type: 'DATE_SHIFT',
     originalRequirement: originalDate,

@@ -47,8 +47,10 @@ describe('Pack Alternatives Solver (ADR-041)', () => {
   });
 
   it('ne mentionne jamais d’enfant ou de remorque pour un groupe d’adultes', async () => {
-    const mockDb = {} as any;
-    vi.spyOn(packSolverModule, 'solvePackForParty').mockResolvedValue([mockCandidate('Cyclo Annecy')]);
+    const mockDb = {} as Parameters<typeof solvePackAlternatives>[0];
+    vi.spyOn(packSolverModule, 'solvePackForParty').mockResolvedValue([
+      mockCandidate('Cyclo Annecy'),
+    ]);
 
     const alternatives = await solvePackAlternatives(mockDb, adultOnlyRequest, []);
 
@@ -68,7 +70,7 @@ describe('Pack Alternatives Solver (ADR-041)', () => {
   });
 
   it('génère une alternative de substitution fidèle quand une réparation explicite existe', async () => {
-    const mockDb = {} as any;
+    const mockDb = {} as Parameters<typeof solvePackAlternatives>[0];
     const repairedCandidate: RankedPackCandidate<SolvedPackCandidate> = {
       ...mockCandidate('Vélo Pro Annecy'),
       candidate: {
@@ -101,7 +103,7 @@ describe('Pack Alternatives Solver (ADR-041)', () => {
   });
 
   it('renvoie des alternatives nulles sans fausses promesses si rien n’est disponible', async () => {
-    const mockDb = {} as any;
+    const mockDb = {} as Parameters<typeof solvePackAlternatives>[0];
     vi.spyOn(packSolverModule, 'solvePackForParty').mockResolvedValue([]);
 
     const alternatives = await solvePackAlternatives(mockDb, adultOnlyRequest, []);

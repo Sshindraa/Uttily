@@ -216,9 +216,7 @@ export function SearchResults({
       <div className={styles.splitLayout}>
         {/* Colonne gauche : Liste des offres (Airbnb style) */}
         <div
-          className={`${styles.listPane} ${
-            mobileView === 'map' ? styles.paneHiddenOnMobile : ''
-          }`}
+          className={`${styles.listPane} ${mobileView === 'map' ? styles.paneHiddenOnMobile : ''}`}
         >
           {result ? (
             <>
@@ -277,7 +275,7 @@ export function SearchResults({
               {isPackSearch &&
                 Boolean(
                   (solvedPacks && solvedPacks.length > 0) ||
-                    (packAlternatives && packAlternatives.totalAlternativesCount > 0),
+                  (packAlternatives && packAlternatives.totalAlternativesCount > 0),
                 ) && (
                   <div className={styles.individualOffersDivider}>
                     <h3 className={styles.individualOffersTitle}>
@@ -440,11 +438,7 @@ export function SearchResults({
 
       {/* Bouton flottant de bascule mobile Carte / Liste */}
       {destination && (
-        <FloatingViewToggle
-          currentView={mobileView}
-          onToggle={setMobileView}
-          locale={locale}
-        />
+        <FloatingViewToggle currentView={mobileView} onToggle={setMobileView} locale={locale} />
       )}
 
       {/* Pack Confirmation Drawer */}

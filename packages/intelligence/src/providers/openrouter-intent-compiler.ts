@@ -69,11 +69,15 @@ export class OpenRouterIntentCompilerProvider implements IntentCompilerPort {
     const key = options.apiKey || process.env.OPENROUTER_API_KEY;
     if (!key) {
       throw new Error(
-        "OPENROUTER_API_KEY est requis pour utiliser OpenRouterIntentCompilerProvider.",
+        'OPENROUTER_API_KEY est requis pour utiliser OpenRouterIntentCompilerProvider.',
       );
     }
     this.apiKey = key;
-    this.model = options.model || process.env.OPENROUTER_INTENT_MODEL || process.env.OPENROUTER_MODEL || DEFAULT_MODEL;
+    this.model =
+      options.model ||
+      process.env.OPENROUTER_INTENT_MODEL ||
+      process.env.OPENROUTER_MODEL ||
+      DEFAULT_MODEL;
     this.baseUrl = options.baseUrl || process.env.OPENROUTER_BASE_URL || DEFAULT_BASE_URL;
     this.timeoutMs = options.timeoutMs || DEFAULT_TIMEOUT_MS;
   }

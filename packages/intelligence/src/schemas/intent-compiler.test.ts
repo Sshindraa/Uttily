@@ -1,12 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import {
-  IntentProposalSchema,
-  type IntentProposal,
-} from './intent-compiler';
+import { IntentProposalSchema, type IntentProposal } from './intent-compiler';
 import { confident, abstain } from './confidence';
-import {
-  FakeIntentCompilerProvider,
-} from '../fakes/fake-intent-compiler';
+import { FakeIntentCompilerProvider } from '../fakes/fake-intent-compiler';
 
 describe('IntentProposalSchema', () => {
   it('valide une proposition complète et bien formée', () => {

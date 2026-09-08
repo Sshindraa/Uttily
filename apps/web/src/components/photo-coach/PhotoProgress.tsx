@@ -82,12 +82,10 @@ export function PhotoProgress({
             <circle cx="270" cy="265" r="58" />
             <circle cx="270" cy="265" r="48" strokeDasharray="3 4" strokeWidth="1.5" />
             <circle cx="270" cy="265" r="8" fill="currentColor" />
-
             {/* Roue avant */}
             <circle cx="590" cy="265" r="58" />
             <circle cx="590" cy="265" r="48" strokeDasharray="3 4" strokeWidth="1.5" />
             <circle cx="590" cy="265" r="8" fill="currentColor" />
-
             {/* Cadre principal */}
             <line x1="270" y1="265" x2="415" y2="265" /> {/* Base arrière */}
             <line x1="270" y1="265" x2="380" y2="155" /> {/* Hauban */}
@@ -95,10 +93,8 @@ export function PhotoProgress({
             <line x1="415" y1="265" x2="540" y2="145" /> {/* Tube diagonal */}
             <line x1="380" y1="155" x2="540" y2="145" /> {/* Tube supérieur */}
             <line x1="540" y1="145" x2="590" y2="265" /> {/* Fourche avant */}
-
             {/* Selle */}
             <path d="M380 155 L375 125 M345 122 H405" strokeWidth="4" />
-
             {/* Cintre / Potence de profil */}
             <path d="M540 145 L548 112 Q550 102 568 106" strokeWidth="4" />
           </g>

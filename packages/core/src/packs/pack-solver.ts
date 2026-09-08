@@ -9,13 +9,8 @@ import {
   organizations,
 } from '@uttily/database';
 import type { PackRequest } from './party-model';
-import {
-  findAdmissibleAccessorySubstitutions,
-} from './compatibility-graph';
-import {
-  createAccessorySubstitutionRepair,
-  type PackRepair,
-} from './pack-repair';
+import { findAdmissibleAccessorySubstitutions } from './compatibility-graph';
+import { createAccessorySubstitutionRepair, type PackRepair } from './pack-repair';
 import {
   rankCandidatePacks,
   type RankedPackCandidate,
@@ -178,7 +173,8 @@ export async function solvePackForParty(
           matchedRow = availableRows.find(
             (row) =>
               !allocatedItemIds.has(row.itemId) &&
-              (row.categorySlug.includes(subSlug) || row.productName.toLowerCase().includes(subSlug)),
+              (row.categorySlug.includes(subSlug) ||
+                row.productName.toLowerCase().includes(subSlug)),
           );
 
           if (matchedRow) {

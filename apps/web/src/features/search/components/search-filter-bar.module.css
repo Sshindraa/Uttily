@@ -38,9 +38,10 @@
   line-height: var(--ut-leading-ui);
   white-space: nowrap;
   text-decoration: none;
-  transition: background var(--ut-motion-fast) var(--ut-ease-standard),
-              border-color var(--ut-motion-fast) var(--ut-ease-standard),
-              color var(--ut-motion-fast) var(--ut-ease-standard);
+  transition:
+    background var(--ut-motion-fast) var(--ut-ease-standard),
+    border-color var(--ut-motion-fast) var(--ut-ease-standard),
+    color var(--ut-motion-fast) var(--ut-ease-standard);
   flex-shrink: 0;
 }
 

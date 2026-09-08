@@ -127,7 +127,10 @@ Réponds uniquement en JSON conforme au schéma strict.`;
       if (!isKnownSlot) {
         parsedJson.matchedSlot = expectedSlot;
       }
-      if (parsedJson?.detectedFeatures && parsedJson.detectedFeatures.visibleSizeLabel === undefined) {
+      if (
+        parsedJson?.detectedFeatures &&
+        parsedJson.detectedFeatures.visibleSizeLabel === undefined
+      ) {
         parsedJson.detectedFeatures.visibleSizeLabel = null;
       }
       return PhotoQualityAssessmentSchema.parse(parsedJson);

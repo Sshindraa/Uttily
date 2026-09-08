@@ -132,17 +132,30 @@ describe('IntentNormalizer (ADR-041)', () => {
         },
         {
           kind: 'PARTY_MEMBER' as const,
-          value: { role: 'ADULT' as const, heightCm: 'UNKNOWN' as const, need: 'SELF_RIDER' as const },
+          value: {
+            role: 'ADULT' as const,
+            heightCm: 'UNKNOWN' as const,
+            need: 'SELF_RIDER' as const,
+          },
           confidence: 0.9,
         },
         {
           kind: 'PARTY_MEMBER' as const,
-          value: { role: 'ADULT' as const, heightCm: 'UNKNOWN' as const, need: 'SELF_RIDER' as const },
+          value: {
+            role: 'ADULT' as const,
+            heightCm: 'UNKNOWN' as const,
+            need: 'SELF_RIDER' as const,
+          },
           confidence: 0.9,
         },
         {
           kind: 'PARTY_MEMBER' as const,
-          value: { role: 'CHILD' as const, ageYears: 6, heightCm: 'UNKNOWN' as const, need: 'PASSENGER_TOWED' as const },
+          value: {
+            role: 'CHILD' as const,
+            ageYears: 6,
+            heightCm: 'UNKNOWN' as const,
+            need: 'PASSENGER_TOWED' as const,
+          },
           confidence: 0.9,
         },
         {
@@ -157,7 +170,11 @@ describe('IntentNormalizer (ADR-041)', () => {
         },
         {
           kind: 'EQUIPMENT_NEED' as const,
-          value: { familySlug: 'bike', accessoryRequired: 'CHILD_TRAILER' as const, partyMemberId: 'party-member-3' },
+          value: {
+            familySlug: 'bike',
+            accessoryRequired: 'CHILD_TRAILER' as const,
+            partyMemberId: 'party-member-3',
+          },
           confidence: 0.9,
         },
       ],
@@ -194,7 +211,11 @@ describe('IntentNormalizer (ADR-041)', () => {
       facts: [
         {
           kind: 'PARTY_MEMBER' as const,
-          value: { role: 'ADULT' as const, heightCm: 'UNKNOWN' as const, need: 'SELF_RIDER' as const },
+          value: {
+            role: 'ADULT' as const,
+            heightCm: 'UNKNOWN' as const,
+            need: 'SELF_RIDER' as const,
+          },
           confidence: 0.9,
         },
       ],
@@ -209,4 +230,3 @@ describe('IntentNormalizer (ADR-041)', () => {
     expect(resolution.missingFields.some((f) => f.field === 'DATES')).toBe(true);
   });
 });
-

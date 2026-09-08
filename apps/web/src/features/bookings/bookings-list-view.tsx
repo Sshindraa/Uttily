@@ -278,7 +278,14 @@ function BookingCard({
           >
             {booking.productName}
           </h3>
-          <p style={{ fontFamily: 'var(--ut-font-body)', fontSize: 'var(--ut-text-sm)', color: 'var(--ut-color-ink-muted)', margin: 0 }}>
+          <p
+            style={{
+              fontFamily: 'var(--ut-font-body)',
+              fontSize: 'var(--ut-text-sm)',
+              color: 'var(--ut-color-ink-muted)',
+              margin: 0,
+            }}
+          >
             {copy.bookings.renter(booking.organizationName)}
           </p>
         </div>

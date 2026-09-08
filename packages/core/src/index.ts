@@ -212,5 +212,3 @@ export * from './packs';
 
 // ADR-042 — Sanitisation EXIF des médias.
 export * from './media/exif-sanitizer';
-
-

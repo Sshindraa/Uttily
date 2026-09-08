@@ -29,8 +29,9 @@
   border: 1px solid var(--ut-color-border-on-dark-strong);
   box-shadow: var(--ut-shadow-lg);
   cursor: pointer;
-  transition: transform var(--ut-motion-fast) var(--ut-ease-standard),
-              background var(--ut-motion-fast) var(--ut-ease-standard);
+  transition:
+    transform var(--ut-motion-fast) var(--ut-ease-standard),
+    background var(--ut-motion-fast) var(--ut-ease-standard);
   white-space: nowrap;
 }
 

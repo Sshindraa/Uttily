@@ -332,9 +332,10 @@
   line-height: 1.2;
   cursor: pointer;
   white-space: nowrap;
-  transition: transform var(--ut-motion-fast) var(--ut-ease-standard),
-              box-shadow var(--ut-motion-fast) var(--ut-ease-standard),
-              background-color var(--ut-motion-fast) var(--ut-ease-standard);
+  transition:
+    transform var(--ut-motion-fast) var(--ut-ease-standard),
+    box-shadow var(--ut-motion-fast) var(--ut-ease-standard),
+    background-color var(--ut-motion-fast) var(--ut-ease-standard);
 }
 
 .viewportButton:hover:not(:disabled) {
@@ -411,10 +412,11 @@
   border: 1px solid rgba(0, 0, 0, 0.08);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
   cursor: pointer;
-  transition: transform 0.18s cubic-bezier(0.2, 0, 0, 1),
-              background-color 0.18s ease,
-              color 0.18s ease,
-              box-shadow 0.18s ease;
+  transition:
+    transform 0.18s cubic-bezier(0.2, 0, 0, 1),
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
   user-select: none;
   white-space: nowrap;
   z-index: 1;
@@ -768,4 +770,3 @@
   color: #64748b;
   margin: 0;
 }
-

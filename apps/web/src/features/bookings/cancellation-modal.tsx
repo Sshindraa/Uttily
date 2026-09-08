@@ -145,7 +145,14 @@ export function CustomerCancellationModal({
             >
               ✓
             </div>
-            <p style={{ color: 'var(--ut-color-ink-strong)', fontFamily: 'var(--ut-font-body)', fontSize: 'var(--ut-text-md)', margin: 0 }}>
+            <p
+              style={{
+                color: 'var(--ut-color-ink-strong)',
+                fontFamily: 'var(--ut-font-body)',
+                fontSize: 'var(--ut-text-md)',
+                margin: 0,
+              }}
+            >
               {successResult.refundAmountMinor > 0
                 ? copy.cancellation.successWithRefund(
                     formatAmount(successResult.refundAmountMinor, successResult.currency, locale),
@@ -204,7 +211,11 @@ export function CustomerCancellationModal({
                   }}
                 >
                   <div
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
                   >
                     <span>{copy.cancellation.paidAmount}</span>
                     <strong style={{ fontFamily: 'var(--ut-font-display)' }}>
@@ -239,7 +250,14 @@ export function CustomerCancellationModal({
                   </div>
                 </div>
 
-                <p style={{ fontFamily: 'var(--ut-font-body)', fontSize: 'var(--ut-text-caption)', color: 'var(--ut-color-ink-muted)', margin: 0 }}>
+                <p
+                  style={{
+                    fontFamily: 'var(--ut-font-body)',
+                    fontSize: 'var(--ut-text-caption)',
+                    color: 'var(--ut-color-ink-muted)',
+                    margin: 0,
+                  }}
+                >
                   {copy.cancellation.policyNotice}
                 </p>
 

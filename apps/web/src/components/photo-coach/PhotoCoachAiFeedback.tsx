@@ -63,9 +63,7 @@ export function PhotoCoachAiFeedback({
               : styles.verdictRejected
         }`}
       >
-        <span>
-          {verdict === 'CONFORMANT' ? '✓' : verdict === 'WARNING' ? '⚠️' : '✕'}
-        </span>
+        <span>{verdict === 'CONFORMANT' ? '✓' : verdict === 'WARNING' ? '⚠️' : '✕'}</span>
         <span>
           {verdict === 'CONFORMANT'
             ? fr
@@ -148,7 +146,8 @@ export function PhotoCoachAiFeedback({
       </div>
 
       {/* 3. Recommandations & Conseils */}
-      {((fr ? issuesFr : issuesEn).length > 0 || (fr ? suggestionsFr : suggestionsEn).length > 0) && (
+      {((fr ? issuesFr : issuesEn).length > 0 ||
+        (fr ? suggestionsFr : suggestionsEn).length > 0) && (
         <div className={styles.sectionBox}>
           <h4 className={styles.sectionTitle}>
             {isRejected
@@ -237,7 +236,10 @@ export function PhotoCoachAiFeedback({
 
             {detectedFeatures.visibleSizeLabel && (
               <span className={`${styles.featureTag} ${styles.featureTagActive}`}>
-                📏 {fr ? `Taille cadre : ${detectedFeatures.visibleSizeLabel}` : `Size: ${detectedFeatures.visibleSizeLabel}`}
+                📏{' '}
+                {fr
+                  ? `Taille cadre : ${detectedFeatures.visibleSizeLabel}`
+                  : `Size: ${detectedFeatures.visibleSizeLabel}`}
               </span>
             )}
           </div>

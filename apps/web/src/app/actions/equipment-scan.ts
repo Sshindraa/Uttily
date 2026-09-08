@@ -39,8 +39,11 @@ export async function scanEquipmentPhotoAction(
   }
 
   const rawType = file.type.toLowerCase();
-  const mimeType: 'image/jpeg' | 'image/png' | 'image/webp' =
-    rawType.includes('png') ? 'image/png' : rawType.includes('webp') ? 'image/webp' : 'image/jpeg';
+  const mimeType: 'image/jpeg' | 'image/png' | 'image/webp' = rawType.includes('png')
+    ? 'image/png'
+    : rawType.includes('webp')
+      ? 'image/webp'
+      : 'image/jpeg';
 
   const arrayBuffer = await file.arrayBuffer();
   const base64 = Buffer.from(arrayBuffer).toString('base64');

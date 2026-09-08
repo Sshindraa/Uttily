@@ -158,9 +158,7 @@ export async function createPackBookingDraftAction(
         expiresAt,
       });
 
-      const blockByItemId = new Map(
-        holdResult.blocks.map((b) => [b.inventoryItemId, b.blockId]),
-      );
+      const blockByItemId = new Map(holdResult.blocks.map((b) => [b.inventoryItemId, b.blockId]));
 
       for (const it of itemsWithVariants) {
         const linePrice =

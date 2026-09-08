@@ -8,7 +8,11 @@ import { confident, abstain } from '../schemas/confidence';
 
 export const DEFAULT_FAKE_INTENT_PROPOSAL: IntentProposal = {
   destination: confident('Annecy', 0.98, 'Mention explicite de la ville d’Annecy'),
-  destinationPublicId: confident('dest-annecy-001', 0.98, 'Correspondance exacte dans le catalogue'),
+  destinationPublicId: confident(
+    'dest-annecy-001',
+    0.98,
+    'Correspondance exacte dans le catalogue',
+  ),
   dates: confident(
     {
       mode: 'DAY_RANGE',
@@ -36,7 +40,8 @@ export const DEFAULT_FAKE_INTENT_PROPOSAL: IntentProposal = {
     },
   ],
   rawQueryCleaned: '2 vélos électriques et 1 remorque enfant à Annecy ce samedi',
-  explanationFr: 'Sortie en famille à Annecy : 2 vélos électriques adultes et un équipement adapté pour un enfant.',
+  explanationFr:
+    'Sortie en famille à Annecy : 2 vélos électriques adultes et un équipement adapté pour un enfant.',
   explanationEn: 'Family outing in Annecy: 2 adult e-bikes and suitable equipment for a child.',
 };
 
@@ -76,7 +81,10 @@ export class FakeIntentCompilerProvider implements IntentCompilerPort {
     let destPublicId = 'dest-annecy-001';
     let destConf = 0.95;
 
-    if (input.userContext?.availableDestinations && input.userContext.availableDestinations.length > 0) {
+    if (
+      input.userContext?.availableDestinations &&
+      input.userContext.availableDestinations.length > 0
+    ) {
       const matched = input.userContext.availableDestinations.find(
         (d) => q.includes(d.label.toLowerCase()) || q.includes(d.slug.toLowerCase()),
       );
@@ -117,11 +125,17 @@ export class FakeIntentCompilerProvider implements IntentCompilerPort {
 
     // 3. People count (Strict ADR-041: Abstention > Hallucination)
     let peopleCountField = abstain<number>('Non précisé dans la requête');
-    const peopleMatch = q.match(/(\d+)\s*(?:personnes?|pers|adultes?|locataires?|vélos?|velos?|kayaks?|skis?)/);
+    const peopleMatch = q.match(
+      /(\d+)\s*(?:personnes?|pers|adultes?|locataires?|vélos?|velos?|kayaks?|skis?)/,
+    );
     if (peopleMatch && peopleMatch[1]) {
       const parsed = parseInt(peopleMatch[1], 10);
       if (!Number.isNaN(parsed) && parsed > 0 && parsed <= 99) {
-        peopleCountField = confident(parsed, 0.95, `Détecté d'après la requête : "${peopleMatch[0]}"`);
+        peopleCountField = confident(
+          parsed,
+          0.95,
+          `Détecté d'après la requête : "${peopleMatch[0]}"`,
+        );
       }
     } else if (q.includes('seul') || q.includes('pour moi') || q.includes('solo')) {
       peopleCountField = confident(1, 0.95, 'Usage solo explicite');
@@ -175,16 +189,19 @@ export class FakeIntentCompilerProvider implements IntentCompilerPort {
         {
           categorySlug,
           categoryId,
-          electricPreferred: q.includes('électrique') || q.includes('vae') || q.includes('electrique'),
+          electricPreferred:
+            q.includes('électrique') || q.includes('vae') || q.includes('electrique'),
         },
       ],
       rawQueryCleaned: input.rawQuery.trim(),
-      explanationFr: peopleCountField.value != null
-        ? `Recherche compilée pour ${peopleCountField.value} personne(s) à ${destName} du ${startDate}.`
-        : `Recherche compilée à ${destName} du ${startDate} (nombre de participants à préciser).`,
-      explanationEn: peopleCountField.value != null
-        ? `Compiled search for ${peopleCountField.value} people in ${destName} starting ${startDate}.`
-        : `Compiled search in ${destName} starting ${startDate} (party size to specify).`,
+      explanationFr:
+        peopleCountField.value != null
+          ? `Recherche compilée pour ${peopleCountField.value} personne(s) à ${destName} du ${startDate}.`
+          : `Recherche compilée à ${destName} du ${startDate} (nombre de participants à préciser).`,
+      explanationEn:
+        peopleCountField.value != null
+          ? `Compiled search for ${peopleCountField.value} people in ${destName} starting ${startDate}.`
+          : `Compiled search in ${destName} starting ${startDate} (party size to specify).`,
     };
 
     return {

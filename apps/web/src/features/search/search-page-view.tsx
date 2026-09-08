@@ -110,4 +110,3 @@ export function SearchPageView({
     </main>
   );
 }
-

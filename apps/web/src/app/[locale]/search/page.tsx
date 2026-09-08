@@ -67,8 +67,7 @@ export default async function PublicSearchPage({
   if (isMultiNeed && parsed.values.destinationPublicId) {
     const selectedCategory = filters.categories.find((c) => c.id === parsed.values.categoryId);
     const startDate =
-      parsed.values.startDate ||
-      (parsed.values.startAt ? parsed.values.startAt.slice(0, 10) : '');
+      parsed.values.startDate || (parsed.values.startAt ? parsed.values.startAt.slice(0, 10) : '');
     const endDateExclusive =
       parsed.values.endDateExclusive ||
       (parsed.values.endAt ? parsed.values.endAt.slice(0, 10) : undefined);
@@ -132,11 +131,7 @@ export default async function PublicSearchPage({
     <ClientShell
       localeOverride={locale}
       header={
-        <HomeNavigation
-          locale={locale}
-          sticky={false}
-          alternateHref={`/${otherLocale}/search`}
-        />
+        <HomeNavigation locale={locale} sticky={false} alternateHref={`/${otherLocale}/search`} />
       }
       alternateHref={`/${otherLocale}/search`}
       alternateLabel={fr ? 'English' : 'Français'}

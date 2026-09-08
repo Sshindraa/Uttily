@@ -47,7 +47,6 @@ export {
   ProposedPreferenceSchema,
 } from './schemas/intent-compiler';
 
-
 // Ports
 export {
   type EquipmentEnrichmentPort,
@@ -107,9 +106,7 @@ export {
   PhotoQualityAssessmentSchema,
 } from './schemas/photo-coach-schema';
 
-export {
-  PHOTO_COACH_SYSTEM_PROMPT,
-} from './prompts/photo-coach-prompt';
+export { PHOTO_COACH_SYSTEM_PROMPT } from './prompts/photo-coach-prompt';
 
 export {
   FakePhotoCoachAnalyzer,
@@ -121,6 +118,3 @@ export {
   OpenRouterPhotoCoachAnalyzer,
   type OpenRouterPhotoCoachOptions,
 } from './providers/openrouter-photo-coach';
-
-
-

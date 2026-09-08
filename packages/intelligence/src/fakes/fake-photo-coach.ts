@@ -53,7 +53,9 @@ export class FakePhotoCoachAnalyzer implements PhotoCoachAnalyzer {
           frameType: 'UNKNOWN',
           confidence: 0,
         },
-        issuesFr: ['L’objet photographié n’est pas un équipement conforme à la catégorie demandée.'],
+        issuesFr: [
+          'L’objet photographié n’est pas un équipement conforme à la catégorie demandée.',
+        ],
         issuesEn: ['The photographed item does not match the requested equipment category.'],
         suggestionsFr: ['Téléversez une photo du vélo entier correspondant au standard demandé.'],
         suggestionsEn: ['Upload a photo of the bicycle matching the required standard.'],
@@ -111,7 +113,9 @@ export class FakePhotoCoachAnalyzer implements PhotoCoachAnalyzer {
         },
         issuesFr: ['La roue avant et le cintre sont coupés du cadre.'],
         issuesEn: ['Front wheel and handlebar are cut off.'],
-        suggestionsFr: ['Reculez d’environ 1 mètre pour faire entrer l’intégralité du vélo dans le cadre.'],
+        suggestionsFr: [
+          'Reculez d’environ 1 mètre pour faire entrer l’intégralité du vélo dans le cadre.',
+        ],
         suggestionsEn: ['Step back about 1 meter to fit the entire bicycle into the frame.'],
       };
     }
@@ -139,7 +143,9 @@ export class FakePhotoCoachAnalyzer implements PhotoCoachAnalyzer {
         },
         issuesFr: ['Le vélo est photographié côté opposé à la transmission (dérailleur masqué).'],
         issuesEn: ['Bicycle is photographed from the non-drive side (derailleur hidden).'],
-        suggestionsFr: ['Tournez le vélo pour photographier la chaîne et le dérailleur face à vous.'],
+        suggestionsFr: [
+          'Tournez le vélo pour photographier la chaîne et le dérailleur face à vous.',
+        ],
         suggestionsEn: ['Turn the bike around to show the chain and derailleur.'],
       };
     }
@@ -170,7 +176,9 @@ export class FakePhotoCoachAnalyzer implements PhotoCoachAnalyzer {
       },
       issuesFr: [],
       issuesEn: [],
-      suggestionsFr: ['Excellente prise de vue, vélo net et parfaitement centré côté transmission.'],
+      suggestionsFr: [
+        'Excellente prise de vue, vélo net et parfaitement centré côté transmission.',
+      ],
       suggestionsEn: ['Excellent shot, sharp and perfectly centered drive-side bicycle.'],
       ...this.defaultAssessment,
     };

@@ -78,10 +78,7 @@ describe('PhotoCoachAiFeedback Component', () => {
       frameType: 'UNKNOWN',
       confidence: 0.2,
     },
-    issuesFr: [
-      'Image très floue (bougé appareil ou optique sale).',
-      'Roues coupées au cadrage.',
-    ],
+    issuesFr: ['Image très floue (bougé appareil ou optique sale).', 'Roues coupées au cadrage.'],
     issuesEn: ['Very blurry image.', 'Wheels cropped out of frame.'],
     suggestionsFr: ['Nettoyez l’objectif de votre smartphone et reculez de 1 mètre.'],
     suggestionsEn: ['Clean your smartphone lens and step back 1 meter.'],
@@ -120,7 +117,9 @@ describe('PhotoCoachAiFeedback Component', () => {
 
     expect(html).toContain('Photo exploitable avec points d’amélioration conseillés');
     expect(html).toContain('Arrière-plan encombré par des cartons atelier.');
-    expect(html).toContain('Placez le vélo devant un mur uni ou une bâche blanche pour un rendu optimal.');
+    expect(html).toContain(
+      'Placez le vélo devant un mur uni ou une bâche blanche pour un rendu optimal.',
+    );
     expect(html).toContain('Valider et enrichir le catalogue →');
   });
 

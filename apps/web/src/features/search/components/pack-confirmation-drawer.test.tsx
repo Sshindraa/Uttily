@@ -66,9 +66,13 @@ describe('PackConfirmationDrawer (UI Formulations & Integrity)', () => {
     );
 
     // Formulation tempérée du blocage atomique
-    expect(html).toContain('Tous les équipements seront bloqués ensemble lors de votre réservation');
+    expect(html).toContain(
+      'Tous les équipements seront bloqués ensemble lors de votre réservation',
+    );
     // Formulation conditionnée de la caution
-    expect(html).toContain('Caution selon les conditions du loueur (empreinte bancaire ou chèque au comptoir)');
+    expect(html).toContain(
+      'Caution selon les conditions du loueur (empreinte bancaire ou chèque au comptoir)',
+    );
     // Pas d'affirmation trop absolue
     expect(html).not.toContain('Tous les équipements sont garantis et bloqués ensemble');
     expect(html).not.toContain('Caution prise au comptoir');

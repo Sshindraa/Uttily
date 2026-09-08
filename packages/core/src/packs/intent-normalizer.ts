@@ -78,12 +78,17 @@ export function normalizeIntentProposal(
         startAt = new Date(datesObj.startAt);
         endAt = new Date(datesObj.endAt);
       }
-    } else if (fact.kind === 'PARTY_MEMBER' && typeof fact.value === 'object' && fact.value !== null) {
+    } else if (
+      fact.kind === 'PARTY_MEMBER' &&
+      typeof fact.value === 'object' &&
+      fact.value !== null
+    ) {
       const val = fact.value as {
         role?: 'ADULT' | 'TEEN' | 'CHILD' | 'TODDLER';
         heightCm?: number | 'UNKNOWN';
         ageYears?: number | 'UNKNOWN';
-        need?: 'SELF_RIDER' | 'PASSENGER_SEATED' | 'PASSENGER_TOWED' | 'WATER_PADDLER' | 'SKI_RIDER';
+        need?:
+          'SELF_RIDER' | 'PASSENGER_SEATED' | 'PASSENGER_TOWED' | 'WATER_PADDLER' | 'SKI_RIDER';
       };
 
       const memberIndex = party.length;
@@ -97,8 +102,7 @@ export function normalizeIntentProposal(
         heightCm,
         ageYears: val.ageYears ?? 'UNKNOWN',
         need:
-          val.need ||
-          (role === 'CHILD' || role === 'TODDLER' ? 'PASSENGER_SEATED' : 'SELF_RIDER'),
+          val.need || (role === 'CHILD' || role === 'TODDLER' ? 'PASSENGER_SEATED' : 'SELF_RIDER'),
       });
 
       if (heightCm === 'UNKNOWN' && role === 'ADULT') {
@@ -108,7 +112,11 @@ export function normalizeIntentProposal(
           promptReason: `Taille du participant ${memberIndex + 1} (${role}) non précisée.`,
         });
       }
-    } else if (fact.kind === 'EQUIPMENT_NEED' && typeof fact.value === 'object' && fact.value !== null) {
+    } else if (
+      fact.kind === 'EQUIPMENT_NEED' &&
+      typeof fact.value === 'object' &&
+      fact.value !== null
+    ) {
       const val = fact.value as {
         familySlug?: string;
         electricPreferred?: boolean;
@@ -122,7 +130,9 @@ export function normalizeIntentProposal(
           id: `req-${requirements.length + 1}`,
           partyMemberId: val.partyMemberId || `party-member-${Math.min(party.length, 1)}`,
           familySlug: val.familySlug,
-          ...(val.electricPreferred !== undefined ? { electricPreferred: val.electricPreferred } : {}),
+          ...(val.electricPreferred !== undefined
+            ? { electricPreferred: val.electricPreferred }
+            : {}),
           ...(val.subtypesAllowed ? { subtypesAllowed: val.subtypesAllowed } : {}),
           ...(val.accessoryRequired ? { accessoryRequired: val.accessoryRequired } : {}),
         });
@@ -197,12 +207,7 @@ export interface RawPackRequirementInput {
   readonly electricPreferred?: boolean | undefined;
   readonly subtypes?: readonly string[] | undefined;
   readonly accessoryRequired?:
-    | 'CHILD_TRAILER'
-    | 'CHILD_SEAT'
-    | 'HELMET'
-    | 'PADDLE'
-    | 'LIFE_JACKET'
-    | undefined;
+    'CHILD_TRAILER' | 'CHILD_SEAT' | 'HELMET' | 'PADDLE' | 'LIFE_JACKET' | undefined;
 }
 
 export interface PublicSearchPackParamsInput {
@@ -269,7 +274,9 @@ export function buildPackRequestFromSearchParams(
         id: `req-${i + 1}`,
         partyMemberId: memberId,
         familySlug: item.familySlug || item.categorySlug || input.categorySlug || 'bike',
-        ...(item.electricPreferred !== undefined ? { electricPreferred: item.electricPreferred } : {}),
+        ...(item.electricPreferred !== undefined
+          ? { electricPreferred: item.electricPreferred }
+          : {}),
         ...(item.subtypes?.length ? { subtypesAllowed: item.subtypes } : {}),
         ...(item.accessoryRequired ? { accessoryRequired: item.accessoryRequired } : {}),
       });

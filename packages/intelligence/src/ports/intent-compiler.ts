@@ -30,11 +30,7 @@ import type {
   CompiledPartyRequirement,
 } from '../schemas/intent-compiler';
 
-export type {
-  IntentProposal,
-  CompiledDateIntent,
-  CompiledPartyRequirement,
-};
+export type { IntentProposal, CompiledDateIntent, CompiledPartyRequirement };
 
 /**
  * Résultat d'exécution du compilateur d'intention.

@@ -58,7 +58,7 @@ describe('scanEquipmentPhotoAction', () => {
   it('exécute l’analyse et retourne la proposition avec succès pour un gestionnaire de catalogue', async () => {
     vi.mocked(catalogAuth.requireCatalogManagerOf).mockResolvedValue({
       user: dummyUser,
-      db: {} as any,
+      db: {} as never,
       organizationId: orgId,
     });
 

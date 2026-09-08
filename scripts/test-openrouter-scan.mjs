@@ -34,7 +34,11 @@ if (target.startsWith('http://') || target.startsWith('https://')) {
   }
   console.log('📸 Image locale testée :', target);
   const base64 = readFileSync(filePath).toString('base64');
-  const mimeType = target.endsWith('.png') ? 'image/png' : target.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
+  const mimeType = target.endsWith('.png')
+    ? 'image/png'
+    : target.endsWith('.webp')
+      ? 'image/webp'
+      : 'image/jpeg';
   imagePayload = { base64, mimeType };
 }
 
@@ -56,16 +60,48 @@ try {
   const result = await provider.enrichEquipment(input);
   const totalMs = Date.now() - startTime;
 
-  console.log(`\n✅ Réponse reçue en ${totalMs} ms (Latence provider: ${result.metadata.latencyMs} ms) !`);
-  console.log('🏷️  Tokens :', result.metadata.inputUnits, 'in /', result.metadata.outputUnits, 'out');
-  console.log('💰 Coût estimé :', (result.metadata.costMicrounits / 10000).toFixed(4), 'centimes d’euro');
+  console.log(
+    `\n✅ Réponse reçue en ${totalMs} ms (Latence provider: ${result.metadata.latencyMs} ms) !`,
+  );
+  console.log(
+    '🏷️  Tokens :',
+    result.metadata.inputUnits,
+    'in /',
+    result.metadata.outputUnits,
+    'out',
+  );
+  console.log(
+    '💰 Coût estimé :',
+    (result.metadata.costMicrounits / 10000).toFixed(4),
+    'centimes d’euro',
+  );
 
   console.log('\n--- FICHE TECHNIQUE EXTRAITE PAR L’IA ---');
-  console.log('Marque       :', result.proposal.brand.value, `(${Math.round(result.proposal.brand.confidence * 100)}%)`);
-  console.log('Modèle       :', result.proposal.model.value, `(${Math.round(result.proposal.model.confidence * 100)}%)`);
-  console.log('Catégorie    :', result.proposal.categorySlug.value, `(${Math.round(result.proposal.categorySlug.confidence * 100)}%)`);
-  console.log('Sous-type    :', result.proposal.subtype.value, `(${Math.round(result.proposal.subtype.confidence * 100)}%)`);
-  console.log('Taille cadre :', result.proposal.frameSize.value ?? 'Non déterminée (abstention)', `(${Math.round(result.proposal.frameSize.confidence * 100)}%)`);
+  console.log(
+    'Marque       :',
+    result.proposal.brand.value,
+    `(${Math.round(result.proposal.brand.confidence * 100)}%)`,
+  );
+  console.log(
+    'Modèle       :',
+    result.proposal.model.value,
+    `(${Math.round(result.proposal.model.confidence * 100)}%)`,
+  );
+  console.log(
+    'Catégorie    :',
+    result.proposal.categorySlug.value,
+    `(${Math.round(result.proposal.categorySlug.confidence * 100)}%)`,
+  );
+  console.log(
+    'Sous-type    :',
+    result.proposal.subtype.value,
+    `(${Math.round(result.proposal.subtype.confidence * 100)}%)`,
+  );
+  console.log(
+    'Taille cadre :',
+    result.proposal.frameSize.value ?? 'Non déterminée (abstention)',
+    `(${Math.round(result.proposal.frameSize.confidence * 100)}%)`,
+  );
   console.log('Angle photo  :', result.proposal.detectedPhotoSlot.value);
   console.log('État suggéré :', result.proposal.suggestedCondition.value);
   console.log('\nSpécifications techniques :');
@@ -74,7 +110,6 @@ try {
   console.log(result.proposal.marketingDescriptionFr.value);
   console.log('\nObservations :');
   console.log(result.proposal.generalObservations);
-
 } catch (err) {
   console.error('\n❌ Erreur lors du test :', err);
   process.exit(1);

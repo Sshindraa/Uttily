@@ -15,7 +15,11 @@ import { confident, abstain } from '../schemas/confidence';
  */
 export const DEFAULT_FAKE_BIKE_PROPOSAL: EquipmentEnrichmentProposal = {
   brand: confident('Specialized', 0.99, 'Logo Specialized bien visible sur le tube diagonal'),
-  model: confident('Turbo Levo Comp Alloy', 0.95, 'Forme du cadre et inscriptions conformes au modèle 2024'),
+  model: confident(
+    'Turbo Levo Comp Alloy',
+    0.95,
+    'Forme du cadre et inscriptions conformes au modèle 2024',
+  ),
   categorySlug: confident('bike', 0.99, 'Vélo tout terrain'),
   subtype: confident('electric_mountain', 0.98, 'Moteur central et batterie intégrée'),
   frameSize: confident('M', 0.85, 'Sticker taille M visible près du tube de selle'),
@@ -38,8 +42,16 @@ export const DEFAULT_FAKE_BIKE_PROPOSAL: EquipmentEnrichmentProposal = {
     'The Specialized Turbo Levo Comp Alloy is the benchmark electric mountain bike for exploring trails with confidence. Featuring the smooth and powerful Specialized 2.2 motor paired with a generous 700 Wh battery, it tackles challenging terrain with outstanding control and comfort.',
     0.95,
   ),
-  suggestedCondition: confident('GOOD', 0.88, 'Très bon état général, légères traces cosmétiques normales'),
-  detectedPhotoSlot: confident('HERO_PROFILE', 0.95, 'Vue de profil latérale complète côté transmission'),
+  suggestedCondition: confident(
+    'GOOD',
+    0.88,
+    'Très bon état général, légères traces cosmétiques normales',
+  ),
+  detectedPhotoSlot: confident(
+    'HERO_PROFILE',
+    0.95,
+    'Vue de profil latérale complète côté transmission',
+  ),
   generalObservations: 'Vélo complet et prêt pour la location.',
 };
 

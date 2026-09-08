@@ -68,5 +68,3 @@ describe('formatNaturalDate (Cohérence & Clamping)', () => {
     expect(formatted).not.toContain('–');
   });
 });
-
-

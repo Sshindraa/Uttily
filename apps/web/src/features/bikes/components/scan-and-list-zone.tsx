@@ -153,11 +153,7 @@ export function ScanAndListZone({
       {isPending && (
         <div className={styles.loadingBox} role="status" aria-live="polite">
           {previewUrl && (
-            <img
-              src={previewUrl}
-              alt="Photo en cours d’analyse"
-              className={styles.thumbnail}
-            />
+            <img src={previewUrl} alt="Photo en cours d’analyse" className={styles.thumbnail} />
           )}
           <div className={styles.spinner} />
           <div className={styles.loadingText}>Analyse visuelle en cours par le VLM…</div>
@@ -195,11 +191,7 @@ export function ScanAndListZone({
           <div className={styles.successHeader}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               {previewUrl && (
-                <img
-                  src={previewUrl}
-                  alt="Aperçu équipement"
-                  className={styles.thumbnailSmall}
-                />
+                <img src={previewUrl} alt="Aperçu équipement" className={styles.thumbnailSmall} />
               )}
               <div className={styles.successTitle}>
                 <span aria-hidden="true">✓</span>
@@ -216,12 +208,14 @@ export function ScanAndListZone({
           <div className={styles.badgesGrid}>
             {brandName && (
               <span className={styles.badge}>
-                🏷️ Marque : <strong>{brandName}</strong> ({Math.round((proposal.brand.confidence ?? 1) * 100)}%)
+                🏷️ Marque : <strong>{brandName}</strong> (
+                {Math.round((proposal.brand.confidence ?? 1) * 100)}%)
               </span>
             )}
             {modelName && (
               <span className={styles.badge}>
-                🚲 Modèle : <strong>{modelName}</strong> ({Math.round((proposal.model.confidence ?? 1) * 100)}%)
+                🚲 Modèle : <strong>{modelName}</strong> (
+                {Math.round((proposal.model.confidence ?? 1) * 100)}%)
               </span>
             )}
             {subtype && (
@@ -246,7 +240,8 @@ export function ScanAndListZone({
               <span aria-hidden="true">ℹ️</span>
               <span>
                 <strong>Taille non déterminée avec certitude :</strong> Par sécurité (politique
-                d’abstention), le champ variante a été laissé libre pour votre vérification manuelle.
+                d’abstention), le champ variante a été laissé libre pour votre vérification
+                manuelle.
               </span>
             </div>
           )}

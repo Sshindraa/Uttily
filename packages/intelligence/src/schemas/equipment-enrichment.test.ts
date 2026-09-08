@@ -26,7 +26,12 @@ describe('EquipmentEnrichment Schemas & Confidence Policy (ADR-041)', () => {
     it('valide une entrée avec image en base64 et hint de contexte', () => {
       const parsed = EquipmentEnrichmentInputSchema.safeParse({
         organizationId: validOrgId,
-        images: [{ base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=' }],
+        images: [
+          {
+            base64:
+              'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+          },
+        ],
         contextHint: 'Facture d’achat : Specialized Turbo Levo 2024',
         locale: 'fr',
       });

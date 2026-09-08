@@ -41,7 +41,9 @@ export interface PackFunnelKPIs {
 /**
  * Enregistre un événement analytique Pack Orchestrator.
  */
-export function recordPackAnalytics(event: Omit<PackSearchMetricsEvent, 'timestamp'>): PackSearchMetricsEvent {
+export function recordPackAnalytics(
+  event: Omit<PackSearchMetricsEvent, 'timestamp'>,
+): PackSearchMetricsEvent {
   const payload: PackSearchMetricsEvent = {
     ...event,
     timestamp: new Date().toISOString(),
@@ -49,7 +51,6 @@ export function recordPackAnalytics(event: Omit<PackSearchMetricsEvent, 'timesta
 
   // Traçage structuré pour observabilité
   if (process.env.NODE_ENV !== 'test') {
-    // eslint-disable-next-line no-console
     console.info('[PackOrchestrator:Analytics]', JSON.stringify(payload));
   }
 

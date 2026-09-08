@@ -1,13 +1,18 @@
 'use client';
 
-import type { RankedPackCandidate, SolvedPackCandidate, SolvedPackAlternatives } from '@uttily/core';
+import type {
+  RankedPackCandidate,
+  SolvedPackCandidate,
+  SolvedPackAlternatives,
+} from '@uttily/core';
 import styles from './pack-alternatives-section.module.css';
 
 export interface PackAlternativesSectionProps {
   readonly locale: 'fr' | 'en';
   readonly alternatives?: SolvedPackAlternatives | null | undefined;
   readonly repairedPack?: RankedPackCandidate<SolvedPackCandidate> | null | undefined;
-  readonly onSelectRepairedPack?: ((pack: RankedPackCandidate<SolvedPackCandidate>) => void) | undefined;
+  readonly onSelectRepairedPack?:
+    ((pack: RankedPackCandidate<SolvedPackCandidate>) => void) | undefined;
   readonly onShiftDate?: ((daysOffset: number) => void) | undefined;
   readonly currentSearchParams?: string | undefined;
 }
@@ -167,11 +172,7 @@ export function PackAlternativesSection({
                 {fr ? timeShiftAlt.descriptionFr : timeShiftAlt.descriptionEn}
               </p>
             </div>
-            <button
-              type="button"
-              className={styles.actionBtn}
-              onClick={handleAfternoonSlotClick}
-            >
+            <button type="button" className={styles.actionBtn} onClick={handleAfternoonSlotClick}>
               {fr ? timeShiftAlt.ctaLabelFr : timeShiftAlt.ctaLabelEn}
             </button>
           </div>

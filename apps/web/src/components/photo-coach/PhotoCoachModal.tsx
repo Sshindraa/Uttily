@@ -9,7 +9,10 @@ import {
 } from '@uttily/contracts';
 import type { ProductPhotoSummary } from '@uttily/core';
 import { uploadProductPhotoAction } from '@/app/actions/product-photos';
-import { analyzePhotoQualityAction, confirmEquipmentFeaturesAction } from '@/app/actions/photo-coach';
+import {
+  analyzePhotoQualityAction,
+  confirmEquipmentFeaturesAction,
+} from '@/app/actions/photo-coach';
 import { CameraViewfinder } from './camera/CameraViewfinder';
 import { PhotoGuideIntro } from './PhotoGuideIntro';
 import { PhotoChecklist } from './PhotoChecklist';

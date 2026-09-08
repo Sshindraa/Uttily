@@ -31,7 +31,14 @@ export const SOURCED_COMPATIBILITY_RULES: readonly CompatibilityRule[] = [
     id: 'rule-thule-chariot-v1',
     accessoryType: 'CHILD_TRAILER',
     compatibleCategorySlug: 'bike',
-    compatibleSubtypes: ['electric_mountain', 'mountain', 'electric_trekking', 'trekking', 'electric_city', 'city'],
+    compatibleSubtypes: [
+      'electric_mountain',
+      'mountain',
+      'electric_trekking',
+      'trekking',
+      'electric_city',
+      'city',
+    ],
     minAgeMonths: 9,
     maxAgeYears: 7,
     maxChildWeightKg: 22,
@@ -204,9 +211,7 @@ export function isVehicleCompatibleWithAccessory(
     (r) =>
       r.accessoryType === accessoryType &&
       r.compatibleCategorySlug === vehicleCategorySlug &&
-      (!r.compatibleSubtypes ||
-        !vehicleSubtype ||
-        r.compatibleSubtypes.includes(vehicleSubtype)),
+      (!r.compatibleSubtypes || !vehicleSubtype || r.compatibleSubtypes.includes(vehicleSubtype)),
   );
 
   if (!matchingRule) {
@@ -217,9 +222,9 @@ export function isVehicleCompatibleWithAccessory(
   }
 
   // Vérification de la compatibilité des preuves d'attribut pour accessoires critiques
-  const evidenceRecord = (vehicleAttributes['evidence'] as
-    | Record<string, { evidenceLevel?: string; key?: string }>
-    | undefined) ?? {};
+  const evidenceRecord =
+    (vehicleAttributes['evidence'] as
+      Record<string, { evidenceLevel?: string; key?: string }> | undefined) ?? {};
 
   if (accessoryType === 'CHILD_TRAILER') {
     const hitchEvidence = evidenceRecord['hasTrailerHitch'] || evidenceRecord['trailer_hitch'];
@@ -252,4 +257,3 @@ export function isVehicleCompatibleWithAccessory(
     verifiedBy: matchingRule.sourceManual,
   };
 }
-

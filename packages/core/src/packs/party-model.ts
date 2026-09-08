@@ -9,11 +9,7 @@
 export type PartyMemberRole = 'ADULT' | 'TEEN' | 'CHILD' | 'TODDLER';
 
 export type PartyMemberNeed =
-  | 'SELF_RIDER'
-  | 'PASSENGER_SEATED'
-  | 'PASSENGER_TOWED'
-  | 'WATER_PADDLER'
-  | 'SKI_RIDER';
+  'SELF_RIDER' | 'PASSENGER_SEATED' | 'PASSENGER_TOWED' | 'WATER_PADDLER' | 'SKI_RIDER';
 
 export interface PartyMember {
   readonly id: string;
@@ -25,11 +21,7 @@ export interface PartyMember {
 }
 
 export type RequiredAccessoryType =
-  | 'CHILD_TRAILER'
-  | 'CHILD_SEAT'
-  | 'HELMET'
-  | 'PADDLE'
-  | 'LIFE_JACKET';
+  'CHILD_TRAILER' | 'CHILD_SEAT' | 'HELMET' | 'PADDLE' | 'LIFE_JACKET';
 
 export interface FunctionalRequirement {
   readonly id: string;

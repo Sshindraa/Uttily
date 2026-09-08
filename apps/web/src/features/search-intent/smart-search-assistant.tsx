@@ -240,18 +240,16 @@ export function SmartSearchAssistant({
     ? formatNaturalDate(datesVal.startDate, datesVal.endDateExclusive, locale)
     : null;
   const peopleCount = appliedProposal?.peopleCount?.value ?? null;
-  const peopleText = peopleCount != null
-    ? `${peopleCount} ${peopleCount > 1 ? (fr ? 'personnes' : 'people') : (fr ? 'personne' : 'person')}`
-    : null;
+  const peopleText =
+    peopleCount != null
+      ? `${peopleCount} ${peopleCount > 1 ? (fr ? 'personnes' : 'people') : fr ? 'personne' : 'person'}`
+      : null;
 
   const requirements = appliedProposal?.requirements ?? [];
 
   const isTextModifiedAfterSubmit =
-    appliedProposal !== null &&
-    query.trim() !== submittedQuery.trim() &&
-    query.trim().length > 0;
+    appliedProposal !== null && query.trim() !== submittedQuery.trim() && query.trim().length > 0;
   const showSubmitButton = !appliedProposal || isTextModifiedAfterSubmit;
-
 
   if (!isOpen) {
     return (
@@ -298,189 +296,187 @@ export function SmartSearchAssistant({
           </button>
         </div>
 
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <div className={styles.inputRow}>
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={
+                fr
+                  ? 'On est 2 adultes et un enfant, vélos électriques à Annecy ce samedi…'
+                  : 'We are 2 adults and 1 child, e-bikes in Annecy this Saturday…'
+              }
+              className={styles.input}
+              disabled={isPending || disabled}
+              autoFocus
+            />
+            {showSubmitButton && (
+              <button
+                type="submit"
+                disabled={isPending || disabled || !query.trim()}
+                className={styles.submitBtn}
+              >
+                {isPending ? (
+                  <span>{fr ? 'Analyse…' : 'Analyzing…'}</span>
+                ) : isTextModifiedAfterSubmit ? (
+                  <span>{fr ? 'Mettre à jour' : 'Update'}</span>
+                ) : (
+                  <span>{fr ? 'Préparer ma sortie' : 'Plan my trip'}</span>
+                )}
+              </button>
+            )}
+          </div>
 
-            <form onSubmit={handleSubmit} className={styles.form}>
-              <div className={styles.inputRow}>
-                <input
-                  type="text"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={
-                    fr
-                      ? 'On est 2 adultes et un enfant, vélos électriques à Annecy ce samedi…'
-                      : 'We are 2 adults and 1 child, e-bikes in Annecy this Saturday…'
-                  }
-                  className={styles.input}
+          {error && <div className={styles.errorBox}>{error}</div>}
+
+          {/* État 1 : Avant interprétation -> Afficher les exemples */}
+          {!appliedProposal && (
+            <div className={styles.chipsRow}>
+              <span className={styles.chipLabel}>{fr ? 'Exemples :' : 'Examples:'}</span>
+              {chips.map((chipText) => (
+                <button
+                  key={chipText}
+                  type="button"
+                  className={styles.chip}
+                  onClick={() => handleChipClick(chipText)}
                   disabled={isPending || disabled}
-                  autoFocus
-                />
-                {showSubmitButton && (
-                  <button
-                    type="submit"
-                    disabled={isPending || disabled || !query.trim()}
-                    className={styles.submitBtn}
-                  >
-                    {isPending ? (
-                      <span>{fr ? 'Analyse…' : 'Analyzing…'}</span>
-                    ) : isTextModifiedAfterSubmit ? (
-                      <span>{fr ? 'Mettre à jour' : 'Update'}</span>
-                    ) : (
-                      <span>{fr ? 'Préparer ma sortie' : 'Plan my trip'}</span>
-                    )}
-                  </button>
+                >
+                  {chipText}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* État 2 : Après interprétation -> Remplacer les exemples par les chips éditables et CTA final */}
+          {appliedProposal && (
+            <div className={styles.understoodSection}>
+              <div className={styles.understoodHeader}>
+                <span className={styles.understoodCheck} aria-hidden="true">
+                  ✓
+                </span>
+                <span className={styles.understoodLabel}>
+                  {fr ? 'J’ai compris votre sortie' : 'I understood your trip'}
+                </span>
+              </div>
+
+              <div className={styles.understoodChips}>
+                {destinationName ? (
+                  <span className={styles.editableChip}>
+                    <span>📍 {destinationName}</span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveDestination}
+                      className={styles.removeChipBtn}
+                      aria-label={fr ? `Supprimer ${destinationName}` : `Remove ${destinationName}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ) : (
+                  <span className={styles.unspecifiedChip}>
+                    <span>📍 {fr ? 'Destination à préciser' : 'Destination to specify'}</span>
+                  </span>
+                )}
+
+                {naturalDate ? (
+                  <span className={styles.editableChip}>
+                    <span>📅 {naturalDate}</span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveDate}
+                      className={styles.removeChipBtn}
+                      aria-label={fr ? 'Supprimer la date' : 'Remove date'}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ) : (
+                  <span className={styles.unspecifiedChip}>
+                    <span>📅 {fr ? 'Dates à préciser' : 'Dates to specify'}</span>
+                  </span>
+                )}
+
+                {peopleText ? (
+                  <span className={styles.editableChip}>
+                    <span>👤 {peopleText}</span>
+                    <button
+                      type="button"
+                      onClick={handleRemovePeople}
+                      className={styles.removeChipBtn}
+                      aria-label={
+                        fr ? 'Réinitialiser le nombre de personnes' : 'Reset people count'
+                      }
+                    >
+                      ×
+                    </button>
+                  </span>
+                ) : (
+                  <span className={styles.unspecifiedChip}>
+                    <span>👤 {fr ? 'Personnes à préciser' : 'People to specify'}</span>
+                  </span>
+                )}
+
+                {requirements.length > 0 ? (
+                  requirements.map((req, idx) => (
+                    <span key={idx} className={styles.editableChip}>
+                      <span>
+                        {getCategoryEmoji(req.categorySlug)}{' '}
+                        {getCategoryDisplayName(req.categorySlug, locale)}
+                        {req.electricPreferred ? (fr ? ' · Électrique' : ' · Electric') : ''}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveRequirement(idx)}
+                        className={styles.removeChipBtn}
+                        aria-label={
+                          fr ? `Supprimer ${req.categorySlug}` : `Remove ${req.categorySlug}`
+                        }
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))
+                ) : (
+                  <span className={styles.unspecifiedChip}>
+                    <span>🚲 {fr ? 'Équipement à préciser' : 'Equipment to specify'}</span>
+                  </span>
                 )}
               </div>
 
-              {error && <div className={styles.errorBox}>{error}</div>}
-
-              {/* État 1 : Avant interprétation -> Afficher les exemples */}
-              {!appliedProposal && (
-                <div className={styles.chipsRow}>
-                  <span className={styles.chipLabel}>
-                    {fr ? 'Exemples :' : 'Examples:'}
+              {peopleCount == null && (
+                <div className={styles.missingPrompt}>
+                  <span className={styles.missingPromptTitle}>
+                    {fr
+                      ? 'Pour trouver le bon équipement, combien serez-vous ?'
+                      : 'To find the right equipment, how many will you be?'}
                   </span>
-                  {chips.map((chipText) => (
-                    <button
-                      key={chipText}
-                      type="button"
-                      className={styles.chip}
-                      onClick={() => handleChipClick(chipText)}
-                      disabled={isPending || disabled}
-                    >
-                      {chipText}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* État 2 : Après interprétation -> Remplacer les exemples par les chips éditables et CTA final */}
-              {appliedProposal && (
-                <div className={styles.understoodSection}>
-                  <div className={styles.understoodHeader}>
-                    <span className={styles.understoodCheck} aria-hidden="true">
-                      ✓
-                    </span>
-                    <span className={styles.understoodLabel}>
-                      {fr ? 'J’ai compris votre sortie' : 'I understood your trip'}
-                    </span>
-                  </div>
-
-                  <div className={styles.understoodChips}>
-                    {destinationName ? (
-                      <span className={styles.editableChip}>
-                        <span>📍 {destinationName}</span>
-                        <button
-                          type="button"
-                          onClick={handleRemoveDestination}
-                          className={styles.removeChipBtn}
-                          aria-label={fr ? `Supprimer ${destinationName}` : `Remove ${destinationName}`}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ) : (
-                      <span className={styles.unspecifiedChip}>
-                        <span>📍 {fr ? 'Destination à préciser' : 'Destination to specify'}</span>
-                      </span>
-                    )}
-
-                    {naturalDate ? (
-                      <span className={styles.editableChip}>
-                        <span>📅 {naturalDate}</span>
-                        <button
-                          type="button"
-                          onClick={handleRemoveDate}
-                          className={styles.removeChipBtn}
-                          aria-label={fr ? 'Supprimer la date' : 'Remove date'}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ) : (
-                      <span className={styles.unspecifiedChip}>
-                        <span>📅 {fr ? 'Dates à préciser' : 'Dates to specify'}</span>
-                      </span>
-                    )}
-
-                    {peopleText ? (
-                      <span className={styles.editableChip}>
-                        <span>👤 {peopleText}</span>
-                        <button
-                          type="button"
-                          onClick={handleRemovePeople}
-                          className={styles.removeChipBtn}
-                          aria-label={fr ? 'Réinitialiser le nombre de personnes' : 'Reset people count'}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ) : (
-                      <span className={styles.unspecifiedChip}>
-                        <span>👤 {fr ? 'Personnes à préciser' : 'People to specify'}</span>
-                      </span>
-                    )}
-
-                    {requirements.length > 0 ? (
-                      requirements.map((req, idx) => (
-                        <span key={idx} className={styles.editableChip}>
-                          <span>
-                            {getCategoryEmoji(req.categorySlug)}{' '}
-                            {getCategoryDisplayName(req.categorySlug, locale)}
-                            {req.electricPreferred ? (fr ? ' · Électrique' : ' · Electric') : ''}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveRequirement(idx)}
-                            className={styles.removeChipBtn}
-                            aria-label={fr ? `Supprimer ${req.categorySlug}` : `Remove ${req.categorySlug}`}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))
-                    ) : (
-                      <span className={styles.unspecifiedChip}>
-                        <span>🚲 {fr ? 'Équipement à préciser' : 'Equipment to specify'}</span>
-                      </span>
-                    )}
-                  </div>
-
-                  {peopleCount == null && (
-                    <div className={styles.missingPrompt}>
-                      <span className={styles.missingPromptTitle}>
-                        {fr
-                          ? 'Pour trouver le bon équipement, combien serez-vous ?'
-                          : 'To find the right equipment, how many will you be?'}
-                      </span>
-                      <div className={styles.peopleSelector}>
-                        {[1, 2, 3, 4].map((count) => (
-                          <button
-                            key={count}
-                            type="button"
-                            className={styles.peopleBtn}
-                            onClick={() => handleSelectPeopleCount(count)}
-                          >
-                            {count === 4 ? '4+' : String(count)}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className={styles.confirmRow}>
-                    <button
-                      type="button"
-                      onClick={handleConfirmAction}
-                      className={styles.confirmBtn}
-                    >
-                      <span>{fr ? 'Voir les solutions disponibles →' : 'View available solutions →'}</span>
-                    </button>
+                  <div className={styles.peopleSelector}>
+                    {[1, 2, 3, 4].map((count) => (
+                      <button
+                        key={count}
+                        type="button"
+                        className={styles.peopleBtn}
+                        onClick={() => handleSelectPeopleCount(count)}
+                      >
+                        {count === 4 ? '4+' : String(count)}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
-            </form>
+
+              <div className={styles.confirmRow}>
+                <button type="button" onClick={handleConfirmAction} className={styles.confirmBtn}>
+                  <span>
+                    {fr ? 'Voir les solutions disponibles →' : 'View available solutions →'}
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
+        </form>
       </div>
     </div>
   );
 }
-

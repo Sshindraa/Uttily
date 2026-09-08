@@ -49,10 +49,7 @@ describe('ProfessionalVerificationCard', () => {
 
   it('affiche un bouton d’action direct vers Stripe finances quand le compte est en attente', () => {
     const html = renderToStaticMarkup(
-      <ProfessionalVerificationCard
-        verification={baseVerification}
-        orgId="org-pilot-123"
-      />,
+      <ProfessionalVerificationCard verification={baseVerification} orgId="org-pilot-123" />,
     );
 
     expect(html).toContain('/dashboard/org-pilot-123/finances');
@@ -61,10 +58,7 @@ describe('ProfessionalVerificationCard', () => {
 
   it('ne divulgue pas de jargon technique d’audit développeur', () => {
     const html = renderToStaticMarkup(
-      <ProfessionalVerificationCard
-        verification={baseVerification}
-        orgId="org-pilot-123"
-      />,
+      <ProfessionalVerificationCard verification={baseVerification} orgId="org-pilot-123" />,
     );
 
     expect(html).not.toContain('Calcul serveur');

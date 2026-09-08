@@ -125,4 +125,3 @@ describe('Equipment Evidence & Safety Compatibility (ADR-042)', () => {
     expect(result.ruleId).toBe('rule-thule-chariot-v1');
   });
 });
-

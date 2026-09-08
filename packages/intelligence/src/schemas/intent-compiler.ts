@@ -6,8 +6,14 @@ import { createConfidentFieldSchema } from './confidence';
  */
 export const CompiledDateIntentSchema = z.object({
   mode: z.enum(['DAY_RANGE', 'TIME_RANGE']),
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  endDateExclusive: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  startDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+  endDateExclusive: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   startAt: z.string().optional(),
   endAt: z.string().optional(),
 });
@@ -84,4 +90,3 @@ export const CompiledIntentProposalSchema = z.object({
   explanationEn: z.string().optional(),
 });
 export type CompiledIntentProposal = z.infer<typeof CompiledIntentProposalSchema>;
-

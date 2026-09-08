@@ -47,7 +47,6 @@
   letter-spacing: 0.5px;
 }
 
-
 .card {
   width: 100%;
   max-width: 780px;
@@ -57,7 +56,9 @@
   border: 1px solid rgba(255, 255, 255, 0.7);
   border-radius: 20px;
   padding: 18px 22px;
-  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  box-shadow:
+    0 16px 36px -6px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
   animation: slideDown 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   color: var(--ut-color-ink-strong, #1f2937);
 }
@@ -72,8 +73,6 @@
     transform: translateY(0);
   }
 }
-
-
 
 .cardHeader {
   display: flex;
@@ -128,7 +127,9 @@
   color: #111827;
   background: #ffffff;
   outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .input:focus {
@@ -149,7 +150,9 @@
   border: none;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease;
 }
 
 .submitBtn:hover:not(:disabled) {
@@ -361,12 +364,12 @@
   font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.1s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease;
 }
 
 .confirmBtn:hover {
   background: #1e293b;
   transform: translateY(-1px);
 }
-
-

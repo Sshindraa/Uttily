@@ -1,7 +1,5 @@
 import { createHash } from 'node:crypto';
-import type {
-  EquipmentEnrichmentInput,
-} from '../schemas/equipment-enrichment';
+import type { EquipmentEnrichmentInput } from '../schemas/equipment-enrichment';
 import { EquipmentEnrichmentProposalSchema } from '../schemas/equipment-enrichment';
 import type {
   EquipmentEnrichmentPort,
@@ -86,7 +84,7 @@ export class OpenRouterEquipmentEnrichmentProvider implements EquipmentEnrichmen
     const key = options.apiKey ?? process.env.OPENROUTER_API_KEY;
     if (!key) {
       throw new Error(
-        "Clé OpenRouter manquante : définissez OPENROUTER_API_KEY ou fournissez apiKey dans les options.",
+        'Clé OpenRouter manquante : définissez OPENROUTER_API_KEY ou fournissez apiKey dans les options.',
       );
     }
     this.apiKey = key;
@@ -111,7 +109,9 @@ export class OpenRouterEquipmentEnrichmentProvider implements EquipmentEnrichmen
     const inputFingerprint = hash.digest('hex');
 
     // Construction du payload multimodal OpenRouter
-    const contentParts: Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }> = [];
+    const contentParts: Array<
+      { type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string } }
+    > = [];
 
     // Message contextuel utilisateur
     const userPromptText = input.contextHint
@@ -121,9 +121,7 @@ export class OpenRouterEquipmentEnrichmentProvider implements EquipmentEnrichmen
     contentParts.push({ type: 'text', text: userPromptText });
 
     for (const img of input.images) {
-      const imageUrl = img.url
-        ? img.url
-        : `data:${img.mimeType};base64,${img.base64}`;
+      const imageUrl = img.url ? img.url : `data:${img.mimeType};base64,${img.base64}`;
       contentParts.push({
         type: 'image_url',
         image_url: { url: imageUrl },

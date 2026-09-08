@@ -69,4 +69,3 @@ export async function sanitizeClientImage(file: File, quality = 0.92): Promise<B
     img.src = url;
   });
 }
-

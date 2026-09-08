@@ -124,11 +124,7 @@ describe('PackSolutionCard', () => {
 
   it('affiche le pack adapté avec le badge "Alternative disponible" et l’explication de substitution', () => {
     const html = renderToStaticMarkup(
-      <PackSolutionCard
-        pack={mockRepairedPack}
-        locale="fr"
-        onSelectPack={() => {}}
-      />,
+      <PackSolutionCard pack={mockRepairedPack} locale="fr" onSelectPack={() => {}} />,
     );
 
     expect(html).toContain('Alternative disponible');

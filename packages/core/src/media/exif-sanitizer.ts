@@ -58,10 +58,7 @@ export function stripJpegExif(buffer: Uint8Array): ExifSanitizationResult {
     }
 
     // Marqueurs autonomes sans longueur (RST, SOI, TEM)
-    if (
-      (marker !== undefined && marker >= 0xd0 && marker <= 0xd7) ||
-      marker === 0x01
-    ) {
+    if ((marker !== undefined && marker >= 0xd0 && marker <= 0xd7) || marker === 0x01) {
       chunks.push(buffer.subarray(offset, offset + 2));
       offset += 2;
       continue;

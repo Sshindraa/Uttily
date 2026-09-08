@@ -286,7 +286,14 @@ function SmallThumbnail({ slotType }: { slotType: PhotoSlotType }): ReactElement
   switch (slotType) {
     case 'THREE_QUARTER_FRONT':
       return (
-        <svg viewBox="0 0 50 34" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <svg
+          viewBox="0 0 50 34"
+          width="100%"
+          height="100%"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        >
           <ellipse cx="34" cy="22" rx="6" ry="9" transform="rotate(-10 34 22)" />
           <ellipse cx="14" cy="19" rx="4" ry="7" opacity="0.6" />
           <path d="M14 19 L24 21 L34 22 M24 21 L30 13 L34 22" />
@@ -295,7 +302,14 @@ function SmallThumbnail({ slotType }: { slotType: PhotoSlotType }): ReactElement
     case 'SECONDARY_VIEW':
     default:
       return (
-        <svg viewBox="0 0 50 34" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <svg
+          viewBox="0 0 50 34"
+          width="100%"
+          height="100%"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        >
           <circle cx="25" cy="17" r="8" strokeDasharray="2 2" opacity="0.5" />
           <circle cx="25" cy="17" r="4.5" />
           <line x1="25" y1="5" x2="25" y2="9" />
@@ -483,11 +497,7 @@ export default function PhotoCoachDemoPage(): ReactElement {
                 </div>
 
                 <div className={styles.actionsBlock}>
-                  <button
-                    type="button"
-                    className={styles.primaryCtaBtn}
-                    onClick={handleOpenCoach}
-                  >
+                  <button type="button" className={styles.primaryCtaBtn} onClick={handleOpenCoach}>
                     Prendre cette photo
                   </button>
                   <button

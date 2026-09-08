@@ -6,7 +6,10 @@ import { uploadProductPhotoAction } from './product-photos';
 describe('Photo Coach Demo Flow (unauthenticated / public playground)', () => {
   it('permet l’analyse de photo IA sans exiger d’appartenance organisationnelle', async () => {
     // Dummy JPEG buffer
-    const dummyBuffer = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x01, 0x00, 0x60, 0x00, 0x60, 0x00, 0x00, 0xff, 0xd9]);
+    const dummyBuffer = new Uint8Array([
+      0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x01, 0x00,
+      0x60, 0x00, 0x60, 0x00, 0x00, 0xff, 0xd9,
+    ]);
     const file = new File([dummyBuffer], 'test-bike.jpg', { type: 'image/jpeg' });
 
     const formData = new FormData();
@@ -71,7 +74,9 @@ describe('Photo Coach Demo Flow (unauthenticated / public playground)', () => {
 
     const fs = await import('node:fs');
     const path = await import('node:path');
-    const imagePath = path.resolve('/Users/hamza/.gemini/antigravity-ide/brain/80e21069-5cbf-4e6d-8f16-3d8d7691689d/.user_uploaded/media_1788819792515.jpg');
+    const imagePath = path.resolve(
+      '/Users/hamza/.gemini/antigravity-ide/brain/80e21069-5cbf-4e6d-8f16-3d8d7691689d/.user_uploaded/media_1788819792515.jpg',
+    );
     if (!fs.existsSync(imagePath)) return;
 
     const buffer = fs.readFileSync(imagePath);
@@ -94,7 +99,12 @@ describe('Photo Coach Demo Flow (unauthenticated / public playground)', () => {
       expect(result.data.slotConformity).toBe(false);
       expect(result.data.detectedFeatures.isElectric).toBe(false);
       expect(result.data.issuesFr.length).toBeGreaterThan(0);
-      expect(result.data.issuesFr.some((issue) => issue.toLowerCase().includes('lunette') || issue.toLowerCase().includes('vélo'))).toBe(true);
+      expect(
+        result.data.issuesFr.some(
+          (issue) =>
+            issue.toLowerCase().includes('lunette') || issue.toLowerCase().includes('vélo'),
+        ),
+      ).toBe(true);
     }
   });
 });

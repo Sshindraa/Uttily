@@ -1,8 +1,6 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import {
-  OpenRouterIntentCompilerProvider,
-} from '../packages/intelligence/src/index.ts';
+import { OpenRouterIntentCompilerProvider } from '../packages/intelligence/src/index.ts';
 
 const envLocalPath = resolve(process.cwd(), '.env.local');
 if (existsSync(envLocalPath)) {
@@ -15,7 +13,9 @@ if (existsSync(envLocalPath)) {
   }
 }
 
-const query = process.argv.slice(2).join(' ') || 'On est 2 adultes et un enfant de 6 ans, on veut faire le tour du lac d Annecy ce samedi en velos electriques';
+const query =
+  process.argv.slice(2).join(' ') ||
+  'On est 2 adultes et un enfant de 6 ans, on veut faire le tour du lac d Annecy ce samedi en velos electriques';
 
 console.log(`\n🔍 Test Live OpenRouter Intent Compiler`);
 console.log(`💬 Requête : "${query}"\n`);

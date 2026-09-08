@@ -39,11 +39,7 @@ export function abstain<T>(reasoning?: string): ConfidentField<T> {
 /**
  * Crée un champ confiant avec score explicite.
  */
-export function confident<T>(
-  value: T,
-  confidence: number,
-  reasoning?: string,
-): ConfidentField<T> {
+export function confident<T>(value: T, confidence: number, reasoning?: string): ConfidentField<T> {
   return {
     value,
     confidence: Math.max(0, Math.min(1, confidence)),

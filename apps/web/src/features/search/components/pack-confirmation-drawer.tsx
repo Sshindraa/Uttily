@@ -44,10 +44,7 @@ export function PackConfirmationDrawer({
   const candidate = pack.candidate;
 
   // Grouper les équipements
-  const groupedItems = new Map<
-    string,
-    { count: number; productName: string }
-  >();
+  const groupedItems = new Map<string, { count: number; productName: string }>();
 
   for (const item of candidate.items) {
     const key = item.productId || item.productName;
@@ -109,7 +106,9 @@ export function PackConfirmationDrawer({
       <div className={styles.drawer} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <div>
-            <span className={styles.eyebrow}>{fr ? 'Solution sélectionnée' : 'Selected solution'}</span>
+            <span className={styles.eyebrow}>
+              {fr ? 'Solution sélectionnée' : 'Selected solution'}
+            </span>
             <h2 className={styles.title}>{candidate.organizationName}</h2>
           </div>
           <button
@@ -137,14 +136,19 @@ export function PackConfirmationDrawer({
           </div>
 
           <div className={styles.section}>
-            <h4 className={styles.sectionTitle}>{fr ? 'Créneau et retrait' : 'Schedule & Pickup'}</h4>
+            <h4 className={styles.sectionTitle}>
+              {fr ? 'Créneau et retrait' : 'Schedule & Pickup'}
+            </h4>
             <div className={styles.metaRow}>
               <span>📅</span>
               <span>{datesSummary || (fr ? 'Date sélectionnée' : 'Selected date')}</span>
             </div>
             <div className={styles.metaRow}>
               <span>📍</span>
-              <span>{candidate.locationAddress || (fr ? 'Au comptoir du loueur' : 'At the shop counter')}</span>
+              <span>
+                {candidate.locationAddress ||
+                  (fr ? 'Au comptoir du loueur' : 'At the shop counter')}
+              </span>
             </div>
           </div>
 
@@ -172,7 +176,9 @@ export function PackConfirmationDrawer({
 
         <div className={styles.footer}>
           <div className={styles.priceRow}>
-            <span className={styles.priceLabel}>{fr ? 'Total de votre solution :' : 'Total price:'}</span>
+            <span className={styles.priceLabel}>
+              {fr ? 'Total de votre solution :' : 'Total price:'}
+            </span>
             <span className={styles.priceVal}>{formatEuros(candidate.totalPriceCents)}</span>
           </div>
 

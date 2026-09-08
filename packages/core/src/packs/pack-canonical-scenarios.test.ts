@@ -3,10 +3,7 @@ import {
   isAccessoryAdmissibleForMember,
   findAdmissibleAccessorySubstitutions,
 } from './compatibility-graph';
-import {
-  buildPackRequestFromSearchParams,
-  normalizeIntentProposal,
-} from './intent-normalizer';
+import { buildPackRequestFromSearchParams, normalizeIntentProposal } from './intent-normalizer';
 import { computePackScore, rankCandidatePacks } from './pack-ranker';
 import { createAccessorySubstitutionRepair } from './pack-repair';
 import { PackAllocationError } from './pack-atomic-hold';
@@ -398,8 +395,12 @@ describe('Pack Orchestrator — Dataset des 20 Scénarios Métier Canoniques (AD
       peopleCount: 2,
     });
 
-    const afternoonStart = new Date(`${morningReq?.startAt.toISOString().slice(0, 10)}T14:00:00.000Z`);
-    const afternoonEnd = new Date(`${morningReq?.startAt.toISOString().slice(0, 10)}T19:00:00.000Z`);
+    const afternoonStart = new Date(
+      `${morningReq?.startAt.toISOString().slice(0, 10)}T14:00:00.000Z`,
+    );
+    const afternoonEnd = new Date(
+      `${morningReq?.startAt.toISOString().slice(0, 10)}T19:00:00.000Z`,
+    );
 
     expect(afternoonStart.getUTCHours()).toBe(14);
     expect(afternoonEnd.getUTCHours()).toBe(19);
@@ -484,7 +485,9 @@ describe('Pack Orchestrator — Dataset des 20 Scénarios Métier Canoniques (AD
     expect(isPackEligible(1)).toBe(false);
     expect(isPackEligible(1, undefined)).toBe(false);
     expect(isPackEligible(2)).toBe(true);
-    expect(isPackEligible(1, JSON.stringify([{ familySlug: 'bike' }, { familySlug: 'bike' }]))).toBe(true);
+    expect(
+      isPackEligible(1, JSON.stringify([{ familySlug: 'bike' }, { familySlug: 'bike' }])),
+    ).toBe(true);
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -525,14 +528,20 @@ describe('Pack Orchestrator — Dataset des 20 Scénarios Métier Canoniques (AD
     // Vérification de la pré-validation : tableau vide rejeté
     expect(() => {
       if (itemIds.length === 0) {
-        throw new PackAllocationError('VALIDATION', 'Le pack doit contenir au moins un équipement.');
+        throw new PackAllocationError(
+          'VALIDATION',
+          'Le pack doit contenir au moins un équipement.',
+        );
       }
     }).not.toThrow();
 
     expect(() => {
       const empty: string[] = [];
       if (empty.length === 0) {
-        throw new PackAllocationError('VALIDATION', 'Le pack doit contenir au moins un équipement.');
+        throw new PackAllocationError(
+          'VALIDATION',
+          'Le pack doit contenir au moins un équipement.',
+        );
       }
     }).toThrow('Le pack doit contenir au moins un équipement.');
   });

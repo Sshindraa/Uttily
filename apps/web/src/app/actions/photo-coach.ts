@@ -49,7 +49,7 @@ export async function analyzePhotoQualityAction(
     const dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
 
     // Choix du provider : OpenRouter si clé disponible, sinon Fake déterministe
-    let analyzer = process.env.OPENROUTER_API_KEY
+    const analyzer = process.env.OPENROUTER_API_KEY
       ? new OpenRouterPhotoCoachAnalyzer()
       : new FakePhotoCoachAnalyzer();
 

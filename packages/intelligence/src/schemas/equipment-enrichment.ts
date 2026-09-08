@@ -1,22 +1,19 @@
 import { z } from 'zod';
-import {
-  PHOTO_SLOT_TYPES,
-  INVENTORY_CONDITIONS,
-} from '@uttily/contracts';
-import {
-  createConfidentFieldSchema,
-} from './confidence';
+import { PHOTO_SLOT_TYPES, INVENTORY_CONDITIONS } from '@uttily/contracts';
+import { createConfidentFieldSchema } from './confidence';
 
 /**
  * Image fournie en entrée du Copilot d'enrichissement.
  */
-export const EquipmentEnrichmentImageSchema = z.object({
-  url: z.string().url().optional(),
-  base64: z.string().optional(),
-  mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp']).default('image/jpeg'),
-}).refine((data) => data.url || data.base64, {
-  message: "Au moins une URL ou une charge base64 doit être fournie pour chaque image.",
-});
+export const EquipmentEnrichmentImageSchema = z
+  .object({
+    url: z.string().url().optional(),
+    base64: z.string().optional(),
+    mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp']).default('image/jpeg'),
+  })
+  .refine((data) => data.url || data.base64, {
+    message: 'Au moins une URL ou une charge base64 doit être fournie pour chaque image.',
+  });
 
 export type EquipmentEnrichmentImage = z.infer<typeof EquipmentEnrichmentImageSchema>;
 

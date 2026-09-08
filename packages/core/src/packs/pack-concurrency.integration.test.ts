@@ -156,9 +156,11 @@ describe('Pack Orchestrator — Concurrency & Atomic Hold Integration Tests', ()
     expect(activeBlocks.length).toBe(2);
 
     // Le perdant ne doit avoir AUCUN bloc créé (0 réservation partielle)
-    const winningDraftId = (successes[0] as PromiseFulfilledResult<any>).value.holdBlockIds.length > 0
-      ? activeBlocks[0]!.source_id
-      : null;
+    const winningDraftId =
+      (successes[0] as PromiseFulfilledResult<{ holdBlockIds: string[] }>).value.holdBlockIds
+        .length > 0
+        ? activeBlocks[0]!.source_id
+        : null;
     const losingDraftId = winningDraftId === draftIdA ? draftIdB : draftIdA;
 
     const loserBlocks = activeBlocks.filter((b) => b.source_id === losingDraftId);

@@ -82,7 +82,10 @@ export function ProfessionalVerificationCard({
           const linkInfo = criteriaLinks[key];
 
           return (
-            <li key={key} className={`${styles.criterionItem} ${complete ? styles.complete : styles.missing}`}>
+            <li
+              key={key}
+              className={`${styles.criterionItem} ${complete ? styles.complete : styles.missing}`}
+            >
               <div className={styles.criterionLeft}>
                 <span
                   className={`${styles.criterionIcon} ${
@@ -120,7 +123,8 @@ export function ProfessionalVerificationCard({
           <div className={styles.ctaTextGroup}>
             <p className={styles.ctaTitle}>Activez vos versements et le badge vérifié</p>
             <p className={styles.ctaDescription}>
-              Connectez votre compte Stripe pour recevoir vos paiements de location et certifier votre boutique auprès des clients.
+              Connectez votre compte Stripe pour recevoir vos paiements de location et certifier
+              votre boutique auprès des clients.
             </p>
           </div>
           <Link href={`/dashboard/${orgId}/finances`} className={styles.primaryCta}>
@@ -136,7 +140,8 @@ export function ProfessionalVerificationCard({
           <div className={styles.ctaTextGroup}>
             <p className={styles.ctaTitle}>Renseignez votre établissement public</p>
             <p className={styles.ctaDescription}>
-              Ajoutez l’adresse de retrait de vos équipements pour valider la présence physique de votre boutique.
+              Ajoutez l’adresse de retrait de vos équipements pour valider la présence physique de
+              votre boutique.
             </p>
           </div>
           <Link href={`/dashboard/${orgId}/locations`} className={styles.primaryCta}>

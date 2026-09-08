@@ -146,9 +146,7 @@ export function dateSummary(selection: SearchSelection, locale: SearchLocale): s
     timeZone: 'UTC',
   });
   const range =
-    start.getTime() === end.getTime()
-      ? format.format(start)
-      : format.formatRange(start, end);
+    start.getTime() === end.getTime() ? format.format(start) : format.formatRange(start, end);
   return selection.withTimes && selection.startTime && selection.endTime
     ? `${range} · ${selection.startTime}–${selection.endTime}`
     : range;

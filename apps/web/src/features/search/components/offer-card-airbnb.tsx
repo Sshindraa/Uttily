@@ -138,7 +138,9 @@ export function OfferCardAirbnb({
             <span>{fr ? 'Loueur vérifié' : 'Verified'}</span>
           </span>
           <span className={styles.ratingPill}>
-            <span className={styles.starIcon} aria-hidden="true">★</span>
+            <span className={styles.starIcon} aria-hidden="true">
+              ★
+            </span>
             <span>4.9</span>
           </span>
         </div>
@@ -171,12 +173,8 @@ export function OfferCardAirbnb({
           <span className={styles.specChip}>
             {item.price.publicLabel || (fr ? 'Journée' : 'Daily')}
           </span>
-          <span className={styles.specChip}>
-            {fr ? 'Réservation garantie' : 'Instant booking'}
-          </span>
-          <span className={styles.specChip}>
-            {fr ? 'Caution sur place' : 'Deposit at desk'}
-          </span>
+          <span className={styles.specChip}>{fr ? 'Réservation garantie' : 'Instant booking'}</span>
+          <span className={styles.specChip}>{fr ? 'Caution sur place' : 'Deposit at desk'}</span>
         </div>
       </div>
     </article>

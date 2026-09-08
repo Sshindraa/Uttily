@@ -158,7 +158,7 @@ export function SearchIntentBar({
     }
 
     const dates = proposal.dates.value;
-    let startDate = dates?.startDate || '';
+    const startDate = dates?.startDate || '';
     let endDate = dates?.endDateExclusive
       ? shiftDate(dates.endDateExclusive, -1)
       : dates?.startDate || '';
@@ -173,8 +173,7 @@ export function SearchIntentBar({
       ...prev,
       destinationPublicId:
         proposal.destination.value === null ? '' : destPublicId || prev.destinationPublicId,
-      categoryId:
-        proposal.requirements.length === 0 ? '' : categoryId || prev.categoryId,
+      categoryId: proposal.requirements.length === 0 ? '' : categoryId || prev.categoryId,
       startDate: proposal.dates.value === null ? '' : startDate || prev.startDate,
       endDate: proposal.dates.value === null ? '' : endDate || prev.endDate,
       withTimes: proposal.dates.value === null ? false : startDate ? withTimes : prev.withTimes,
@@ -250,7 +249,6 @@ export function SearchIntentBar({
             return;
           }
           router.push(`/${locale}/search?${result.query}`);
-
         }}
       />
 

@@ -49,9 +49,7 @@ export function SearchFilterBar({
           <span className={styles.chipIcon} aria-hidden="true">
             ✨
           </span>
-          <span className={styles.chipLabel}>
-            {fr ? 'Tous les équipements' : 'All equipment'}
-          </span>
+          <span className={styles.chipLabel}>{fr ? 'Tous les équipements' : 'All equipment'}</span>
         </Link>
 
         {categories.map((category) => {

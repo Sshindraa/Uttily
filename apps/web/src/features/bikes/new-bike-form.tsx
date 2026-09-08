@@ -59,10 +59,7 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
       }
     }
 
-    if (
-      proposal.frameSize.value &&
-      (proposal.frameSize.confidence ?? 0) >= 0.5
-    ) {
+    if (proposal.frameSize.value && (proposal.frameSize.confidence ?? 0) >= 0.5) {
       setVariantName(proposal.frameSize.value.trim());
     }
 
@@ -147,10 +144,7 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
             </p>
           </div>
 
-          <ScanAndListZone
-            organizationId={organizationId}
-            onProposal={handleProposal}
-          />
+          <ScanAndListZone organizationId={organizationId} onProposal={handleProposal} />
 
           {error && <div className={styles.errorAlert}>{error}</div>}
 

@@ -34,7 +34,5 @@ export interface EquipmentEnrichmentExecutionResult {
  * - Entrée pure, sortie purement en mémoire.
  */
 export interface EquipmentEnrichmentPort {
-  enrichEquipment(
-    input: EquipmentEnrichmentInput,
-  ): Promise<EquipmentEnrichmentExecutionResult>;
+  enrichEquipment(input: EquipmentEnrichmentInput): Promise<EquipmentEnrichmentExecutionResult>;
 }

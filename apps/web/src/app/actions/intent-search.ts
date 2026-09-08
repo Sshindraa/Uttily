@@ -80,8 +80,7 @@ export async function compileSearchIntentAction(
     return {
       ok: false,
       code: 'UNKNOWN',
-      message:
-        err instanceof Error ? err.message : 'Erreur lors de la compilation de l’intention.',
+      message: err instanceof Error ? err.message : 'Erreur lors de la compilation de l’intention.',
     };
   }
 }
