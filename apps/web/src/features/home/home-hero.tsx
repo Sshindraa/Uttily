@@ -8,14 +8,15 @@ export function HomeHero({ locale }: { locale: 'fr' | 'en' }): React.ReactElemen
     <section className={styles.hero} aria-labelledby="home-heading">
       <div className={styles.visual}>
         <Image
-          src="/images/home/mountain-lake-road.png"
+          src="/images/home/mountain-lake-road.jpg"
           alt={
             fr
-              ? 'Route sinueuse longeant un lac de montagne face aux sommets enneigés'
-              : 'Winding road along a mountain lake facing snow-capped peaks'
+              ? 'Cycliste sur une route côtière et surfeur dans les vagues face aux montagnes enneigées'
+              : 'Cyclist on a coastal road and surfer riding waves facing snow-capped peaks'
           }
           fill
           priority
+          unoptimized
           sizes="100vw"
           className={styles.photo}
         />
