@@ -30,12 +30,14 @@ export function SearchIntentBar({
   initialOptions,
   stickyOnScroll = false,
   fieldErrors = {},
+  middleSlot,
 }: {
   locale: SearchLocale;
   initialValues?: PublicSearchFormValues;
   initialOptions?: PublicSearchFilterOptions;
   stickyOnScroll?: boolean;
   fieldErrors?: Record<string, string>;
+  middleSlot?: React.ReactNode;
 }): React.ReactElement {
   const fr = locale === 'fr';
   const router = useRouter();
@@ -251,6 +253,8 @@ export function SearchIntentBar({
           router.push(`/${locale}/search?${result.query}`);
         }}
       />
+
+      {middleSlot}
 
       <div
         ref={shell}

@@ -45,50 +45,45 @@
   min-height: calc(100svh - 88px);
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: clamp(20px, 2.8vh, 32px);
-  padding: clamp(24px, 4vh, 48px) clamp(20px, 4vw, 80px) clamp(32px, 6vh, 64px);
-}
-
-.caption {
-  width: min(780px, 100%);
-  margin-inline: auto;
-  text-align: center;
-  z-index: 1;
-  order: 1;
-}
-
-.copy {
-  max-width: 760px;
-  margin-inline: auto;
+  justify-content: space-between;
+  gap: clamp(24px, 3.5vh, 48px);
+  padding: 0 clamp(24px, 4.5vw, 80px) 48px;
 }
 
 .searchPosition {
   width: min(780px, 100%);
   margin-inline: auto;
+  margin-top: auto;
+  margin-bottom: auto;
+  z-index: 1;
+  order: 1;
+}
+
+.caption {
+  width: 100%;
+  margin-top: 0;
+  padding-top: 16px;
   z-index: 1;
   order: 2;
+  text-align: left;
 }
+
+.copy {
+  max-width: 760px;
+}
+
 .caption h1,
 .heading {
-  margin: 0;
+  margin: 4px 0 16px;
   font-family:
     -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Helvetica Neue', sans-serif;
-  font-size: clamp(48px, 4.5vw, 68px);
+  font-size: clamp(26px, 3vw, 42px);
   font-weight: 300;
   letter-spacing: -0.028em;
-  line-height: 1.15;
+  line-height: 1.25;
   color: #ffffff;
-}
-
-.titleLine1 {
-  display: block;
-  color: #ffffff;
-}
-
-.titleLine2 {
-  display: block;
+  text-align: center;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
 }
 
 .titleSolid {
@@ -97,18 +92,19 @@
 }
 
 .titleMuted {
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, 0.65);
   font-weight: 300;
 }
 
 .description {
   max-width: 620px;
-  margin: 14px auto 0;
+  margin: 0;
   font-family:
     -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Helvetica Neue', sans-serif;
   font-size: clamp(16px, 1.1vw, 18px);
   letter-spacing: -0.015em;
   line-height: 1.55;
+  text-align: left;
 }
 
 .descSolid {
@@ -117,9 +113,10 @@
 }
 
 .descMuted {
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, 0.65);
   font-weight: 300;
 }
+
 @media (max-width: 64rem) {
   .searchPosition {
     width: 100%;
@@ -132,6 +129,7 @@
     bottom: 0;
   }
 }
+
 @media (max-width: 48rem) {
   .hero {
     min-height: 740px;
@@ -146,19 +144,20 @@
   .heroContent {
     gap: 16px;
     padding-inline: 16px;
-    padding-top: 32px;
     padding-bottom: 24px;
-    justify-content: flex-start;
+    justify-content: space-between;
   }
   .searchPosition {
     width: 100%;
-    margin-top: 0;
+    margin-top: 36px;
+    margin-bottom: auto;
   }
-  .caption h1 {
-    font-size: clamp(32px, 6.8vw, 46px);
+  .heading {
+    font-size: clamp(22px, 5.8vw, 30px);
+    margin: 4px 0 14px;
   }
   .description {
     max-width: 28rem;
-    margin-top: 10px;
+    margin-top: 0;
   }
 }

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -7,6 +8,16 @@ vi.mock('@/app/actions/home-search-options', () => ({ loadHomeSearchOptions: vi.
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 describe('Immersive homepage', () => {
+  it('keeps the original hero JPEG bytes instead of a downscaled derivative', () => {
+    const image = readFileSync(
+      new URL('../../../public/images/home/mountain-lake-road.jpg', import.meta.url),
+    );
+
+    expect(createHash('sha256').update(image).digest('hex')).toBe(
+      '18326ce6befa8174becbe4c3be686612d8d0554515b2c400ebb14ca719eb9ced',
+    );
+  });
+
   it('shows the editorial photo and four intent fields with a direct search action', () => {
     const html = renderToStaticMarkup(<HomeHero locale="fr" />);
     expect(html).toContain('Votre équipement');
