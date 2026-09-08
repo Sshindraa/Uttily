@@ -10,7 +10,8 @@ describe('Immersive homepage', () => {
   it('shows the editorial photo and four intent fields with a direct search action', () => {
     const html = renderToStaticMarkup(<HomeHero locale="fr" />);
     expect(html).toContain('Votre équipement');
-    expect(html).toContain('vous attend.');
+    expect(html).toContain('vous');
+    expect(html).toContain('attend.');
     expect(html).toContain('cycling-sunset.jpg');
     expect(html).toContain('Destination');
     expect(html).toContain('Équipement');
@@ -28,7 +29,8 @@ describe('Immersive homepage', () => {
   });
   it('translates the search entry points and fallback', () => {
     const html = renderToStaticMarkup(<HomeHero locale="en" />);
-    expect(html).toContain('is waiting.');
+    expect(html).toContain('is');
+    expect(html).toContain('waiting.');
     expect(html).toContain('Equipment');
     expect(html).toContain('People');
     expect(html).toContain('href="/en/search"');

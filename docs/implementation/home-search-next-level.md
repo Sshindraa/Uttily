@@ -82,3 +82,13 @@ mutation de stock, aucun provider IA et aucune donnée analytique ajoutée.
 La validation ne prouve pas la disponibilité d'une configuration de groupe.
 La composition, les prix de groupe et les filtres d'attributs restent les chantiers
 ultérieurs explicitement décrits ci-dessus.
+
+
+## Ajustements discrets — 2026-09-08
+
+La composition d’origine est conservée : assistant et barre de recherche de
+780 px maximum, pastilles compactes sur une ligne avec retour si nécessaire,
+titre en bas à gauche. Les adaptations se limitent au champ de description
+(nom accessible et largeur flexible), au retour des textes longs, au focus
+clavier et à l’empilement du champ et de son bouton sur petit écran.
+Les animations respectent la préférence de mouvement réduit.

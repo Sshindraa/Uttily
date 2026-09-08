@@ -68,7 +68,8 @@ describe('Uttily homepage navigation', () => {
       await HomePage({ searchParams: Promise.resolve({ lang: 'en' }) }),
     );
     expect(html).toContain('Your equipment');
-    expect(html).toContain('is waiting.');
+    expect(html).toContain('is');
+    expect(html).toContain('waiting.');
     expect(html).toContain('href="/en/search"');
     expect(html).toContain('href="/en/account/bookings"');
     expect(html).toContain('lang="en"');
@@ -81,7 +82,8 @@ describe('Uttily homepage navigation', () => {
         await HomePage({ searchParams: Promise.resolve({ lang }) }),
       );
       expect(html).toContain('Votre équipement');
-      expect(html).toContain('vous attend.');
+      expect(html).toContain('vous');
+      expect(html).toContain('attend.');
       expect(html).toContain('href="/fr/search"');
     }
   });

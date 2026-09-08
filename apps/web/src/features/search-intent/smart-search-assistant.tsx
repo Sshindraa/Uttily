@@ -300,6 +300,7 @@ export function SmartSearchAssistant({
           <div className={styles.inputRow}>
             <input
               type="text"
+              aria-label={fr ? 'Décrivez votre sortie' : 'Describe your trip'}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={

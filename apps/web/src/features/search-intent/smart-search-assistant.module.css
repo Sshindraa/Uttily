@@ -120,6 +120,7 @@
 
 .input {
   flex: 1;
+  min-width: 0;
   padding: 10px 14px;
   border-radius: 10px;
   border: 1px solid #d1d5db;
@@ -372,4 +373,63 @@
 .confirmBtn:hover {
   background: #1e293b;
   transform: translateY(-1px);
+}
+
+/* Preserve the compact desktop composition while accommodating small screens. */
+.editableChip,
+.unspecifiedChip {
+  max-width: 100%;
+}
+
+.editableChip > span,
+.unspecifiedChip > span {
+  overflow-wrap: anywhere;
+}
+
+.removeChipBtn {
+  flex-shrink: 0;
+}
+
+.container button:focus-visible {
+  outline: 3px solid var(--ut-color-brand-teal, #8cb6bf);
+  outline-offset: 3px;
+}
+
+@media (max-width: 40rem) {
+  .card {
+    padding: 16px;
+  }
+
+  .inputRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .input {
+    width: 100%;
+    font-size: 16px;
+  }
+
+  .submitBtn,
+  .confirmBtn {
+    justify-content: center;
+    min-height: 44px;
+    white-space: normal;
+  }
+
+  .confirmBtn {
+    width: 100%;
+  }
+
+  .chip {
+    text-align: left;
+    line-height: 1.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .container * {
+    animation: none;
+    transition: none;
+  }
 }

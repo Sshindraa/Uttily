@@ -69,23 +69,55 @@
 .copy {
   max-width: 760px;
 }
-.caption h1 {
+.caption h1,
+.heading {
   margin: 0;
-  font-size: clamp(52px, 4.6vw, 70px);
-  font-weight: var(--ut-weight-semibold);
-  letter-spacing: var(--ut-tracking-display);
-  line-height: 1.12;
-  color: var(--ut-color-ink-on-dark);
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Helvetica Neue', sans-serif;
+  font-size: clamp(48px, 4.5vw, 68px);
+  font-weight: 300;
+  letter-spacing: -0.028em;
+  line-height: 1.15;
+  color: #ffffff;
 }
-.caption h1 span {
+
+.titleLine1 {
+  display: block;
+  color: #ffffff;
+}
+
+.titleLine2 {
   display: block;
 }
+
+.titleSolid {
+  color: #ffffff;
+  font-weight: 300;
+}
+
+.titleMuted {
+  color: rgba(255, 255, 255, 0.62);
+  font-weight: 300;
+}
+
 .description {
   max-width: 620px;
-  margin: 14px 0 0;
-  color: var(--ut-color-ink-on-dark);
-  font-size: clamp(16px, 1.15vw, 18px);
-  line-height: 1.5;
+  margin: 16px 0 0;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Helvetica Neue', sans-serif;
+  font-size: clamp(16px, 1.1vw, 18px);
+  letter-spacing: -0.015em;
+  line-height: 1.55;
+}
+
+.descSolid {
+  color: #ffffff;
+  font-weight: 400;
+}
+
+.descMuted {
+  color: rgba(255, 255, 255, 0.62);
+  font-weight: 300;
 }
 @media (max-width: 64rem) {
   .searchPosition {

@@ -24,14 +24,20 @@ export function HomeHero({ locale }: { locale: 'fr' | 'en' }): React.ReactElemen
       <div className={styles.heroContent}>
         <div className={styles.caption}>
           <div className={styles.copy}>
-            <h1 id="home-heading">
-              <span>{fr ? 'Votre équipement' : 'Your equipment'}</span>
-              <span>{fr ? 'vous attend.' : 'is waiting.'}</span>
+            <h1 id="home-heading" className={styles.heading}>
+              <span className={styles.titleLine1}>
+                {fr ? 'Votre équipement' : 'Your equipment'}
+              </span>
+              <span className={styles.titleLine2}>
+                <span className={styles.titleSolid}>{fr ? 'vous' : 'is'}</span>{' '}
+                <span className={styles.titleMuted}>{fr ? 'attend.' : 'waiting.'}</span>
+              </span>
             </h1>
             <p className={styles.description}>
-              {fr
-                ? 'Réservez en ligne. Récupérez votre matériel sur place.'
-                : 'Book online. Collect your equipment on site.'}
+              <span className={styles.descSolid}>{fr ? 'Réservez en ligne.' : 'Book online.'}</span>{' '}
+              <span className={styles.descMuted}>
+                {fr ? 'Récupérez votre matériel sur place.' : 'Collect your equipment on site.'}
+              </span>
             </p>
           </div>
         </div>
