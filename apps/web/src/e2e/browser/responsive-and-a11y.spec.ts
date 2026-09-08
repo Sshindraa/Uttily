@@ -179,13 +179,13 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
     await waitForClientHydration(page);
     await expectNoGlobalHorizontalOverflow(page);
 
-    const openButton = page.getByRole('button', { name: /Commencer par la vue profil/ });
+    const openButton = page.getByRole('button', { name: /Prendre cette photo/ });
     await expect(openButton).toBeVisible();
     await expectReasonableTouchTarget(openButton, 'CTA Photo Coach');
     await openButton.focus();
     await page.keyboard.press('Space');
 
-    const dialog = page.getByRole('dialog', { name: /Photo Coach Uttily.*Profil Hero/ });
+    const dialog = page.getByRole('dialog', { name: /Photo Coach Uttily.*Vue de profil/ });
     await expect(dialog).toBeVisible();
     await expect(dialog).toHaveAttribute('aria-modal', 'true');
 

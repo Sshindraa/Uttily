@@ -38,12 +38,14 @@ Pour les frais marketplace, consulter ensuite l'[état canonique du modèle
   distribution partenaires/agents dans un périmètre outdoor spécialisé fermé,
   sans élargir prématurément le MVP (ADR-019, ADR-035).
 
-## Stack
+## Stack technique de référence
 
-- Node.js 24 LTS, TypeScript strict, pnpm workspaces.
-- Next.js (App Router) pour `apps/web` ; worker séparé dans `apps/worker`.
-- Packages : `core`, `database`, `contracts`, `auth`, `ui`, `config`.
-- PostgreSQL + PostGIS ; Drizzle ORM + Drizzle Kit (ADR-004).
+- Node.js >= 22 (Node.js 22 LTS de référence, active jusqu'en 2027), TypeScript strict, pnpm workspaces.
+- Monolithe modulaire Next.js (App Router, Server Actions, Server Components).
+- PostgreSQL 16+ avec PostGIS.
+- Drizzle ORM avec migrations SQL versionnées et testées (ADR-004).
+- Clerk pour l'authentification et l'identité des utilisateurs.
+- Stripe Connect pour l'onboarding financier des loueurs et le paiement direct.
 - Hébergement : Vercel + Neon, région européenne (ADR-005).
 - Tests : Vitest. Lint : ESLint flat config. Formatage : Prettier. CI : GitHub Actions.
 

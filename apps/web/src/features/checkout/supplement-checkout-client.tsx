@@ -272,7 +272,15 @@ export function SupplementCheckoutClient({
       >
         <h2
           id="expired-heading"
-          style={{ fontSize: '1.25rem', margin: 0, color: 'var(--ut-color-danger)' }}
+          style={{
+            fontFamily: 'var(--ut-font-display)',
+            fontSize: 'var(--ut-text-title-sm)',
+            fontWeight: 'var(--ut-weight-semibold)',
+            letterSpacing: 'var(--ut-tracking-heading)',
+            lineHeight: 'var(--ut-leading-heading)',
+            margin: 0,
+            color: 'var(--ut-color-danger)',
+          }}
         >
           Délai de paiement expiré
         </h2>
@@ -313,8 +321,11 @@ export function SupplementCheckoutClient({
               ref={successRef}
               tabIndex={-1}
               style={{
-                fontSize: '1.25rem',
+                fontFamily: 'var(--ut-font-display)',
+                fontSize: 'var(--ut-text-title-sm)',
                 fontWeight: 'var(--ut-weight-semibold)',
+                letterSpacing: 'var(--ut-tracking-heading)',
+                lineHeight: 'var(--ut-leading-heading)',
                 margin: 0,
                 outline: 'none',
               }}
@@ -347,7 +358,15 @@ export function SupplementCheckoutClient({
       >
         <h2
           id="error-heading"
-          style={{ fontSize: '1.25rem', margin: 0, color: 'var(--ut-color-danger)' }}
+          style={{
+            fontFamily: 'var(--ut-font-display)',
+            fontSize: 'var(--ut-text-title-sm)',
+            fontWeight: 'var(--ut-weight-semibold)',
+            letterSpacing: 'var(--ut-tracking-heading)',
+            lineHeight: 'var(--ut-leading-heading)',
+            margin: 0,
+            color: 'var(--ut-color-danger)',
+          }}
         >
           Erreur
         </h2>
@@ -488,12 +507,14 @@ const rowStyle: React.CSSProperties = {
 const submitButtonStyle: React.CSSProperties = {
   width: '100%',
   padding: '0.75rem 1rem',
-  fontSize: '1rem',
-  fontWeight: 'var(--ut-weight-semibold)',
-  color: 'var(--ut-color-surface)',
+  fontFamily: 'var(--ut-font-ui)',
+  fontSize: 'var(--ut-text-md)',
+  fontWeight: 'var(--ut-weight-action)',
+  letterSpacing: 'var(--ut-tracking-label)',
+  color: 'var(--ut-color-ink-on-dark)',
   backgroundColor: 'var(--ut-color-primary)',
   border: 'none',
-  borderRadius: '0.375rem',
+  borderRadius: 'var(--ut-radius-md)',
   cursor: 'pointer',
 };
 

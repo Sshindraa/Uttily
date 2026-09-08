@@ -27,10 +27,11 @@
   align-items: center;
   color: var(--ut-color-ink-strong);
   display: inline-flex;
+  font-family: var(--ut-font-display);
   font-size: 1.25rem;
   font-weight: var(--ut-weight-bold);
   gap: var(--ut-space-2);
-  letter-spacing: normal;
+  letter-spacing: var(--ut-tracking-heading);
   text-decoration: none;
 }
 
@@ -55,8 +56,10 @@
   border-radius: var(--ut-radius-md);
   color: var(--ut-color-ink-muted);
   display: inline-flex;
+  font-family: var(--ut-font-ui);
   font-size: var(--ut-text-sm);
   font-weight: var(--ut-weight-medium);
+  letter-spacing: var(--ut-tracking-label);
   gap: var(--ut-space-2);
   min-height: 44px;
   padding: 0 var(--ut-space-3);
@@ -76,13 +79,16 @@
 .footer {
   border-top: var(--ut-border-thin);
   color: var(--ut-color-ink-muted);
+  font-family: var(--ut-font-body);
   font-size: var(--ut-text-sm);
   margin-top: var(--ut-space-16);
 }
 
 .footerBrand {
   color: var(--ut-color-ink-strong);
+  font-family: var(--ut-font-display);
   font-weight: var(--ut-weight-bold);
+  letter-spacing: var(--ut-tracking-heading);
 }
 
 .footerBrandGroup {
@@ -102,7 +108,9 @@
 .footerLegalLink {
   color: var(--ut-color-ink-muted);
   text-decoration: none;
+  font-family: var(--ut-font-ui);
   font-size: var(--ut-text-xs);
+  letter-spacing: var(--ut-tracking-label);
   transition: color var(--ut-motion-fast) var(--ut-ease-standard);
 }
 

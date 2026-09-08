@@ -36,7 +36,10 @@ export function Tabs({
             color:
               active === item.id ? 'var(--ut-color-primary-strong)' : 'var(--ut-color-ink-muted)',
             cursor: 'pointer',
-            fontWeight: 'var(--ut-weight-semibold)',
+            fontFamily: 'var(--ut-font-ui)',
+            fontSize: 'var(--ut-text-sm)',
+            fontWeight: 'var(--ut-weight-action)',
+            letterSpacing: 'var(--ut-tracking-label)',
             minHeight: '44px',
             padding: '0 var(--ut-space-3)',
             whiteSpace: 'nowrap',

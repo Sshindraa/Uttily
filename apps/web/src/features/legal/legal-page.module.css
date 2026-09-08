@@ -2,6 +2,7 @@
   max-width: 52rem;
   margin: 0 auto;
   padding: var(--ut-space-8) var(--ut-space-4);
+  font-family: var(--ut-font-body);
 }
 
 .header {
@@ -12,6 +13,7 @@
 
 .breadcrumb {
   margin-bottom: var(--ut-space-4);
+  font-family: var(--ut-font-ui);
   font-size: var(--ut-text-sm);
   color: var(--ut-color-ink-muted);
 }
@@ -27,18 +29,22 @@
 }
 
 .title {
-  font-size: 2rem;
+  font-family: var(--ut-font-display);
+  font-size: var(--ut-text-title-lg);
   font-weight: var(--ut-weight-bold);
+  letter-spacing: var(--ut-tracking-heading);
+  line-height: var(--ut-leading-heading);
   color: var(--ut-color-ink-strong);
   margin: 0 0 var(--ut-space-3) 0;
-  line-height: var(--ut-leading-tight);
 }
 
 .meta {
   display: flex;
   align-items: center;
   gap: var(--ut-space-3);
+  font-family: var(--ut-font-ui);
   font-size: var(--ut-text-sm);
+  font-variant-numeric: var(--ut-numerals);
   color: var(--ut-color-ink-muted);
   flex-wrap: wrap;
 }
@@ -51,14 +57,17 @@
   border: var(--ut-border-thin);
   border-radius: var(--ut-radius-md);
   padding: var(--ut-space-1) var(--ut-space-2);
+  font-family: var(--ut-font-ui);
   font-size: var(--ut-text-xs);
   font-weight: var(--ut-weight-semibold);
+  letter-spacing: var(--ut-tracking-label);
 }
 
 .content {
   color: var(--ut-color-ink);
-  font-size: 1rem;
-  line-height: 1.7;
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-md);
+  line-height: var(--ut-leading-copy);
 }
 
 .content section {
@@ -66,8 +75,11 @@
 }
 
 .content h2 {
-  font-size: 1.35rem;
+  font-family: var(--ut-font-display);
+  font-size: var(--ut-text-title-md);
   font-weight: var(--ut-weight-bold);
+  letter-spacing: var(--ut-tracking-heading);
+  line-height: var(--ut-leading-heading);
   color: var(--ut-color-ink-strong);
   margin: var(--ut-space-6) 0 var(--ut-space-3) 0;
   border-bottom: var(--ut-border-thin);
@@ -75,8 +87,11 @@
 }
 
 .content h3 {
-  font-size: 1.1rem;
+  font-family: var(--ut-font-display);
+  font-size: var(--ut-text-title-sm);
   font-weight: var(--ut-weight-semibold);
+  letter-spacing: var(--ut-tracking-heading);
+  line-height: var(--ut-leading-heading);
   color: var(--ut-color-ink-strong);
   margin: var(--ut-space-4) 0 var(--ut-space-2) 0;
 }
@@ -117,7 +132,10 @@
 }
 
 .navLinks a {
+  font-family: var(--ut-font-ui);
   font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  letter-spacing: var(--ut-tracking-label);
   color: var(--ut-color-primary);
   text-decoration: none;
 }

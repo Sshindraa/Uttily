@@ -8,10 +8,12 @@ export function LanguageDialog({
   open,
   locale,
   onClose,
+  alternateHref,
 }: {
   open: boolean;
   locale: AppLocale;
   onClose: () => void;
+  alternateHref?: string | undefined;
 }): React.JSX.Element {
   const fr = locale === 'fr';
   return (
@@ -35,20 +37,28 @@ export function LanguageDialog({
             { code: 'fr', label: 'Français' },
             { code: 'en', label: 'English' },
           ] as const
-        ).map((language) => (
-          <LinkButton
-            key={language.code}
-            href={language.code === 'fr' ? '/' : '/?lang=en'}
-            variant="secondary"
-            className={styles.language}
-            lang={language.code}
-            hrefLang={language.code}
-            aria-current={locale === language.code ? 'true' : undefined}
-          >
-            <span>{language.label}</span>
-            {locale === language.code ? <Icon name="check" size={18} /> : null}
-          </LinkButton>
-        ))}
+        ).map((language) => {
+          const targetHref =
+            alternateHref && language.code !== locale
+              ? alternateHref
+              : language.code === 'fr'
+                ? '/'
+                : '/?lang=en';
+          return (
+            <LinkButton
+              key={language.code}
+              href={targetHref}
+              variant="secondary"
+              className={styles.language}
+              lang={language.code}
+              hrefLang={language.code}
+              aria-current={locale === language.code ? 'true' : undefined}
+            >
+              <span>{language.label}</span>
+              {locale === language.code ? <Icon name="check" size={18} /> : null}
+            </LinkButton>
+          );
+        })}
       </div>
       <p className={styles.note}>
         {fr

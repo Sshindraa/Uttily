@@ -181,8 +181,11 @@ export function BookingDetailView({
           <Card style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <h2
               style={{
-                fontSize: '1.1rem',
-                fontWeight: 'var(--ut-weight-bold)',
+                fontFamily: 'var(--ut-font-display)',
+                fontSize: 'var(--ut-text-title-sm)',
+                fontWeight: 'var(--ut-weight-semibold)',
+                letterSpacing: 'var(--ut-tracking-heading)',
+                lineHeight: 'var(--ut-leading-heading)',
                 margin: 0,
                 color: 'var(--ut-color-ink-strong)',
               }}
@@ -285,8 +288,11 @@ export function BookingDetailView({
           <Card style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <h2
               style={{
-                fontSize: '1.1rem',
-                fontWeight: 'var(--ut-weight-bold)',
+                fontFamily: 'var(--ut-font-display)',
+                fontSize: 'var(--ut-text-title-sm)',
+                fontWeight: 'var(--ut-weight-semibold)',
+                letterSpacing: 'var(--ut-tracking-heading)',
+                lineHeight: 'var(--ut-leading-heading)',
                 margin: 0,
                 color: 'var(--ut-color-ink-strong)',
               }}
@@ -329,8 +335,11 @@ export function BookingDetailView({
           <Card style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <h2
               style={{
-                fontSize: '1.1rem',
-                fontWeight: 'var(--ut-weight-bold)',
+                fontFamily: 'var(--ut-font-display)',
+                fontSize: 'var(--ut-text-title-sm)',
+                fontWeight: 'var(--ut-weight-semibold)',
+                letterSpacing: 'var(--ut-tracking-heading)',
+                lineHeight: 'var(--ut-leading-heading)',
                 margin: 0,
                 color: 'var(--ut-color-ink-strong)',
               }}
@@ -388,8 +397,11 @@ export function BookingDetailView({
             <Card style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <h2
                 style={{
-                  fontSize: '1.1rem',
-                  fontWeight: 'var(--ut-weight-bold)',
+                  fontFamily: 'var(--ut-font-display)',
+                  fontSize: 'var(--ut-text-title-sm)',
+                  fontWeight: 'var(--ut-weight-semibold)',
+                  letterSpacing: 'var(--ut-tracking-heading)',
+                  lineHeight: 'var(--ut-leading-heading)',
                   margin: 0,
                   color: 'var(--ut-color-ink-strong)',
                 }}
@@ -452,8 +464,11 @@ export function BookingDetailView({
           <Card style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <h2
               style={{
-                fontSize: '1.1rem',
-                fontWeight: 'var(--ut-weight-bold)',
+                fontFamily: 'var(--ut-font-display)',
+                fontSize: 'var(--ut-text-title-sm)',
+                fontWeight: 'var(--ut-weight-semibold)',
+                letterSpacing: 'var(--ut-tracking-heading)',
+                lineHeight: 'var(--ut-leading-heading)',
                 margin: 0,
                 color: 'var(--ut-color-ink-strong)',
               }}
@@ -468,7 +483,16 @@ export function BookingDetailView({
                   <span style={{ color: 'var(--ut-color-ink-muted)', fontSize: '0.95rem' }}>
                     {copy.detail.totalAmount}
                   </span>
-                  <strong style={{ fontSize: '1.35rem', color: 'var(--ut-color-ink-strong)' }}>
+                  <strong
+                    style={{
+                      fontFamily: 'var(--ut-font-display)',
+                      fontSize: 'var(--ut-text-title-md)',
+                      fontWeight: 'var(--ut-weight-bold)',
+                      letterSpacing: 'var(--ut-tracking-heading)',
+                      fontVariantNumeric: 'var(--ut-numerals)',
+                      color: 'var(--ut-color-ink-strong)',
+                    }}
+                  >
                     {formatAmount(
                       booking.payment.amountPaidMinor,
                       booking.payment.currency,
@@ -512,8 +536,11 @@ export function BookingDetailView({
           <Card style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <h2
               style={{
-                fontSize: '1.1rem',
-                fontWeight: 'var(--ut-weight-bold)',
+                fontFamily: 'var(--ut-font-display)',
+                fontSize: 'var(--ut-text-title-sm)',
+                fontWeight: 'var(--ut-weight-semibold)',
+                letterSpacing: 'var(--ut-tracking-heading)',
+                lineHeight: 'var(--ut-leading-heading)',
                 margin: 0,
                 color: 'var(--ut-color-ink-strong)',
               }}

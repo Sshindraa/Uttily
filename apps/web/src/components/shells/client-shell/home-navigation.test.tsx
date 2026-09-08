@@ -126,23 +126,25 @@ describe('Uttily homepage navigation', () => {
     session.signedIn = false;
   });
 
-  it('replaces only the homepage header and preserves shell content and footer', () => {
+  it('renders unified navigation by default and preserves shell content and footer', () => {
     const html = renderToStaticMarkup(
-      <ClientShell header={<HomeNavigation />}>
+      <ClientShell>
         <main>Contenu conservé</main>
       </ClientShell>,
     );
     expect(html.match(/<header/g)).toHaveLength(1);
     expect(html).toContain('Contenu conservé');
     expect(html).toContain('<footer');
-    expect(html).not.toContain('aria-label="Navigation client"');
-    const defaultHtml = renderToStaticMarkup(
-      <ClientShell>
+    expect(html).toContain('Mon espace');
+    expect(html).not.toContain('Navigation principale');
+
+    const customHtml = renderToStaticMarkup(
+      <ClientShell header={<header className="custom">En-tête spécifique</header>}>
         <main>Autre page</main>
       </ClientShell>,
     );
-    expect(defaultHtml).toContain('aria-label="Navigation client"');
-    expect(defaultHtml).not.toContain('Navigation principale');
+    expect(customHtml).toContain('En-tête spécifique');
+    expect(customHtml.match(/<header/g)).toHaveLength(1);
   });
 
   it('keeps only the account menu and the supplied brand controls', () => {

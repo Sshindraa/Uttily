@@ -3,6 +3,7 @@ import { PublicSearchError, safeRecordAnalyticsEvent } from '@uttily/core';
 import { getDb } from '@/lib/db';
 import { getAnalyticsEnvironment } from '@/lib/product-analytics';
 import {
+  applyDefaultSearchDates,
   executePublicSearch,
   parsePublicSearchParams,
   publicSearchHttpStatus,
@@ -18,6 +19,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     return jsonNoStore({ error: { code: 'INVALID_INPUT' } }, 400);
   }
 
+  applyDefaultSearchDates(params);
   const parsed = parsePublicSearchParams(params, locale);
   if (parsed.kind !== 'VALID') {
     return jsonNoStore({ error: { code: 'INVALID_INPUT' } }, 400);

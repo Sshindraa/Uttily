@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Component, type ErrorInfo, type ReactNode, useEffect, useRef, useState } from 'react';
 import type {
@@ -9,8 +8,16 @@ import type {
   PublicSearchDestinationOption,
   PublicSearchViewport,
   SearchPublicOffersResult,
+  RankedPackCandidate,
+  SolvedPackCandidate,
+  SolvedPackAlternatives,
 } from '@uttily/core';
-import type { PublicUiLocale } from '@/lib/public-search';
+import type { PublicUiLocale, EnrichedPublicOfferSearchItem } from '@/lib/public-search';
+import { OfferCardAirbnb } from './components/offer-card-airbnb';
+import { FloatingViewToggle } from './components/floating-view-toggle';
+import { PackSolutionCard } from './components/pack-solution-card';
+import { PackConfirmationDrawer } from './components/pack-confirmation-drawer';
+import { PackAlternativesSection } from './components/pack-alternatives-section';
 import styles from './search.module.css';
 
 const SearchMap = dynamic(() => import('./search-map').then((module) => module.SearchMap), {
@@ -27,6 +34,12 @@ interface SearchResultsProps {
   destination: PublicSearchDestinationOption | null;
   canSearchMap: boolean;
   initialViewport?: PublicSearchViewport | undefined;
+  solvedPacks?: readonly RankedPackCandidate<SolvedPackCandidate>[] | undefined;
+  datesSummary?: string | undefined;
+  startAtIso?: string | undefined;
+  endAtIso?: string | undefined;
+  isPackSearch?: boolean | undefined;
+  packAlternatives?: SolvedPackAlternatives | null | undefined;
 }
 
 interface SearchErrorBody {
@@ -42,12 +55,27 @@ export function SearchResults({
   destination,
   canSearchMap,
   initialViewport,
+  solvedPacks,
+  datesSummary,
+  startAtIso,
+  endAtIso,
+  isPackSearch = false,
+  packAlternatives,
 }: SearchResultsProps): React.ReactElement {
   const fr = locale === 'fr';
   const [result, setResult] = useState<SearchPublicOffersResult | null>(initialResult);
   const [activeSearchParams, setActiveSearchParams] = useState(initialSearchParams);
   const [error, setError] = useState<string | null>(initialSearchError);
   const [isFetching, setIsFetching] = useState(false);
+  const [hoveredProductId, setHoveredProductId] = useState<string | null>(null);
+  const [mobileView, setMobileView] = useState<'list' | 'map'>('list');
+  const [selectedPackForDrawer, setSelectedPackForDrawer] =
+    useState<RankedPackCandidate<SolvedPackCandidate> | null>(null);
+
+  const hasRepairedPacksOnly = Boolean(
+    solvedPacks && solvedPacks.length > 0 && !solvedPacks.some((p) => p.breakdown.exactMatch),
+  );
+
   const abortRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
 
@@ -122,6 +150,7 @@ export function SearchResults({
     result?.items.filter((item) => item.geographicMatch === 'RADIUS_50KM') ?? [];
   const viewportAlternativeItems =
     result?.items.filter((item) => item.geographicMatch === 'VIEWPORT_ALTERNATIVE') ?? [];
+
   const radiusSections: Array<{
     id: string;
     match: Extract<PublicSearchGeographicMatch, `RADIUS_${string}`>;
@@ -184,176 +213,250 @@ export function SearchResults({
         </p>
       ) : null}
 
-      {destination ? (
-        <div className={styles.mapBlock} aria-labelledby="search-map-heading">
-          <div className={styles.mapHeading}>
-            <div>
-              <p className={styles.eyebrow}>{fr ? 'Explorer la zone' : 'Explore the area'}</p>
-              <h2 id="search-map-heading">{fr ? 'Carte des loueurs' : 'Renter map'}</h2>
-            </div>
-            <p>
-              {fr
-                ? 'La carte est interactive et permet d’explorer les points de retrait disponibles.'
-                : 'The map is interactive and lets you explore available pickup locations.'}
-            </p>
-          </div>
-          <MapErrorBoundary locale={locale} key={destination.publicId}>
-            <SearchMap
-              locale={locale}
-              destination={destination}
-              items={result?.items ?? []}
-              initialViewport={initialViewport}
-              canSearch={canSearchMap}
-              isSearching={isFetching}
-              onSearchViewport={searchViewport}
-            />
-          </MapErrorBoundary>
-        </div>
-      ) : null}
+      <div className={styles.splitLayout}>
+        {/* Colonne gauche : Liste des offres (Airbnb style) */}
+        <div
+          className={`${styles.listPane} ${
+            mobileView === 'map' ? styles.paneHiddenOnMobile : ''
+          }`}
+        >
+          {result ? (
+            <>
+              {/* Pack Orchestrator — Solutions Mono-Loueur */}
+              {isPackSearch && solvedPacks && solvedPacks.length > 0 ? (
+                <section className={styles.packsSection} aria-labelledby="packs-section-heading">
+                  <div className={styles.packsHeader}>
+                    <div className={styles.packsEyebrow}>
+                      <span aria-hidden="true">✓</span>
+                      <span>
+                        {fr
+                          ? 'Pack Orchestrator · Solution Mono-Loueur'
+                          : 'Pack Orchestrator · Single-Shop Solution'}
+                      </span>
+                    </div>
+                    <h2 id="packs-section-heading" className={styles.packsTitle}>
+                      {fr ? 'Solutions pour votre sortie' : 'Solutions for your outing'}
+                    </h2>
+                    <p className={styles.packsSubtitle}>
+                      {fr
+                        ? 'Tout votre équipement réuni chez un seul loueur vérifié, avec un seul retrait et une disponibilité garantie.'
+                        : 'All your equipment provided by a single verified shop, with one pickup and guaranteed availability.'}
+                    </p>
+                  </div>
 
-      {result ? (
-        <>
-          <div className={styles.resultsHeading}>
-            <div>
-              <p className={styles.eyebrow}>{fr ? 'Disponibilités' : 'Availability'}</p>
-              <h2 id="search-results-heading">
-                {result.items.length === 0
-                  ? fr
-                    ? 'Aucun résultat exact'
-                    : 'No exact results'
-                  : fr
-                    ? `${result.items.length} offre${result.items.length > 1 ? 's' : ''} disponible${result.items.length > 1 ? 's' : ''}`
-                    : `${result.items.length} available offer${result.items.length > 1 ? 's' : ''}`}
-              </h2>
-            </div>
-            <p>
-              {fr
-                ? "Disponibilité actualisée — l'exemplaire est alloué lors de la confirmation de votre réservation."
-                : 'Updated availability — equipment is allocated upon booking confirmation.'}
-            </p>
-          </div>
+                  <div className={styles.packsGrid}>
+                    {solvedPacks.map((pack) => (
+                      <PackSolutionCard
+                        key={`${pack.candidate.organizationId}:${pack.candidate.locationId}`}
+                        pack={pack}
+                        locale={locale}
+                        datesSummary={datesSummary}
+                        onSelectPack={(selected) => setSelectedPackForDrawer(selected)}
+                      />
+                    ))}
+                  </div>
 
-          <section className={styles.resultSection} aria-labelledby="exact-results-heading">
-            <h3 id="exact-results-heading">
-              {fr
-                ? `Dans la destination sélectionnée (${exactItems.length})`
-                : `In the selected destination (${exactItems.length})`}
-            </h3>
-            {exactItems.length > 0 ? (
-              <div className={styles.grid}>
-                {exactItems.map((item) => renderCard(item, locale, activeSearchParams))}
-              </div>
-            ) : (
-              <p className={styles.emptySection}>
-                {fr
-                  ? 'Aucune offre exacte pour ces critères. Consultez les alternatives ci-dessous.'
-                  : 'No exact offer for these criteria. Check the alternatives below.'}
-              </p>
-            )}
-          </section>
+                  {hasRepairedPacksOnly && (
+                    <PackAlternativesSection
+                      locale={locale}
+                      alternatives={packAlternatives}
+                      repairedPack={solvedPacks.find((p) => p.candidate.repairs.length > 0)}
+                      onSelectRepairedPack={(selected) => setSelectedPackForDrawer(selected)}
+                      currentSearchParams={activeSearchParams}
+                    />
+                  )}
+                </section>
+              ) : isPackSearch && (!solvedPacks || solvedPacks.length === 0) ? (
+                <PackAlternativesSection
+                  locale={locale}
+                  alternatives={packAlternatives}
+                  currentSearchParams={activeSearchParams}
+                />
+              ) : null}
 
-          {radiusSections.map((section) =>
-            section.items.length > 0 ? (
-              <section
-                className={styles.resultSection}
-                aria-labelledby={section.id}
-                key={section.id}
-              >
-                <h3 id={section.id}>{fr ? section.titleFr : section.titleEn}</h3>
-                <p className={styles.alternativeExplanation}>
-                  {fr ? section.descriptionFr : section.descriptionEn}
-                </p>
-                <div className={styles.grid}>
-                  {section.items.map((item) => renderCard(item, locale, activeSearchParams))}
-                </div>
-              </section>
-            ) : null,
-          )}
-
-          {viewportAlternativeItems.length > 0 ? (
-            <section className={styles.resultSection} aria-labelledby="alternative-results-heading">
-              <h3 id="alternative-results-heading">
-                {fr
-                  ? `Dans la zone de carte choisie (${viewportAlternativeItems.length})`
-                  : `In the selected map area (${viewportAlternativeItems.length})`}
-              </h3>
-              <p className={styles.alternativeExplanation}>
-                {fr
-                  ? 'Ces offres sont hors de la destination sélectionnée, mais dans la zone de carte choisie.'
-                  : 'These offers are outside the selected destination but inside the chosen map area.'}
-              </p>
-              <div className={styles.grid}>
-                {viewportAlternativeItems.map((item) =>
-                  renderCard(item, locale, activeSearchParams),
+              {isPackSearch &&
+                Boolean(
+                  (solvedPacks && solvedPacks.length > 0) ||
+                    (packAlternatives && packAlternatives.totalAlternativesCount > 0),
+                ) && (
+                  <div className={styles.individualOffersDivider}>
+                    <h3 className={styles.individualOffersTitle}>
+                      {fr ? 'Ou explorez les offres individuelles' : 'Or explore individual offers'}
+                    </h3>
+                    <p className={styles.individualOffersSubtitle}>
+                      {fr
+                        ? 'Ces offres restent disponibles à l’unité pour composer votre propre panier.'
+                        : 'These offers remain available individually to build your own cart.'}
+                    </p>
+                  </div>
                 )}
+
+              <div className={styles.resultsHeading}>
+                <div>
+                  <p className={styles.eyebrow}>{fr ? 'Disponibilités' : 'Availability'}</p>
+                  <h2 id="search-results-heading">
+                    {result.items.length === 0
+                      ? fr
+                        ? 'Aucun résultat exact'
+                        : 'No exact results'
+                      : fr
+                        ? `${result.items.length} offre${
+                            result.items.length > 1 ? 's' : ''
+                          } disponible${result.items.length > 1 ? 's' : ''}`
+                        : `${result.items.length} available offer${result.items.length > 1 ? 's' : ''}`}
+                  </h2>
+                </div>
+                <p>
+                  {fr
+                    ? "Disponibilité actualisée — l'exemplaire est alloué lors de la confirmation de votre réservation."
+                    : 'Updated availability — equipment is allocated upon booking confirmation.'}
+                </p>
               </div>
-            </section>
+
+              <section className={styles.resultSection} aria-labelledby="exact-results-heading">
+                <h3 id="exact-results-heading">
+                  {fr
+                    ? `Dans la destination sélectionnée (${exactItems.length})`
+                    : `In the selected destination (${exactItems.length})`}
+                </h3>
+                {exactItems.length > 0 ? (
+                  <div className={styles.grid}>
+                    {exactItems.map((item) => (
+                      <OfferCardAirbnb
+                        key={`${item.publicProductId}:${item.publicLocationId}`}
+                        item={item as EnrichedPublicOfferSearchItem}
+                        locale={locale}
+                        activeSearchParams={activeSearchParams}
+                        isHighlighted={hoveredProductId === item.publicProductId}
+                        onHover={setHoveredProductId}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className={styles.emptySection}>
+                    {fr
+                      ? 'Aucune offre exacte pour ces critères. Consultez les alternatives ci-dessous.'
+                      : 'No exact offer for these criteria. Check the alternatives below.'}
+                  </p>
+                )}
+              </section>
+
+              {radiusSections.map((section) =>
+                section.items.length > 0 ? (
+                  <section
+                    className={styles.resultSection}
+                    aria-labelledby={section.id}
+                    key={section.id}
+                  >
+                    <h3 id={section.id}>{fr ? section.titleFr : section.titleEn}</h3>
+                    <p className={styles.alternativeExplanation}>
+                      {fr ? section.descriptionFr : section.descriptionEn}
+                    </p>
+                    <div className={styles.grid}>
+                      {section.items.map((item) => (
+                        <OfferCardAirbnb
+                          key={`${item.publicProductId}:${item.publicLocationId}`}
+                          item={item as EnrichedPublicOfferSearchItem}
+                          locale={locale}
+                          activeSearchParams={activeSearchParams}
+                          isHighlighted={hoveredProductId === item.publicProductId}
+                          onHover={setHoveredProductId}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                ) : null,
+              )}
+
+              {viewportAlternativeItems.length > 0 ? (
+                <section
+                  className={styles.resultSection}
+                  aria-labelledby="alternative-results-heading"
+                >
+                  <h3 id="alternative-results-heading">
+                    {fr
+                      ? `Dans la zone de carte choisie (${viewportAlternativeItems.length})`
+                      : `In the selected map area (${viewportAlternativeItems.length})`}
+                  </h3>
+                  <p className={styles.alternativeExplanation}>
+                    {fr
+                      ? 'Ces offres sont hors de la destination sélectionnée, mais dans la zone de carte choisie.'
+                      : 'These offers are outside the selected destination but inside the chosen map area.'}
+                  </p>
+                  <div className={styles.grid}>
+                    {viewportAlternativeItems.map((item) => (
+                      <OfferCardAirbnb
+                        key={`${item.publicProductId}:${item.publicLocationId}`}
+                        item={item as EnrichedPublicOfferSearchItem}
+                        locale={locale}
+                        activeSearchParams={activeSearchParams}
+                        isHighlighted={hoveredProductId === item.publicProductId}
+                        onHover={setHoveredProductId}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
+              {result.nextCursor ? (
+                <a
+                  className={styles.more}
+                  href={`/${locale}/search?${withCursor(activeSearchParams, result.nextCursor)}`}
+                  rel="next"
+                >
+                  {fr ? 'Voir plus d’offres' : 'See more offers'}
+                </a>
+              ) : null}
+            </>
           ) : null}
-
-          {result.nextCursor ? (
-            <a
-              className={styles.more}
-              href={`/${locale}/search?${withCursor(activeSearchParams, result.nextCursor)}`}
-              rel="next"
-            >
-              {fr ? 'Voir plus d’offres' : 'See more offers'}
-            </a>
-          ) : null}
-        </>
-      ) : null}
-    </section>
-  );
-}
-
-function renderCard(
-  item: PublicOfferSearchItem,
-  locale: PublicUiLocale,
-  activeSearchParams: string,
-): React.ReactElement {
-  const fr = locale === 'fr';
-  const searchParams = new URLSearchParams(activeSearchParams);
-  searchParams.delete('cursor');
-  const offerQuery = searchParams.toString();
-  const offerUrl = `/${locale}/offers/${item.publicProductId}/${item.publicLocationId}${offerQuery ? `?${offerQuery}` : ''}`;
-
-  return (
-    <article key={`${item.publicProductId}:${item.publicLocationId}`} className={styles.card}>
-      <div className={styles.cardTopline}>
-        <span>📍 {formatDistance(item.distanceMeters, locale)}</span>
-        <span className={styles.available}>✓ {fr ? 'Disponible' : 'Available'}</span>
-      </div>
-      <h4>
-        <Link href={offerUrl} className={styles.offerLink}>
-          {item.productName}
-        </Link>
-      </h4>
-      <p className={styles.renter}>Loueur : {item.organizationPublicDisplayName}</p>
-      <p>
-        <strong>{item.locationName}</strong>
-        <br />
-        {item.addressLine1}
-        {item.addressLine2 ? (
-          <>
-            <br />
-            {item.addressLine2}
-          </>
-        ) : null}
-        <br />
-        {[item.postalCode, item.city].filter(Boolean).join(' ')} · {item.countryCode}
-      </p>
-      <div className={styles.price}>
-        <div>
-          <strong>{formatMoney(item.price.totalAmountMinor, item.price.currency, locale)}</strong>
-          <span>{fr ? ' · total pour 1 équipement' : ' · total for 1 item'}</span>
         </div>
-        <span>{item.price.publicLabel}</span>
+
+        {/* Colonne droite : Carte interactive collante (Airbnb style) */}
+        {destination ? (
+          <div
+            className={`${styles.mapPane} ${
+              mobileView === 'list' ? styles.paneHiddenOnMobile : ''
+            }`}
+            aria-labelledby="search-map-heading"
+          >
+            <div className={styles.stickyMapWrapper}>
+              <MapErrorBoundary locale={locale} key={destination.publicId}>
+                <SearchMap
+                  locale={locale}
+                  destination={destination}
+                  items={result?.items ?? []}
+                  initialViewport={initialViewport}
+                  canSearch={canSearchMap}
+                  isSearching={isFetching}
+                  hoveredProductId={hoveredProductId}
+                  onHoverProduct={setHoveredProductId}
+                  onSearchViewport={searchViewport}
+                />
+              </MapErrorBoundary>
+            </div>
+          </div>
+        ) : null}
       </div>
-      <div style={{ marginTop: '1rem' }}>
-        <Link href={offerUrl} className={styles.bookButton}>
-          {fr ? 'Voir l’offre et réserver' : 'View offer & book'}
-        </Link>
-      </div>
-    </article>
+
+      {/* Bouton flottant de bascule mobile Carte / Liste */}
+      {destination && (
+        <FloatingViewToggle
+          currentView={mobileView}
+          onToggle={setMobileView}
+          locale={locale}
+        />
+      )}
+
+      {/* Pack Confirmation Drawer */}
+      <PackConfirmationDrawer
+        pack={selectedPackForDrawer}
+        locale={locale}
+        datesSummary={datesSummary}
+        startAtIso={startAtIso || new Date().toISOString()}
+        endAtIso={endAtIso || new Date(Date.now() + 86400000).toISOString()}
+        onClose={() => setSelectedPackForDrawer(null)}
+      />
+    </section>
   );
 }
 
@@ -361,15 +464,6 @@ function withCursor(params: string, cursor: string): string {
   const next = new URLSearchParams(params);
   next.set('cursor', cursor);
   return next.toString();
-}
-
-function formatMoney(amountMinor: number, currency: string, locale: PublicUiLocale): string {
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(amountMinor / 100);
-}
-
-function formatDistance(distanceMeters: number, locale: PublicUiLocale): string {
-  if (distanceMeters < 1000) return `${distanceMeters} m`;
-  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(distanceMeters / 1000)} km`;
 }
 
 function isSearchErrorBody(

@@ -241,8 +241,11 @@ export function CheckoutClient({
           <h2
             id="success-heading"
             style={{
-              fontSize: '1.5rem',
-              fontWeight: 'bold',
+              fontFamily: 'var(--ut-font-display)',
+              fontSize: 'var(--ut-text-title-lg)',
+              fontWeight: 'var(--ut-weight-semibold)',
+              letterSpacing: 'var(--ut-tracking-heading)',
+              lineHeight: 'var(--ut-leading-heading)',
               margin: '0 0 0.5rem 0',
               color: 'var(--ut-color-ink-strong)',
             }}
@@ -275,7 +278,18 @@ export function CheckoutClient({
     return (
       <section aria-labelledby="error-heading" style={sectionStyle}>
         <div style={cardStyle}>
-          <h2 id="error-heading" style={{ color: 'var(--ut-color-danger)', margin: 0 }}>
+          <h2
+            id="error-heading"
+            style={{
+              fontFamily: 'var(--ut-font-display)',
+              fontSize: 'var(--ut-text-title-lg)',
+              fontWeight: 'var(--ut-weight-semibold)',
+              letterSpacing: 'var(--ut-tracking-heading)',
+              lineHeight: 'var(--ut-leading-heading)',
+              color: 'var(--ut-color-danger)',
+              margin: 0,
+            }}
+          >
             {copy.error.title}
           </h2>
           <p role="alert" style={{ color: 'var(--ut-color-ink-muted)', margin: 0 }}>
@@ -299,7 +313,11 @@ export function CheckoutClient({
         <h3
           style={{
             margin: '0 0 0.75rem 0',
-            fontSize: '1.1rem',
+            fontFamily: 'var(--ut-font-display)',
+            fontSize: 'var(--ut-text-title-sm)',
+            fontWeight: 'var(--ut-weight-semibold)',
+            letterSpacing: 'var(--ut-tracking-heading)',
+            lineHeight: 'var(--ut-leading-heading)',
             color: 'var(--ut-color-ink-strong)',
           }}
         >
@@ -493,7 +511,9 @@ const listItemStyle: CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  fontSize: '0.95rem',
+  fontFamily: 'var(--ut-font-body)',
+  fontSize: 'var(--ut-text-sm)',
+  fontVariantNumeric: 'var(--ut-numerals)',
 };
 
 const totalRowStyle: CSSProperties = {
@@ -502,8 +522,11 @@ const totalRowStyle: CSSProperties = {
   alignItems: 'center',
   paddingTop: '0.75rem',
   borderTop: 'var(--ut-border-thin)',
-  fontSize: '1.1rem',
-  fontWeight: 'bold',
+  fontFamily: 'var(--ut-font-display)',
+  fontSize: 'var(--ut-text-title-sm)',
+  fontWeight: 'var(--ut-weight-semibold)',
+  letterSpacing: 'var(--ut-tracking-heading)',
+  fontVariantNumeric: 'var(--ut-numerals)',
 };
 
 const breakdownStyle: CSSProperties = {
@@ -516,16 +539,20 @@ const breakdownRowStyle: CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   color: 'var(--ut-color-ink-muted)',
-  fontSize: '0.95rem',
+  fontFamily: 'var(--ut-font-body)',
+  fontSize: 'var(--ut-text-sm)',
+  fontVariantNumeric: 'var(--ut-numerals)',
 };
 
 const submitButtonStyle: CSSProperties = {
   width: '100%',
   minHeight: '48px',
   padding: '0.75rem 1.25rem',
-  fontSize: '1rem',
-  fontWeight: 'var(--ut-weight-bold)',
-  color: 'var(--ut-color-surface)',
+  fontFamily: 'var(--ut-font-ui)',
+  fontSize: 'var(--ut-text-md)',
+  fontWeight: 'var(--ut-weight-action)',
+  letterSpacing: 'var(--ut-tracking-label)',
+  color: 'var(--ut-color-ink-on-dark)',
   background: 'var(--ut-color-primary)',
   border: 'none',
   borderRadius: 'var(--ut-radius-md)',
@@ -535,13 +562,15 @@ const submitButtonStyle: CSSProperties = {
 
 const legalNoticeStyle: CSSProperties = {
   color: 'var(--ut-color-ink-muted)',
-  fontSize: '0.8rem',
-  lineHeight: 1.5,
+  fontFamily: 'var(--ut-font-body)',
+  fontSize: 'var(--ut-text-caption)',
+  lineHeight: 'var(--ut-leading-body)',
   margin: '0 0 0.5rem 0',
   textAlign: 'center',
 };
 
 const legalLinkStyle: CSSProperties = {
+  fontFamily: 'var(--ut-font-ui)',
   color: 'var(--ut-color-primary)',
   textDecoration: 'underline',
 };

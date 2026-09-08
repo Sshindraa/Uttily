@@ -95,8 +95,11 @@ export function BookingsListView({
           <div style={{ fontSize: '3rem' }}>🚲</div>
           <h2
             style={{
-              fontSize: '1.25rem',
-              fontWeight: 'var(--ut-weight-bold)',
+              fontFamily: 'var(--ut-font-display)',
+              fontSize: 'var(--ut-text-title-sm)',
+              fontWeight: 'var(--ut-weight-heading)',
+              letterSpacing: 'var(--ut-tracking-heading)',
+              lineHeight: 'var(--ut-leading-heading)',
               margin: 0,
               color: 'var(--ut-color-ink-strong)',
             }}
@@ -120,8 +123,11 @@ export function BookingsListView({
               <h2
                 id="upcoming-heading"
                 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: 'var(--ut-weight-bold)',
+                  fontFamily: 'var(--ut-font-display)',
+                  fontSize: 'var(--ut-text-title-sm)',
+                  fontWeight: 'var(--ut-weight-heading)',
+                  letterSpacing: 'var(--ut-tracking-heading)',
+                  lineHeight: 'var(--ut-leading-heading)',
                   margin: 0,
                   color: 'var(--ut-color-ink-strong)',
                 }}
@@ -150,8 +156,11 @@ export function BookingsListView({
               <h2
                 id="active-heading"
                 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: 'var(--ut-weight-bold)',
+                  fontFamily: 'var(--ut-font-display)',
+                  fontSize: 'var(--ut-text-title-sm)',
+                  fontWeight: 'var(--ut-weight-heading)',
+                  letterSpacing: 'var(--ut-tracking-heading)',
+                  lineHeight: 'var(--ut-leading-heading)',
                   margin: 0,
                   color: 'var(--ut-color-ink-strong)',
                 }}
@@ -180,8 +189,11 @@ export function BookingsListView({
               <h2
                 id="past-heading"
                 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: 'var(--ut-weight-bold)',
+                  fontFamily: 'var(--ut-font-display)',
+                  fontSize: 'var(--ut-text-title-sm)',
+                  fontWeight: 'var(--ut-weight-heading)',
+                  letterSpacing: 'var(--ut-tracking-heading)',
+                  lineHeight: 'var(--ut-leading-heading)',
                   margin: 0,
                   color: 'var(--ut-color-ink-strong)',
                 }}
@@ -240,10 +252,11 @@ function BookingCard({
           {booking.categoryName && (
             <span
               style={{
-                fontSize: '0.75rem',
+                fontFamily: 'var(--ut-font-ui)',
+                fontSize: 'var(--ut-text-xs)',
                 fontWeight: 'var(--ut-weight-bold)',
                 textTransform: 'uppercase',
-                letterSpacing: '0.05em',
+                letterSpacing: 'var(--ut-tracking-eyebrow)',
                 color: 'var(--ut-color-primary)',
                 display: 'block',
                 marginBottom: '0.2rem',
@@ -254,15 +267,18 @@ function BookingCard({
           )}
           <h3
             style={{
-              fontSize: '1.15rem',
-              fontWeight: 'var(--ut-weight-bold)',
+              fontFamily: 'var(--ut-font-display)',
+              fontSize: 'var(--ut-text-title-sm)',
+              fontWeight: 'var(--ut-weight-semibold)',
+              letterSpacing: 'var(--ut-tracking-heading)',
+              lineHeight: 'var(--ut-leading-heading)',
               margin: '0 0 0.15rem 0',
               color: 'var(--ut-color-ink-strong)',
             }}
           >
             {booking.productName}
           </h3>
-          <p style={{ fontSize: '0.85rem', color: 'var(--ut-color-ink-muted)', margin: 0 }}>
+          <p style={{ fontFamily: 'var(--ut-font-body)', fontSize: 'var(--ut-text-sm)', color: 'var(--ut-color-ink-muted)', margin: 0 }}>
             {copy.bookings.renter(booking.organizationName)}
           </p>
         </div>
@@ -284,7 +300,9 @@ function BookingCard({
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            fontSize: '0.9rem',
+            fontFamily: 'var(--ut-font-body)',
+            fontSize: 'var(--ut-text-sm)',
+            fontVariantNumeric: 'var(--ut-numerals)',
             color: 'var(--ut-color-ink)',
           }}
         >
@@ -296,7 +314,8 @@ function BookingCard({
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            fontSize: '0.9rem',
+            fontFamily: 'var(--ut-font-body)',
+            fontSize: 'var(--ut-text-sm)',
             color: 'var(--ut-color-ink)',
           }}
         >
@@ -316,8 +335,11 @@ function BookingCard({
       >
         <span
           style={{
-            fontSize: '1.1rem',
+            fontFamily: 'var(--ut-font-display)',
+            fontSize: 'var(--ut-text-lg)',
             fontWeight: 'var(--ut-weight-bold)',
+            letterSpacing: 'var(--ut-tracking-heading)',
+            fontVariantNumeric: 'var(--ut-numerals)',
             color: 'var(--ut-color-ink-strong)',
           }}
         >
@@ -326,8 +348,10 @@ function BookingCard({
         <Link
           href={`/${locale}/account/bookings/${booking.id}`}
           style={{
-            fontSize: '0.9rem',
-            fontWeight: 'var(--ut-weight-semibold)',
+            fontFamily: 'var(--ut-font-ui)',
+            fontSize: 'var(--ut-text-sm)',
+            fontWeight: 'var(--ut-weight-action)',
+            letterSpacing: 'var(--ut-tracking-label)',
             color: 'var(--ut-color-primary-strong)',
             textDecoration: 'none',
           }}

@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import type { EquipmentEnrichmentProposal } from '@uttily/intelligence';
 import { createFirstEquipmentDraftAction } from '@/app/actions/products';
 import {
   getCategoryDisplayLabel,
   getCategoryPresentation,
 } from '@/features/equipment/category-presentation';
+import { ScanAndListZone } from './components/scan-and-list-zone';
 import styles from './new-bike.module.css';
 
 interface CategoryOption {
@@ -40,6 +42,34 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
 
   const selectedCategory = categories.find((category) => category.id === categoryId);
   const categoryPresentation = getCategoryPresentation(selectedCategory?.slug);
+
+  function handleProposal(proposal: EquipmentEnrichmentProposal): void {
+    const brand = proposal.brand.value?.trim() || '';
+    const model = proposal.model.value?.trim() || '';
+    const fullName = [brand, model].filter(Boolean).join(' ');
+    if (fullName) {
+      setName(fullName);
+    }
+
+    if (proposal.categorySlug.value) {
+      const slugLower = proposal.categorySlug.value.toLowerCase();
+      const matched = categories.find((c) => c.slug.toLowerCase() === slugLower);
+      if (matched) {
+        setCategoryId(matched.id);
+      }
+    }
+
+    if (
+      proposal.frameSize.value &&
+      (proposal.frameSize.confidence ?? 0) >= 0.5
+    ) {
+      setVariantName(proposal.frameSize.value.trim());
+    }
+
+    if (proposal.marketingDescriptionFr.value) {
+      setDescription(proposal.marketingDescriptionFr.value.trim());
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -116,6 +146,11 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
               ensuite les exemplaires, le tarif et les photos dans les étapes suivantes.
             </p>
           </div>
+
+          <ScanAndListZone
+            organizationId={organizationId}
+            onProposal={handleProposal}
+          />
 
           {error && <div className={styles.errorAlert}>{error}</div>}
 

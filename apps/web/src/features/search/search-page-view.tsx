@@ -2,10 +2,14 @@ import type {
   PublicSearchCategoryOption,
   PublicSearchDestinationOption,
   SearchPublicOffersResult,
+  RankedPackCandidate,
+  SolvedPackCandidate,
+  SolvedPackAlternatives,
 } from '@uttily/core';
 import type { PublicSearchParseResult, PublicUiLocale } from '@/lib/public-search';
 import { SearchForm } from './search-form';
 import { SearchIntentBar } from '@/features/search-intent/search-intent-bar';
+import { SearchFilterBar } from './components/search-filter-bar';
 import { SearchResults } from './search-results';
 import styles from './search.module.css';
 
@@ -18,6 +22,11 @@ export interface SearchPageViewProps {
   searchError: string | null;
   initialSearchParams: string;
   destination: PublicSearchDestinationOption | null;
+  solvedPacks?: readonly RankedPackCandidate<SolvedPackCandidate>[] | undefined;
+  datesSummary?: string | undefined;
+  startAtIso?: string | undefined;
+  endAtIso?: string | undefined;
+  packAlternatives?: SolvedPackAlternatives | null | undefined;
 }
 
 export function SearchPageView({
@@ -29,38 +38,31 @@ export function SearchPageView({
   searchError,
   initialSearchParams,
   destination,
+  solvedPacks,
+  datesSummary,
+  startAtIso,
+  endAtIso,
+  packAlternatives,
 }: SearchPageViewProps): React.ReactElement {
   const fr = locale === 'fr';
+  const isPackSearch = Boolean(parsed.values.peopleCount && parsed.values.peopleCount > 1);
 
   return (
     <main className={styles.page} lang={locale}>
-      <section className={styles.hero}>
-        <p className={styles.eyebrow}>
-          {fr ? 'Location locale · Stock réel' : 'Local rental · Verified stock'}
-        </p>
-        <h1>
-          {fr
-            ? 'Trouvez le bon équipement, au bon endroit.'
-            : 'Find the right equipment, in the right place.'}
-        </h1>
-        <p>
-          {fr
-            ? 'Les disponibilités et les tarifs sont calculés pour votre période. Votre équipement est bloqué lors de votre réservation.'
-            : 'Availability and pricing are calculated for your dates. Your equipment is held upon booking.'}
-        </p>
-      </section>
-
-      <section className={styles.searchPanel} aria-labelledby="search-heading">
+      {/* Barre de recherche compacte Airbnb (en-tête de page) */}
+      <section className={styles.topSearchSection} aria-labelledby="search-heading">
         <h2 id="search-heading" className={styles.srOnly}>
           {fr ? 'Critères de recherche' : 'Search criteria'}
         </h2>
-        <SearchIntentBar
-          key={initialSearchParams}
-          locale={locale}
-          initialOptions={{ destinations, categories }}
-          initialValues={parsed.values}
-          {...(parsed.kind === 'INVALID' ? { fieldErrors: parsed.fieldErrors } : {})}
-        />
+        <div className={styles.searchBarWrapper}>
+          <SearchIntentBar
+            key={initialSearchParams}
+            locale={locale}
+            initialOptions={{ destinations, categories }}
+            initialValues={parsed.values}
+            {...(parsed.kind === 'INVALID' ? { fieldErrors: parsed.fieldErrors } : {})}
+          />
+        </div>
         <noscript>
           <SearchForm
             locale={locale}
@@ -78,19 +80,17 @@ export function SearchPageView({
         ) : null}
       </section>
 
-      {parsed.values.peopleCount && parsed.values.peopleCount > 1 ? (
-        <p className={styles.notice}>
-          <strong>
-            {fr
-              ? `Recherche pour ${parsed.values.peopleCount} personnes. `
-              : `Searching for ${parsed.values.peopleCount} people. `}
-          </strong>
-          {fr
-            ? 'Les offres et les prix restent présentés pour un équipement, pas pour l’ensemble des personnes. Vérifiez les capacités et les quantités avant de réserver.'
-            : 'Offers and prices are still shown for one item, not for the whole party. Check capacities and quantities before booking.'}
-        </p>
+      {/* Bandeau de filtres horizontaux par catégorie (Airbnb chips) */}
+      {categories.length > 0 ? (
+        <SearchFilterBar
+          categories={categories}
+          selectedCategoryId={parsed.values.categoryId}
+          locale={locale}
+          currentSearchParams={initialSearchParams}
+        />
       ) : null}
 
+      {/* Résultats en split-screen (Solutions Packs + Liste individuelle + Carte interactive) */}
       <SearchResults
         locale={locale}
         result={result}
@@ -100,7 +100,14 @@ export function SearchPageView({
         destination={destination}
         canSearchMap={parsed.kind === 'VALID'}
         initialViewport={parsed.kind === 'VALID' ? parsed.input.viewport : undefined}
+        solvedPacks={solvedPacks}
+        datesSummary={datesSummary}
+        startAtIso={startAtIso}
+        endAtIso={endAtIso}
+        isPackSearch={isPackSearch}
+        packAlternatives={packAlternatives}
       />
     </main>
   );
 }
+

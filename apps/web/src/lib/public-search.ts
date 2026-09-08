@@ -7,10 +7,16 @@ import {
   type PublicSearchErrorCode,
   type SearchPublicOffersInput,
   type SearchPublicOffersResult,
+  type PublicOfferSearchItem,
   type PublicSearchViewport,
 } from '@uttily/core';
-import type { DatabaseClient } from '@uttily/database';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { type DatabaseClient, productPhotos, products } from '@uttily/database';
 import { parseSearchPeople } from './search-people';
+
+export interface EnrichedPublicOfferSearchItem extends PublicOfferSearchItem {
+  primaryPhotoPublicId?: string | null;
+}
 
 export type PublicUiLocale = 'fr' | 'en';
 
@@ -24,6 +30,7 @@ export interface PublicSearchFormValues {
   endAt: string;
   /** Presentation context only; excluded from SearchPublicOffersInput. */
   peopleCount?: number;
+  packRequirements?: string | undefined;
   viewport?: PublicSearchViewport;
   pageSize?: number;
 }
@@ -47,6 +54,33 @@ const VIEWPORT_QUERY_KEYS = [
   'viewportEast',
 ] as const;
 
+export function applyDefaultSearchDates(params: URLSearchParams): boolean {
+  if (
+    params.has('destinationPublicId') &&
+    !params.has('intent') &&
+    !params.has('startDate') &&
+    !params.has('startAt')
+  ) {
+    const today = new Date();
+    const dayOfWeek = today.getUTCDay();
+    let daysUntilStart = (6 - dayOfWeek + 7) % 7;
+    if (daysUntilStart < 2) daysUntilStart += 7;
+
+    const start = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + daysUntilStart),
+    );
+    const end = new Date(
+      Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate() + 2),
+    );
+
+    params.set('intent', 'DAY_RANGE');
+    params.set('startDate', start.toISOString().slice(0, 10));
+    params.set('endDateExclusive', end.toISOString().slice(0, 10));
+    return true;
+  }
+  return false;
+}
+
 export function parsePublicSearchParams(
   params: URLSearchParams,
   locale: PublicUiLocale,
@@ -64,6 +98,8 @@ export function parsePublicSearchParams(
   };
   const peopleCount = parseSearchPeople(params);
   if (typeof peopleCount === 'number') values.peopleCount = peopleCount;
+  const packRequirements = params.get('packRequirements')?.trim();
+  if (packRequirements) values.packRequirements = packRequirements;
 
   const searchRequested =
     params.has('destinationPublicId') ||
@@ -260,10 +296,57 @@ export async function executePublicSearch(
       { cause: error },
     );
   }
-  return searchPublicOffers(db, input, {
+  const result = await searchPublicOffers(db, input, {
     publicationGate: new PostgresPhotoPublicationGate(),
     cursorCodec,
   });
+
+  if (result.items.length === 0) {
+    return result;
+  }
+
+  try {
+    const productPublicIds = [...new Set(result.items.map((i) => i.publicProductId))];
+    if (productPublicIds.length > 0) {
+      const photos = await db
+        .select({
+          productPublicId: products.publicId,
+          photoPublicId: productPhotos.publicId,
+          sortOrder: productPhotos.sortOrder,
+        })
+        .from(productPhotos)
+        .innerJoin(products, eq(products.id, productPhotos.productId))
+        .where(
+          and(
+            inArray(products.publicId, productPublicIds),
+            eq(productPhotos.fileState, 'AVAILABLE'),
+            isNull(productPhotos.deletedAt),
+          ),
+        )
+        .orderBy(productPhotos.sortOrder);
+
+      const photoMap = new Map<string, string>();
+      for (const p of photos) {
+        if (!photoMap.has(p.productPublicId)) {
+          photoMap.set(p.productPublicId, p.photoPublicId);
+        }
+      }
+
+      const enrichedItems = result.items.map((item) => ({
+        ...item,
+        primaryPhotoPublicId: photoMap.get(item.publicProductId) ?? null,
+      }));
+
+      return {
+        ...result,
+        items: enrichedItems,
+      };
+    }
+  } catch {
+    // Si la résolution photo échoue, le read-model reste disponible sans crash
+  }
+
+  return result;
 }
 
 export function publicSearchHttpStatus(code: PublicSearchErrorCode): number {

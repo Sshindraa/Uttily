@@ -7,14 +7,17 @@ import { Button, Icon, LinkButton } from '@uttily/ui';
 import { loadHomeSearchOptions } from '@/app/actions/home-search-options';
 import type { PublicSearchFormValues } from '@/lib/public-search';
 import { getPublicCategoryLabel } from '@/lib/public-search-labels';
+import type { IntentProposal } from '@uttily/intelligence';
 import { DestinationPanel } from './destination-panel';
 import { EquipmentPanel } from './equipment-panel';
 import { DatesPanel } from './dates-panel';
 import { PeoplePanel } from './people-panel';
+import { SmartSearchAssistant } from './smart-search-assistant';
 import {
   buildSearchQuery,
   dateSummary,
   initialSelection,
+  shiftDate,
   type SearchField,
   type SearchLocale,
   type SearchSelection,
@@ -77,12 +80,17 @@ export function SearchIntentBar({
 
   useEffect(() => {
     const update = () => {
-      if (stickyOnScroll && anchor.current)
-        setPinned(anchor.current.getBoundingClientRect().top <= 12);
-      if (bar.current)
-        setPanelSpace(
-          Math.max(220, window.innerHeight - bar.current.getBoundingClientRect().bottom - 28),
+      if (stickyOnScroll && anchor.current) {
+        const isPinned = anchor.current.getBoundingClientRect().top <= 12;
+        setPinned((prev) => (prev !== isPinned ? isPinned : prev));
+      }
+      if (bar.current) {
+        const space = Math.max(
+          220,
+          window.innerHeight - bar.current.getBoundingClientRect().bottom - 28,
         );
+        setPanelSpace((prev) => (Math.abs(prev - space) > 8 ? space : prev));
+      }
     };
     update();
     window.addEventListener('scroll', update, { passive: true });
@@ -91,7 +99,7 @@ export function SearchIntentBar({
       window.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
     };
-  }, [stickyOnScroll, field, pinned]);
+  }, [stickyOnScroll, field]);
 
   useEffect(() => {
     if (!field) return;
@@ -122,6 +130,62 @@ export function SearchIntentBar({
     setSelection((previous) => ({ ...previous, ...patch }));
     setError(null);
   }
+
+  function handleApplyAiProposal(proposal: IntentProposal): void {
+    if (!options) {
+      loadHomeSearchOptions(locale).then((res) => {
+        if (res) setOptions(res);
+      });
+    }
+
+    let destPublicId = proposal.destinationPublicId?.value || '';
+    if (!destPublicId && proposal.destination.value && options) {
+      const match = options.destinations.find(
+        (d) => d.label.toLowerCase() === proposal.destination.value?.toLowerCase(),
+      );
+      if (match) destPublicId = match.publicId;
+    }
+
+    let categoryId = '';
+    const firstReq = proposal.requirements[0];
+    if (firstReq?.categoryId) {
+      categoryId = firstReq.categoryId;
+    } else if (firstReq?.categorySlug && options) {
+      const catMatch = options.categories.find(
+        (c) => c.slug.toLowerCase() === firstReq.categorySlug.toLowerCase(),
+      );
+      if (catMatch) categoryId = catMatch.id;
+    }
+
+    const dates = proposal.dates.value;
+    let startDate = dates?.startDate || '';
+    let endDate = dates?.endDateExclusive
+      ? shiftDate(dates.endDateExclusive, -1)
+      : dates?.startDate || '';
+    if (startDate && endDate && endDate < startDate) {
+      endDate = startDate;
+    }
+    const withTimes = dates?.mode === 'TIME_RANGE';
+    const startTime = dates?.startAt ? dates.startAt.slice(11, 16) : '';
+    const endTime = dates?.endAt ? dates.endAt.slice(11, 16) : '';
+
+    setSelection((prev) => ({
+      ...prev,
+      destinationPublicId:
+        proposal.destination.value === null ? '' : destPublicId || prev.destinationPublicId,
+      categoryId:
+        proposal.requirements.length === 0 ? '' : categoryId || prev.categoryId,
+      startDate: proposal.dates.value === null ? '' : startDate || prev.startDate,
+      endDate: proposal.dates.value === null ? '' : endDate || prev.endDate,
+      withTimes: proposal.dates.value === null ? false : startDate ? withTimes : prev.withTimes,
+      startTime: proposal.dates.value === null ? '' : startDate ? startTime : prev.startTime,
+      endTime: proposal.dates.value === null ? '' : startDate ? endTime : prev.endTime,
+      people: proposal.peopleCount.value != null ? proposal.peopleCount.value : prev.people,
+      requirements: proposal.requirements.length > 0 ? proposal.requirements : prev.requirements,
+    }));
+    setError(null);
+  }
+
   const destination = options?.destinations.find(
     (d) => d.publicId === selection.destinationPublicId,
   );
@@ -166,7 +230,30 @@ export function SearchIntentBar({
   };
   const needsOptions = field === 'destination' || field === 'equipment';
   return (
-    <div ref={anchor} className={styles.anchor}>
+    <div
+      ref={anchor}
+      className={[styles.anchor, pinned ? styles.anchorPinned : ''].filter(Boolean).join(' ')}
+    >
+      <SmartSearchAssistant
+        locale={locale}
+        onApplyProposal={handleApplyAiProposal}
+        onConfirmSearch={() => {
+          if (!options) {
+            setField('destination');
+            setError(fr ? 'Choisissez votre destination.' : 'Choose your destination.');
+            return;
+          }
+          const result = buildSearchQuery(selection, options, locale);
+          if (!result.ok) {
+            setError(result.message);
+            setField(result.field);
+            return;
+          }
+          router.push(`/${locale}/search?${result.query}`);
+
+        }}
+      />
+
       <div
         ref={shell}
         className={[styles.shell, pinned ? styles.pinned : ''].join(' ')}

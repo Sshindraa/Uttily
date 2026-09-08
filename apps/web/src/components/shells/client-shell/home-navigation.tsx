@@ -13,12 +13,19 @@ import styles from './home-navigation.module.css';
 export function HomeNavigation({
   locale = 'fr',
   sticky = true,
+  alternateHref,
+  signInRedirectUrl,
+  showAuthAction = true,
 }: {
-  locale?: AppLocale;
-  sticky?: boolean;
+  locale?: AppLocale | undefined;
+  sticky?: boolean | undefined;
+  alternateHref?: string | undefined;
+  signInRedirectUrl?: string | undefined;
+  showAuthAction?: boolean | undefined;
 }): React.JSX.Element {
   const fr = locale === 'fr';
   const homeHref = fr ? '/' : '/?lang=en';
+  const effectiveSignInUrl = signInRedirectUrl ?? homeHref;
   const [languageOpen, setLanguageOpen] = useState(false);
   const header = useRef<HTMLElement>(null);
   const menu = useRef<HTMLDetailsElement>(null);
@@ -100,18 +107,20 @@ export function HomeNavigation({
                       ? 'Vos prochaines sorties commencent ici.'
                       : 'Your next adventure starts here.'}
                   </p>
-                  <LinkButton
-                    href={'/sign-in?redirect_url=' + encodeURIComponent(homeHref)}
-                    className={styles.signIn}
-                    onClick={closeMenus}
-                  >
-                    {fr ? 'Se connecter' : 'Sign in'}
-                    <Icon name="arrow-right" size={17} />
-                  </LinkButton>
+                  {showAuthAction ? (
+                    <LinkButton
+                      href={'/sign-in?redirect_url=' + encodeURIComponent(effectiveSignInUrl)}
+                      className={styles.signIn}
+                      onClick={closeMenus}
+                    >
+                      {fr ? 'Se connecter' : 'Sign in'}
+                      <Icon name="arrow-right" size={17} />
+                    </LinkButton>
+                  ) : null}
                 </SignedOut>
                 <SignedIn>
                   <div className={styles.account}>
-                    <UserButton afterSignOutUrl={homeHref} />
+                    <UserButton afterSignOutUrl={effectiveSignInUrl} />
                     <span>{fr ? 'Gérer mon compte' : 'Manage my account'}</span>
                   </div>
                 </SignedIn>
@@ -145,7 +154,12 @@ export function HomeNavigation({
           </details>
         </div>
       </div>
-      <LanguageDialog open={languageOpen} locale={locale} onClose={() => setLanguageOpen(false)} />
+      <LanguageDialog
+        open={languageOpen}
+        locale={locale}
+        alternateHref={alternateHref}
+        onClose={() => setLanguageOpen(false)}
+      />
     </header>
   );
 }

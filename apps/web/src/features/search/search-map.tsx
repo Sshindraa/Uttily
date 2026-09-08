@@ -21,6 +21,8 @@ interface SearchMapProps {
   initialViewport?: PublicSearchViewport | undefined;
   canSearch: boolean;
   isSearching: boolean;
+  hoveredProductId?: string | null;
+  onHoverProduct?: (productId: string | null) => void;
   onSearchViewport: (viewport: PublicSearchViewport) => Promise<boolean>;
 }
 
@@ -33,6 +35,8 @@ export function SearchMap({
   initialViewport,
   canSearch,
   isSearching,
+  hoveredProductId,
+  onHoverProduct,
   onSearchViewport,
 }: SearchMapProps): React.ReactElement {
   const fr = locale === 'fr';
@@ -83,12 +87,15 @@ export function SearchMap({
     };
 
     const key = process.env.NEXT_PUBLIC_MAPTILER_API_KEY;
-    if (!isUsableMapTilerKey(key)) {
+    const isDev = process.env.NODE_ENV === 'development';
+    if (!isUsableMapTilerKey(key) && !isDev) {
       failClosed();
       return;
     }
 
-    const styleUrl = `https://api.maptiler.com/maps/streets-v4/style.json?key=${encodeURIComponent(key)}`;
+    const styleUrl = isUsableMapTilerKey(key)
+      ? `https://api.maptiler.com/maps/streets-v4/style.json?key=${encodeURIComponent(key)}`
+      : 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json';
     const initialArea = initialViewport ?? {
       kind: 'VIEWPORT' as const,
       south: destination.bbox.south,
@@ -136,7 +143,7 @@ export function SearchMap({
           if (!fitInitialArea(map, initialArea)) {
             map.setCenter([initialCenter.longitude, initialCenter.latitude]);
           }
-          syncMarkers(maplibre, map, items, markersRef);
+          syncMarkers(maplibre, map, items, markersRef, hoveredProductId, onHoverProduct);
           setReady(true);
           if (loadTimeoutId !== undefined) window.clearTimeout(loadTimeoutId);
           initializationTimeoutId = window.setTimeout(() => {
@@ -168,8 +175,8 @@ export function SearchMap({
     const map = mapRef.current;
     const maplibre = mapLibreRef.current;
     if (!ready || !map || !maplibre) return;
-    syncMarkers(maplibre, map, items, markersRef);
-  }, [items, ready]);
+    syncMarkers(maplibre, map, items, markersRef, hoveredProductId, onHoverProduct);
+  }, [items, ready, hoveredProductId]);
 
   if (unavailable) {
     return (
@@ -311,19 +318,52 @@ function viewportCenter(viewport: PublicSearchViewport): { latitude: number; lon
   };
 }
 
+function formatPinPrice(amountMinor: number, currency: string): string {
+  const amount = Math.round(amountMinor / 100);
+  return currency === 'EUR' ? `${amount} €` : `${amount} ${currency}`;
+}
+
 function syncMarkers(
   maplibre: MapLibreModule,
   map: MapLibreMap,
   items: PublicOfferSearchItem[],
   markersRef: { current: MapLibreMarker[] },
+  hoveredProductId?: string | null,
+  onHoverProduct?: (productId: string | null) => void,
 ): void {
   markersRef.current.forEach((marker) => marker.remove());
   markersRef.current = items.map((item) => {
-    const element = document.createElement('span');
-    element.className =
-      item.geographicMatch === 'EXACT' ? styles.marker! : styles.markerAlternative!;
-    element.setAttribute('aria-hidden', 'true');
-    return new maplibre.Marker({ element, anchor: 'bottom' })
+    const isHovered = item.publicProductId === hoveredProductId;
+    const element = document.createElement('button');
+    element.type = 'button';
+    element.className = `${
+      item.geographicMatch === 'EXACT' ? styles.pricePin : styles.pricePinAlternative
+    } ${isHovered ? styles.pricePinActive : ''}`;
+    element.setAttribute(
+      'aria-label',
+      `${item.productName}, ${formatPinPrice(item.price.totalAmountMinor, item.price.currency)}`,
+    );
+
+    const priceText = formatPinPrice(item.price.totalAmountMinor, item.price.currency);
+    element.innerHTML = `<span class="${styles.pricePinText}">${priceText}</span>`;
+
+    element.addEventListener('click', () => {
+      onHoverProduct?.(item.publicProductId);
+      const targetCard = document.getElementById(`offer-${item.publicProductId}`);
+      if (targetCard) {
+        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+
+    element.addEventListener('mouseenter', () => {
+      onHoverProduct?.(item.publicProductId);
+    });
+
+    element.addEventListener('mouseleave', () => {
+      onHoverProduct?.(null);
+    });
+
+    return new maplibre.Marker({ element, anchor: 'center' })
       .setLngLat([item.longitude, item.latitude])
       .addTo(map);
   });

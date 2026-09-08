@@ -27,6 +27,7 @@ const isPublicRoute = createRouteMatcher([
   '/privacy(.*)',
   '/legal(.*)',
   '/api/public/search(.*)',
+  '/api/public/product-photos(.*)',
   // Les webhooks sont authentifiés par la signature Stripe dans leur route.
   // Ils doivent rester accessibles sans session Clerk pour que Stripe puisse
   // les livrer à l'application.

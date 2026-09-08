@@ -4,6 +4,7 @@
   z-index: calc(var(--ut-z-sticky) + 1);
   background: var(--ut-color-surface);
   color: var(--ut-color-ink-strong);
+  border-bottom: var(--ut-border-thin);
 }
 .header {
   position: sticky;
@@ -25,6 +26,7 @@
   width: fit-content;
   border-radius: var(--ut-radius-md);
   color: inherit;
+  font-family: var(--ut-font-display);
   font-size: 32px;
   font-weight: var(--ut-weight-regular);
   letter-spacing: var(--ut-tracking-display);

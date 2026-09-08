@@ -1,132 +1,305 @@
 'use client';
 
-import { type ReactElement, useState } from 'react';
+import { type ChangeEvent, type ReactElement, useRef, useState } from 'react';
 import { BIKE_PHOTO_SLOTS, type PhotoSlotType } from '@uttily/contracts';
-import { PhotoCoachModal, PhotoProgress } from '@/components/photo-coach';
+import { PhotoCoachModal } from '@/components/photo-coach';
+import { DEMO_PHOTO_COACH_ORG_ID } from '@/lib/photo-coach-constants';
 import type { ProductPhotoSummary } from '@uttily/core';
 import styles from './page.module.css';
 
-function SlotIcon({ slotType }: { slotType: PhotoSlotType }): ReactElement | null {
+interface StepDefinition {
+  type: PhotoSlotType;
+  stepNum: number;
+  title: string;
+  meta: string;
+  isOptional: boolean;
+  headline: string;
+  tips: string[];
+}
+
+const STEP_DEFINITIONS: StepDefinition[] = [
+  {
+    type: 'HERO_PROFILE',
+    stepNum: 1,
+    title: 'Vue de profil',
+    meta: 'Étape 1 · Requise',
+    isOptional: false,
+    headline: 'Vélo entier, bien centré, sur un fond dégagé.',
+    tips: [
+      'Cadrez le vélo en entier sans couper les roues',
+      'Placez-vous à hauteur du cadre',
+      'Gardez un fond simple et dégagé',
+      'Évitez le contre-jour',
+    ],
+  },
+  {
+    type: 'THREE_QUARTER_FRONT',
+    stepNum: 2,
+    title: 'Vue 3/4 avant',
+    meta: 'Étape 2 · Requise',
+    isOptional: false,
+    headline: 'Montrez le volume et le poste de pilotage.',
+    tips: [
+      'Placez-vous à 45° à l’avant du vélo',
+      'Montrez le volume et le poste de pilotage',
+      'Tournez légèrement le guidon vers vous',
+      'Hauteur naturelle d’homme',
+    ],
+  },
+  {
+    type: 'SECONDARY_VIEW',
+    stepNum: 3,
+    title: 'Vue libre',
+    meta: 'Étape 3 · Optionnelle',
+    isOptional: true,
+    headline: 'Ajoutez un détail utile ou valorisant.',
+    tips: [
+      'Choisissez un atout clé (cockpit, écran VAE, panier, selle)',
+      'Rapprochez-vous pour un cadrage net',
+      'Évitez les reflets sur les afficheurs',
+      'Prise de vue soignée et contrastée',
+    ],
+  },
+];
+
+function VisualGuide({
+  slotType,
+  isDone,
+}: {
+  slotType: PhotoSlotType;
+  isDone?: boolean;
+}): ReactElement {
   switch (slotType) {
     case 'HERO_PROFILE':
-    case 'FULL_BIKE':
       return (
         <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
+          viewBox="0 0 320 180"
+          className={styles.visualSvg}
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
         >
-          <circle cx="5.5" cy="17.5" r="3.5" />
-          <circle cx="18.5" cy="17.5" r="3.5" />
-          <path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5L8.5 8.5H15l2 4" />
-          <path d="M12 17.5V14l-3.5-3" />
+          {/* Cadre de visée sobre & repères de marge */}
+          <rect
+            x="20"
+            y="20"
+            width="280"
+            height="140"
+            rx="6"
+            stroke="rgba(255, 255, 255, 0.12)"
+            strokeDasharray="4 6"
+            strokeWidth="1"
+          />
+          <g stroke="rgba(255, 255, 255, 0.4)" strokeWidth="1.5">
+            <path d="M20 32 V20 H32" />
+            <path d="M300 32 V20 H288" />
+            <path d="M20 148 V160 H32" />
+            <path d="M300 148 V160 H288" />
+          </g>
+
+          {/* Ligne de sol propre */}
+          <line
+            x1="30"
+            y1="146"
+            x2="290"
+            y2="146"
+            stroke="rgba(255, 255, 255, 0.2)"
+            strokeWidth="1"
+            strokeDasharray="4 6"
+          />
+
+          {/* Centreur optique discret */}
+          <line x1="160" y1="28" x2="160" y2="38" stroke="rgba(255, 255, 255, 0.2)" />
+          <line x1="160" y1="142" x2="160" y2="152" stroke="rgba(255, 255, 255, 0.2)" />
+
+          {/* Vélo de profil complet : proportions nettes */}
+          <g stroke={isDone ? '#10b981' : '#f3f4f6'} strokeWidth="2.2" opacity="0.95">
+            {/* Roue arrière */}
+            <circle cx="86" cy="118" r="28" />
+            <circle cx="86" cy="118" r="23" strokeWidth="1" strokeDasharray="2 3" opacity="0.5" />
+            <circle cx="86" cy="118" r="3" fill="currentColor" />
+
+            {/* Roue avant */}
+            <circle cx="234" cy="118" r="28" />
+            <circle cx="234" cy="118" r="23" strokeWidth="1" strokeDasharray="2 3" opacity="0.5" />
+            <circle cx="234" cy="118" r="3" fill="currentColor" />
+
+            {/* Cadre principal */}
+            <line x1="86" y1="118" x2="155" y2="118" />
+            <line x1="86" y1="118" x2="140" y2="72" />
+            <line x1="155" y1="118" x2="140" y2="72" />
+            <line x1="155" y1="118" x2="210" y2="68" />
+            <line x1="140" y1="72" x2="210" y2="68" />
+            <line x1="210" y1="68" x2="234" y2="118" />
+
+            {/* Selle */}
+            <line x1="140" y1="72" x2="138" y2="58" strokeWidth="2.5" />
+            <path d="M125 58 H151" strokeWidth="3" />
+
+            {/* Poste de pilotage & cintre */}
+            <path d="M210 68 L213 50 Q215 42 225 45" strokeWidth="3" />
+
+            {/* Pédalier transmission */}
+            <circle cx="155" cy="118" r="8" strokeWidth="1.8" />
+          </g>
         </svg>
       );
+
     case 'THREE_QUARTER_FRONT':
-    case 'THREE_QUARTER':
-    case 'DRIVETRAIN':
       return (
         <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
+          viewBox="0 0 320 180"
+          className={styles.visualSvg}
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
         >
-          <path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" />
-          <path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" />
+          {/* Cadre de visée */}
+          <rect
+            x="20"
+            y="20"
+            width="280"
+            height="140"
+            rx="6"
+            stroke="rgba(255, 255, 255, 0.12)"
+            strokeDasharray="4 6"
+            strokeWidth="1"
+          />
+          <g stroke="rgba(255, 255, 255, 0.4)" strokeWidth="1.5">
+            <path d="M20 32 V20 H32" />
+            <path d="M300 32 V20 H288" />
+            <path d="M20 148 V160 H32" />
+            <path d="M300 148 V160 H288" />
+          </g>
+
+          {/* Repère d'angle 45° sobre */}
+          <text
+            x="290"
+            y="38"
+            textAnchor="end"
+            fontSize="10"
+            fill="rgba(255, 255, 255, 0.4)"
+            fontWeight="500"
+          >
+            45°
+          </text>
+
+          {/* Perspective 3/4 avant */}
+          <g stroke={isDone ? '#10b981' : '#f3f4f6'} strokeWidth="2.2" opacity="0.95">
+            {/* Roue avant proéminente au premier plan */}
+            <ellipse
+              cx="224"
+              cy="118"
+              rx="22"
+              ry="32"
+              transform="rotate(-12 224 118)"
+              strokeWidth="2.6"
+            />
+            <circle cx="224" cy="118" r="3" fill="currentColor" />
+
+            {/* Roue arrière en retrait */}
+            <ellipse
+              cx="98"
+              cy="104"
+              rx="15"
+              ry="22"
+              transform="rotate(-6 98 104)"
+              strokeWidth="1.8"
+              opacity="0.75"
+            />
+
+            {/* Lignes du cadre en fuite */}
+            <line x1="98" y1="104" x2="152" y2="114" strokeWidth="1.8" />
+            <line x1="98" y1="104" x2="138" y2="78" strokeWidth="1.8" />
+            <line x1="152" y1="114" x2="138" y2="78" strokeWidth="2" />
+            <line x1="152" y1="114" x2="204" y2="70" strokeWidth="2.4" />
+            <line x1="138" y1="78" x2="204" y2="70" strokeWidth="2.2" />
+            <line x1="204" y1="70" x2="224" y2="118" strokeWidth="2.8" />
+
+            {/* Selle */}
+            <line x1="138" y1="78" x2="136" y2="65" strokeWidth="2.2" />
+            <path d="M124 65 H146" strokeWidth="2.6" opacity="0.8" />
+
+            {/* Cintre large orienté vers le photographe */}
+            <line x1="204" y1="70" x2="206" y2="52" strokeWidth="3" />
+            <path d="M182 53 L206 52 L234 49" strokeWidth="3.2" />
+            <path d="M182 53 L180 58 M234 49 L236 54" strokeWidth="2.6" />
+          </g>
         </svg>
       );
+
     case 'SECONDARY_VIEW':
-    case 'SIGNATURE_DETAIL':
-    case 'BRAKES_TIRES':
+    default:
       return (
         <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
+          viewBox="0 0 320 180"
+          className={styles.visualSvg}
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
         >
-          <circle cx="12" cy="12" r="9" />
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
+          {/* Cadre de visée */}
+          <rect
+            x="20"
+            y="20"
+            width="280"
+            height="140"
+            rx="6"
+            stroke="rgba(255, 255, 255, 0.12)"
+            strokeDasharray="4 6"
+            strokeWidth="1"
+          />
+          <g stroke="rgba(255, 255, 255, 0.4)" strokeWidth="1.5">
+            <path d="M20 32 V20 H32" />
+            <path d="M300 32 V20 H288" />
+            <path d="M20 148 V160 H32" />
+            <path d="M300 148 V160 H288" />
+          </g>
+
+          {/* Réticule de focus macro / détail signature */}
+          <g stroke={isDone ? '#10b981' : '#f3f4f6'}>
+            <circle cx="160" cy="88" r="42" strokeDasharray="4 4" strokeWidth="1.2" opacity="0.4" />
+            <circle cx="160" cy="88" r="32" strokeWidth="2" opacity="0.8" />
+            <circle cx="160" cy="88" r="4" fill="currentColor" />
+
+            <line x1="160" y1="40" x2="160" y2="50" strokeWidth="2" />
+            <line x1="160" y1="126" x2="160" y2="136" strokeWidth="2" />
+            <line x1="112" y1="88" x2="122" y2="88" strokeWidth="2" />
+            <line x1="198" y1="88" x2="208" y2="88" strokeWidth="2" />
+
+            {/* Pictogramme composant clé */}
+            <rect x="146" y="74" width="28" height="20" rx="3" strokeWidth="1.8" opacity="0.8" />
+            <line x1="138" y1="102" x2="182" y2="102" strokeWidth="2" opacity="0.7" />
+          </g>
         </svg>
       );
-    default:
-      return null;
   }
 }
 
-function SlotSilhouette({ slotType }: { slotType: PhotoSlotType }): ReactElement {
+function SmallThumbnail({ slotType }: { slotType: PhotoSlotType }): ReactElement {
   switch (slotType) {
-    case 'HERO_PROFILE':
-      return (
-        <svg
-          viewBox="0 0 160 80"
-          width="100%"
-          height="100%"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <circle cx="35" cy="55" r="18" />
-          <circle cx="125" cy="55" r="18" />
-          <path d="M35 55 L70 55 L60 30 L35 55" />
-          <path d="M70 55 L100 28 L60 30" />
-          <path d="M100 28 L125 55" />
-          <path d="M100 28 L104 18 Q106 14 114 16" strokeWidth="3" />
-          <path d="M60 30 L57 20 M50 20 H64" strokeWidth="3" />
-        </svg>
-      );
     case 'THREE_QUARTER_FRONT':
       return (
-        <svg
-          viewBox="0 0 160 80"
-          width="100%"
-          height="100%"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <ellipse cx="118" cy="54" rx="14" ry="20" transform="rotate(-8 118 54)" strokeWidth="3" />
-          <ellipse cx="42" cy="46" rx="10" ry="14" transform="rotate(-6 42 46)" />
-          <path d="M42 46 L75 52 L66 32 L42 46" />
-          <path d="M75 52 L106 28 L66 32" />
-          <path d="M106 28 L118 54" strokeWidth="3" />
-          <path d="M106 28 L109 18 M98 17 Q109 19 122 17" strokeWidth="3.5" />
-          <path d="M66 32 L64 24 M58 24 H70" />
+        <svg viewBox="0 0 50 34" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <ellipse cx="34" cy="22" rx="6" ry="9" transform="rotate(-10 34 22)" />
+          <ellipse cx="14" cy="19" rx="4" ry="7" opacity="0.6" />
+          <path d="M14 19 L24 21 L34 22 M24 21 L30 13 L34 22" />
         </svg>
       );
     case 'SECONDARY_VIEW':
     default:
       return (
-        <svg
-          viewBox="0 0 160 80"
-          width="100%"
-          height="100%"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <circle cx="80" cy="40" r="20" strokeDasharray="6 4" strokeWidth="2.5" />
-          <circle cx="80" cy="40" r="3" fill="currentColor" />
-          <path d="M58 24 H50 V32" strokeWidth="3" />
-          <path d="M102 24 H110 V32" strokeWidth="3" />
-          <path d="M58 56 H50 V48" strokeWidth="3" />
-          <path d="M102 56 H110 V48" strokeWidth="3" />
-          <circle cx="80" cy="40" r="10" strokeWidth="2" opacity="0.6" />
+        <svg viewBox="0 0 50 34" width="100%" height="100%" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <circle cx="25" cy="17" r="8" strokeDasharray="2 2" opacity="0.5" />
+          <circle cx="25" cy="17" r="4.5" />
+          <line x1="25" y1="5" x2="25" y2="9" />
+          <line x1="25" y1="25" x2="25" y2="29" />
         </svg>
       );
   }
@@ -136,6 +309,8 @@ export default function PhotoCoachDemoPage(): ReactElement {
   const [selectedSlot, setSelectedSlot] = useState<PhotoSlotType>('HERO_PROFILE');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mockPhotos, setMockPhotos] = useState<ProductPhotoSummary[]>([]);
+  const [showDevTools, setShowDevTools] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const hasHeroProfile = mockPhotos.some(
     (p) => p.slotType === 'HERO_PROFILE' || p.slotType === 'FULL_BIKE',
@@ -153,6 +328,8 @@ export default function PhotoCoachDemoPage(): ReactElement {
       p.slotType === 'BRAKES_TIRES',
   );
 
+  const requiredCount = (hasHeroProfile ? 1 : 0) + (hasThreeQuarter ? 1 : 0);
+
   const nextSuggestedSlot: PhotoSlotType = !hasHeroProfile
     ? 'HERO_PROFILE'
     : !hasThreeQuarter
@@ -161,122 +338,340 @@ export default function PhotoCoachDemoPage(): ReactElement {
         ? 'SECONDARY_VIEW'
         : 'HERO_PROFILE';
 
-  const handleOpenCoach = (slot: PhotoSlotType = nextSuggestedSlot) => {
-    setSelectedSlot(slot);
+  const activeStep = STEP_DEFINITIONS.find((s) => s.type === selectedSlot) ?? STEP_DEFINITIONS[0]!;
+  const upcomingSteps = STEP_DEFINITIONS.filter((s) => s.type !== selectedSlot);
+  const isCurrentSlotDone = mockPhotos.some((p) => p.slotType === selectedSlot);
+
+  const handleOpenCoach = () => {
     setIsModalOpen(true);
   };
 
   const handlePhotoUploaded = (photo: ProductPhotoSummary) => {
-    setMockPhotos((prev) => [photo, ...prev]);
+    setMockPhotos((prev) => [photo, ...prev.filter((p) => p.slotType !== photo.slotType)]);
   };
 
-  const availableSlots: PhotoSlotType[] = ['HERO_PROFILE', 'THREE_QUARTER_FRONT', 'SECONDARY_VIEW'];
+  const handleAdvanceToNext = () => {
+    setSelectedSlot(nextSuggestedSlot);
+  };
 
-  const getCtaLabel = (slot: PhotoSlotType): string => {
-    if (slot === 'HERO_PROFILE') return '📸 Commencer par la vue profil';
-    if (slot === 'THREE_QUARTER_FRONT') return '📸 Continuer avec la vue 3/4 avant';
-    return '📸 Compléter avec la vue libre';
+  const handleExistingPhotoClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const fakePhoto: ProductPhotoSummary = {
+        id: crypto.randomUUID(),
+        publicId: `pub-${crypto.randomUUID()}`,
+        slotType: selectedSlot,
+        fileState: 'AVAILABLE',
+        contentType: file.type || 'image/jpeg',
+        byteSize: file.size,
+        widthPx: 1920,
+        heightPx: 1080,
+        sortOrder: mockPhotos.length,
+        rejectionReason: null,
+      };
+      handlePhotoUploaded(fakePhoto);
+    }
+  };
+
+  // Simulation dev sans polluer le design produit
+  const handleSimulateActiveSlot = () => {
+    const fakePhoto: ProductPhotoSummary = {
+      id: crypto.randomUUID(),
+      publicId: `pub-${crypto.randomUUID()}`,
+      slotType: selectedSlot,
+      fileState: 'AVAILABLE',
+      contentType: 'image/jpeg',
+      byteSize: 245100,
+      widthPx: 1920,
+      heightPx: 1080,
+      sortOrder: mockPhotos.length,
+      rejectionReason: null,
+    };
+    handlePhotoUploaded(fakePhoto);
   };
 
   return (
     <main className={styles.container}>
       <div className={styles.wrapper}>
+        {/* 1. En-tête sobre & éditorial */}
         <header className={styles.header}>
-          <div className={styles.tagline}>Standard de confiance visuelle • Prise de vue guidée</div>
-          <h1 className={styles.title}>Photo Coach Vélo Uttily</h1>
-          <p className={styles.description}>
-            3 photos suffisent pour présenter votre vélo sous son meilleur angle.
+          <span className={styles.overline}>Prise de vue guidée</span>
+          <h1 className={styles.title}>Photographiez votre vélo en quelques étapes</h1>
+          <p className={styles.subtitle}>
+            2 vues requises, 1 vue libre optionnelle. Uttily vous guide pour obtenir des photos
+            claires et cohérentes.
           </p>
         </header>
 
-        <section className={styles.card}>
-          <PhotoProgress
-            slots={{
-              hasHeroProfile,
-              hasThreeQuarterFront: hasThreeQuarter,
-              hasSecondaryView,
-            }}
-            totalRequiredSlots={3}
-          />
+        {/* 2. Barre de progression compacte avec accent vert discret */}
+        <section className={styles.progressSection} aria-label="Progression de la prise de vue">
+          <div className={styles.progressHeader}>
+            <span className={styles.stepCounter}>
+              <span className={styles.counterDot} />
+              Étape {activeStep.stepNum} sur 3
+            </span>
+            <span className={styles.requiredCounter}>
+              {requiredCount} sur 2 vues requises validées
+            </span>
+          </div>
+          <div className={styles.stepperSegments}>
+            <div
+              className={`${styles.segment} ${
+                hasHeroProfile
+                  ? styles.segmentDone
+                  : selectedSlot === 'HERO_PROFILE'
+                    ? styles.segmentActive
+                    : ''
+              }`}
+            />
+            <div
+              className={`${styles.segment} ${
+                hasThreeQuarter
+                  ? styles.segmentDone
+                  : selectedSlot === 'THREE_QUARTER_FRONT'
+                    ? styles.segmentActive
+                    : ''
+              }`}
+            />
+            <div
+              className={`${styles.segment} ${
+                hasSecondaryView
+                  ? styles.segmentDone
+                  : selectedSlot === 'SECONDARY_VIEW'
+                    ? styles.segmentActive
+                    : ''
+              }`}
+            />
+          </div>
+        </section>
 
-          <div>
-            <label
-              style={{
-                display: 'block',
-                marginBottom: '12px',
-                fontSize: '0.95rem',
-                fontWeight: 'var(--ut-weight-semibold)',
-                color: 'var(--ut-color-ink-on-dark-muted)',
-              }}
-            >
-              Sélectionnez un cadrage à réaliser :
-            </label>
-            <div className={styles.slotSelector}>
-              {availableSlots.map((slotKey) => {
-                const slot = BIKE_PHOTO_SLOTS[slotKey];
-                const isSelected = selectedSlot === slotKey;
-                const isDone = mockPhotos.some((p) => p.slotType === slotKey);
+        {/* 3. Une seule grande carte active */}
+        <section className={styles.activeCard} aria-labelledby="active-step-title">
+          <div className={styles.cardTopHeader}>
+            <div className={styles.stepMetaRow}>
+              <span className={styles.activeDot} />
+              <span className={styles.stepMeta}>{activeStep.meta}</span>
+            </div>
+            <h2 id="active-step-title" className={styles.stepTitle}>
+              {activeStep.title}
+            </h2>
+            <p className={styles.stepDescription}>{activeStep.headline}</p>
+          </div>
+
+          {!isCurrentSlotDone ? (
+            /* État normal de cadrage */
+            <div className={styles.cardBodyGrid}>
+              <div className={styles.visualFrameContainer}>
+                <VisualGuide slotType={selectedSlot} isDone={false} />
+              </div>
+
+              <div className={styles.instructionsColumn}>
+                <div className={styles.tipsBlock}>
+                  <h3 className={styles.tipsHeading}>Pour réussir cette photo</h3>
+                  <ul className={styles.tipsList}>
+                    {activeStep.tips.map((tip, idx) => (
+                      <li key={idx} className={styles.tipItem}>
+                        <span className={styles.tipCheck}>✓</span>
+                        <span>{tip}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className={styles.actionsBlock}>
+                  <button
+                    type="button"
+                    className={styles.primaryCtaBtn}
+                    onClick={handleOpenCoach}
+                  >
+                    Prendre cette photo
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.secondaryCtaBtn}
+                    onClick={handleExistingPhotoClick}
+                  >
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    <span>Utiliser une photo existante</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* État après prise de photo validée */
+            <div className={styles.validatedStateContent}>
+              <div className={styles.validatedBanner}>
+                <span>✓ Photo validée</span>
+              </div>
+
+              <div className={styles.validatedGrid}>
+                <div className={styles.visualFrameContainer}>
+                  <VisualGuide slotType={selectedSlot} isDone={true} />
+                </div>
+
+                <div className={styles.instructionsColumn}>
+                  <div className={styles.criteriaSummary}>
+                    <div className={styles.criteriaRow}>
+                      <span className={styles.criteriaLabel}>Netteté</span>
+                      <span className={styles.criteriaValue}>Bonne ✓</span>
+                    </div>
+                    <div className={styles.criteriaRow}>
+                      <span className={styles.criteriaLabel}>Cadrage</span>
+                      <span className={styles.criteriaValue}>Bon ✓</span>
+                    </div>
+                    <div className={styles.criteriaRow}>
+                      <span className={styles.criteriaLabel}>Éclairage</span>
+                      <span className={styles.criteriaValue}>Bon ✓</span>
+                    </div>
+                  </div>
+
+                  <p className={styles.reassuringNote}>
+                    Le vélo est entièrement visible et correctement cadré.
+                  </p>
+
+                  <div className={styles.actionsBlock}>
+                    {requiredCount < 2 || !hasSecondaryView ? (
+                      <button
+                        type="button"
+                        className={styles.primaryCtaBtn}
+                        onClick={handleAdvanceToNext}
+                      >
+                        Continuer vers la {BIKE_PHOTO_SLOTS[nextSuggestedSlot].title} →
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.primaryCtaBtn}
+                        onClick={() => setSelectedSlot('HERO_PROFILE')}
+                      >
+                        Toutes les photos validées ✓
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className={styles.secondaryCtaBtn}
+                      onClick={handleOpenCoach}
+                    >
+                      Reprendre cette photo
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* 4. Étapes suivantes (Rows compactes sans répétition) */}
+        {upcomingSteps.length > 0 && (
+          <section className={styles.upcomingSection} aria-label="Étapes suivantes">
+            <h3 className={styles.upcomingTitle}>Étapes suivantes</h3>
+            <div className={styles.upcomingListCard}>
+              {upcomingSteps.map((step) => {
+                const isStepDone = mockPhotos.some((p) => p.slotType === step.type);
 
                 return (
                   <button
-                    key={slotKey}
+                    key={step.type}
                     type="button"
-                    className={`${styles.slotButton} ${isSelected ? styles.slotButtonActive : ''}`}
-                    onClick={() => setSelectedSlot(slotKey)}
+                    className={styles.upcomingRow}
+                    onClick={() => setSelectedSlot(step.type)}
                   >
-                    <div className={styles.slotIllustrationBox}>
-                      <SlotSilhouette slotType={slotKey} />
+                    <div className={styles.upcomingRowLeft}>
+                      <div className={styles.rowThumbnail}>
+                        <SmallThumbnail slotType={step.type} />
+                      </div>
+                      <div className={styles.rowText}>
+                        <span className={styles.rowTitle}>{step.title}</span>
+                        <span className={styles.rowSubtitle}>{step.headline}</span>
+                      </div>
                     </div>
-                    <div
-                      style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}
-                    >
-                      <SlotIcon slotType={slotKey} />
-                      <span style={{ fontWeight: 'var(--ut-weight-bold)' }}>
-                        {isDone ? '✓ ' : ''}
-                        {slot.title}
+
+                    <div className={styles.upcomingRowRight}>
+                      {isStepDone ? (
+                        <span className={styles.rowDoneBadge}>✓ Validée</span>
+                      ) : step.isOptional ? (
+                        <span className={styles.optionalTag}>Optionnelle</span>
+                      ) : (
+                        <span className={styles.requiredTag}>Requise</span>
+                      )}
+                      <span className={styles.chevron} aria-hidden="true">
+                        ›
                       </span>
                     </div>
-                    <span className={styles.slotDesc}>{slot.shortDescription}</span>
                   </button>
                 );
               })}
             </div>
-          </div>
+          </section>
+        )}
 
-          <div className={styles.actions}>
+        {/* Input discret pour photo existante */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={handleFileChange}
+        />
+
+        {/* Outils développeur discrets en footer */}
+        <footer className={styles.devFooter}>
+          <span>Uttily Assistant de Capture · Standard Visuel Pro</span>
+          <button
+            type="button"
+            className={styles.devToggleBtn}
+            onClick={() => setShowDevTools((prev) => !prev)}
+          >
+            {showDevTools ? 'Masquer outils dev' : 'Outils dev'}
+          </button>
+        </footer>
+
+        {showDevTools && (
+          <div className={styles.devToolbar}>
             <button
               type="button"
-              className={styles.openCoachBtn}
-              onClick={() => handleOpenCoach(selectedSlot)}
+              className={styles.devActionBtn}
+              onClick={handleSimulateActiveSlot}
             >
-              {getCtaLabel(selectedSlot)}
+              ⚡ Simuler validation ({activeStep.title})
             </button>
+            {mockPhotos.length > 0 && (
+              <button
+                type="button"
+                className={styles.devActionBtn}
+                onClick={() => {
+                  setMockPhotos([]);
+                  setSelectedSlot('HERO_PROFILE');
+                }}
+              >
+                ↺ Vider les photos
+              </button>
+            )}
           </div>
-        </section>
-
-        {mockPhotos.length > 0 && (
-          <section className={styles.capturedSection}>
-            <h2 className={styles.capturedTitle}>
-              Photos validées lors de cette session ({mockPhotos.length})
-            </h2>
-            <div className={styles.photosGrid}>
-              {mockPhotos.map((photo) => (
-                <div key={photo.id} className={styles.photoCard}>
-                  <div className={styles.photoMeta}>
-                    <span>
-                      {photo.slotType ? BIKE_PHOTO_SLOTS[photo.slotType]?.title : 'Photo'}
-                    </span>
-                    <span className={styles.photoBadge}>Validée</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
         )}
       </div>
 
+      {/* Modal Photo Coach enclenchée par "Prendre cette photo" */}
       <PhotoCoachModal
-        orgId="1c13f5b8-cbc1-4c5c-a474-47f0a9d00172"
+        orgId={DEMO_PHOTO_COACH_ORG_ID}
         productId="b5555acf-3f6a-4474-aa18-4d107993abbb"
         slotType={selectedSlot}
         isOpen={isModalOpen}

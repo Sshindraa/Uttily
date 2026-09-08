@@ -1,4 +1,5 @@
 import type { PublicSearchFilterOptions } from '@uttily/core';
+import type { CompiledPartyRequirement } from '@uttily/intelligence';
 import type { PublicSearchFormValues } from '@/lib/public-search';
 import { MAX_SEARCH_PEOPLE } from '@/lib/search-people';
 
@@ -13,6 +14,7 @@ export interface SearchSelection {
   startTime: string;
   endTime: string;
   people: number;
+  requirements?: readonly CompiledPartyRequirement[] | undefined;
 }
 
 export function civilDate(value: string): Date | null {
@@ -43,7 +45,19 @@ export function initialSelection(values?: PublicSearchFormValues): SearchSelecti
     startTime: values?.startAt.slice(11, 16) ?? '',
     endTime: values?.endAt.slice(11, 16) ?? '',
     people: values?.peopleCount ?? 1,
+    requirements: values?.packRequirements
+      ? safeParseRequirements(values.packRequirements)
+      : undefined,
   };
+}
+
+function safeParseRequirements(raw: string): readonly CompiledPartyRequirement[] | undefined {
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export function dateSelectionError(
@@ -108,6 +122,9 @@ export function buildSearchQuery(
   });
   if (selection.categoryId) params.set('categoryId', selection.categoryId);
   params.set('peopleCount', String(selection.people));
+  if (selection.requirements && selection.requirements.length > 0) {
+    params.set('packRequirements', JSON.stringify(selection.requirements));
+  }
   if (selection.withTimes) {
     params.set('startAt', `${selection.startDate}T${selection.startTime}`);
     params.set('endAt', `${end}T${selection.endTime}`);
@@ -120,8 +137,9 @@ export function buildSearchQuery(
 
 export function dateSummary(selection: SearchSelection, locale: SearchLocale): string {
   const start = civilDate(selection.startDate);
-  const end = civilDate(selection.endDate || selection.startDate);
+  let end = civilDate(selection.endDate || selection.startDate);
   if (!start || !end) return locale === 'fr' ? 'Quand partez-vous ?' : 'When are you going?';
+  if (end < start) end = start;
   const format = new Intl.DateTimeFormat(locale, {
     day: 'numeric',
     month: 'short',
@@ -130,9 +148,7 @@ export function dateSummary(selection: SearchSelection, locale: SearchLocale): s
   const range =
     start.getTime() === end.getTime()
       ? format.format(start)
-      : end < start
-        ? `${format.format(start)} – ${format.format(end)}`
-        : format.formatRange(start, end);
+      : format.formatRange(start, end);
   return selection.withTimes && selection.startTime && selection.endTime
     ? `${range} · ${selection.startTime}–${selection.endTime}`
     : range;

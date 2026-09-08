@@ -3,7 +3,7 @@
 import { type ChangeEvent, type ReactElement, useEffect, useRef } from 'react';
 import type { PhotoSlotDefinition } from '@uttily/contracts';
 import { PhotoGuideAnimationAdapter } from '../adapter';
-import { captureVideoFrame } from './captureFrame';
+import { captureVideoFrame, sanitizeClientImage } from './captureFrame';
 import { useCamera } from './useCamera';
 import styles from './CameraViewfinder.module.css';
 
@@ -43,10 +43,11 @@ export function CameraViewfinder({
     }
   };
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      onCapture(file);
+      const sanitizedBlob = await sanitizeClientImage(file);
+      onCapture(sanitizedBlob);
     }
   };
 

@@ -29,10 +29,11 @@
   align-items: center;
   color: var(--ut-color-ink-on-dark);
   display: inline-flex;
+  font-family: var(--ut-font-display);
   font-size: 1.2rem;
   font-weight: var(--ut-weight-bold);
   gap: var(--ut-space-2);
-  letter-spacing: normal;
+  letter-spacing: var(--ut-tracking-heading);
   text-decoration: none;
 }
 
@@ -102,10 +103,11 @@
 
 .navLabel {
   color: var(--ut-color-ink-on-dark-subtle);
+  font-family: var(--ut-font-ui);
   font-size: var(--ut-text-xs);
   font-weight: var(--ut-weight-medium);
-  letter-spacing: 0.04em;
-  line-height: 1.3333;
+  letter-spacing: var(--ut-tracking-eyebrow);
+  line-height: var(--ut-leading-ui);
   margin: var(--ut-space-2) var(--ut-space-3) var(--ut-space-1);
   text-transform: uppercase;
 }

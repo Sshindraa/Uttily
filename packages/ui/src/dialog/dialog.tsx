@@ -89,6 +89,7 @@ export function Dialog({
         borderRadius: 'var(--ut-radius-lg)',
         boxShadow: 'var(--ut-shadow-lg)',
         color: 'var(--ut-color-ink)',
+        fontFamily: 'var(--ut-font-body)',
         maxWidth: 'min(90vw, 32rem)',
         padding: 'var(--ut-space-6)',
         width: '100%',
@@ -105,7 +106,15 @@ export function Dialog({
       >
         <h2
           id={titleId}
-          style={{ color: 'var(--ut-color-ink-strong)', fontSize: 'var(--ut-text-lg)', margin: 0 }}
+          style={{
+            color: 'var(--ut-color-ink-strong)',
+            fontFamily: 'var(--ut-font-display)',
+            fontSize: 'var(--ut-text-title-sm)',
+            fontWeight: 'var(--ut-weight-heading)',
+            letterSpacing: 'var(--ut-tracking-heading)',
+            lineHeight: 'var(--ut-leading-heading)',
+            margin: 0,
+          }}
         >
           {title}
         </h2>

@@ -1,0 +1,44 @@
+.toggleContainer {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: none;
+}
+
+@media (max-width: 959px) {
+  .toggleContainer {
+    display: block;
+  }
+}
+
+.toggleButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ut-space-2);
+  padding: 0.75rem 1.35rem;
+  border-radius: var(--ut-radius-pill);
+  background: var(--ut-color-ink-strong);
+  color: var(--ut-color-ink-on-dark);
+  font-family: var(--ut-font-ui);
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-action);
+  letter-spacing: var(--ut-tracking-label);
+  line-height: var(--ut-leading-ui);
+  border: 1px solid var(--ut-color-border-on-dark-strong);
+  box-shadow: var(--ut-shadow-lg);
+  cursor: pointer;
+  transition: transform var(--ut-motion-fast) var(--ut-ease-standard),
+              background var(--ut-motion-fast) var(--ut-ease-standard);
+  white-space: nowrap;
+}
+
+.toggleButton:hover {
+  transform: scale(1.04);
+  background: var(--ut-color-surface-dark);
+}
+
+.icon {
+  font-size: 1rem;
+}

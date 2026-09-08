@@ -32,8 +32,10 @@ export function Field({
         htmlFor={htmlFor}
         style={{
           color: 'var(--ut-color-ink-strong)',
+          fontFamily: 'var(--ut-font-ui)',
           fontSize: 'var(--ut-text-sm)',
           fontWeight: 'var(--ut-weight-label)',
+          letterSpacing: 'var(--ut-tracking-label)',
           lineHeight: 'var(--ut-leading-ui)',
         }}
       >

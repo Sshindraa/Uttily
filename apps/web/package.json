@@ -25,6 +25,7 @@
     "@uttily/contracts": "workspace:*",
     "@uttily/core": "workspace:*",
     "@uttily/database": "workspace:*",
+    "@uttily/intelligence": "workspace:*",
     "@uttily/ui": "workspace:*",
     "drizzle-orm": "^0.36.0",
     "maplibre-gl": "5.6.2",

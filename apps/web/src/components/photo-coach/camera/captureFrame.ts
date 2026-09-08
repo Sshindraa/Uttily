@@ -34,3 +34,39 @@ export async function captureVideoFrame(video: HTMLVideoElement, quality = 0.95)
     );
   });
 }
+
+/**
+ * Assainit un fichier image importé en le redessinant sur un canvas client (ADR-042).
+ * Cette opération expurge automatiquement toutes les métadonnées EXIF (GPS, appareil).
+ */
+export async function sanitizeClientImage(file: File, quality = 0.92): Promise<Blob> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        canvas.toBlob(
+          (blob) => {
+            resolve(blob || file);
+          },
+          'image/jpeg',
+          quality,
+        );
+      } else {
+        resolve(file);
+      }
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+    img.src = url;
+  });
+}
+
