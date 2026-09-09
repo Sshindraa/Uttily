@@ -103,7 +103,7 @@ test.describe('Pack Orchestrator E2E Real Browser Journeys', () => {
 
     // Vérifier la présence du titre principal et du formulaire de recherche
     await expect(
-      page.getByRole('heading', { name: 'Votre équipement vous attend.' }),
+      page.getByRole('heading', { name: /Louez votre équipement,.*là où vous partez\./ }),
     ).toBeVisible();
     await expect(page.getByRole('button', { name: /Rechercher/i })).toBeVisible();
   });
