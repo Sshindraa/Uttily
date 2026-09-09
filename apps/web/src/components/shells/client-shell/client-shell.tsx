@@ -41,27 +41,20 @@ export function ClientShell({
       {children}
       <footer className={styles.footer} lang={locale}>
         <div className={styles.footerInner}>
-          <div className={styles.footerBrandGroup}>
-            <span className={styles.footerBrand}>Uttily</span>
-            <span>
-              {fr ? 'Des équipements fiables, près de vous.' : 'Reliable equipment, near you.'}
-            </span>
-          </div>
+          <p className={styles.footerCopyright}>
+            {fr
+              ? '© 2026, Uttily | Tous droits réservés.'
+              : '© 2026, Uttily | All Rights Reserved.'}
+          </p>
           <nav aria-label={fr ? 'Liens légaux' : 'Legal links'} className={styles.footerLegalLinks}>
             <Link href={`/${locale}/terms`} className={styles.footerLegalLink}>
-              {fr ? 'Conditions d’utilisation' : 'Terms of Service'}
-            </Link>
-            <Link href={`/${locale}/rental-terms`} className={styles.footerLegalLink}>
-              {fr ? 'Conditions de location' : 'Rental Terms'}
-            </Link>
-            <Link href={`/${locale}/pro-terms`} className={styles.footerLegalLink}>
-              {fr ? 'Conditions Pro' : 'Partner Terms'}
+              {fr ? 'Conditions d’utilisation' : 'Terms of Services'}
             </Link>
             <Link href={`/${locale}/privacy`} className={styles.footerLegalLink}>
-              {fr ? 'Confidentialité' : 'Privacy'}
+              {fr ? 'Politique de confidentialité' : 'Privacy Policy'}
             </Link>
-            <Link href={`/${locale}/legal`} className={styles.footerLegalLink}>
-              {fr ? 'Mentions légales' : 'Legal Notice'}
+            <Link href={`/${locale}/rental-terms`} className={styles.footerLegalLink}>
+              {fr ? 'Politique de remboursement' : 'Refund Policy'}
             </Link>
           </nav>
         </div>

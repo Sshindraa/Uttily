@@ -67,9 +67,8 @@ describe('Uttily homepage navigation', () => {
     const html = renderToStaticMarkup(
       await HomePage({ searchParams: Promise.resolve({ lang: 'en' }) }),
     );
-    expect(html).toContain('Your equipment');
-    expect(html).toContain('is');
-    expect(html).toContain('waiting.');
+    expect(html).toContain('Rent your equipment,');
+    expect(html).toContain('where you go.');
     expect(html).toContain('href="/en/search"');
     expect(html).toContain('href="/en/account/bookings"');
     expect(html).toContain('lang="en"');
@@ -81,9 +80,8 @@ describe('Uttily homepage navigation', () => {
       const html = renderToStaticMarkup(
         await HomePage({ searchParams: Promise.resolve({ lang }) }),
       );
-      expect(html).toContain('Votre équipement');
-      expect(html).toContain('vous');
-      expect(html).toContain('attend.');
+      expect(html).toContain('Louez votre équipement,');
+      expect(html).toContain('là où vous partez.');
       expect(html).toContain('href="/fr/search"');
     }
   });
@@ -137,8 +135,23 @@ describe('Uttily homepage navigation', () => {
     expect(html.match(/<header/g)).toHaveLength(1);
     expect(html).toContain('Contenu conservé');
     expect(html).toContain('<footer');
+    expect(html).toContain('© 2026, Uttily | Tous droits réservés.');
+    expect(html).toContain('Conditions d’utilisation');
+    expect(html).toContain('Politique de confidentialité');
+    expect(html).toContain('Politique de remboursement');
+    expect(html).toContain('href="/fr/rental-terms"');
     expect(html).toContain('Mon espace');
     expect(html).not.toContain('Navigation principale');
+
+    const englishHtml = renderToStaticMarkup(
+      <ClientShell localeOverride="en">
+        <main>English content</main>
+      </ClientShell>,
+    );
+    expect(englishHtml).toContain('© 2026, Uttily | All Rights Reserved.');
+    expect(englishHtml).toContain('Terms of Services');
+    expect(englishHtml).toContain('Privacy Policy');
+    expect(englishHtml).toContain('Refund Policy');
 
     const customHtml = renderToStaticMarkup(
       <ClientShell header={<header className="custom">En-tête spécifique</header>}>

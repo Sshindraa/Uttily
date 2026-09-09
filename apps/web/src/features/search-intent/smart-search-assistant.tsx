@@ -387,14 +387,14 @@ export function SmartSearchAssistant({
                       type="button"
                       onClick={handleRemoveDate}
                       className={styles.removeChipBtn}
-                      aria-label={fr ? 'Supprimer la date' : 'Remove date'}
+                      aria-label={fr ? 'Supprimer le créneau' : 'Remove rental slot'}
                     >
                       ×
                     </button>
                   </span>
                 ) : (
                   <span className={styles.unspecifiedChip}>
-                    <span>📅 {fr ? 'Dates à préciser' : 'Dates to specify'}</span>
+                    <span>📅 {fr ? 'Créneau à préciser' : 'Rental slot to specify'}</span>
                   </span>
                 )}
 

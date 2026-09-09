@@ -19,6 +19,7 @@ export function SuggestionPicker({
   onChoose,
   emptyMessage,
   kind = 'search',
+  hideLabel = false,
 }: {
   label: string;
   placeholder: string;
@@ -28,13 +29,14 @@ export function SuggestionPicker({
   onChoose: (id: string) => void;
   emptyMessage: string;
   kind?: 'search' | 'pin';
+  hideLabel?: boolean;
 }): React.ReactElement {
   const id = useId();
   const [active, setActive] = useState(0);
   const index = Math.min(active, Math.max(0, options.length - 1));
   return (
     <div>
-      <label htmlFor={id} className={styles.inputLabel}>
+      <label htmlFor={id} className={hideLabel ? styles.srOnly : styles.inputLabel}>
         {label}
       </label>
       <div className={styles.inputWithIcon}>

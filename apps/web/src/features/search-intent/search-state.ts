@@ -5,6 +5,7 @@ import { MAX_SEARCH_PEOPLE } from '@/lib/search-people';
 
 export type SearchField = 'destination' | 'equipment' | 'dates' | 'people';
 export type SearchLocale = 'fr' | 'en';
+type DestinationOption = PublicSearchFilterOptions['destinations'][number];
 export interface SearchSelection {
   destinationPublicId: string;
   categoryId: string;
@@ -15,6 +16,54 @@ export interface SearchSelection {
   endTime: string;
   people: number;
   requirements?: readonly CompiledPartyRequirement[] | undefined;
+}
+
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+/**
+ * Resolves an AI destination against the public catalogue without trusting a
+ * model-provided identifier that is not present in the current options.
+ */
+export function resolveDestinationPublicId(
+  destinations: readonly DestinationOption[],
+  requestedPublicId?: string | null,
+  requestedLabel?: string | null,
+): string {
+  if (requestedPublicId) {
+    const idIsKnown = destinations.some(
+      (destination) => destination.publicId === requestedPublicId,
+    );
+    if (idIsKnown || destinations.length === 0) return requestedPublicId;
+  }
+
+  const target = normalizeSearchText(requestedLabel ?? '');
+  if (!target) return '';
+
+  const exactMatch = destinations.find((destination) => {
+    const label = normalizeSearchText(destination.label);
+    const slug = normalizeSearchText(destination.slug);
+    return label === target || slug === target;
+  });
+  if (exactMatch) return exactMatch.publicId;
+
+  const partialMatch = destinations.find((destination) => {
+    const label = normalizeSearchText(destination.label);
+    const slug = normalizeSearchText(destination.slug);
+    return (
+      (target.length >= 3 && label.includes(target)) ||
+      (target.length >= 3 && slug.includes(target)) ||
+      (label.length >= 3 && target.includes(label)) ||
+      (slug.length >= 3 && target.includes(slug))
+    );
+  });
+  return partialMatch?.publicId ?? '';
 }
 
 export function civilDate(value: string): Date | null {
@@ -67,7 +116,7 @@ export function dateSelectionError(
   const fr = locale === 'fr';
   const end = selection.endDate || selection.startDate;
   if (!civilDate(selection.startDate) || !civilDate(end))
-    return fr ? 'Choisissez vos dates.' : 'Choose your dates.';
+    return fr ? 'Choisissez votre créneau.' : 'Choose your rental slot.';
   if (end < selection.startDate)
     return fr ? 'La fin doit suivre le début.' : 'The end must follow the start.';
   if (selection.withTimes) {
@@ -138,7 +187,7 @@ export function buildSearchQuery(
 export function dateSummary(selection: SearchSelection, locale: SearchLocale): string {
   const start = civilDate(selection.startDate);
   let end = civilDate(selection.endDate || selection.startDate);
-  if (!start || !end) return locale === 'fr' ? 'Quand partez-vous ?' : 'When are you going?';
+  if (!start || !end) return locale === 'fr' ? 'Ajouter des dates' : 'Add dates';
   if (end < start) end = start;
   const format = new Intl.DateTimeFormat(locale, {
     day: 'numeric',

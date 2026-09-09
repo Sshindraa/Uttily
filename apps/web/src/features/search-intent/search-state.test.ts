@@ -5,6 +5,7 @@ import {
   civilDate,
   dateSummary,
   initialSelection,
+  resolveDestinationPublicId,
   shiftDate,
   type SearchSelection,
 } from './search-state';
@@ -63,6 +64,28 @@ describe('search intent to existing availability contract', () => {
     expect(result.ok && new URLSearchParams(result.query).get('endDateExclusive')).toBe(
       '2026-09-13',
     );
+  });
+  it('resolves AI destination labels against public ids and normalized variants', () => {
+    const destinations = [
+      ...options.destinations,
+      {
+        publicId: '00000000-0000-0000-0000-000000000003',
+        slug: 'chamonix-mont-blanc',
+        label: 'Chamonix-Mont-Blanc',
+        countryCode: 'FR',
+        placeType: 'CITY',
+        center: { latitude: 45.92, longitude: 6.87 },
+        bbox: { south: 45.8, west: 6.7, north: 46.0, east: 7.0 },
+      },
+    ];
+    expect(resolveDestinationPublicId(destinations, null, 'Chamonix')).toBe(
+      '00000000-0000-0000-0000-000000000003',
+    );
+    expect(resolveDestinationPublicId(destinations, null, 'chamonix-mont-blanc')).toBe(
+      '00000000-0000-0000-0000-000000000003',
+    );
+    expect(resolveDestinationPublicId(destinations, null, 'Annecy')).toBe(destinationId);
+    expect(resolveDestinationPublicId(destinations, 'unknown-id', 'Annecy')).toBe(destinationId);
   });
   it('keeps local times untouched and never computes a tariff or timezone in the browser', () => {
     const result = buildSearchQuery(

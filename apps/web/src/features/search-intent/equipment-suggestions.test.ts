@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   categoryBreadcrumb,
   equipmentFamilies,
+  filterEquipmentFamilies,
+  getEquipmentTerrain,
   rankEquipmentSuggestions,
 } from './equipment-suggestions';
 
@@ -45,6 +47,14 @@ describe('deterministic equipment suggestions', () => {
       'ski',
     ]);
     expect(rankEquipmentSuggestions(categories, 'snowboard', 'fr')).toEqual([]);
+  });
+  it('classe les familles dans les trois terrains de pratique', () => {
+    expect(getEquipmentTerrain(categories[0]!)).toBe('land');
+    expect(getEquipmentTerrain(categories[4]!)).toBe('water');
+    expect(getEquipmentTerrain(categories[5]!)).toBe('snow');
+    expect(filterEquipmentFamilies(categories, 'water').map((category) => category.id)).toEqual([
+      'sup',
+    ]);
   });
   it('uses supplied parents, handles missing parents and terminates on cycles', () => {
     expect(categoryBreadcrumb(categories[2]!, categories, 'fr')).toBe(
