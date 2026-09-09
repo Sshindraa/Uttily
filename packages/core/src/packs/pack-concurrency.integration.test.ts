@@ -8,7 +8,11 @@ import {
   shouldSkipIntegrationTests,
   type IntegrationTestContext,
 } from '../integration/setup';
-import { createAtomicPackHold, PackAllocationError } from './pack-atomic-hold';
+import {
+  createAtomicPackHold,
+  PackAllocationError,
+  type AtomicPackHoldResult,
+} from './pack-atomic-hold';
 
 describe('Pack Orchestrator — Concurrency & Atomic Hold Integration Tests', () => {
   let context: IntegrationTestContext | null = null;
@@ -157,8 +161,7 @@ describe('Pack Orchestrator — Concurrency & Atomic Hold Integration Tests', ()
 
     // Le perdant ne doit avoir AUCUN bloc créé (0 réservation partielle)
     const winningDraftId =
-      (successes[0] as PromiseFulfilledResult<{ holdBlockIds: string[] }>).value.holdBlockIds
-        .length > 0
+      (successes[0] as PromiseFulfilledResult<AtomicPackHoldResult>).value.holdBlockIds.length > 0
         ? activeBlocks[0]!.source_id
         : null;
     const losingDraftId = winningDraftId === draftIdA ? draftIdB : draftIdA;
