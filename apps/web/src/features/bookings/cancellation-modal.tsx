@@ -145,7 +145,14 @@ export function CustomerCancellationModal({
             >
               ✓
             </div>
-            <p style={{ color: 'var(--ut-color-ink-strong)', fontSize: '1rem', margin: 0 }}>
+            <p
+              style={{
+                color: 'var(--ut-color-ink-strong)',
+                fontFamily: 'var(--ut-font-body)',
+                fontSize: 'var(--ut-text-md)',
+                margin: 0,
+              }}
+            >
               {successResult.refundAmountMinor > 0
                 ? copy.cancellation.successWithRefund(
                     formatAmount(successResult.refundAmountMinor, successResult.currency, locale),
@@ -163,6 +170,7 @@ export function CustomerCancellationModal({
                 style={{
                   padding: '1.5rem 0',
                   textAlign: 'center',
+                  fontFamily: 'var(--ut-font-body)',
                   color: 'var(--ut-color-ink-muted)',
                 }}
               >
@@ -178,7 +186,8 @@ export function CustomerCancellationModal({
                   color: 'var(--ut-color-danger)',
                   padding: '0.75rem',
                   borderRadius: 'var(--ut-radius-md)',
-                  fontSize: '0.875rem',
+                  fontFamily: 'var(--ut-font-body)',
+                  fontSize: 'var(--ut-text-sm)',
                 }}
               >
                 {errorMessage}
@@ -196,13 +205,20 @@ export function CustomerCancellationModal({
                     flexDirection: 'column',
                     gap: '0.5rem',
                     border: 'var(--ut-border-thin)',
+                    fontFamily: 'var(--ut-font-body)',
+                    fontSize: 'var(--ut-text-sm)',
+                    fontVariantNumeric: 'var(--ut-numerals)',
                   }}
                 >
                   <div
-                    style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
                   >
                     <span>{copy.cancellation.paidAmount}</span>
-                    <strong>
+                    <strong style={{ fontFamily: 'var(--ut-font-display)' }}>
                       {formatAmount(preview.paidAmountMinor, preview.currency, locale)}
                     </strong>
                   </div>
@@ -210,12 +226,12 @@ export function CustomerCancellationModal({
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
-                      fontSize: '0.9rem',
+                      alignItems: 'center',
                       color: 'var(--ut-color-success)',
                     }}
                   >
                     <span>{copy.cancellation.expectedRefund}</span>
-                    <strong>
+                    <strong style={{ fontFamily: 'var(--ut-font-display)' }}>
                       {formatAmount(preview.refundAmountMinor, preview.currency, locale)}
                     </strong>
                   </div>
@@ -223,18 +239,25 @@ export function CustomerCancellationModal({
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
-                      fontSize: '0.9rem',
+                      alignItems: 'center',
                       color: 'var(--ut-color-ink-muted)',
                     }}
                   >
                     <span>{copy.cancellation.retainedFees}</span>
-                    <span>
+                    <span style={{ fontFamily: 'var(--ut-font-display)' }}>
                       {formatAmount(preview.retainedAmountMinor, preview.currency, locale)}
                     </span>
                   </div>
                 </div>
 
-                <p style={{ fontSize: '0.8rem', color: 'var(--ut-color-ink-muted)', margin: 0 }}>
+                <p
+                  style={{
+                    fontFamily: 'var(--ut-font-body)',
+                    fontSize: 'var(--ut-text-caption)',
+                    color: 'var(--ut-color-ink-muted)',
+                    margin: 0,
+                  }}
+                >
                   {copy.cancellation.policyNotice}
                 </p>
 

@@ -18,7 +18,30 @@ export default function SignUpPage(): React.ReactElement {
             Créez votre compte pour réserver ou gérer vos équipements.
           </p>
           <div className={styles.clerk}>
-            <SignUp />
+            <SignUp
+              appearance={{
+                elements: {
+                  rootBox: {
+                    width: '100%',
+                  },
+                  cardBox: {
+                    width: '100%',
+                    boxShadow: 'none',
+                    border: 'none',
+                  },
+                  card: {
+                    width: '100%',
+                    padding: 0,
+                    border: 'none',
+                    boxShadow: 'none',
+                    background: 'transparent',
+                  },
+                  header: {
+                    display: 'none',
+                  },
+                },
+              }}
+            />
           </div>
         </section>
       </main>

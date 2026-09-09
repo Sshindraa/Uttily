@@ -26,6 +26,7 @@ export function SectionHeader({
         <h2
           style={{
             color: 'var(--ut-color-ink-strong)',
+            fontFamily: 'var(--ut-font-display)',
             fontSize: 'var(--ut-text-title-sm)',
             fontWeight: 'var(--ut-weight-heading)',
             letterSpacing: 'var(--ut-tracking-heading)',

@@ -42,7 +42,10 @@ export function DashboardCockpit({ data }: { data: DashboardCockpitData }): Reac
         <OnboardingReadinessCard orgId={data.organizationId} readiness={data.readiness} />
       )}
 
-      <ProfessionalVerificationCard verification={data.professionalVerification} />
+      <ProfessionalVerificationCard
+        verification={data.professionalVerification}
+        orgId={data.organizationId}
+      />
 
       <section className={styles.kpiGrid} aria-label="Indicateurs clés du jour">
         <Link

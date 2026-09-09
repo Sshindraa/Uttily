@@ -13,6 +13,7 @@ import {
 } from '@uttily/core';
 import type { ActionResult, PhotoSlotType } from '@uttily/contracts';
 import { parseProductPhotoSlotType } from './product-photo-slot';
+import { DEMO_PHOTO_COACH_ORG_ID } from '@/lib/photo-coach-constants';
 
 export async function uploadProductPhotoAction(
   organizationId: string,
@@ -40,6 +41,21 @@ export async function uploadProductPhotoAction(
   }
 
   return runAction(async () => {
+    if (organizationId === DEMO_PHOTO_COACH_ORG_ID) {
+      return toPhotoSummary({
+        id: photoId,
+        publicId: `pub-${photoId.slice(0, 8)}`,
+        slotType,
+        fileState: 'AVAILABLE',
+        contentType: file.type || 'image/jpeg',
+        byteSize: file.size,
+        widthPx: 1920,
+        heightPx: 1080,
+        sortOrder: 0,
+        rejectionReason: null,
+      });
+    }
+
     const { db, organizationId: authorizedOrgId } = await requireCatalogManagerOf(organizationId);
     const storage = getProductPhotoStorage();
     const content = new Uint8Array(await file.arrayBuffer());
@@ -79,6 +95,9 @@ export async function deleteProductPhotoAction(
     return { ok: false, code: 'VALIDATION', message: 'Identifiant de photo invalide.' };
   }
   return runAction(async () => {
+    if (organizationId === DEMO_PHOTO_COACH_ORG_ID) {
+      return null;
+    }
     const { db, organizationId: authorizedOrgId } = await requireCatalogManagerOf(organizationId);
     await deleteProductPhoto(db, authorizedOrgId, photoId, getProductPhotoStorage());
     const productId = String(formData.get('productId') ?? '');

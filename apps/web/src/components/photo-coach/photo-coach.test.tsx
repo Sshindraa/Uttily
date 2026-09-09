@@ -79,13 +79,13 @@ describe('PhotoChecklist Component', () => {
 describe('PhotoProgress Component', () => {
   it('affiche le bon état de complétude selon le nombre de slots validés', () => {
     const html0 = renderToStaticMarkup(<PhotoProgress completedSlotsCount={0} />);
-    expect(html0).toContain('0/3 complétés');
+    expect(html0).toContain('0 sur 3 photos validées');
 
     const html1 = renderToStaticMarkup(<PhotoProgress completedSlotsCount={1} />);
-    expect(html1).toContain('1/3 complétés');
+    expect(html1).toContain('1 sur 3 photos validées');
 
     const html3 = renderToStaticMarkup(<PhotoProgress completedSlotsCount={3} />);
-    expect(html3).toContain('3/3 complétés');
+    expect(html3).toContain('3 sur 3 photos validées');
   });
 
   it('calcule la complétude exacte à partir des slots narratifs présents', () => {
@@ -94,20 +94,20 @@ describe('PhotoProgress Component', () => {
         slots={{ hasHeroProfile: true, hasThreeQuarter: false, hasSignatureDetail: false }}
       />,
     );
-    expect(htmlExact1).toContain('1/3 complétés');
+    expect(htmlExact1).toContain('1 sur 3 photos validées');
 
     const htmlExact2 = renderToStaticMarkup(
       <PhotoProgress
         slots={{ hasHeroProfile: true, hasThreeQuarter: true, hasSignatureDetail: false }}
       />,
     );
-    expect(htmlExact2).toContain('2/3 complétés');
+    expect(htmlExact2).toContain('2 sur 3 photos validées');
 
     const htmlExact3 = renderToStaticMarkup(
       <PhotoProgress
         slots={{ hasHeroProfile: true, hasThreeQuarterFront: true, hasSecondaryView: true }}
       />,
     );
-    expect(htmlExact3).toContain('3/3 complétés');
+    expect(htmlExact3).toContain('3 sur 3 photos validées');
   });
 });

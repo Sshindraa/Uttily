@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -7,17 +8,42 @@ vi.mock('@/app/actions/home-search-options', () => ({ loadHomeSearchOptions: vi.
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 describe('Immersive homepage', () => {
+  it('keeps the original hero PNG bytes instead of a downscaled derivative', () => {
+    const image = readFileSync(
+      new URL('../../../public/images/home/mountain-lake-road.png', import.meta.url),
+    );
+
+    expect(createHash('sha256').update(image).digest('hex')).toBe(
+      '79766eb94887144c3949ae1d4228ca890f057582f7667cdc35fdae92519b3b8b',
+    );
+  });
+
+  it('uses the requested Fontshare display pairing for the hero heading', () => {
+    const css = readFileSync(new URL('./home-hero.module.css', import.meta.url), 'utf8');
+
+    expect(css).toContain("url('/fonts/satoshi/satoshi-medium.woff2')");
+    expect(css).toContain("font-family: 'Satoshi'");
+    expect(css).toContain('font-weight: 500');
+    expect(css).toContain("url('/fonts/boska/boska-medium-italic.woff2')");
+    expect(css).toContain("font-family: 'Boska'");
+    expect(css).toContain('font-style: italic');
+  });
+
   it('shows the editorial photo and four intent fields with a direct search action', () => {
     const html = renderToStaticMarkup(<HomeHero locale="fr" />);
-    expect(html).toContain('Votre équipement');
-    expect(html).toContain('vous attend.');
-    expect(html).toContain('cycling-sunset.jpg');
+    expect(html).toContain('Louez votre équipement,');
+    expect(html).toContain('là où vous partez.');
+    expect(html).toContain('/_next/image?url=%2Fimages%2Fhome%2Fmountain-lake-road.png');
     expect(html).toContain('Destination');
     expect(html).toContain('Équipement');
-    expect(html).toContain('Dates');
+    expect(html).toContain('Quand ?');
     expect(html).toContain('Personnes');
+    expect(html).toContain('Rechercher');
     expect(html).toContain('type="submit"');
-    expect(html).toContain('Réservez en ligne.');
+    expect(html).toContain('Paiement sécurisé');
+    expect(html).toContain('Loueurs professionnels');
+    expect(html).toContain('Retrait sur place');
+    expect(html.indexOf('Destination')).toBeLessThan(html.indexOf('Décrivez votre sortie'));
     expect(html).not.toContain('Location de matériel');
     expect(html.match(/aria-haspopup="dialog"/g)).toHaveLength(4);
     expect(html).toContain('href="/fr/search"');
@@ -28,9 +54,14 @@ describe('Immersive homepage', () => {
   });
   it('translates the search entry points and fallback', () => {
     const html = renderToStaticMarkup(<HomeHero locale="en" />);
-    expect(html).toContain('is waiting.');
+    expect(html).toContain('Rent your equipment,');
+    expect(html).toContain('where you go.');
     expect(html).toContain('Equipment');
     expect(html).toContain('People');
+    expect(html).toContain('Search');
+    expect(html).toContain('Secure payment');
+    expect(html).toContain('Professional rental operators');
+    expect(html).toContain('Pickup on site');
     expect(html).toContain('href="/en/search"');
     expect(html).not.toContain('Inspiration photo');
   });

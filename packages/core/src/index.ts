@@ -206,3 +206,9 @@ export * from './live-readiness';
 
 // Lot 21-P1 — Fondation RGPD : droits d'accès, portabilité & registre.
 export * from './privacy';
+
+// ADR-041 — Domaine Pack Orchestration & Graphe de Compatibilité.
+export * from './packs';
+
+// ADR-042 — Sanitisation EXIF des médias.
+export * from './media/exif-sanitizer';

@@ -52,8 +52,8 @@ export interface PhotoSlotDefinition {
 export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
   HERO_PROFILE: {
     type: 'HERO_PROFILE',
-    title: 'Profil Hero',
-    shortDescription: 'Vélo entier de profil, fond dégagé',
+    title: 'Vue de profil',
+    shortDescription: 'Vélo entier, bien centré, fond dégagé',
     required: true,
     minMediaCount: 1,
     maxMediaCount: 3,
@@ -71,7 +71,7 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
   },
   THREE_QUARTER_FRONT: {
     type: 'THREE_QUARTER_FRONT',
-    title: '3/4 Avant',
+    title: 'Vue 3/4 avant',
     shortDescription: 'Montrez le volume et le poste de pilotage',
     required: true,
     minMediaCount: 1,
@@ -91,7 +91,7 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
   SECONDARY_VIEW: {
     type: 'SECONDARY_VIEW',
     title: 'Vue libre',
-    shortDescription: 'Choisissez le détail ou l’angle le plus valorisant',
+    shortDescription: 'Ajoutez un détail utile ou valorisant',
     required: true,
     minMediaCount: 1,
     maxMediaCount: 5,
@@ -248,3 +248,55 @@ export const BIKE_PHOTO_SLOTS: Record<PhotoSlotType, PhotoSlotDefinition> = {
     },
   },
 };
+
+/** Niveaux de preuve et d'autorité des attributs matériels (ADR-042) */
+export type EvidenceLevel = 'AI_OBSERVED' | 'HUMAN_CONFIRMED' | 'SOURCE_VERIFIED';
+
+/** Enregistrement auditable de provenance pour un attribut matériel */
+export interface EquipmentAttributeEvidence<T = unknown> {
+  readonly key: string;
+  readonly value: T;
+  readonly evidenceLevel: EvidenceLevel;
+  readonly inferenceId?: string | undefined;
+  readonly confirmedBy?: string | undefined;
+  readonly confirmedAt?: string | undefined;
+  readonly sourceStandard?: string | undefined;
+}
+
+/** Verdict global d'évaluation de qualité photo (G8B-3 / Phase 2 / ADR-042) */
+export type PhotoCoachVerdict = 'CONFORMANT' | 'WARNING' | 'REJECTED';
+
+/** Caractéristiques physiques visibles détectées par l'IA pour enrichir l'inventaire du Solver */
+export interface DetectedEquipmentFeatures {
+  readonly isElectric: boolean;
+  readonly hasLuggageRack: boolean;
+  readonly hasTrailerHitch: boolean;
+  readonly hasChildSeatCompatibleMount: boolean;
+  readonly drivetrainType: 'DERAILLEUR' | 'HUB_INTERNAL' | 'BELT' | 'UNKNOWN';
+  readonly brakeType: 'HYDRAULIC_DISC' | 'MECHANICAL_DISC' | 'RIM_BRAKE' | 'UNKNOWN';
+  readonly frameType: 'STEP_THROUGH' | 'TRAPEZE' | 'DIAMOND' | 'CARGO' | 'UNKNOWN';
+  readonly visibleSizeLabel?: string | null | undefined;
+  readonly confidence: number;
+  readonly inferenceId?: string | undefined;
+}
+
+/** Métriques techniques de qualité visuelle (0 à 100) */
+export interface PhotoQualityMetrics {
+  readonly sharpnessScore: number;
+  readonly exposureScore: number;
+  readonly framingScore: number;
+  readonly backgroundNeutralityScore: number;
+}
+
+/** Évaluation complète retournée par le Photo Quality Coach */
+export interface PhotoQualityAssessment {
+  readonly verdict: PhotoCoachVerdict;
+  readonly matchedSlot: PhotoSlotType;
+  readonly slotConformity: boolean;
+  readonly quality: PhotoQualityMetrics;
+  readonly detectedFeatures: DetectedEquipmentFeatures;
+  readonly issuesFr: readonly string[];
+  readonly issuesEn: readonly string[];
+  readonly suggestionsFr: readonly string[];
+  readonly suggestionsEn: readonly string[];
+}

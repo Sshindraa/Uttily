@@ -1,12 +1,22 @@
 'use client';
 
 import { type ReactElement, useState, useEffect, useRef } from 'react';
-import { BIKE_PHOTO_SLOTS, type PhotoSlotType } from '@uttily/contracts';
+import {
+  BIKE_PHOTO_SLOTS,
+  type PhotoSlotType,
+  type PhotoQualityAssessment,
+  type DetectedEquipmentFeatures,
+} from '@uttily/contracts';
 import type { ProductPhotoSummary } from '@uttily/core';
 import { uploadProductPhotoAction } from '@/app/actions/product-photos';
+import {
+  analyzePhotoQualityAction,
+  confirmEquipmentFeaturesAction,
+} from '@/app/actions/photo-coach';
 import { CameraViewfinder } from './camera/CameraViewfinder';
 import { PhotoGuideIntro } from './PhotoGuideIntro';
 import { PhotoChecklist } from './PhotoChecklist';
+import { PhotoCoachAiFeedback } from './PhotoCoachAiFeedback';
 import styles from './PhotoCoachModal.module.css';
 
 export interface PhotoCoachModalProps {
@@ -18,7 +28,7 @@ export interface PhotoCoachModalProps {
   onPhotoUploaded?: (photo: ProductPhotoSummary) => void;
 }
 
-type PhotoCoachStep = 'INTRO' | 'CAMERA' | 'CHECKLIST' | 'SAVING';
+type PhotoCoachStep = 'INTRO' | 'CAMERA' | 'INSPECTION' | 'CHECKLIST' | 'SAVING';
 
 const EXPERT_MODE_STORAGE_KEY = 'uttily_photo_coach_expert_mode';
 
@@ -39,6 +49,8 @@ export function PhotoCoachModal({
 
   const [step, setStep] = useState<PhotoCoachStep>(() => (isExpertMode ? 'CAMERA' : 'INTRO'));
   const [capturedBlob, setCapturedBlob] = useState<Blob | null>(null);
+  const [assessment, setAssessment] = useState<PhotoQualityAssessment | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -53,6 +65,8 @@ export function PhotoCoachModal({
       }
       setError(null);
       setCapturedBlob(null);
+      setAssessment(null);
+      setIsAnalyzing(false);
       setStep(isExpertMode ? 'CAMERA' : 'INTRO');
     }
   }, [isOpen, isExpertMode]);
@@ -109,14 +123,93 @@ export function PhotoCoachModal({
     }
   };
 
-  const handleCapture = (blob: Blob) => {
+  const handleCapture = async (blob: Blob) => {
     setCapturedBlob(blob);
-    setStep('CHECKLIST');
+    setStep('INSPECTION');
+    setIsAnalyzing(true);
+    setError(null);
+    setAssessment(null);
+
+    try {
+      const file = new File([blob], `bike-${slotType.toLowerCase()}-${Date.now()}.jpg`, {
+        type: blob.type || 'image/jpeg',
+      });
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('expectedSlot', slotType);
+      formData.append('categorySlug', 'bike');
+
+      const result = await analyzePhotoQualityAction(
+        orgId,
+        { ok: false, code: 'UNKNOWN', message: '' },
+        formData,
+      );
+
+      if (result.ok) {
+        setAssessment(result.data);
+      } else {
+        setError(result.message || 'Impossible d’analyser la photo par IA.');
+      }
+    } catch {
+      setError('Erreur inattendue pendant l’analyse qualité.');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleRetake = () => {
     setCapturedBlob(null);
+    setAssessment(null);
+    setError(null);
     setStep('CAMERA');
+  };
+
+  const handleConfirmWithFeatures = async (features: Partial<DetectedEquipmentFeatures>) => {
+    if (!capturedBlob) return;
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      if (features && Object.keys(features).length > 0) {
+        const enrichResult = await confirmEquipmentFeaturesAction({
+          organizationId: orgId,
+          productId,
+          features,
+        });
+        if (!enrichResult.ok) {
+          console.warn('Enrichissement catalogue échoué:', enrichResult.message);
+        }
+      }
+
+      const photoId = crypto.randomUUID();
+      const file = new File([capturedBlob], `bike-${slotType.toLowerCase()}-${Date.now()}.jpg`, {
+        type: 'image/jpeg',
+      });
+
+      const formData = new FormData();
+      formData.append('productId', productId);
+      formData.append('photoId', photoId);
+      formData.append('slotType', slotType);
+      formData.append('file', file);
+
+      const result = await uploadProductPhotoAction(
+        orgId,
+        { ok: false, code: 'UNKNOWN', message: '' },
+        formData,
+      );
+
+      if (result.ok) {
+        onPhotoUploaded?.(result.data);
+        onClose();
+      } else {
+        setError(result.message || 'Erreur lors de l’envoi de la photo.');
+      }
+    } catch {
+      setError('Une erreur inattendue est survenue lors de l’enregistrement.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleConfirmAndUpload = async () => {
@@ -221,6 +314,49 @@ export function PhotoCoachModal({
               onCapture={handleCapture}
               onReplayIntro={() => setStep('INTRO')}
             />
+          )}
+
+          {step === 'INSPECTION' && (
+            <>
+              {isAnalyzing && (
+                <div className={styles.loadingContainer}>
+                  <div className={styles.spinner} />
+                  <p className={styles.loadingText}>Photo Quality Coach en action…</p>
+                  <p className={styles.loadingSubtext}>
+                    Vérification de l’angle ({slot.title}), netteté, cadrage et détection des
+                    équipements.
+                  </p>
+                </div>
+              )}
+
+              {!isAnalyzing && assessment && (
+                <PhotoCoachAiFeedback
+                  assessment={assessment}
+                  isSaving={isSaving}
+                  onConfirm={handleConfirmWithFeatures}
+                  onRetake={handleRetake}
+                />
+              )}
+
+              {!isAnalyzing && !assessment && (
+                <div className={styles.inspectionFallbackActions}>
+                  <button
+                    type="button"
+                    onClick={handleRetake}
+                    className={styles.manualChecklistBtn}
+                  >
+                    Reprendre la photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStep('CHECKLIST')}
+                    className={styles.manualChecklistBtn}
+                  >
+                    Continuer vers la checklist manuelle →
+                  </button>
+                </div>
+              )}
+            </>
           )}
 
           {(step === 'CHECKLIST' || step === 'SAVING') && capturedBlob && (

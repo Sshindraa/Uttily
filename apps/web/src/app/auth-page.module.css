@@ -35,14 +35,28 @@
 }
 
 .clerk :global(.cl-rootBox),
+.clerk :global(.cl-cardBox),
 .clerk :global(.cl-card) {
-  width: 100%;
+  width: 100% !important;
+  box-shadow: none !important;
+  border: none !important;
+  background: transparent !important;
 }
 
 .clerk :global(.cl-card) {
-  padding: 0;
-  border: 0;
-  box-shadow: none;
+  padding: 0 !important;
+}
+
+.clerk :global(.cl-header),
+.clerk :global(.cl-headerTitle),
+.clerk :global(.cl-headerSubtitle) {
+  display: none !important;
+}
+
+.clerk :global(.cl-footer) {
+  background: transparent !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 @media (max-width: 40rem) {

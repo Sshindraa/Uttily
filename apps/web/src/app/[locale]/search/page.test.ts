@@ -25,4 +25,11 @@ describe('PublicSearchPage', () => {
     expect(pageSource).not.toContain('<SearchForm');
     expect(pageSource).not.toContain('<SearchResults');
   });
+
+  it('branche le Pack Orchestrator pour résoudre les intentions multi-besoins (ADR-041)', () => {
+    expect(pageSource).toContain('solvePackForParty(db, packReq)');
+    expect(pageSource).toContain('buildPackRequestFromSearchParams');
+    expect(pageSource).toContain('recordPackAnalytics');
+    expect(pageSource).toContain('solvedPacks={solvedPacks}');
+  });
 });

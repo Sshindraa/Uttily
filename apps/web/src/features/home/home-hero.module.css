@@ -1,11 +1,27 @@
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/satoshi/satoshi-medium.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Boska';
+  src: url('/fonts/boska/boska-medium-italic.woff2') format('woff2');
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+}
+
 .hero {
   position: relative;
   isolation: isolate;
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
   min-height: 600px;
-  height: calc(100svh - 88px);
-  max-height: 1000px;
+  min-height: calc(100svh - 88px);
+  height: auto;
   background: var(--ut-color-ink-strong);
   color: var(--ut-color-ink-on-dark);
 }
@@ -24,7 +40,7 @@
 
 .photo {
   object-fit: cover;
-  object-position: center 74%;
+  object-position: center 60%;
 }
 
 .shade {
@@ -39,49 +55,108 @@
 }
 
 .heroContent {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  left: 0;
+  position: relative;
+  width: 100%;
+  flex: 1;
+  min-height: calc(100svh - 88px);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  justify-content: space-between;
+  gap: clamp(24px, 3.5vh, 48px);
   padding: 0 clamp(24px, 4.5vw, 80px) 48px;
 }
+
 .searchPosition {
+  position: relative;
   width: min(780px, 100%);
   margin-inline: auto;
-  margin-top: calc(clamp(120px, 22vh, 240px) + 36px);
+  margin-top: auto;
+  margin-bottom: auto;
+  z-index: 1;
   order: 1;
+  top: -24px;
 }
 
-.caption {
-  width: 100%;
-  margin-top: auto;
-  order: 2;
+.intro {
+  margin-bottom: 22px;
 }
-.copy {
+
+.heading {
   max-width: 760px;
+  margin: 0 auto 12px;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Helvetica Neue', sans-serif;
+  font-size: clamp(26px, 3vw, 42px);
+  font-weight: 300;
+  letter-spacing: -0.028em;
+  line-height: 1.25;
+  color: #ffffff;
+  text-align: center;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
 }
-.caption h1 {
-  margin: 0;
-  font-size: clamp(52px, 4.6vw, 70px);
-  font-weight: var(--ut-weight-semibold);
-  letter-spacing: var(--ut-tracking-display);
-  line-height: 1.12;
-  color: var(--ut-color-ink-on-dark);
+
+.titleSolid {
+  font-family: 'Satoshi', var(--ut-font-ui);
+  color: #ffffff;
+  font-weight: 500;
+  font-synthesis: none;
 }
-.caption h1 span {
-  display: block;
+
+.titleMuted {
+  font-family: 'Boska', Georgia, serif;
+  color: #1c2426;
+  font-weight: 500;
+  font-style: italic;
+  font-synthesis: none;
 }
-.description {
-  max-width: 620px;
-  margin: 14px 0 0;
-  color: var(--ut-color-ink-on-dark);
-  font-size: clamp(16px, 1.15vw, 18px);
-  line-height: 1.5;
+
+.trustSignals {
+  transition: opacity 180ms ease;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: fit-content;
+  max-width: 100%;
+  gap: 10px 22px;
+  margin: 18px auto 0;
+  padding: 6px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--ut-radius-pill);
+  background: rgba(8, 25, 35, 0.27);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  color: rgba(255, 255, 255, 0.86);
+  font-family: 'Sora', var(--ut-font-ui);
+  font-size: 13px;
+  font-weight: var(--ut-weight-medium);
+  list-style: none;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.28);
 }
+
+@media (min-width: 48.001rem) {
+  .searchPosition:has([data-panel-open]) .trustSignals {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trustSignals {
+    transition: none;
+  }
+}
+
+.trustSignals li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trustSignals li > span {
+  color: #b8f0d8;
+  font-weight: 700;
+}
+
 @media (max-width: 64rem) {
   .searchPosition {
     width: 100%;
@@ -94,6 +169,7 @@
     bottom: 0;
   }
 }
+
 @media (max-width: 48rem) {
   .hero {
     min-height: 740px;
@@ -109,16 +185,25 @@
     gap: 16px;
     padding-inline: 16px;
     padding-bottom: 24px;
+    justify-content: space-between;
   }
   .searchPosition {
     width: 100%;
     margin-top: 36px;
+    margin-bottom: auto;
+    top: 0;
   }
-  .caption h1 {
-    font-size: clamp(34px, 7vw, 52px);
+  .heading {
+    font-size: clamp(22px, 5.8vw, 30px);
+    margin: 4px 0 14px;
   }
-  .description {
-    max-width: 28rem;
-    margin-top: 10px;
+  .intro {
+    margin-bottom: 18px;
+  }
+  .trustSignals {
+    gap: 8px 14px;
+    padding-inline: 10px;
+    font-size: 12px;
+    line-height: 1.4;
   }
 }

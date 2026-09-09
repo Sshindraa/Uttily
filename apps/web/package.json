@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1103.0",
+    "@clerk/localizations": "^4.16.0",
     "@clerk/nextjs": "^6.0.0",
     "@stripe/connect-js": "^3.4.6",
     "@stripe/react-connect-js": "^3.4.4",
@@ -24,6 +25,7 @@
     "@uttily/contracts": "workspace:*",
     "@uttily/core": "workspace:*",
     "@uttily/database": "workspace:*",
+    "@uttily/intelligence": "workspace:*",
     "@uttily/ui": "workspace:*",
     "drizzle-orm": "^0.36.0",
     "maplibre-gl": "5.6.2",

@@ -1,20 +1,24 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import type { PublicSearchFilterOptions } from '@uttily/core';
 import { Button, Icon, LinkButton } from '@uttily/ui';
 import { loadHomeSearchOptions } from '@/app/actions/home-search-options';
 import type { PublicSearchFormValues } from '@/lib/public-search';
 import { getPublicCategoryLabel } from '@/lib/public-search-labels';
+import type { IntentProposal } from '@uttily/intelligence';
 import { DestinationPanel } from './destination-panel';
 import { EquipmentPanel } from './equipment-panel';
 import { DatesPanel } from './dates-panel';
 import { PeoplePanel } from './people-panel';
+import { SmartSearchAssistant } from './smart-search-assistant';
 import {
   buildSearchQuery,
   dateSummary,
   initialSelection,
+  resolveDestinationPublicId,
+  shiftDate,
   type SearchField,
   type SearchLocale,
   type SearchSelection,
@@ -27,12 +31,16 @@ export function SearchIntentBar({
   initialOptions,
   stickyOnScroll = false,
   fieldErrors = {},
+  middleSlot,
+  smartAssistantAfterSearch = false,
 }: {
   locale: SearchLocale;
   initialValues?: PublicSearchFormValues;
   initialOptions?: PublicSearchFilterOptions;
   stickyOnScroll?: boolean;
   fieldErrors?: Record<string, string>;
+  middleSlot?: React.ReactNode;
+  smartAssistantAfterSearch?: boolean;
 }): React.ReactElement {
   const fr = locale === 'fr';
   const router = useRouter();
@@ -46,11 +54,39 @@ export function SearchIntentBar({
   const [error, setError] = useState<string | null>(Object.values(fieldErrors)[0] ?? null);
   const [pinned, setPinned] = useState(false);
   const [panelSpace, setPanelSpace] = useState(600);
+  const [barHeight, setBarHeight] = useState(0);
+  const [searchLift, setSearchLift] = useState(0);
   const anchor = useRef<HTMLDivElement>(null);
   const shell = useRef<HTMLDivElement>(null);
   const bar = useRef<HTMLFormElement>(null);
   const panel = useRef<HTMLElement>(null);
   const shouldLoad = field !== null && options === null;
+
+  useLayoutEffect(() => {
+    const updateLift = () => {
+      const element = anchor.current;
+      if (
+        !element ||
+        !stickyOnScroll ||
+        !middleSlot ||
+        pinned ||
+        !field ||
+        window.innerWidth <= 768
+      ) {
+        setSearchLift(0);
+        return;
+      }
+      // Recover the resting position even when resizing during the transition.
+      const currentTop = Number.parseFloat(window.getComputedStyle(element).top) || 0;
+      const restingTop = element.getBoundingClientRect().top - currentTop;
+      const headerBottom = document.querySelector('header')?.getBoundingClientRect().bottom ?? 80;
+      const targetTop = Math.max(104, headerBottom + 24);
+      setSearchLift(Math.max(0, restingTop - targetTop));
+    };
+    updateLift();
+    window.addEventListener('resize', updateLift);
+    return () => window.removeEventListener('resize', updateLift);
+  }, [field, pinned, stickyOnScroll, middleSlot]);
 
   useEffect(() => {
     if (!shouldLoad) return;
@@ -76,22 +112,53 @@ export function SearchIntentBar({
   }, [shouldLoad, locale, retry]);
 
   useEffect(() => {
+    const element = bar.current;
+    if (!element) return;
+
     const update = () => {
-      if (stickyOnScroll && anchor.current)
-        setPinned(anchor.current.getBoundingClientRect().top <= 12);
-      if (bar.current)
-        setPanelSpace(
-          Math.max(220, window.innerHeight - bar.current.getBoundingClientRect().bottom - 28),
-        );
+      const nextHeight = element.getBoundingClientRect().height;
+      setBarHeight((previous) => (Math.abs(previous - nextHeight) > 0.5 ? nextHeight : previous));
+    };
+
+    update();
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    let frame: number | null = null;
+    const motionUntil = performance.now() + 500;
+    const update = () => {
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        if (stickyOnScroll && anchor.current) {
+          const isPinned = anchor.current.getBoundingClientRect().top <= 12;
+          setPinned((prev) => (prev !== isPinned ? isPinned : prev));
+        }
+        if (field && bar.current) {
+          const space = Math.max(
+            220,
+            window.innerHeight - bar.current.getBoundingClientRect().bottom - 28,
+          );
+          setPanelSpace((prev) => (Math.abs(prev - space) > 8 ? space : prev));
+        }
+        // Re-measure the space throughout the lift, not just at its starting position.
+        if (field && performance.now() < motionUntil) update();
+      });
     };
     update();
     window.addEventListener('scroll', update, { passive: true });
     window.addEventListener('resize', update);
     return () => {
+      if (frame !== null) window.cancelAnimationFrame(frame);
       window.removeEventListener('scroll', update);
       window.removeEventListener('resize', update);
     };
-  }, [stickyOnScroll, field, pinned]);
+  }, [stickyOnScroll, field, searchLift]);
 
   useEffect(() => {
     if (!field) return;
@@ -106,9 +173,10 @@ export function SearchIntentBar({
     if (!field) return;
     const id = requestAnimationFrame(() => {
       const target =
-        panel.current?.querySelector<HTMLElement>('input:not([type="hidden"])') ??
-        panel.current?.querySelector<HTMLElement>('button:not([disabled])');
-      target?.focus();
+        (field !== 'dates'
+          ? panel.current?.querySelector<HTMLElement>('input:not([type="hidden"])')
+          : null) ?? panel.current?.querySelector<HTMLElement>('button:not([disabled])');
+      target?.focus({ preventScroll: true });
     });
     return () => cancelAnimationFrame(id);
   }, [field, options]);
@@ -122,6 +190,61 @@ export function SearchIntentBar({
     setSelection((previous) => ({ ...previous, ...patch }));
     setError(null);
   }
+
+  async function handleApplyAiProposal(proposal: IntentProposal): Promise<void> {
+    const availableOptions = options ?? (await loadHomeSearchOptions(locale));
+    if (!options && availableOptions) setOptions(availableOptions);
+
+    const destPublicId = resolveDestinationPublicId(
+      availableOptions?.destinations ?? [],
+      proposal.destinationPublicId?.value,
+      proposal.destination.value,
+    );
+
+    let categoryId = proposal.requirements[0]?.categoryId ?? '';
+    const firstReq = proposal.requirements[0];
+    if (
+      categoryId &&
+      availableOptions &&
+      !availableOptions.categories.some((categoryOption) => categoryOption.id === categoryId)
+    ) {
+      categoryId = '';
+    }
+    if (!categoryId && firstReq?.categorySlug && availableOptions) {
+      const catMatch = availableOptions.categories.find(
+        (c) => c.slug.toLowerCase() === firstReq.categorySlug.toLowerCase(),
+      );
+      if (catMatch) categoryId = catMatch.id;
+    }
+
+    const dates = proposal.dates.value;
+    const startDate = dates?.startDate || '';
+    let endDate = dates?.endDateExclusive
+      ? shiftDate(dates.endDateExclusive, -1)
+      : dates?.startDate || '';
+    if (startDate && endDate && endDate < startDate) {
+      endDate = startDate;
+    }
+    const withTimes = dates?.mode === 'TIME_RANGE';
+    const startTime = dates?.startAt ? dates.startAt.slice(11, 16) : '';
+    const endTime = dates?.endAt ? dates.endAt.slice(11, 16) : '';
+
+    setSelection((prev) => ({
+      ...prev,
+      destinationPublicId:
+        proposal.destination.value === null ? '' : destPublicId || prev.destinationPublicId,
+      categoryId: proposal.requirements.length === 0 ? '' : categoryId || prev.categoryId,
+      startDate: proposal.dates.value === null ? '' : startDate || prev.startDate,
+      endDate: proposal.dates.value === null ? '' : endDate || prev.endDate,
+      withTimes: proposal.dates.value === null ? false : startDate ? withTimes : prev.withTimes,
+      startTime: proposal.dates.value === null ? '' : startDate ? startTime : prev.startTime,
+      endTime: proposal.dates.value === null ? '' : startDate ? endTime : prev.endTime,
+      people: proposal.peopleCount.value != null ? proposal.peopleCount.value : prev.people,
+      requirements: proposal.requirements.length > 0 ? proposal.requirements : prev.requirements,
+    }));
+    setError(null);
+  }
+
   const destination = options?.destinations.find(
     (d) => d.publicId === selection.destinationPublicId,
   );
@@ -145,7 +268,7 @@ export function SearchIntentBar({
     },
     {
       key: 'dates',
-      label: fr ? 'Dates' : 'Dates',
+      label: fr ? 'Quand ?' : 'When?',
       value: dateSummary(selection, locale),
       selected: !!selection.startDate,
     },
@@ -161,12 +284,45 @@ export function SearchIntentBar({
   const titles: Record<SearchField, string> = {
     destination: fr ? 'Où allez-vous ?' : 'Where are you going?',
     equipment: fr ? 'De quoi avez-vous envie ?' : 'What are you looking for?',
-    dates: fr ? 'Quand partez-vous ?' : 'When are you going?',
+    dates: fr ? 'Quand souhaitez-vous louer ?' : 'When would you like to rent?',
     people: fr ? 'Vous serez combien ?' : 'How many people?',
   };
   const needsOptions = field === 'destination' || field === 'equipment';
+  const smartAssistant = (
+    <SmartSearchAssistant
+      locale={locale}
+      onApplyProposal={handleApplyAiProposal}
+      onConfirmSearch={() => {
+        if (!options) {
+          setField('destination');
+          setError(fr ? 'Choisissez votre destination.' : 'Choose your destination.');
+          return;
+        }
+        const result = buildSearchQuery(selection, options, locale);
+        if (!result.ok) {
+          setError(result.message);
+          setField(result.field);
+          return;
+        }
+        router.push(`/${locale}/search?${result.query}`);
+      }}
+    />
+  );
   return (
-    <div ref={anchor} className={styles.anchor}>
+    <div
+      ref={anchor}
+      className={[styles.anchor, pinned ? styles.anchorPinned : ''].filter(Boolean).join(' ')}
+      data-panel-open={field ? '' : undefined}
+      style={
+        {
+          '--search-bar-height': `${barHeight}px`,
+          '--search-lift': `${searchLift}px`,
+        } as CSSProperties
+      }
+    >
+      {middleSlot}
+      {!smartAssistantAfterSearch ? smartAssistant : null}
+
       <div
         ref={shell}
         className={[styles.shell, pinned ? styles.pinned : ''].join(' ')}
@@ -342,6 +498,9 @@ export function SearchIntentBar({
           </p>
         ) : null}
       </div>
+      {smartAssistantAfterSearch ? (
+        <div className={styles.assistantAfterSearch}>{smartAssistant}</div>
+      ) : null}
       <noscript>
         <a className={styles.fallback} href={`/${locale}/search`}>
           {fr ? 'Accéder à la recherche' : 'Go to search'}

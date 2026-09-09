@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import type { PublicUiLocale } from '@/lib/public-search';
 import { ClientShell } from '@/components/shells/client-shell';
+import { HomeNavigation } from '@/components/shells/client-shell/home-navigation';
 import { OfferPageView } from '@/features/offers';
 
 interface OfferPageProps {
@@ -58,10 +59,20 @@ export default async function PublicOfferPage({
   const otherLocale = fr ? 'en' : 'fr';
   const otherLocaleUrl =
     `/${otherLocale}/offers/${publicProductId}/${publicLocationId}` + (query ? `?${query}` : '');
+  const currentOfferUrl =
+    `/${locale}/offers/${publicProductId}/${publicLocationId}` + (query ? `?${query}` : '');
 
   return (
     <ClientShell
       localeOverride={locale}
+      header={
+        <HomeNavigation
+          locale={locale}
+          sticky={false}
+          alternateHref={otherLocaleUrl}
+          signInRedirectUrl={currentOfferUrl}
+        />
+      }
       alternateHref={otherLocaleUrl}
       alternateLabel={fr ? 'English' : 'Français'}
     >

@@ -82,3 +82,34 @@ mutation de stock, aucun provider IA et aucune donnée analytique ajoutée.
 La validation ne prouve pas la disponibilité d'une configuration de groupe.
 La composition, les prix de groupe et les filtres d'attributs restent les chantiers
 ultérieurs explicitement décrits ci-dessus.
+
+
+## Ajustements discrets — 2026-09-08
+
+La composition d’origine est conservée : assistant et barre de recherche de
+780 px maximum, pastilles compactes sur une ligne avec retour si nécessaire,
+titre en bas à gauche. Les adaptations se limitent au champ de description
+(nom accessible et largeur flexible), au retour des textes longs, au focus
+clavier et à l’empilement du champ et de son bouton sur petit écran.
+Les animations respectent la préférence de mouvement réduit.
+
+## Filtre Quand — 2026-09-09
+
+En-tête visible, fermeture à droite, corps défilant et récapitulatif avec
+« Appliquer » toujours accessible. Le panneau passe en plein écran sur mobile.
+« Moins d’un jour » affiche un mois et les deux horaires à renseigner, sans
+horaire présumé ; le choix d’une date fixe début et fin au même jour.
+« Un jour ou plus » affiche deux mois sur ordinateur, un sur mobile, avec
+sélection inclusive du premier et du dernier jour. Les conversions serveur
+existantes sont conservées. Le champ vide indique « Ajouter des dates ».
+La flexibilité est repliée dans un menu : les options ± jours, auparavant
+limitées à un état local sans effet sur la requête, restent visibles mais
+désactivées et marquées « bientôt » en attendant leur prise en charge réelle.
+
+Sur ordinateur, ouvrir l’un des filtres « Destination », « Équipement »,
+« Quand » ou « Personnes » remonte le titre et la barre de recherche en 440 ms
+sous l’en-tête ; la fermeture restaure leur position. L’espace du panneau est
+remesuré pendant l’animation. Les horaires et la flexibilité sont placés à côté
+du calendrier court pour limiter la hauteur nécessaire. Le focus initial ne
+provoque aucun scroll de page. Le mode mobile plein écran reste inchangé ; la
+préférence de mouvement réduit désactive la transition.

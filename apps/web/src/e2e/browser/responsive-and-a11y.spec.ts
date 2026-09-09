@@ -16,6 +16,45 @@ async function waitForClientHydration(page: Page): Promise<void> {
   );
 }
 
+async function chooseFutureDateRange(page: Page): Promise<{
+  start: string;
+  endExclusive: string;
+}> {
+  const dates = await page.evaluate(() => {
+    const toIso = (date: Date) =>
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const start = new Date();
+    start.setHours(12, 0, 0, 0);
+    start.setDate(start.getDate() + 2);
+    const endExclusive = new Date(start);
+    endExclusive.setDate(endExclusive.getDate() + 2);
+    return { start: toIso(start), endExclusive: toIso(endExclusive) };
+  });
+
+  await page.getByRole('button', { name: 'Un jour ou plus', exact: true }).click();
+
+  const nextMonthButton = page.getByRole('button', { name: 'Mois suivant', exact: true });
+  const startDay = page.locator(`[data-date="${dates.start}"]`);
+  if (!(await startDay.isVisible())) await nextMonthButton.click();
+  await expect(startDay).toBeVisible();
+  await startDay.click();
+
+  const endDate = new Date(`${dates.endExclusive}T12:00:00`);
+  endDate.setDate(endDate.getDate() - 1);
+  const end = toIsoDate(endDate);
+  const endDay = page.locator(`[data-date="${end}"]`);
+  if (!(await endDay.isVisible())) await nextMonthButton.click();
+  await expect(endDay).toBeVisible();
+  await endDay.click();
+
+  await page.getByRole('button', { name: 'Appliquer', exact: true }).click();
+  return dates;
+}
+
+function toIsoDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
 async function expectNoGlobalHorizontalOverflow(page: Page): Promise<void> {
   const overflow = await page.evaluate(() => ({
     scrollWidth: document.documentElement.scrollWidth,
@@ -42,7 +81,7 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
     await waitForClientHydration(page);
 
     await expect(
-      page.getByRole('heading', { name: 'Votre équipement vous attend.' }),
+      page.getByRole('heading', { name: /Louez votre équipement,.*là où vous partez\./ }),
     ).toBeVisible();
 
     const header = page.getByRole('banner');
@@ -90,15 +129,8 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
 
     const equipmentButton = searchForm.getByRole('button', { name: /Équipement/ });
     await expect(equipmentButton).toContainText('Équipement');
-    await page.getByRole('button', { name: 'Tous les équipements' }).click();
-
-    const searchStartDate = page.getByLabel('Début');
-    const searchEndDate = page.getByLabel('Dernier jour');
-    await expect(searchStartDate).toBeVisible();
-    await expect(searchEndDate).toBeVisible();
-    await searchStartDate.fill('2030-06-10');
-    await searchEndDate.fill('2030-06-11');
-    await page.getByRole('button', { name: 'Valider les dates' }).click();
+    await page.getByRole('button', { name: 'Kayak', exact: true }).click();
+    const rentalDates = await chooseFutureDateRange(page);
 
     const submitButton = searchForm.getByRole('button', { name: 'Rechercher' });
     await expect(submitButton).toBeVisible();
@@ -124,8 +156,8 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
     const endDate = page.getByLabel('Date de fin (exclus)');
     await expect(startDate).toBeVisible();
     await expect(endDate).toBeVisible();
-    await startDate.fill('2030-06-10');
-    await endDate.fill('2030-06-11');
+    await startDate.fill(rentalDates.start);
+    await endDate.fill(rentalDates.endExclusive);
 
     const hourlyButton = page.getByRole('button', { name: 'Par heure' });
     await hourlyButton.focus();
@@ -134,8 +166,8 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
     const endTime = page.getByLabel('Date et heure de fin');
     await expect(startTime).toBeVisible();
     await expect(endTime).toBeVisible();
-    await startTime.fill('2030-06-10T10:00');
-    await endTime.fill('2030-06-10T11:00');
+    await startTime.fill(`${rentalDates.start}T10:00`);
+    await endTime.fill(`${rentalDates.start}T11:00`);
 
     const reserveButton = page.getByRole('button', { name: 'Réserver' });
     await expect(reserveButton).toBeVisible();
@@ -179,13 +211,13 @@ test.describe('Real Browser Responsive & Accessibility Matrix', () => {
     await waitForClientHydration(page);
     await expectNoGlobalHorizontalOverflow(page);
 
-    const openButton = page.getByRole('button', { name: /Commencer par la vue profil/ });
+    const openButton = page.getByRole('button', { name: /Prendre cette photo/ });
     await expect(openButton).toBeVisible();
     await expectReasonableTouchTarget(openButton, 'CTA Photo Coach');
     await openButton.focus();
     await page.keyboard.press('Space');
 
-    const dialog = page.getByRole('dialog', { name: /Photo Coach Uttily.*Profil Hero/ });
+    const dialog = page.getByRole('dialog', { name: /Photo Coach Uttily.*Vue de profil/ });
     await expect(dialog).toBeVisible();
     await expect(dialog).toHaveAttribute('aria-modal', 'true');
 

@@ -5,6 +5,8 @@
   display: flex;
   flex-direction: column;
   gap: 2rem;
+  font-family: var(--ut-font-body);
+  color: var(--ut-color-ink);
 }
 
 .sections {
@@ -18,6 +20,10 @@
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  background: var(--ut-color-surface);
+  border: var(--ut-border-thin);
+  border-radius: var(--ut-radius-lg);
+  box-shadow: var(--ut-shadow-sm);
 }
 
 .cardHeader {
@@ -32,23 +38,28 @@
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 9999px;
-  background-color: var(--color-surface-subtle, #f1f5f9);
-  color: var(--color-text-primary, #0f172a);
+  border-radius: var(--ut-radius-pill);
+  background-color: var(--ut-color-surface-soft);
+  color: var(--ut-color-ink-strong);
   flex-shrink: 0;
 }
 
 .cardTitle {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--color-text-primary, #0f172a);
+  font-family: var(--ut-font-display);
+  font-size: var(--ut-text-title-sm);
+  font-weight: var(--ut-weight-semibold);
+  letter-spacing: var(--ut-tracking-heading);
+  line-height: var(--ut-leading-heading);
+  color: var(--ut-color-ink-strong);
 }
 
 .cardSubtitle {
   margin: 0.25rem 0 0;
-  font-size: 0.875rem;
-  color: var(--color-text-secondary, #64748b);
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-sm);
+  color: var(--ut-color-ink-muted);
+  line-height: var(--ut-leading-ui);
 }
 
 .exportGrid {
@@ -68,24 +79,27 @@
   flex-direction: column;
   justify-content: space-between;
   padding: 1.25rem;
-  background-color: var(--color-surface-subtle, #f8fafc);
-  border: 1px solid var(--color-border-subtle, #e2e8f0);
-  border-radius: 0.75rem;
+  background-color: var(--ut-color-surface-soft);
+  border: var(--ut-border-thin);
+  border-radius: var(--ut-radius-md);
   gap: 1rem;
 }
 
 .exportItem h3 {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--color-text-primary, #0f172a);
+  font-family: var(--ut-font-display);
+  font-size: var(--ut-text-md);
+  font-weight: var(--ut-weight-semibold);
+  letter-spacing: var(--ut-tracking-heading);
+  color: var(--ut-color-ink-strong);
 }
 
 .exportItem p {
   margin: 0;
-  font-size: 0.875rem;
-  color: var(--color-text-secondary, #64748b);
-  line-height: 1.4;
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-sm);
+  color: var(--ut-color-ink-muted);
+  line-height: var(--ut-leading-body);
 }
 
 .buttonPrimary,
@@ -95,34 +109,36 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.625rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  border-radius: 0.5rem;
+  font-family: var(--ut-font-ui);
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-action);
+  letter-spacing: var(--ut-tracking-label);
+  border-radius: var(--ut-radius-md);
   text-decoration: none;
   cursor: pointer;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color var(--ut-motion-fast) var(--ut-ease-standard),
+    border-color var(--ut-motion-fast) var(--ut-ease-standard);
 }
 
 .buttonPrimary {
-  background-color: var(--color-brand-primary, #0f172a);
-  color: #ffffff;
+  background-color: var(--ut-color-primary);
+  color: var(--ut-color-ink-on-dark);
   border: 1px solid transparent;
 }
 
 .buttonPrimary:hover {
-  background-color: var(--color-brand-primary-hover, #1e293b);
+  background-color: var(--ut-color-primary-strong);
 }
 
 .buttonSecondary {
-  background-color: #ffffff;
-  color: var(--color-text-primary, #0f172a);
-  border: 1px solid var(--color-border-strong, #cbd5e1);
+  background-color: var(--ut-color-surface);
+  color: var(--ut-color-ink-strong);
+  border: var(--ut-border-control);
 }
 
 .buttonSecondary:hover {
-  background-color: var(--color-surface-subtle, #f8fafc);
+  background-color: var(--ut-color-surface-soft);
 }
 
 .buttonSubmit {
@@ -131,15 +147,23 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  border-radius: 0.5rem;
-  background-color: var(--color-brand-primary, #0f172a);
-  color: #ffffff;
+  font-family: var(--ut-font-ui);
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-action);
+  letter-spacing: var(--ut-tracking-label);
+  border-radius: var(--ut-radius-md);
+  background-color: var(--ut-color-primary);
+  color: var(--ut-color-ink-on-dark);
   border: none;
   cursor: pointer;
   align-self: flex-start;
-  transition: opacity 0.15s ease;
+  transition:
+    background-color var(--ut-motion-fast) var(--ut-ease-standard),
+    opacity var(--ut-motion-fast) var(--ut-ease-standard);
+}
+
+.buttonSubmit:hover:not(:disabled) {
+  background-color: var(--ut-color-primary-strong);
 }
 
 .buttonSubmit:disabled {
@@ -160,36 +184,39 @@
 }
 
 .label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--color-text-primary, #0f172a);
+  font-family: var(--ut-font-ui);
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  letter-spacing: var(--ut-tracking-label);
+  color: var(--ut-color-ink-strong);
 }
 
 .select,
 .textarea {
   width: 100%;
   padding: 0.625rem 0.75rem;
-  font-size: 0.875rem;
-  border: 1px solid var(--color-border-strong, #cbd5e1);
-  border-radius: 0.5rem;
-  background-color: #ffffff;
-  color: var(--color-text-primary, #0f172a);
-  font-family: inherit;
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-control);
+  border: var(--ut-border-control);
+  border-radius: var(--ut-radius-md);
+  background-color: var(--ut-color-surface);
+  color: var(--ut-color-ink-strong);
 }
 
 .select:focus,
 .textarea:focus {
-  outline: 2px solid var(--color-brand-primary, #0f172a);
+  outline: 2px solid var(--ut-color-primary);
   outline-offset: 1px;
 }
 
 .noticeBox {
   padding: 1rem;
-  background-color: var(--color-surface-subtle, #f8fafc);
-  border-left: 3px solid var(--color-brand-primary, #0f172a);
-  border-radius: 0.375rem;
-  font-size: 0.8125rem;
-  color: var(--color-text-secondary, #475569);
+  background-color: var(--ut-color-surface-soft);
+  border-left: 3px solid var(--ut-color-primary);
+  border-radius: var(--ut-radius-sm);
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-caption);
+  color: var(--ut-color-ink-muted);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -197,7 +224,7 @@
 
 .noticeBox p {
   margin: 0;
-  line-height: 1.45;
+  line-height: var(--ut-leading-body);
 }
 
 .alertSuccess,
@@ -206,20 +233,21 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.875rem 1rem;
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
+  border-radius: var(--ut-radius-md);
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-sm);
 }
 
 .alertSuccess {
-  background-color: #f0fdf4;
-  color: #166534;
-  border: 1px solid #bbf7d0;
+  background-color: var(--ut-color-success-soft);
+  color: var(--ut-color-success-strong);
+  border: 1px solid var(--ut-color-success);
 }
 
 .alertError {
-  background-color: #fef2f2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
+  background-color: var(--ut-color-danger-soft);
+  color: var(--ut-color-danger);
+  border: 1px solid var(--ut-color-danger-soft);
 }
 
 .tableWrapper {
@@ -230,37 +258,43 @@
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 0.875rem;
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-sm);
 }
 
 .table th {
   padding: 0.75rem 1rem;
-  border-bottom: 2px solid var(--color-border-subtle, #e2e8f0);
-  font-weight: 600;
-  color: var(--color-text-secondary, #64748b);
+  border-bottom: 2px solid var(--ut-color-border);
+  font-family: var(--ut-font-ui);
+  font-weight: var(--ut-weight-semibold);
+  letter-spacing: var(--ut-tracking-label);
+  color: var(--ut-color-ink-muted);
 }
 
 .table td {
   padding: 0.875rem 1rem;
-  border-bottom: 1px solid var(--color-border-subtle, #e2e8f0);
+  border-bottom: var(--ut-border-thin);
   vertical-align: middle;
+  font-variant-numeric: var(--ut-numerals);
 }
 
 .refCode {
   display: block;
-  font-family: monospace;
-  font-size: 0.75rem;
-  color: var(--color-text-secondary, #94a3b8);
+  font-family: var(--ut-font-sans);
+  font-size: var(--ut-text-xs);
+  color: var(--ut-color-ink-muted);
   margin-top: 0.125rem;
+  font-variant-numeric: var(--ut-numerals);
 }
 
 .transparencyContent {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  font-size: 0.875rem;
-  color: var(--color-text-secondary, #475569);
-  line-height: 1.5;
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-sm);
+  color: var(--ut-color-ink-muted);
+  line-height: var(--ut-leading-body);
 }
 
 .transparencyContent p {
@@ -268,20 +302,23 @@
 }
 
 .link {
-  color: var(--color-brand-primary, #0f172a);
-  font-weight: 500;
+  color: var(--ut-color-primary);
+  font-family: var(--ut-font-ui);
+  font-weight: var(--ut-weight-medium);
+  letter-spacing: var(--ut-tracking-label);
   text-decoration: underline;
 }
 
 /* Danger Zone - Account Erasure (Art. 17) */
 .dangerCard {
-  border: 1px solid #fecaca;
-  background-color: #fffaf0;
+  border: 1px solid var(--ut-color-danger-soft);
+  background-color: var(--ut-color-surface);
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  border-radius: 0.75rem;
+  border-radius: var(--ut-radius-lg);
+  box-shadow: var(--ut-shadow-sm);
 }
 
 .dangerIconCircle {
@@ -290,41 +327,47 @@
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 9999px;
-  background-color: #fee2e2;
-  color: #dc2626;
+  border-radius: var(--ut-radius-pill);
+  background-color: var(--ut-color-danger-soft);
+  color: var(--ut-color-danger);
   flex-shrink: 0;
 }
 
 .dangerCardTitle {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #991b1b;
+  font-family: var(--ut-font-display);
+  font-size: var(--ut-text-title-sm);
+  font-weight: var(--ut-weight-semibold);
+  letter-spacing: var(--ut-tracking-heading);
+  line-height: var(--ut-leading-heading);
+  color: var(--ut-color-danger);
 }
 
 .dangerCardSubtitle {
   margin: 0.25rem 0 0;
-  font-size: 0.875rem;
-  color: #7f1d1d;
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-sm);
+  color: var(--ut-color-ink-muted);
 }
 
 .dangerContent {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  font-size: 0.875rem;
-  color: #374151;
-  line-height: 1.5;
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-sm);
+  color: var(--ut-color-ink);
+  line-height: var(--ut-leading-body);
 }
 
 .dangerNotice {
   padding: 0.875rem 1rem;
-  background-color: #fef2f2;
-  border-left: 3px solid #dc2626;
-  border-radius: 0.375rem;
-  font-size: 0.8125rem;
-  color: #7f1d1d;
+  background-color: var(--ut-color-danger-soft);
+  border-left: 3px solid var(--ut-color-danger);
+  border-radius: var(--ut-radius-sm);
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-caption);
+  color: var(--ut-color-danger);
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
@@ -332,7 +375,7 @@
 
 .dangerNotice p {
   margin: 0;
-  line-height: 1.45;
+  line-height: var(--ut-leading-body);
 }
 
 .buttonDanger {
@@ -341,21 +384,23 @@
   justify-content: center;
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  border-radius: 0.5rem;
-  background-color: #dc2626;
-  color: #ffffff;
+  font-family: var(--ut-font-ui);
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-action);
+  letter-spacing: var(--ut-tracking-label);
+  border-radius: var(--ut-radius-md);
+  background-color: var(--ut-color-danger);
+  color: var(--ut-color-ink-on-dark);
   border: none;
   cursor: pointer;
   align-self: flex-start;
   transition:
-    background-color 0.15s ease,
-    opacity 0.15s ease;
+    background-color var(--ut-motion-fast) var(--ut-ease-standard),
+    opacity var(--ut-motion-fast) var(--ut-ease-standard);
 }
 
 .buttonDanger:hover {
-  background-color: #b91c1c;
+  filter: brightness(0.9);
 }
 
 .buttonDanger:disabled {
@@ -366,42 +411,44 @@
 .modalOverlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(15, 23, 42, 0.6);
+  background-color: var(--ut-color-overlay-dark);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: var(--ut-z-dialog);
   padding: 1rem;
 }
 
 .modalContent {
-  background-color: #ffffff;
-  border-radius: 0.75rem;
+  background-color: var(--ut-color-surface);
+  border-radius: var(--ut-radius-lg);
   max-width: 540px;
   width: 100%;
   padding: 1.75rem;
-  box-shadow:
-    0 20px 25px -5px rgba(0, 0, 0, 0.15),
-    0 10px 10px -5px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--ut-shadow-lg);
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  border: 1px solid #e2e8f0;
+  border: var(--ut-border-thin);
 }
 
 .modalTitle {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #991b1b;
+  font-family: var(--ut-font-display);
+  font-size: var(--ut-text-title-sm);
+  font-weight: var(--ut-weight-bold);
+  letter-spacing: var(--ut-tracking-heading);
+  line-height: var(--ut-leading-heading);
+  color: var(--ut-color-danger);
 }
 
 .modalDescription {
   margin: 0;
-  font-size: 0.875rem;
-  color: #475569;
-  line-height: 1.5;
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-sm);
+  color: var(--ut-color-ink-muted);
+  line-height: var(--ut-leading-body);
 }
 
 .confirmInputGroup {
@@ -411,9 +458,11 @@
 }
 
 .confirmInputGroup label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #1e293b;
+  font-family: var(--ut-font-ui);
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  letter-spacing: var(--ut-tracking-label);
+  color: var(--ut-color-ink-strong);
 }
 
 .modalActions {
@@ -424,11 +473,11 @@
 }
 
 .sealedSuccessBox {
-  background-color: #f0fdf4;
-  border: 1px solid #86efac;
-  border-radius: 0.5rem;
+  background-color: var(--ut-color-success-soft);
+  border: 1px solid var(--ut-color-success);
+  border-radius: var(--ut-radius-md);
   padding: 1.25rem;
-  color: #14532d;
+  color: var(--ut-color-success-strong);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -436,14 +485,18 @@
 
 .sealedSuccessTitle {
   margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #15803d;
+  font-family: var(--ut-font-display);
+  font-size: var(--ut-text-title-sm);
+  font-weight: var(--ut-weight-bold);
+  letter-spacing: var(--ut-tracking-heading);
+  color: var(--ut-color-success-strong);
 }
 
 .sealedDatesList {
   margin: 0;
   padding-left: 1.25rem;
-  font-size: 0.875rem;
-  line-height: 1.6;
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-sm);
+  line-height: var(--ut-leading-relaxed);
+  font-variant-numeric: var(--ut-numerals);
 }

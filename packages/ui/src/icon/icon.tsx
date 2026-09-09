@@ -5,10 +5,12 @@ import * as React from 'react';
 
 export type IconName =
   | 'arrow-right'
+  | 'arrow-up-right'
   | 'calendar'
   | 'check'
   | 'chevron-down'
   | 'globe'
+  | 'heart'
   | 'home'
   | 'menu'
   | 'pin'
@@ -26,6 +28,12 @@ const iconPaths: Record<IconName, ReactNode> = {
       <path d="m13 5 7 7-7 7" />
     </>
   ),
+  'arrow-up-right': (
+    <>
+      <path d="M7 17 17 7" />
+      <path d="M7 7h10v10" />
+    </>
+  ),
   calendar: (
     <>
       <rect x="3" y="4" width="18" height="17" rx="2" />
@@ -40,6 +48,9 @@ const iconPaths: Record<IconName, ReactNode> = {
       <ellipse cx="12" cy="12" rx="4" ry="9" />
       <path d="M3 12h18" />
     </>
+  ),
+  heart: (
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78Z" />
   ),
   home: (
     <>

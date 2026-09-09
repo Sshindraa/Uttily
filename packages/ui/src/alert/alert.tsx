@@ -17,10 +17,27 @@ export function Alert({
   return (
     <div
       role={tone === 'danger' ? 'alert' : 'status'}
-      style={{ ...toneStyles, borderRadius: 'var(--ut-radius-md)', padding: 'var(--ut-space-4)' }}
+      style={{
+        ...toneStyles,
+        borderRadius: 'var(--ut-radius-md)',
+        fontFamily: 'var(--ut-font-body)',
+        fontSize: 'var(--ut-text-sm)',
+        lineHeight: 'var(--ut-leading-body)',
+        padding: 'var(--ut-space-4)',
+      }}
     >
       {title && (
-        <strong style={{ display: 'block', marginBottom: 'var(--ut-space-1)' }}>{title}</strong>
+        <strong
+          style={{
+            display: 'block',
+            fontFamily: 'var(--ut-font-ui)',
+            fontWeight: 'var(--ut-weight-bold)',
+            letterSpacing: 'var(--ut-tracking-label)',
+            marginBottom: 'var(--ut-space-1)',
+          }}
+        >
+          {title}
+        </strong>
       )}
       {children}
     </div>

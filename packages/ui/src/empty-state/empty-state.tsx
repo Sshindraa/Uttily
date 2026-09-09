@@ -22,12 +22,25 @@ export function EmptyState({
         textAlign: 'center',
       }}
     >
-      <h2 style={{ color: 'var(--ut-color-ink-strong)', fontSize: 'var(--ut-text-lg)', margin: 0 }}>
+      <h2
+        style={{
+          color: 'var(--ut-color-ink-strong)',
+          fontFamily: 'var(--ut-font-display)',
+          fontSize: 'var(--ut-text-title-sm)',
+          fontWeight: 'var(--ut-weight-heading)',
+          letterSpacing: 'var(--ut-tracking-heading)',
+          lineHeight: 'var(--ut-leading-heading)',
+          margin: 0,
+        }}
+      >
         {title}
       </h2>
       <p
         style={{
           color: 'var(--ut-color-ink-muted)',
+          fontFamily: 'var(--ut-font-body)',
+          fontSize: 'var(--ut-text-md)',
+          lineHeight: 'var(--ut-leading-body)',
           margin: 'var(--ut-space-2) auto var(--ut-space-5)',
           maxWidth: '36rem',
         }}

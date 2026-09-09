@@ -1,0 +1,68 @@
+.filterBarContainer {
+  position: relative;
+  width: 100%;
+  border-bottom: var(--ut-border-thin);
+  background: var(--ut-color-surface);
+  padding: var(--ut-space-3) 0;
+  z-index: 10;
+}
+
+.scrollWrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--ut-space-2);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: var(--ut-space-1) var(--ut-space-6);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollWrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ut-space-2);
+  padding: 0.55rem 1rem;
+  border-radius: var(--ut-radius-pill);
+  border: var(--ut-border-thin);
+  background: var(--ut-color-surface);
+  color: var(--ut-color-ink-strong);
+  font-family: var(--ut-font-ui);
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-medium);
+  letter-spacing: var(--ut-tracking-label);
+  line-height: var(--ut-leading-ui);
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background var(--ut-motion-fast) var(--ut-ease-standard),
+    border-color var(--ut-motion-fast) var(--ut-ease-standard),
+    color var(--ut-motion-fast) var(--ut-ease-standard);
+  flex-shrink: 0;
+}
+
+.chip:hover {
+  border-color: var(--ut-color-border-strong);
+  background: var(--ut-color-surface-soft);
+  color: var(--ut-color-ink-strong);
+}
+
+.chipActive {
+  background: var(--ut-color-ink-strong) !important;
+  color: var(--ut-color-ink-on-dark) !important;
+  border-color: var(--ut-color-ink-strong) !important;
+  box-shadow: var(--ut-shadow-sm);
+}
+
+.chipIcon {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.chipLabel {
+  letter-spacing: var(--ut-tracking-label);
+}

@@ -19,9 +19,10 @@ export function Badge({
         ...badgeTones[tone],
         borderRadius: 'var(--ut-radius-pill)',
         display: 'inline-flex',
+        fontFamily: 'var(--ut-font-ui)',
         fontSize: 'var(--ut-text-xs)',
         fontWeight: 'var(--ut-weight-bold)',
-        letterSpacing: '0.02em',
+        letterSpacing: 'var(--ut-tracking-label)',
         padding: 'var(--ut-space-1) var(--ut-space-3)',
       }}
     >

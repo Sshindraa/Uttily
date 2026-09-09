@@ -13,6 +13,7 @@
   min-width: 0;
   color: var(--ink);
   background: var(--paper);
+  font-family: var(--ut-font-body);
 }
 
 .container {
@@ -31,7 +32,8 @@
   gap: 0.5rem;
   color: var(--muted);
   text-decoration: none;
-  font-size: 0.95rem;
+  font-family: var(--ut-font-ui);
+  font-size: var(--ut-text-sm);
 }
 
 .backLink:hover {
@@ -76,9 +78,10 @@
 
 .eyebrow {
   color: var(--accent);
+  font-family: var(--ut-font-ui);
   font-weight: var(--ut-weight-bold);
-  font-size: 0.85rem;
-  letter-spacing: 0.05em;
+  font-size: var(--ut-text-xs);
+  letter-spacing: var(--ut-tracking-eyebrow);
   text-transform: uppercase;
   margin: 0 0 0.5rem;
 }
@@ -103,31 +106,36 @@
   padding: 0.25rem 0.6rem;
   color: var(--ut-color-success-strong);
   background: var(--ut-color-success-soft);
-  font-size: 0.75rem;
+  font-family: var(--ut-font-ui);
+  font-size: var(--ut-text-xs);
   font-weight: var(--ut-weight-bold);
-  letter-spacing: 0.01em;
+  letter-spacing: var(--ut-tracking-label);
 }
 
 .productTitle {
-  font-size: 2rem;
+  font-family: var(--ut-font-display);
+  font-size: var(--ut-text-title-lg);
   font-weight: var(--ut-weight-bold);
-  letter-spacing: -0.03em;
+  letter-spacing: var(--ut-tracking-heading);
+  line-height: var(--ut-leading-heading);
   margin: 0 0 1rem;
   color: var(--ink);
 }
 
 .priceHint {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-sm);
   line-height: 1.4;
   margin: -0.75rem 0 1rem;
 }
 
 .productDescription {
   color: var(--muted);
-  line-height: 1.6;
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-md);
+  line-height: var(--ut-leading-copy);
   margin: 0 0 1.5rem;
-  font-size: 1.05rem;
   white-space: pre-line;
 }
 
@@ -156,13 +164,19 @@
 }
 
 .sectionTitle {
-  font-size: 1.15rem;
-  font-weight: var(--ut-weight-bold);
+  font-family: var(--ut-font-display);
+  font-size: var(--ut-text-title-sm);
+  font-weight: var(--ut-weight-semibold);
+  letter-spacing: var(--ut-tracking-heading);
+  line-height: var(--ut-leading-heading);
+  color: var(--ink);
   margin: 0 0 1rem;
 }
 
 .infoText {
   color: var(--muted);
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-sm);
   line-height: 1.5;
   margin: 0 0 0.75rem;
 }
@@ -180,7 +194,8 @@
   background: var(--paper);
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
-  font-size: 0.85rem;
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-xs);
   display: flex;
   flex-direction: column;
 }
@@ -214,8 +229,12 @@
 }
 
 .bookingCardTitle {
-  font-size: 1.35rem;
-  font-weight: var(--ut-weight-bold);
+  font-family: var(--ut-font-display);
+  font-size: var(--ut-text-title-md);
+  font-weight: var(--ut-weight-semibold);
+  letter-spacing: var(--ut-tracking-heading);
+  line-height: var(--ut-leading-heading);
+  color: var(--ink);
   margin: 0 0 1.25rem;
 }
 
@@ -229,8 +248,10 @@
 }
 
 .label {
-  font-size: 0.9rem;
-  font-weight: var(--ut-weight-bold);
+  font-family: var(--ut-font-ui);
+  font-size: var(--ut-text-sm);
+  font-weight: var(--ut-weight-semibold);
+  letter-spacing: var(--ut-tracking-label);
   color: var(--ink);
 }
 
@@ -327,9 +348,11 @@
   background: var(--accent);
   color: var(--ut-color-ink-on-dark);
   border: none;
-  border-radius: 0.5rem;
-  font-size: 1.1rem;
-  font-weight: var(--ut-weight-bold);
+  border-radius: var(--ut-radius-md);
+  font-family: var(--ut-font-ui);
+  font-size: var(--ut-text-md);
+  font-weight: var(--ut-weight-action);
+  letter-spacing: var(--ut-tracking-label);
   cursor: pointer;
   transition:
     background-color 0.15s,
@@ -350,11 +373,12 @@
 }
 
 .guaranteeNote {
-  font-size: 0.85rem;
+  font-family: var(--ut-font-body);
+  font-size: var(--ut-text-sm);
   color: var(--muted);
   text-align: center;
   margin-top: 1rem;
-  line-height: 1.4;
+  line-height: var(--ut-leading-body);
 }
 
 @media (max-width: 640px) {

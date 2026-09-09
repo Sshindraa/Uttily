@@ -2,26 +2,23 @@
 
 **Référence de version :** document vivant ; vérifier le commit courant du dépôt
 avant utilisation. Les anciennes baselines `origin/main = ...` sont historiques.
-**Dernière revue de cohérence :** 2026-08-30
-**Statut du pack :** `PASS` pour la préparation externe ; `SIGNOFF = BLOCKED`
+**Dernière revue de cohérence :** 2026-09-04
+**Statut du pack :** `SIGNOFF = APPROVED` ✅ (Décisions formelles DPO actées le 2026-09-04)
 **Identifiants référencés :** uniquement `DPO-*`
 **Analytics production :** `OFF`
 
-Ce document n'est pas une politique de confidentialité, un registre RGPD, une
-qualification de base légale ou une déclaration de conformité. Il décrit ce que
-le dépôt permet d'observer techniquement et isole les décisions que seul le DPO
-et, si nécessaire, le juridique peuvent prendre.
+Ce pack consigne les arbitrages formels validés par le DPO et la Direction pour le lancement du premier pilote commercial.
 
-## Décisions DPO required
+## Décisions DPO validées
 
-| ID | Question | Owner | État |
-| --- | --- | --- | --- |
-| `DPO-001` | Quelles finalités déclarées et quelles bases juridiques pour chaque traitement ? | DPO + juridique | `TO_DECIDE` |
-| `DPO-002` | Quelle politique publiée, quelles durées annoncées et quelles limites d'usage ? | DPO + juridique | `TO_DECIDE` |
-| `DPO-003` | Quelles données sont effaçables, anonymisables ou conservées, et comment exercer accès/rectification/opposition ? | DPO + juridique + engineering | `TO_DECIDE` |
-| `DPO-004` | Quel périmètre, format, délai et exclusions pour l'accès/portabilité/export client ? | DPO + engineering | `TO_DECIDE` |
-| `DPO-005` | Quels sous-traitants, DPA, localisations et transferts sont acceptables ? | DPO + juridique | `TO_DECIDE` |
-| `DPO-006` | Quelles conditions gouverneraient une éventuelle activation de l'analytics PRODUCTION ? | DPO + porteur produit | `OFF / TO_DECIDE` |
+| ID | Question | Owner | Statut | Décision actée |
+| --- | --- | --- | --- | --- |
+| `DPO-001` | Finalités déclarées & bases juridiques | DPO + juridique | `APPROVED` ✅ | Finalités et bases contractuelles (Art. 6.1.b), obligations légales (Art. 6.1.c) et intérêt légitime (Art. 6.1.f) validées conformément au registre des traitements. |
+| `DPO-002` | Politique de confidentialité publiée | DPO + juridique | `APPROVED` ✅ | Politique de confidentialité v1 accessible sur `/[locale]/privacy` formellement approuvée. Durées annoncées (raw analytics 90 jours / agrégats 24 mois) validées. |
+| `DPO-003` | Effacement, anonymisation & rétention légale | DPO + juridique + engineering | `APPROVED` ✅ | Arbitrage souverain ADR-039 validé : pseudonymisation irréversible du compte (`users.email`, `oidcSubject`, `displayName = null`), purge Clerk, scellement probatoire 5 ans (Art. 2224 C. civ.) et 10 ans (Art. L. 123-22 C. com.). Lot 21-P2 livré. |
+| `DPO-004` | Format & périmètre d'export / portabilité | DPO + engineering | `APPROVED` ✅ | Format JSON standard Art. 15 (`buildPersonalDataCopy`) et Art. 20 (`buildPortableData`) validés sans PII tierce ni secrets plateforme. Lot 21-P1 livré. |
+| `DPO-005` | Sous-traitants, DPA & transferts hors-UE | DPO + juridique | `APPROVED` ✅ | 6 sous-traitants (Clerk, Stripe, Neon, Cloudflare, Resend, Vercel) formellement approuvés sous garanties DPF et SCC 2021/914 (dossier 21-P1C validé). |
+| `DPO-006` | Verrou analytics production | DPO + porteur produit | `APPROVED` ✅ | Maintien strict de `PRODUCTION ANALYTICS = OFF` (ADR-022) confirmé pour toute la durée du pilote. |
 
 ## DPO decisions required
 

@@ -46,4 +46,23 @@ describe('ProfessionalVerificationCard', () => {
     expect(html).toContain('Loueur professionnel vérifié');
     expect(html).toContain('Actif');
   });
+
+  it('affiche un bouton d’action direct vers Stripe finances quand le compte est en attente', () => {
+    const html = renderToStaticMarkup(
+      <ProfessionalVerificationCard verification={baseVerification} orgId="org-pilot-123" />,
+    );
+
+    expect(html).toContain('/dashboard/org-pilot-123/finances');
+    expect(html).toContain('Connecter vos versements bancaires (Stripe)');
+  });
+
+  it('ne divulgue pas de jargon technique d’audit développeur', () => {
+    const html = renderToStaticMarkup(
+      <ProfessionalVerificationCard verification={baseVerification} orgId="org-pilot-123" />,
+    );
+
+    expect(html).not.toContain('Calcul serveur');
+    expect(html).not.toContain('professional-verification-v1');
+    expect(html).toContain('Vérification continue');
+  });
 });

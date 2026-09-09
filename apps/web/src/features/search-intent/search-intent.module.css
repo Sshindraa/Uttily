@@ -1,6 +1,15 @@
 .anchor {
   position: relative;
+  top: calc(-1 * var(--search-lift, 0px));
+  transition: top 440ms cubic-bezier(0.22, 1, 0.36, 1);
   width: 100%;
+  font-family: var(--ut-font-ui);
+}
+.anchorPinned {
+  padding-bottom: var(--search-bar-height, 66px);
+}
+.assistantAfterSearch {
+  margin-top: 14px;
 }
 .shell {
   position: relative;
@@ -9,7 +18,7 @@
   position: fixed;
   top: 12px;
   left: 50%;
-  width: min(1040px, calc(100vw - 96px));
+  width: min(780px, calc(100vw - 48px));
   transform: translateX(-50%);
   z-index: var(--ut-z-sticky);
 }
@@ -25,6 +34,7 @@
   background: var(--ut-color-surface);
   color: var(--ut-color-ink-strong);
   box-shadow: var(--ut-shadow-lg);
+  font-family: var(--ut-font-ui);
 }
 .field {
   position: relative;
@@ -91,7 +101,7 @@
   max-height: min(720px, var(--search-panel-space, calc(100dvh - 140px)));
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 20px;
+  padding: 16px;
   background: var(--ut-color-surface);
   color: var(--ut-color-ink-strong);
   border: 1px solid var(--ut-color-border);
@@ -106,25 +116,20 @@
   left: 18%;
   width: 560px;
 }
-.panel[data-field='dates'] {
-  left: 50%;
-  width: 720px;
-  transform: translateX(-50%);
-}
 .panel[data-field='people'] {
   right: 0;
   width: 360px;
 }
 .panelHeader {
   position: sticky;
-  top: -20px;
+  top: -16px;
   z-index: 1;
   background: var(--ut-color-surface);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 .panelHeader h2 {
   margin: 0;
@@ -156,7 +161,7 @@
   display: block;
   font-size: 12px;
   font-weight: var(--ut-weight-medium);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 .inputWithIcon {
   position: relative;
@@ -164,12 +169,13 @@
 .inputWithIcon > svg {
   position: absolute;
   left: 14px;
-  top: 15px;
+  top: 16px;
   color: var(--ut-color-ink-muted);
   pointer-events: none;
 }
 .inputWithIcon input {
   padding-left: 44px !important;
+  min-height: 52px !important;
   border-radius: var(--ut-radius-lg) !important;
   font-size: 14px;
 }
@@ -254,16 +260,46 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin: 12px 0;
+  margin: 10px 0;
+}
+.terrainFilters {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.terrainFilters::-webkit-scrollbar {
+  display: none;
+}
+.terrainFilter {
+  flex: 0 0 auto;
+  min-height: 32px !important;
+  padding: 0 12px !important;
+  border: 1px solid var(--ut-color-border) !important;
+  border-radius: var(--ut-radius-pill) !important;
+  color: var(--ut-color-ink-muted) !important;
+  font-size: 12px !important;
+  font-weight: var(--ut-weight-medium) !important;
+}
+.terrainFilter:hover,
+.terrainFilterActive {
+  background: var(--ut-color-surface-soft) !important;
+  border-color: var(--ut-color-primary) !important;
+  color: var(--ut-color-primary) !important;
 }
 .families {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
+  margin-top: 18px;
+}
+.familyHeading + .families {
+  margin-top: 0;
 }
 .family {
-  min-height: 112px !important;
-  padding: 12px 6px !important;
+  min-height: 104px !important;
+  padding: 8px !important;
   flex-direction: column;
   border: 1px solid var(--ut-color-border) !important;
   border-radius: var(--ut-radius-lg) !important;
@@ -277,7 +313,7 @@
 .familyIllustration {
   display: grid;
   place-items: center;
-  height: 40px;
+  height: 36px;
   color: var(--ut-color-primary);
 }
 .back {
@@ -285,17 +321,15 @@
   padding-inline: 0 !important;
 }
 .panelFooter {
-  position: sticky;
-  bottom: -20px;
-  z-index: 1;
+  position: static;
   background: var(--ut-color-surface);
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   border-top: 1px solid var(--ut-color-border);
-  margin-top: 18px;
-  padding-top: 14px;
+  margin-top: 14px;
+  padding-top: 12px;
 }
 .panelFooter > button {
   font-weight: var(--ut-weight-medium) !important;
@@ -323,12 +357,36 @@
   max-width: 100%;
   font-size: 14px;
 }
+.dateModeSwitch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: min(100%, 420px);
+  gap: 4px;
+  margin: 0 auto 18px;
+  padding: 4px;
+  border-radius: var(--ut-radius-pill);
+  background: var(--ut-color-surface-soft);
+}
+.dateModeButton {
+  min-height: 40px !important;
+  padding: 0 12px !important;
+  border-radius: var(--ut-radius-pill) !important;
+  color: var(--ut-color-ink-muted) !important;
+  font-size: 12px !important;
+  font-weight: var(--ut-weight-medium) !important;
+  white-space: nowrap;
+}
+.dateModeButtonActive {
+  background: var(--ut-color-surface) !important;
+  color: var(--ut-color-ink-strong) !important;
+  box-shadow: var(--ut-shadow-sm);
+}
 .calendarNavigation {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin: 16px 0 4px;
+  margin: 0 0 4px;
 }
 .calendarNavigation > span {
   font-size: 12px;
@@ -368,6 +426,11 @@
 }
 .day:hover {
   background: var(--ut-color-surface-soft) !important;
+}
+.day:disabled {
+  color: var(--ut-color-ink-muted) !important;
+  opacity: 0.42;
+  cursor: not-allowed;
 }
 .day[aria-current='date'] {
   text-decoration: underline;
@@ -467,9 +530,20 @@
   outline: 2px solid var(--ut-color-focus);
   outline-offset: 3px;
 }
+.shell input:focus,
+.shell input:focus-visible {
+  outline: none !important;
+  outline-offset: 0;
+  box-shadow: none;
+}
+.dateInputs input[type='date']:focus,
+.dateInputs input[type='date']:focus-visible {
+  border-color: var(--ut-color-primary) !important;
+  box-shadow: var(--ut-shadow-primary-ring) !important;
+}
 @media (max-width: 64rem) {
   .pinned {
-    width: calc(100vw - 48px);
+    width: min(780px, calc(100vw - 48px));
   }
   .field {
     padding-inline: 12px !important;
@@ -484,6 +558,8 @@
 @media (max-width: 48rem) {
   .pinned {
     width: calc(100vw - 32px);
+    left: 16px;
+    transform: none;
   }
   .bar {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -520,7 +596,7 @@
     max-width: none;
     max-height: calc(100dvh - 24px);
     transform: none;
-    padding: 18px;
+    padding: 16px;
   }
   .pinned .panel[data-field] {
     position: absolute;
@@ -557,10 +633,7 @@
     margin: 0;
   }
   .panelHeader {
-    top: -18px;
-  }
-  .panelFooter {
-    bottom: -18px;
+    top: -16px;
   }
   .inputWithIcon input {
     font-size: 16px;
@@ -574,6 +647,9 @@
   .families {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+  .flexibleMonths {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
   .day {
     min-height: 44px !important;
     height: 44px;
@@ -581,6 +657,9 @@
 }
 @media (max-width: 24rem) {
   .families {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .flexibleMonths {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .panelHeader h2 {
@@ -597,7 +676,229 @@
     padding-inline: 8px !important;
   }
 }
+
+/* Dates: fixed header and actions, with an independently scrollable calendar. */
+@media (min-width: 48.001rem) {
+  .datesBody:not(:has(.singleCalendar)) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 260px;
+    column-gap: 24px;
+  }
+  .datesBody:not(:has(.singleCalendar)) > .dateInstruction,
+  .datesBody > .calendarArea,
+  .datesBody:not(:has(.singleCalendar)) > .error {
+    grid-column: 1 / -1;
+  }
+  .datesBody:not(:has(.singleCalendar)) .dateOptions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .datesBody:not(:has(.singleCalendar)) .flexibilitySelect {
+    margin-top: 4px;
+    flex-wrap: nowrap;
+  }
+  .datesFooter .dateRecap {
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+  }
+  .datesBody:has(.singleCalendar) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 180px;
+    column-gap: 32px;
+  }
+  .datesBody:has(.singleCalendar) > .dateModeSwitch,
+  .datesBody:has(.singleCalendar) > .dateInstruction,
+  .datesBody:has(.singleCalendar) > .error {
+    grid-column: 1 / -1;
+  }
+  .datesBody .singleCalendar {
+    width: 100%;
+  }
+  .datesBody:has(.singleCalendar) .dateOptions {
+    padding-top: 12px;
+  }
+  .panel[data-field='dates'] .datesBody:has(.singleCalendar) .dateInputs {
+    grid-template-columns: 1fr;
+    margin-top: 0;
+  }
+  .datesBody:has(.singleCalendar) .flexibilitySelect {
+    justify-content: flex-start;
+  }
+}
+.panel[data-field='dates'] {
+  left: 50%;
+  width: 760px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  max-height: min(760px, var(--search-panel-space, calc(100dvh - 140px)));
+  overflow: hidden;
+  padding: 0;
+  border-radius: 24px;
+  box-shadow: 0 16px 48px rgb(24 46 51 / 16%);
+}
+.panel[data-field='dates'] .panelHeader {
+  position: static;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 20px 28px 12px;
+}
+.panel[data-field='dates'] .panelHeader h2 {
+  font-size: 20px;
+}
+.datesBody {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 32px 24px;
+}
+.panel[data-field='dates'] .dateModeSwitch {
+  width: min(100%, 360px);
+  margin: 0 auto 16px;
+  border-radius: 12px;
+}
+.panel[data-field='dates'] .dateModeButton {
+  min-height: 44px !important;
+  border-radius: 9px !important;
+  font-size: 13px !important;
+}
+.dateInstruction {
+  margin: 0 0 20px;
+  color: var(--ut-color-ink-muted);
+  font-size: 13px;
+  text-align: center;
+}
+.singleCalendar {
+  max-width: 352px;
+  margin-inline: auto;
+}
+.singleCalendar .calendars {
+  grid-template-columns: minmax(0, 1fr);
+}
+.panel[data-field='dates'] .calendarNavigation {
+  position: relative;
+  height: 0;
+  margin: 0;
+}
+.panel[data-field='dates'] .roundControl {
+  position: absolute;
+  top: 0;
+  font-size: 24px !important;
+}
+.panel[data-field='dates'] .roundControl:first-child {
+  left: 0;
+}
+.panel[data-field='dates'] .roundControl:last-child {
+  right: 0;
+}
+.panel[data-field='dates'] .monthTitle {
+  margin: 0 0 16px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+}
+.panel[data-field='dates'] .day {
+  min-height: 44px !important;
+  height: 44px;
+  font-size: 13px !important;
+}
+.panel[data-field='dates'] .dateInputs {
+  max-width: 352px;
+  margin: 24px auto 0;
+  gap: 16px;
+}
+.flexibilitySelect {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+  font-size: 13px;
+  color: var(--ut-color-ink-muted);
+}
+.flexibilitySelect select {
+  width: 180px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0 12px;
+  border: 1px solid var(--ut-color-border);
+  border-radius: 10px;
+  background: var(--ut-color-surface);
+  color: var(--ut-color-ink-strong);
+  font: inherit;
+}
+.panel[data-field='dates'] .datesFooter {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 16px 32px;
+}
+.dateRecap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: var(--ut-weight-medium);
+}
+.dateRecap > button {
+  min-height: 44px !important;
+  padding: 0 !important;
+  font-size: 12px !important;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.datesFooter .confirm {
+  min-height: 44px !important;
+  padding-inline: 24px !important;
+  border-radius: 12px !important;
+  background: var(--ut-color-primary) !important;
+  color: var(--ut-color-ink-on-dark) !important;
+}
+.datesFooter .confirm:hover {
+  background: var(--ut-color-primary-strong) !important;
+}
+@media (max-width: 48rem) {
+  .panel[data-field='dates'],
+  .pinned .panel[data-field='dates'] {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: 100dvh;
+    transform: none;
+    border-radius: 0;
+    padding: 0;
+  }
+  .panel[data-field='dates'] .panelHeader {
+    padding: max(16px, env(safe-area-inset-top)) 20px 16px;
+  }
+  .panel[data-field='dates'] .panelHeader h2 {
+    font-size: 18px;
+  }
+  .datesBody {
+    flex: 1;
+    padding: 8px 16px 24px;
+  }
+  .panel[data-field='dates'] .calendars {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .panel[data-field='dates'] .secondCalendar {
+    display: none;
+  }
+  .panel[data-field='dates'] .datesFooter {
+    padding: 16px 20px max(16px, env(safe-area-inset-bottom));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .anchor {
+    transition: none;
+  }
   .shell button {
     transition: none !important;
   }

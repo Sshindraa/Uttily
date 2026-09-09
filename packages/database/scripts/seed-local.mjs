@@ -23,6 +23,7 @@ const LOCAL_DEMO_DESTINATIONS = [
   {
     slug: 'annecy-dev',
     label: 'Annecy',
+    publicId: '2130abc1-8b69-42d8-b7d2-ac86064dd168',
     longitude: 6.1296,
     latitude: 45.8992,
     bbox: { south: 45.8, west: 5.99, north: 45.99, east: 6.27 },
@@ -121,11 +122,11 @@ async function ensureDestination(tx, destination) {
   if (existingRows.length === 0) {
     const insertedRows = await tx`
       INSERT INTO "destinations" (
-        "slug", "country_code", "place_type", "center",
+        "public_id", "slug", "country_code", "place_type", "center",
         "bbox_south", "bbox_west", "bbox_north", "bbox_east", "is_active"
       )
       VALUES (
-        ${destination.slug}, 'FR', 'CITY',
+        COALESCE(${destination.publicId ?? null}, gen_random_uuid()), ${destination.slug}, 'FR', 'CITY',
         ST_SetSRID(ST_MakePoint(${destination.longitude}, ${destination.latitude}), 4326),
         ${destination.bbox.south}, ${destination.bbox.west},
         ${destination.bbox.north}, ${destination.bbox.east}, false

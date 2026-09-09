@@ -103,3 +103,64 @@
   font-weight: var(--ut-weight-medium);
   border: 1px solid var(--ut-color-danger-border);
 }
+
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  gap: 16px;
+  text-align: center;
+}
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid var(--ut-color-border);
+  border-top-color: var(--ut-color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingText {
+  font-size: 1rem;
+  font-weight: var(--ut-weight-semibold);
+  color: var(--ut-color-ink-strong);
+  margin: 0;
+}
+
+.loadingSubtext {
+  font-size: 0.85rem;
+  color: var(--ut-color-ink-muted);
+  margin: 0;
+}
+
+.inspectionFallbackActions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.manualChecklistBtn {
+  background: var(--ut-color-surface-soft);
+  border: 1px solid var(--ut-color-border);
+  color: var(--ut-color-ink-strong);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: var(--ut-weight-medium);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.manualChecklistBtn:hover {
+  background: var(--ut-color-surface-hover);
+  border-color: var(--ut-color-border-hover);
+}

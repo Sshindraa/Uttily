@@ -2,31 +2,40 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 14px 20px;
+  gap: 12px;
+  padding: 16px 20px;
   background: var(--ut-color-overlay-dark);
-  backdrop-filter: blur(12px);
-  border-radius: 18px;
+  backdrop-filter: blur(14px);
+  border-radius: 20px;
   border: 1px solid var(--ut-color-border-on-dark);
   box-shadow:
-    0 10px 25px -5px rgba(0, 0, 0, 0.3),
-    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    0 12px 28px -6px rgba(0, 0, 0, 0.45),
+    inset 0 1px 1px rgba(255, 255, 255, 0.08);
   width: 100%;
   box-sizing: border-box;
 }
 
+.illustrationWrapper {
+  width: 100%;
+  max-width: 580px;
+  height: 175px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
 .illustration {
-  width: 320px;
-  max-width: 100%;
-  height: 135px;
+  width: 100%;
+  height: 100%;
   color: var(--ut-color-brand-mist);
-  filter: drop-shadow(0 0 18px var(--ut-color-brand-mist-translucent-strong))
-    drop-shadow(0 0 4px rgba(255, 255, 255, 0.4));
+  filter: drop-shadow(0 0 14px var(--ut-color-brand-mist-translucent-strong))
+    drop-shadow(0 0 3px rgba(255, 255, 255, 0.35));
   transition: all 0.3s ease;
 }
 
 .statusText {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: var(--ut-weight-semibold);
   color: var(--ut-color-ink-on-dark);
   letter-spacing: -0.01em;
@@ -34,13 +43,14 @@
 
 .stepIndicators {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  align-items: center;
 }
 
 .dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+  width: 20px;
+  height: 5px;
+  border-radius: 3px;
   background: rgba(255, 255, 255, 0.15);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -48,7 +58,7 @@
 .dotActive {
   background: var(--ut-color-brand-mist);
   box-shadow: 0 0 10px var(--ut-color-brand-mist-translucent-strong);
-  transform: scale(1.15);
+  width: 28px;
 }
 
 .dotDone {

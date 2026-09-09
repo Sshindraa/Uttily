@@ -3,6 +3,26 @@ import { normalizeDestinationQuery } from '@/lib/destination-suggestions';
 import { getPublicCategoryLabel } from '@/lib/public-search-labels';
 import type { SearchLocale } from './search-state';
 
+export type EquipmentTerrain = 'all' | 'land' | 'water' | 'snow';
+
+export function getEquipmentTerrain(
+  category: PublicSearchCategoryOption,
+): Exclude<EquipmentTerrain, 'all'> | null {
+  const slug = normalize(category.slug);
+  if (/bike|velo|vtt|vtc|gravel|cycle/.test(slug)) return 'land';
+  if (/kayak|canoe|paddle|pedalboat|surf|wingfoil|windsurf/.test(slug)) return 'water';
+  if (/ski|snowboard|snow|raquette|luge|sled/.test(slug)) return 'snow';
+  return null;
+}
+
+export function filterEquipmentFamilies(
+  categories: PublicSearchCategoryOption[],
+  terrain: EquipmentTerrain,
+): PublicSearchCategoryOption[] {
+  if (terrain === 'all') return categories;
+  return categories.filter((category) => getEquipmentTerrain(category) === terrain);
+}
+
 // Exact meaning groups, not compatibility rules. No group broadens electric to all bikes.
 const MEANINGS = [
   ['velo', 'velos', 'bike', 'bikes', 'bicycle', 'bicycles'],

@@ -14,7 +14,7 @@ const clerkAuthFile = join(packageRoot, 'playwright', '.clerk', 'user.json');
 const publicProjects = [
   {
     name: 'Mobile (375x812)',
-    testMatch: /responsive-and-a11y\.spec\.ts$/,
+    testMatch: /(responsive-and-a11y|pack-orchestrator)\.spec\.ts$/,
     use: {
       viewport: { width: 375, height: 812 },
       userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15',
@@ -22,17 +22,17 @@ const publicProjects = [
   },
   {
     name: 'Tablet (768x1024)',
-    testMatch: /responsive-and-a11y\.spec\.ts$/,
+    testMatch: /(responsive-and-a11y|pack-orchestrator)\.spec\.ts$/,
     use: { viewport: { width: 768, height: 1024 } },
   },
   {
     name: 'Small Desktop (1024x768)',
-    testMatch: /responsive-and-a11y\.spec\.ts$/,
+    testMatch: /(responsive-and-a11y|pack-orchestrator)\.spec\.ts$/,
     use: { viewport: { width: 1024, height: 768 } },
   },
   {
     name: 'Desktop (1440x900)',
-    testMatch: /responsive-and-a11y\.spec\.ts$/,
+    testMatch: /(responsive-and-a11y|pack-orchestrator)\.spec\.ts$/,
     use: { viewport: { width: 1440, height: 900 } },
   },
 ];

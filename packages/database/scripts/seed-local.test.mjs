@@ -49,6 +49,7 @@ describe('seed local environment guards', () => {
     expect(seedSource).toContain("slug: 'lyon-dev'");
     expect(seedSource).toContain("slug: 'annecy-dev'");
     expect(seedSource).toContain("label: 'Annecy'");
+    expect(seedSource).toContain("publicId: '2130abc1-8b69-42d8-b7d2-ac86064dd168'");
     expect(seedSource).toContain("slug: 'lyon-shop-dev'");
     expect(seedSource).toContain("slug: 'annecy-shop-dev'");
   });
