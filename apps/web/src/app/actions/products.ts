@@ -23,7 +23,7 @@ import {
   type ProductRecord,
   type CreateProductInput,
 } from '@uttily/core';
-import type { ActionResult } from '@uttily/contracts';
+import { isBikeSubtype, type ActionResult } from '@uttily/contracts';
 import { parseUpdateProduct, type ParsedFailure } from './parsers';
 
 // ---------------------------------------------------------------------------
@@ -270,6 +270,7 @@ interface CreateDraftProductInput {
   name: string;
   description: string;
   variantName?: string;
+  bikeSubtype?: string;
 }
 
 async function createDraftProduct(
@@ -283,6 +284,7 @@ async function createDraftProduct(
     name: input.name,
     ...(input.description ? { description: input.description } : {}),
     ...(input.variantName ? { initialVariantName: input.variantName } : {}),
+    ...(input.bikeSubtype ? { initialVariantAttributes: { subtype: input.bikeSubtype } } : {}),
   });
 }
 
@@ -296,6 +298,7 @@ export async function createFirstEquipmentDraftAction(
   const categoryId = String(formData.get('categoryId') ?? '');
   const variantName = String(formData.get('variantName') ?? '').trim();
   const description = String(formData.get('description') ?? '').trim();
+  const bikeSubtype = String(formData.get('bikeSubtype') ?? '').trim();
 
   const fieldErrors: Record<string, string> = {};
   if (name.length < 2) {
@@ -306,6 +309,9 @@ export async function createFirstEquipmentDraftAction(
   }
   if (variantName.length > 80) {
     fieldErrors.variantName = 'Le nom de la variante est trop long.';
+  }
+  if (bikeSubtype && !isBikeSubtype(bikeSubtype)) {
+    fieldErrors.bikeSubtype = 'Sous-type de vélo invalide.';
   }
 
   if (Object.keys(fieldErrors).length > 0) {
@@ -324,6 +330,7 @@ export async function createFirstEquipmentDraftAction(
       name,
       description,
       ...(variantName ? { variantName } : {}),
+      ...(bikeSubtype ? { bikeSubtype } : {}),
     });
 
     revalidatePath(`/dashboard/${authorizedOrgId}/bikes`);

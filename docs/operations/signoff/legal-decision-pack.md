@@ -2,7 +2,7 @@
 
 **Référence de version :** document vivant ; vérifier le commit courant du dépôt
 avant utilisation. Les anciennes baselines `origin/main = ...` sont historiques.
-**Dernière revue de cohérence :** 2026-09-04  
+**Dernière revue de cohérence :** 2026-09-10
 **Statut du pack :** `SIGNOFF = APPROVED` ✅ (Décisions formelles actées le 2026-09-04)  
 **Identifiants référencés :** uniquement `LEGAL-*`  
 
@@ -21,10 +21,12 @@ Ce pack consigne les arbitrages juridiques validés par la Direction / Juridique
 | `LEGAL-007` | Conditions Stripe Connect partenaire | `APPROVED` ✅ | Mandat d'encaissement et de reversement pour compte de tiers et conditions Stripe Connect approuvés. |
 | `LEGAL-008` | Géocodage fournisseur | `DEFERRED` | PostgreSQL/PostGIS canonique conservé ; Photon/IGN différés post-pilote. |
 
-## Parcours contractuels à couvrir
+## Parcours contractuels — contrôle post-signoff
 
-La décision doit suivre le parcours réel, de bout en bout, et non seulement le
-texte affiché au checkout.
+Les décisions du 2026-09-04 couvrent le parcours réel, de bout en bout, et non
+seulement le texte affiché au checkout. Le tableau conserve les points de
+contrôle techniques et les éléments qui devront être vérifiés contre les
+versions effectivement déployées.
 
 | Étape | Questions juridiques à trancher | État technique observé |
 | --- | --- | --- |
@@ -33,10 +35,10 @@ texte affiché au checkout.
 | Confirmation | Quel document confirme la réservation, avec quelle version et quelles mentions ? | Les snapshots de paiement et réservation sont persistés ; les documents transactionnels sont produits par outbox/worker. |
 | Annulation | Qui peut annuler, jusqu'à quand et selon quelle politique ? | Les codes `FLEXIBLE`, `MODERATE`, `FIRM` et une grâce de 24 h conditionnelle sont calculés côté serveur. |
 | Remboursement | Quel montant et quelles composantes sont remboursables ? Quelles exceptions s'appliquent ? | Le calcul actuel prend `booking.totalAmountMinor` comme base et applique un pourcentage. Ce comportement n'est pas une validation. |
-| Retrait | Quelles obligations du client et du loueur au retrait ? Quelle preuve d'identité, état ou retard ? | La machine fulfillment distingue préparation, retrait et restitution ; les clauses ne sont pas rédigées. |
-| Restitution | Quel état doit être rendu, dans quel délai et avec quelle preuve ? | Des rapports d'état et de dommage existent ; leur portée contractuelle reste à fixer. |
-| Dommages | Quel barème, quelle procédure contradictoire, quels délais, quelle assurance et quelle caution ? | `damage_reports`, `condition_reports` et `maintenance_cases` sont disponibles ; aucune responsabilité/barème n'est choisi. |
-| Amendement | Quel accord est nécessaire pour un changement, supplément ou remboursement ? | Les amendements et snapshots financiers existent techniquement ; les mentions et textes restent à valider. |
+| Retrait | Quelles obligations du client et du loueur au retrait ? Quelle preuve d'identité, état ou retard ? | La machine fulfillment distingue préparation, retrait et restitution ; les procédures de comptoir des lots 21-U2 sont référencées par `LEGAL-003` et restent à vérifier sur l'environnement déployé. |
+| Restitution | Quel état doit être rendu, dans quel délai et avec quelle preuve ? | Les rapports d'état et de dommage et les procédures de comptoir sont couverts par l'arbitrage `LEGAL-003`; la preuve opératoire LIVE reste à produire. |
+| Dommages | Quel barème, quelle procédure contradictoire, quels délais, quelle assurance et quelle caution ? | `damage_reports`, `condition_reports` et `maintenance_cases` sont disponibles ; le pack du 2026-09-04 déclare les clauses et procédures pilote approuvées, sous réserve de la preuve opérationnelle. |
+| Amendement | Quel accord est nécessaire pour un changement, supplément ou remboursement ? | Les amendements et snapshots financiers existent techniquement ; le régime ADR-023/ADR-030 est déclaré approuvé par `LEGAL-006`, avec vérification des versions de documents au LIVE. |
 | Incident loueur | Que se passe-t-il si le loueur ne fournit pas le matériel ou annule ? | Le remboursement de compensation tardive est traité techniquement ; les exceptions et notifications restent contractuelles. |
 
 ## Chaîne de preuve du consentement
@@ -55,17 +57,18 @@ UI présentée
   → document/version référencé et récupérable
 ```
 
-### Contradiction actuelle à traiter
+### Vérification de cohérence à conserver
 
 - Le code serveur fixe `legalTermsVersion: 'v1'`.
 - Le checkout transmet `v1`.
 - `payments` et `bookings` persistent `terms_acceptance_snapshot`.
-- Aucun document CGU/CGV correspondant à `v1` n'existe actuellement dans l'application ou le dépôt.
+- Les pages et versions référencées par le sign-off doivent rester alignées
+  avec `legalTermsVersion: 'v1'` et le snapshot persisté.
 
-Cette contradiction est une décision, pas une correction de code à effectuer
-dans 21-P0. Le juridique doit fournir le document, son contenu/version/date
-d'effet et dire si le snapshot existant suffit ou si une nouvelle preuve est
-requise.
+Le sign-off du 2026-09-04 clôt la décision documentaire selon ce pack. La
+preuve d'environnement déployé et toute nouvelle version doivent être
+conservées dans le dossier autorisé, sans ajouter de données sensibles au
+dépôt.
 
 ## Annulation et remboursement
 
@@ -77,7 +80,7 @@ requise.
 | `MODERATE` | 100 % à au moins 5 jours ; 50 % entre 24 h et 5 jours ; 0 % sous 24 h | Confirmer les seuils et la qualification des frais. |
 | `FIRM` | 100 % à au moins 14 jours ; 50 % entre 7 et 14 jours ; 0 % sous 7 jours | Confirmer les seuils et les exceptions. |
 | Grâce | 100 % si réservation au moins 7 jours à l'avance et annulation dans les 24 h, avant le début | Confirmer l'existence, la durée et les exclusions. |
-| Horaire 30 min | Aucun comportement dédié n'est implémenté | Choisir la règle exacte ou exclure ces offres du pilote. |
+| Horaire 30 min | Le périmètre serveur du premier pilote exclut les plans `HOURLY` conformément à [`ADR-043`](../../decisions/ADR-043-first-pilot-pricing-scope.md). | Aucune règle horaire complète n'est nécessaire pour le premier pilote ; une réouverture nécessitera un nouvel arbitrage. |
 
 Les échéances sont calculées dans le fuseau IANA du lieu de retrait. Cette
 contrainte technique ne tranche pas la qualification juridique.
@@ -112,9 +115,10 @@ contrat Pro doit notamment demander une réponse sur :
 - responsabilités respectives d'Uttily, du loueur et du client ;
 - conservation et accès aux preuves nécessaires.
 
-Le mécanisme d'acceptation Pro n'existe pas dans le code actuel. La décision
-doit donc préciser si une preuve externe suffit pour le pilote ou si une
-fonction locale sera exigée après la décision.
+Le mécanisme d'acceptation Pro est présent dans le parcours d'onboarding et
+journalisé côté serveur ; le sign-off du 2026-09-04 le couvre. Toute preuve de
+consentement partenaire effective doit encore être conservée dans le dossier
+opérationnel autorisé.
 
 ## Stripe Connect et partenaire
 
@@ -141,4 +145,5 @@ runtime n'utilise pas un fournisseur distant.
 Pour chaque ID : réponse explicite, texte ou référence documentaire, version,
 date d'effet, owner, signataire et conditions restantes. En l'absence de
 réponse, conserver le statut `HUMAN_SIGNOFF_REQUIRED`/`BLOCKED` dans la matrice
-de readiness.
+de readiness. Pour les décisions du 2026-09-04, cette exigence de contenu est
+considérée satisfaite par le pack, mais elle ne vaut pas configuration LIVE.

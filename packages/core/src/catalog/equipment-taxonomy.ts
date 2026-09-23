@@ -70,8 +70,12 @@ export type EquipmentFamilySlug =
   | 'paddleboard'
   | 'pedalboat'
   | 'surf'
+  | 'bodyboard'
+  | 'wingfoil'
   | 'ski'
   | 'snowboard'
+  | 'snowshoes'
+  | 'sled'
   | 'equipment';
 export type CommercialEquipmentFamilySlug = Exclude<EquipmentFamilySlug, 'equipment'>;
 
@@ -164,7 +168,25 @@ export const EQUIPMENT_FAMILY_REGISTRY: readonly EquipmentFamilyDefinition[] = O
     status: 'ACTIVE',
     singularLabel: 'planche de surf',
     pluralLabel: 'planches de surf',
-    subtypes: ['classic', 'longboard', 'softboard', 'bodyboard', 'skimboard'],
+    subtypes: ['classic', 'longboard', 'softboard', 'skimboard'],
+    characteristics: [],
+  },
+  {
+    slug: 'bodyboard',
+    universe: 'surf',
+    status: 'ACTIVE',
+    singularLabel: 'bodyboard',
+    pluralLabel: 'bodyboards',
+    subtypes: [],
+    characteristics: [],
+  },
+  {
+    slug: 'wingfoil',
+    universe: 'surf',
+    status: 'ACTIVE',
+    singularLabel: 'wingfoil',
+    pluralLabel: 'wingfoils',
+    subtypes: [],
     characteristics: [],
   },
   {
@@ -182,6 +204,24 @@ export const EQUIPMENT_FAMILY_REGISTRY: readonly EquipmentFamilyDefinition[] = O
     status: 'ACTIVE',
     singularLabel: 'snowboard',
     pluralLabel: 'snowboards',
+    subtypes: [],
+    characteristics: [],
+  },
+  {
+    slug: 'snowshoes',
+    universe: 'snow',
+    status: 'ACTIVE',
+    singularLabel: 'raquette',
+    pluralLabel: 'raquettes',
+    subtypes: [],
+    characteristics: [],
+  },
+  {
+    slug: 'sled',
+    universe: 'snow',
+    status: 'ACTIVE',
+    singularLabel: 'luge',
+    pluralLabel: 'luges',
     subtypes: [],
     characteristics: [],
   },

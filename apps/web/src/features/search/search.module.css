@@ -375,7 +375,7 @@
 }
 
 .map :global(.maplibregl-ctrl-attrib) {
-  font-size: 0.7rem;
+  font-size: var(--ut-text-xs);
 }
 
 .marker,
@@ -639,7 +639,7 @@
   border-radius: var(--ut-radius-pill);
   color: var(--ink);
   background: rgb(255 255 255 / 0.76);
-  font-size: 0.78rem;
+  font-size: var(--ut-text-xs);
   font-weight: var(--ut-weight-medium);
   line-height: 1;
   backdrop-filter: blur(12px);
@@ -685,8 +685,8 @@
   margin: 0;
   overflow: hidden;
   font-family: var(--ut-font-display);
-  font-size: 1.07rem;
-  font-weight: var(--ut-weight-medium);
+  font-size: var(--ut-text-md);
+  font-weight: var(--ut-weight-semibold);
   letter-spacing: -0.025em;
   line-height: 1.25;
   text-overflow: ellipsis;
@@ -707,8 +707,8 @@
 .cardPrice {
   flex: 0 0 auto;
   color: var(--ink);
-  font-size: 1.12rem;
-  font-weight: var(--ut-weight-medium);
+  font-size: var(--ut-text-lg);
+  font-weight: var(--ut-weight-semibold);
   line-height: 1.2;
   font-variant-numeric: lining-nums tabular-nums;
   white-space: nowrap;

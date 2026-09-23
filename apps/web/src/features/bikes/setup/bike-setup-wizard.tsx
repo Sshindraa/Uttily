@@ -3,10 +3,17 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { PhotoSlotType } from '@uttily/contracts';
-import { MAX_BULK_INVENTORY_ITEMS } from '@uttily/contracts';
+import {
+  BIKE_SUBTYPE_DEFINITIONS,
+  getBikeSubtypeLabel,
+  isBikeSubtype,
+  MAX_BULK_INVENTORY_ITEMS,
+  type BikeSubtype,
+  type PhotoSlotType,
+} from '@uttily/contracts';
 import { PhotoCoachModal } from '@/components/photo-coach/PhotoCoachModal';
 import { updateProductAction, publishFirstEquipmentFromSetupAction } from '@/app/actions/products';
+import { updateVariantAction } from '@/app/actions/variants';
 import { saveDailyPricingPlanDraftAction } from '@/app/actions/pricing';
 import { bulkCreateInventoryItemsAction } from '@/app/actions/inventory';
 import {
@@ -33,6 +40,7 @@ export interface SetupBikeDTO {
   categoryName: string;
   variantId: string;
   variantName: string;
+  variantAttributes: Record<string, unknown> | null;
   photos: Array<{ id: string; publicId: string; sortOrder: number }>;
   photoCount: number;
   isPhotosComplete: boolean;
@@ -79,6 +87,12 @@ export function BikeSetupWizard({
   const [name, setName] = useState(bike.name);
   const [categoryId, setCategoryId] = useState(bike.categoryId);
   const [description, setDescription] = useState(bike.description);
+  const initialBikeSubtype = bike.variantAttributes?.subtype;
+  const [bikeSubtype, setBikeSubtype] = useState<BikeSubtype | ''>(
+    typeof initialBikeSubtype === 'string' && isBikeSubtype(initialBikeSubtype)
+      ? initialBikeSubtype
+      : '',
+  );
 
   // Étape 4 : Photos
   const [activePhotoSlot, setActivePhotoSlot] = useState<PhotoSlotType | null>(null);
@@ -133,6 +147,26 @@ export function BikeSetupWizard({
         formData,
       );
       if (!res.ok) throw new Error(res.message || 'Erreur lors de la sauvegarde.');
+
+      const submittedCategorySlug = categories.find((category) => category.id === categoryId)?.slug;
+      if (submittedCategorySlug === 'bike' || bike.categorySlug === 'bike') {
+        const nextAttributes = { ...(bike.variantAttributes ?? {}) };
+        if (submittedCategorySlug === 'bike' && bikeSubtype) {
+          nextAttributes.subtype = bikeSubtype;
+        } else {
+          delete nextAttributes.subtype;
+        }
+
+        const variantFormData = new FormData();
+        variantFormData.set('variantId', bike.variantId);
+        variantFormData.set('attributes', JSON.stringify(nextAttributes));
+        const variantRes = await updateVariantAction(
+          organizationId,
+          { ok: false, code: 'UNKNOWN', message: '' },
+          variantFormData,
+        );
+        if (!variantRes.ok) throw new Error(variantRes.message || 'Erreur sur le type de vélo.');
+      }
 
       setCurrentStep('INVENTORY');
       router.refresh();
@@ -255,6 +289,13 @@ export function BikeSetupWizard({
     selectedCategorySlug,
     selectedCategory?.name ?? bike.categoryName,
   );
+
+  function chooseCategory(nextCategoryId: string): void {
+    setCategoryId(nextCategoryId);
+    if (categories.find((category) => category.id === nextCategoryId)?.slug !== 'bike') {
+      setBikeSubtype('');
+    }
+  }
   const hasBikePhotoModule = categoryPresentation.specificSections.includes('photo-slots');
   const hasIdentity =
     name.trim().length >= 2 && description.trim().length > 0 && categoryId.length > 0;
@@ -378,7 +419,7 @@ export function BikeSetupWizard({
               <select
                 id="step-cat"
                 value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
+                onChange={(e) => chooseCategory(e.target.value)}
                 required
                 disabled={isLoading}
                 style={{
@@ -395,6 +436,40 @@ export function BikeSetupWizard({
                 ))}
               </select>
             </div>
+
+            {selectedCategorySlug === 'bike' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label
+                  htmlFor="step-bike-subtype"
+                  style={{
+                    fontSize: '0.9rem',
+                    fontWeight: 'var(--ut-weight-bold)',
+                    color: 'var(--ut-color-ink)',
+                  }}
+                >
+                  Type de vélo (facultatif) :
+                </label>
+                <select
+                  id="step-bike-subtype"
+                  value={bikeSubtype}
+                  onChange={(e) => setBikeSubtype(e.target.value as BikeSubtype | '')}
+                  disabled={isLoading}
+                  style={{
+                    padding: '12px 16px',
+                    border: '1.5px solid var(--ut-color-border-strong)',
+                    borderRadius: '12px',
+                    fontSize: '0.95rem',
+                  }}
+                >
+                  <option value="">À préciser plus tard</option>
+                  {BIKE_SUBTYPE_DEFINITIONS.map((definition) => (
+                    <option key={definition.slug} value={definition.slug}>
+                      {getBikeSubtypeLabel('fr', definition.slug)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label

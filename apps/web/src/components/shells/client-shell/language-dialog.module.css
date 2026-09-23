@@ -1,72 +1,215 @@
 .dialog {
-  max-width: min(680px, calc(100vw - 32px)) !important;
+  max-width: min(440px, calc(100vw - 32px)) !important;
   max-height: calc(100dvh - 32px);
-  padding: 40px !important;
-  overflow-y: auto;
+  padding: 32px 28px 26px !important;
+  border-radius: 28px !important;
+  border: 1px solid var(--ut-color-border) !important;
+  background: var(--ut-color-surface) !important;
+  box-shadow: 0 24px 60px -12px rgba(28, 36, 38, 0.2), 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+  overflow: visible !important;
 }
 
 .dialog::backdrop {
-  background: var(--ut-color-overlay-dark);
+  background: rgba(28, 36, 38, 0.48);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .dialog:focus-visible {
   outline: none;
 }
 
-.dialog > div:first-child > button {
-  min-width: 44px;
-  min-height: 44px;
-  flex-shrink: 0;
+.dialog > div:first-child {
+  margin-bottom: 8px !important;
 }
 
-.description,
-.note {
-  color: var(--ut-color-ink-muted);
-  font-size: 14px;
-  line-height: 1.6;
+.dialog > div:first-child > h2 {
+  font-family: 'Chillax', var(--ut-font-display, sans-serif) !important;
+  font-size: 1.25rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.015em !important;
+  color: var(--ut-color-ink-strong) !important;
+}
+
+.dialog > div:first-child > button {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  border-radius: var(--ut-radius-pill) !important;
+  background: var(--ut-color-surface-soft) !important;
+  color: var(--ut-color-ink-muted) !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 1.25rem !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.dialog > div:first-child > button:hover {
+  background: var(--ut-color-border) !important;
+  color: var(--ut-color-ink-strong) !important;
+  transform: scale(1.05);
 }
 
 .description {
-  margin: 0 0 40px;
-}
-.heading {
-  margin: 0 0 12px;
-  font-size: 15px;
-}
-.languages {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  color: var(--ut-color-ink-muted);
+  font-family: var(--ut-font-ui, sans-serif);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0 0 22px 0;
 }
 
-.language {
-  min-height: 72px !important;
+.languagesList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.languageCard {
+  display: flex !important;
+  align-items: center !important;
   justify-content: space-between !important;
-  border-radius: var(--ut-radius-sm) !important;
+  width: 100% !important;
+  min-height: 66px !important;
+  padding: 8px 22px 8px 10px !important;
+  border-radius: var(--ut-radius-pill) !important;
+  border: 1.5px solid var(--ut-color-border) !important;
+  background: var(--ut-color-surface) !important;
+  text-decoration: none !important;
+  cursor: pointer;
+  box-sizing: border-box !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.languageCard:hover {
+  border-color: var(--ut-color-brand-teal-strong) !important;
+  background: var(--ut-color-surface-raised) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px -4px rgba(28, 36, 38, 0.08) !important;
+}
+
+.languageCardActive {
+  border: 2px solid var(--ut-color-ink-strong) !important;
+  background: var(--ut-color-surface-raised) !important;
+  box-shadow: 0 4px 16px -3px rgba(28, 36, 38, 0.1) !important;
+}
+
+.cardContent {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.flagBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--ut-color-surface-soft);
+  border: 1.5px solid var(--ut-color-border);
+  font-size: 1.5rem;
+  line-height: 1;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+.languageCardActive .flagBadge {
+  background: var(--ut-color-brand-mist);
+  border-color: var(--ut-color-brand-teal-strong);
+}
+
+.textGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   text-align: left;
 }
 
-.language[aria-current] {
-  background: var(--ut-color-primary) !important;
-  border-color: var(--ut-color-primary) !important;
-  color: var(--ut-color-ink-on-dark) !important;
+.langName {
+  font-family: 'Chillax', var(--ut-font-display, sans-serif);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: var(--ut-color-ink-strong) !important;
+  line-height: 1.25;
 }
 
-.language:hover {
-  box-shadow: var(--ut-shadow-primary-ring);
+.langRegion {
+  font-family: var(--ut-font-ui, sans-serif);
+  font-size: 0.775rem;
+  color: var(--ut-color-ink-muted);
+  line-height: 1.2;
 }
-.note {
-  margin: 28px 0 0;
+
+.statusIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.checkCircle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ut-color-ink-strong);
+  color: var(--ut-color-brand-white);
+  box-shadow: 0 2px 6px rgba(28, 36, 38, 0.25);
+}
+
+.radioCircle {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--ut-color-border);
+  background: transparent;
+  transition: border-color 0.2s ease;
+}
+
+.languageCard:hover .radioCircle {
+  border-color: var(--ut-color-brand-teal-strong);
+}
+
+.footnote {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 10px 16px;
+  border-radius: var(--ut-radius-pill);
+  background: var(--ut-color-surface-soft);
+  border: 1px solid var(--ut-color-border);
+}
+
+.footnoteIcon {
+  display: flex;
+  align-items: center;
+  color: var(--ut-color-primary);
+  flex-shrink: 0;
+}
+
+.footnoteText {
+  margin: 0;
+  font-family: var(--ut-font-ui, sans-serif);
+  font-size: 0.775rem;
+  line-height: 1.45;
+  color: var(--ut-color-ink-muted);
 }
 
 @media (max-width: 36rem) {
   .dialog {
-    padding: 24px !important;
-  }
-  .languages {
-    grid-template-columns: 1fr;
-  }
-  .description {
-    margin-bottom: 24px;
+    padding: 24px 20px 20px !important;
+    border-radius: 24px !important;
   }
 }

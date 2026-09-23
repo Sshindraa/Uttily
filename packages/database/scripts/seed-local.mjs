@@ -323,6 +323,42 @@ async function ensureCategory(tx) {
       "updated_at" = now()
   `;
 
+  await tx`
+    INSERT INTO "categories" ("slug", "name", "is_active")
+    VALUES ('bodyboard', 'Bodyboard', true)
+    ON CONFLICT ("slug") DO UPDATE SET
+      "name" = EXCLUDED."name",
+      "is_active" = true,
+      "updated_at" = now()
+  `;
+
+  await tx`
+    INSERT INTO "categories" ("slug", "name", "is_active")
+    VALUES ('wingfoil', 'Wingfoil', true)
+    ON CONFLICT ("slug") DO UPDATE SET
+      "name" = EXCLUDED."name",
+      "is_active" = true,
+      "updated_at" = now()
+  `;
+
+  await tx`
+    INSERT INTO "categories" ("slug", "name", "is_active")
+    VALUES ('snowshoes', 'Raquettes', true)
+    ON CONFLICT ("slug") DO UPDATE SET
+      "name" = EXCLUDED."name",
+      "is_active" = true,
+      "updated_at" = now()
+  `;
+
+  await tx`
+    INSERT INTO "categories" ("slug", "name", "is_active")
+    VALUES ('sled', 'Luge', true)
+    ON CONFLICT ("slug") DO UPDATE SET
+      "name" = EXCLUDED."name",
+      "is_active" = true,
+      "updated_at" = now()
+  `;
+
   const rows = await tx`
     INSERT INTO "categories" ("slug", "name", "is_active")
     VALUES ('kayak', 'Kayaks', true)

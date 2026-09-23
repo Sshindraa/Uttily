@@ -31,13 +31,17 @@ describe('closed outdoor equipment taxonomy', () => {
       ['paddleboard', 'ACTIVE'],
       ['pedalboat', 'ACTIVE'],
       ['surf', 'ACTIVE'],
+      ['bodyboard', 'ACTIVE'],
+      ['wingfoil', 'ACTIVE'],
       ['ski', 'ACTIVE'],
       ['snowboard', 'ACTIVE'],
+      ['snowshoes', 'ACTIVE'],
+      ['sled', 'ACTIVE'],
       ['equipment', 'INTERNAL_FALLBACK'],
     ]);
   });
 
-  it('exposes exactly the eight ACTIVE commercial families', () => {
+  it('exposes exactly the twelve ACTIVE commercial families', () => {
     expect(COMMERCIAL_EQUIPMENT_FAMILY_SLUGS).toEqual([
       'bike',
       'kayak',
@@ -45,8 +49,12 @@ describe('closed outdoor equipment taxonomy', () => {
       'paddleboard',
       'pedalboat',
       'surf',
+      'bodyboard',
+      'wingfoil',
       'ski',
       'snowboard',
+      'snowshoes',
+      'sled',
     ]);
   });
 
@@ -57,8 +65,12 @@ describe('closed outdoor equipment taxonomy', () => {
     const paddleboard = resolveEquipmentFamily('paddleboard');
     const pedalboat = resolveEquipmentFamily('pedalboat');
     const surf = resolveEquipmentFamily('surf');
+    const bodyboard = resolveEquipmentFamily('bodyboard');
+    const wingfoil = resolveEquipmentFamily('wingfoil');
     const ski = resolveEquipmentFamily('ski');
     const snowboard = resolveEquipmentFamily('snowboard');
+    const snowshoes = resolveEquipmentFamily('snowshoes');
+    const sled = resolveEquipmentFamily('sled');
 
     expect(bike.kind).toBe('SUPPORTED');
     expect(bike.kind === 'SUPPORTED' && bike.definition.subtypes).toEqual([
@@ -95,9 +107,32 @@ describe('closed outdoor equipment taxonomy', () => {
       'classic',
       'longboard',
       'softboard',
-      'bodyboard',
       'skimboard',
     ]);
+    expect(bodyboard).toEqual({
+      kind: 'SUPPORTED',
+      definition: expect.objectContaining({
+        slug: 'bodyboard',
+        universe: 'surf',
+        status: 'ACTIVE',
+        singularLabel: 'bodyboard',
+        pluralLabel: 'bodyboards',
+        subtypes: [],
+        characteristics: [],
+      }),
+    });
+    expect(wingfoil).toEqual({
+      kind: 'SUPPORTED',
+      definition: expect.objectContaining({
+        slug: 'wingfoil',
+        universe: 'surf',
+        status: 'ACTIVE',
+        singularLabel: 'wingfoil',
+        pluralLabel: 'wingfoils',
+        subtypes: [],
+        characteristics: [],
+      }),
+    });
     expect(ski.kind === 'SUPPORTED' && ski.definition.subtypes).toEqual([
       'alpine',
       'touring',
@@ -106,6 +141,28 @@ describe('closed outdoor equipment taxonomy', () => {
     expect(snowboard.kind).toBe('SUPPORTED');
     expect(snowboard.kind === 'SUPPORTED' && snowboard.definition.subtypes).toEqual([]);
     expect(snowboard.kind === 'SUPPORTED' && snowboard.definition.characteristics).toEqual([]);
+    expect(snowshoes).toEqual({
+      kind: 'SUPPORTED',
+      definition: expect.objectContaining({
+        slug: 'snowshoes',
+        status: 'ACTIVE',
+        singularLabel: 'raquette',
+        pluralLabel: 'raquettes',
+        subtypes: [],
+        characteristics: [],
+      }),
+    });
+    expect(sled).toEqual({
+      kind: 'SUPPORTED',
+      definition: expect.objectContaining({
+        slug: 'sled',
+        status: 'ACTIVE',
+        singularLabel: 'luge',
+        pluralLabel: 'luges',
+        subtypes: [],
+        characteristics: [],
+      }),
+    });
   });
 
   it('rejects unknown families and never treats the internal fallback as commercial', () => {
@@ -119,8 +176,12 @@ describe('closed outdoor equipment taxonomy', () => {
     expect(isCommerciallyActiveEquipmentFamily('paddleboard')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('pedalboat')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('surf')).toBe(true);
+    expect(isCommerciallyActiveEquipmentFamily('bodyboard')).toBe(true);
+    expect(isCommerciallyActiveEquipmentFamily('wingfoil')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('ski')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('snowboard')).toBe(true);
+    expect(isCommerciallyActiveEquipmentFamily('snowshoes')).toBe(true);
+    expect(isCommerciallyActiveEquipmentFamily('sled')).toBe(true);
     expect(isCommerciallyActiveEquipmentFamily('equipment')).toBe(false);
     expect(isCommerciallyActiveEquipmentFamily('unknown')).toBe(false);
   });

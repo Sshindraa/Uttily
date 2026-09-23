@@ -13,6 +13,8 @@
 export { quoteFlexiblePricing } from './quote-flexible-pricing';
 export { computeQuote } from './quote-engine';
 export { loadPricingContext } from './load-pricing-context';
+export { FIRST_PILOT_PRICING_POLICY, isPricingPlanAllowed } from './policy';
+export type { PricingPlanPolicy, PricingPlanType } from './policy';
 export {
   isDayRangeBoundariesCompatibleWithSchedule,
   isWithinOpeningHours,
@@ -43,6 +45,7 @@ export type {
   OpeningHour,
   Candidate,
 } from './types';
+export type { QuoteFlexiblePricingOptions } from './quote-flexible-pricing';
 
 export {
   getVariantPricingSummary,

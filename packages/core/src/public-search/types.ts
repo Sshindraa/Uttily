@@ -1,4 +1,5 @@
 import type { DatabaseClient } from '@uttily/database';
+import type { BikeSubtype } from '@uttily/contracts';
 import type { ProfessionalVerificationStatus } from '../professional-verification';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,6 +49,8 @@ export interface SearchPublicOffersInput {
   intent: PublicSearchIntent;
   /** Filtre optionnel par catégorie (ID interne UUID). Inclut les descendants actifs. */
   categoryId?: string;
+  /** Filtre précis des variantes de la famille `bike`, porté par leurs attributs. */
+  bikeSubtype?: BikeSubtype;
   /**
    * Zone choisie explicitement sur la carte. La destination reste l'ancre
    * canonique obligatoire, même lorsque cette zone est fournie.

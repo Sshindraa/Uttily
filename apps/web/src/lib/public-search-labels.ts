@@ -6,11 +6,15 @@ const MVP_CATEGORY_LABELS_EN: Readonly<Record<string, string>> = {
   canoe: 'Canoe',
   pedalboat: 'Pedal boat',
   surf: 'Surf',
+  bodyboard: 'Bodyboard',
+  wingfoil: 'Wingfoil',
   paddle: 'Paddleboarding',
   paddleboard: 'Stand-up paddle',
   bike: 'Bikes',
   ski: 'Ski',
   snowboard: 'Snowboard',
+  snowshoes: 'Snowshoes',
+  sled: 'Sled',
   camping: 'Camping & Outdoor',
   climbing: 'Climbing',
   diving: 'Diving',
@@ -22,8 +26,12 @@ const MVP_CATEGORY_LABELS_FR: Readonly<Record<string, string>> = {
   canoe: 'Canoë',
   pedalboat: 'Pédalo',
   paddleboard: 'Paddle',
+  bodyboard: 'Bodyboard',
+  wingfoil: 'Wingfoil',
   ski: 'Ski',
   snowboard: 'Snowboard',
+  snowshoes: 'Raquettes',
+  sled: 'Luge',
 };
 
 /** Les slugs de la taxonomie MVP sont les clés stables de présentation. */

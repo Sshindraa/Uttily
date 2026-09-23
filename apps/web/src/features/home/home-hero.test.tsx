@@ -21,12 +21,22 @@ describe('Immersive homepage', () => {
   it('uses the requested Fontshare display pairing for the hero heading', () => {
     const css = readFileSync(new URL('./home-hero.module.css', import.meta.url), 'utf8');
 
-    expect(css).toContain("url('/fonts/satoshi/satoshi-medium.woff2')");
-    expect(css).toContain("font-family: 'Satoshi'");
-    expect(css).toContain('font-weight: 500');
+    expect(css).toContain("url('/fonts/chillax/chillax-regular.woff2')");
+    expect(css).toContain("font-family: 'Chillax'");
+    expect(css).toContain('font-weight: 400');
     expect(css).toContain("url('/fonts/boska/boska-medium-italic.woff2')");
     expect(css).toContain("font-family: 'Boska'");
     expect(css).toContain('font-style: italic');
+  });
+
+  it('includes subtle parallax wrapper and styles for depth on scroll', () => {
+    const css = readFileSync(new URL('./home-hero.module.css', import.meta.url), 'utf8');
+    expect(css).toContain('.parallaxWrapper');
+    expect(css).toContain('will-change: transform');
+    expect(css).toContain('prefers-reduced-motion: reduce');
+
+    const html = renderToStaticMarkup(<HomeHero locale="fr" />);
+    expect(html).toContain('parallaxWrapper');
   });
 
   it('shows the editorial photo and four intent fields with a direct search action', () => {

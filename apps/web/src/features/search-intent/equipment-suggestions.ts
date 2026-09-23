@@ -1,16 +1,24 @@
 import type { PublicSearchCategoryOption } from '@uttily/core';
+import { BIKE_SUBTYPE_DEFINITIONS, getBikeSubtypeLabel, type BikeSubtype } from '@uttily/contracts';
 import { normalizeDestinationQuery } from '@/lib/destination-suggestions';
 import { getPublicCategoryLabel } from '@/lib/public-search-labels';
 import type { SearchLocale } from './search-state';
 
 export type EquipmentTerrain = 'all' | 'land' | 'water' | 'snow';
 
+export const BIKE_SUBTYPE_SUGGESTION_PREFIX = 'bike-subtype:';
+
+export interface BikeSubtypeSuggestion {
+  id: string;
+  subtype: BikeSubtype;
+}
+
 export function getEquipmentTerrain(
   category: PublicSearchCategoryOption,
 ): Exclude<EquipmentTerrain, 'all'> | null {
   const slug = normalize(category.slug);
   if (/bike|velo|vtt|vtc|gravel|cycle/.test(slug)) return 'land';
-  if (/kayak|canoe|paddle|pedalboat|surf|wingfoil|windsurf/.test(slug)) return 'water';
+  if (/kayak|canoe|paddle|pedalboat|surf|bodyboard|wingfoil|windsurf/.test(slug)) return 'water';
   if (/ski|snowboard|snow|raquette|luge|sled/.test(slug)) return 'snow';
   return null;
 }
@@ -40,6 +48,8 @@ const MEANINGS = [
     'ebikes',
   ],
   ['paddle', 'paddleboard', 'paddleboarding', 'stand up paddle', 'sup'],
+  ['bodyboard', 'bodyboards', 'body board', 'bodyboarding', 'boogie board', 'boogieboard'],
+  ['wingfoil', 'wing foil', 'wingfoiling', 'wing foiling'],
   ['kayak', 'kayaks'],
   ['ski', 'skis', 'ski alpin', 'ski de randonnée', 'ski de fond', 'alpine ski', 'touring ski'],
   ['vtc', 'hybrid bike', 'hybrid bikes'],
@@ -69,6 +79,9 @@ export function rankEquipmentSuggestions(
   const tokens = normalized.split(' ');
   return categories
     .flatMap((category) => {
+      // `foil` seul est une technologie ambiguë : il ne doit pas choisir
+      // automatiquement la famille plus précise `wingfoil`.
+      if (normalized === 'foil' && category.slug === 'wingfoil') return [];
       const terms = [
         category.slug,
         getPublicCategoryLabel(locale, category),
@@ -99,6 +112,50 @@ export function rankEquipmentSuggestions(
     )
     .slice(0, 8)
     .map((item) => item.category);
+}
+
+/** Suggestions virtuelles pour les sous-types de la famille `bike`. */
+export function rankBikeSubtypeSuggestions(
+  query: string,
+  locale: SearchLocale,
+): BikeSubtypeSuggestion[] {
+  const normalized = normalize(query);
+  if (!normalized) return [];
+  const tokens = normalized.split(' ');
+
+  return BIKE_SUBTYPE_DEFINITIONS.flatMap((definition, order) => {
+    const terms = [
+      definition.slug,
+      getBikeSubtypeLabel(locale, definition.slug),
+      ...definition.aliases,
+    ].map(normalize);
+    const scores = terms.flatMap((term) =>
+      term === normalized
+        ? [0]
+        : term.startsWith(normalized)
+          ? [1]
+          : tokens.every((token) =>
+                term
+                  .split(' ')
+                  .some((word) => word === token || (token.length > 1 && word.startsWith(token))),
+              )
+            ? [2]
+            : [],
+    );
+    return scores.length
+      ? [
+          {
+            id: `${BIKE_SUBTYPE_SUGGESTION_PREFIX}${definition.slug}`,
+            subtype: definition.slug,
+            score: Math.min(...scores),
+            order,
+          },
+        ]
+      : [];
+  })
+    .sort((a, b) => a.score - b.score || a.order - b.order)
+    .slice(0, BIKE_SUBTYPE_DEFINITIONS.length)
+    .map(({ id, subtype }) => ({ id, subtype }));
 }
 
 export function categoryBreadcrumb(

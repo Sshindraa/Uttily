@@ -2,6 +2,11 @@
 
 Ces sujets ne doivent pas être tranchés implicitement dans le code.
 
+Les packs de sign-off et le plan de déblocage enregistrent des arbitrages
+humains datés du 2026-09-04. Les lignes ci-dessous restent ouvertes lorsqu'une
+question future ou une preuve opérationnelle distincte subsiste ; elles ne
+doivent pas contredire explicitement ces arbitrages sans le signaler.
+
 | Sujet | Décision nécessaire avant | Propriétaire | Statut |
 | --- | --- | --- | --- |
 | Fournisseur d'identité OIDC | Lot 1 | Produit / technique | Résolu — ADR-006 (Clerk) |
@@ -22,7 +27,7 @@ Ces sujets ne doivent pas être tranchés implicitement dans le code.
 | Relation exacte entre CANCELLED et REFUNDED | Lot 6 use cases | Produit / juridique | Ouvert |
 | Traitement du no-show (client ne se présente pas au retrait) | Lot 6 use cases | Produit / juridique | Ouvert |
 | Renforcement de l'invariant append-only de audit_log en base (trigger PostgreSQL) | Lot 6 groupe ultérieur | Technique | **Résolu par ADR-016 (Accepted)** — Option A acceptée : FK `ON DELETE RESTRICT` + trigger bloquant UPDATE/DELETE sur `audit_log`. Implémentée dans G5J-B (migration 0030, trigger, tests dédiés). Le MVP ne prend en charge que le soft-delete utilisateur ; toute suppression dure est hors périmètre. |
-| Politique RGPD de suppression/anonymisation des utilisateurs (hard-delete, webhook Clerk `user.deleted`) | Avant tout hard-delete ou lancement production | Produit / juridique | Ouvert — ne bloque pas G5J-B (le MVP n'utilise que le soft-delete). Bloque tout futur hard-delete, webhook Clerk `user.deleted` destructif, ou lancement production sans politique de rétention. Ne remet pas en cause le soft-delete du MVP ni l'Option A d'ADR-016. Si un hard-delete devient nécessaire : (1) refuser la suppression si des entrées d'audit existent (comportement Option A), (2) anonymiser `actor_user_id` via snapshot/pseudonymisation (nouvel ADR ou amendement), ou (3) supprimer les entrées d'audit (violation append-only, non recommandé). |
+| Politique RGPD de suppression/anonymisation des utilisateurs (hard-delete, webhook Clerk `user.deleted`) | Avant tout hard-delete ou lancement production | Produit / juridique | **Résolu pour le périmètre actuel par ADR-039 et Lot 21-P2** — `eraseUserAccount` applique l'effacement idempotent, la neutralisation des identifiants directs, le scellement probatoire 5/10 ans et la suppression de l'identité externe. Une nouvelle décision restera nécessaire pour tout hard-delete ou webhook destructif non couvert par ce contrat. |
 
 ## G7B — Réserves après gel du contrat MVP
 
@@ -42,7 +47,7 @@ Ces sujets ne doivent pas être tranchés implicitement dans le code.
 | Traduction du contenu libre des loueurs (FR+EN) | G7E/G7F affichage multilingue | Produit | Ouvert — bloque G7E/G7F affichage multilingue. Aucune traduction automatique opaque. |
 | Fournisseur de géocodage final et droits de stockage/cache | G8B-2B géocodage réel | Technique / juridique | **Partiellement résolu par ADR-027 et le benchmark G8B-2B** — PostgreSQL/PostGIS est retenu pour le runtime canonique et hors ligne. Photon reste un candidat d'enrichissement (meilleur score mesuré), mais son hébergement, ses droits de réutilisation et le cache doivent être validés avant toute ingestion ; IGN n'est pas retenu comme moteur primaire. |
 | Calibration de l'élargissement géographique | G8B-2D | Technique / produit | Partiellement résolu par ADR-027 — paliers initiaux 10/25/50 km acceptés et alternatives toujours explicites. Les seuils de déclenchement selon le nombre d'offres restent à calibrer avec les données du pilote. |
-| Règles juridiques exactes des annulations horaires (30 min) | Activation production G7P-B/G7D | Juridique / produit | Ouvert — bloque activation production. Fenêtre gratuite de 30 min après confirmation si début ≥ 2 h, validation juridique requise. |
+| Règles juridiques exactes des annulations horaires (30 min) | Activation production G7P-B/G7D | Juridique / produit | **Résolu pour le premier pilote par exclusion** — les offres horaires 30 min sont exclues par l'arbitrage du 2026-09-04 et [`ADR-043`](../decisions/ADR-043-first-pilot-pricing-scope.md). Les règles complètes restent ouvertes pour une future activation horaire. |
 | Modification d'une réservation entraînant un changement de prix | G7P-B modifications | Produit / paiement / juridique | **Résolu par ADR-023 (Accepted le 2026-08-10)** — conception approuvée pour G7M/G7P-C : amendements append-only sur réservation CONFIRMED uniquement, trois types NEUTRAL/SUPPLEMENT/REFUND, projection canonique `getEffectiveBooking`, hold delta-segment 10 min pour SUPPLEMENT, application atomique directe pour NEUTRAL/REFUND, dette de remboursement visible et auditée, UI client minimale réutilisant Stripe Elements. OWNER/ADMIN/MANAGER uniquement, EUR uniquement, pas de modification à partir de READY_FOR_PICKUP. Implémentation terminée et fusionnée sur main (G7M C1–C5). La politique proposée de remboursement split (delta entre états effectifs, composant par composant) est formalisée dans `ADR-030`, sans valoir approbation externe. Restent à valider : mentions légales des documents amendés, politique fiscale des suppléments/remboursements, exécution provider et délai/message client en cas de refund échoué. |
 | Futures devises et conversion | Activation pays hors EUR | Produit / finance / juridique | Ouvert — bloque activation pays hors EUR. Architecture monétaire compatible, aucune conversion au lancement. |
 | Fiscalité par pays | Activation pays hors France | Finance / juridique | Ouvert — bloque activation pays hors France. |
@@ -108,7 +113,7 @@ Une ADR est nécessaire avant schéma et moteur. Voir
 
 | Sujet | Décision nécessaire avant | Propriétaire | Statut |
 | --- | --- | --- | --- |
-| Périmètre des univers et familles commerciales | Toute activation de famille | Produit / direction | **Résolu par ADR-035** — quatre univers fermés ; `bike`, `kayak`, `canoe`, `paddleboard`, `surf`, `ski` et `snowboard` actifs, autres familles pagaie/neige et catégories hors périmètre explicitement exclues. |
+| Périmètre des univers et familles commerciales | Toute activation de famille | Produit / direction | **Résolu par ADR-035 et ADR-044** — quatre univers fermés ; `bike`, `kayak`, `canoe`, `paddleboard`, `surf`, `ski`, `snowboard`, `snowshoes` et `sled` actifs. Les autres familles pagaie/neige et catégories hors périmètre restent explicitement exclues. |
 | Activation de la famille `kayak` | Lot d'activation kayak | Produit / technique / juridique | **Résolu le 2026-09-01** — `kayak` est `ACTIVE`, sa catégorie canonique est seedée par migration 0051, la fixture `kayak-dev` l'utilise et les parcours génériques sont validés ; aucun attribut ou accessoire nouveau n'est requis. |
 | Activation de la famille `surf` | Lot d'activation surf | Produit / technique / juridique | **Résolu le 2026-09-01** — le socle `surf` est `ACTIVE` avec cinq sous-types descriptifs, sans migration ni champ spécialisé nouveau ; PR #45 et CI complète verte, Browser acceptance Clerk TEST compris. |
 | Activation de la famille `ski` | Lot d'activation ski | Produit / technique / juridique | **Résolu le 2026-09-01** — `ski` est `ACTIVE` avec `alpine`, `touring` et `cross-country` comme sous-types descriptifs ; la catégorie était déjà seedée, aucun champ, migration ou accessoire autonome n'est ajouté. |

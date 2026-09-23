@@ -100,6 +100,34 @@ describe('registre de présentation des catégories', () => {
     ).toEqual([]);
   });
 
+  it('présente le bodyboard comme une famille surf générique', () => {
+    const presentation = getCategoryPresentation('bodyboard');
+
+    expect(presentation).toMatchObject({
+      singularLabel: 'bodyboard',
+      pluralLabel: 'bodyboards',
+      icon: '🌊',
+      characteristics: [],
+      specificSections: [],
+    });
+    expect(getDisplayableCharacteristics({ subtype: 'classic' }, presentation)).toEqual([]);
+    expect(getCategoryDisplayLabel('bodyboard', 'Bodyboards')).toBe('bodyboard');
+  });
+
+  it('présente le wingfoil comme une famille surf générique', () => {
+    const presentation = getCategoryPresentation('wingfoil');
+
+    expect(presentation).toMatchObject({
+      singularLabel: 'wingfoil',
+      pluralLabel: 'wingfoils',
+      icon: '🪁',
+      characteristics: [],
+      specificSections: [],
+    });
+    expect(getDisplayableCharacteristics({ foilSize: '1500 cm²' }, presentation)).toEqual([]);
+    expect(getCategoryDisplayLabel('wingfoil', 'Wingfoils')).toBe('wingfoil');
+  });
+
   it('présente le ski actif avec ses trois sous-types existants, sans règles vélo', () => {
     const presentation = getCategoryPresentation('ski');
 
@@ -124,6 +152,28 @@ describe('registre de présentation des catégories', () => {
     expect(
       getDisplayableCharacteristics({ subtype: 'alpine', level: 'expert' }, presentation),
     ).toEqual([]);
+  });
+
+  it('présente les raquettes et la luge comme deux familles neige génériques', () => {
+    const snowshoes = getCategoryPresentation('snowshoes');
+    const sled = getCategoryPresentation('sled');
+
+    expect(snowshoes).toMatchObject({
+      singularLabel: 'raquette',
+      pluralLabel: 'raquettes',
+      icon: '🥾',
+      characteristics: [],
+      specificSections: [],
+    });
+    expect(sled).toMatchObject({
+      singularLabel: 'luge',
+      pluralLabel: 'luges',
+      icon: '🛷',
+      characteristics: [],
+      specificSections: [],
+    });
+    expect(getCategoryDisplayLabel('snowshoes', 'Snowshoes')).toBe('raquette');
+    expect(getCategoryDisplayLabel('sled', 'Sleds')).toBe('luge');
   });
 
   it('présente le pédalo avec le socle nautique neutre et sa capacité optionnelle', () => {
@@ -184,11 +234,22 @@ describe('registre de présentation des catégories', () => {
     expect(getCategoryPresentation(undefined)).toBe(GENERIC_CATEGORY_PRESENTATION);
   });
 
-  it('réserve l’action de duplication aux huit familles commerciales actives', () => {
+  it('réserve l’action de duplication aux douze familles commerciales actives', () => {
     expect(
-      ['bike', 'kayak', 'canoe', 'paddleboard', 'pedalboat', 'surf', 'ski', 'snowboard'].every(
-        (slug) => isCommercialEquipmentCategorySlug(slug),
-      ),
+      [
+        'bike',
+        'kayak',
+        'canoe',
+        'paddleboard',
+        'pedalboat',
+        'surf',
+        'bodyboard',
+        'wingfoil',
+        'ski',
+        'snowboard',
+        'snowshoes',
+        'sled',
+      ].every((slug) => isCommercialEquipmentCategorySlug(slug)),
     ).toBe(true);
     expect(isCommercialEquipmentCategorySlug('equipment')).toBe(false);
     expect(isCommercialEquipmentCategorySlug('paddle')).toBe(false);

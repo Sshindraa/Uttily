@@ -2,6 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import {
+  BIKE_SUBTYPE_DEFINITIONS,
+  getBikeSubtypeLabel,
+  normalizeBikeSubtype,
+  type BikeSubtype,
+} from '@uttily/contracts';
 import Link from 'next/link';
 import type { EquipmentEnrichmentProposal } from '@uttily/intelligence';
 import { createFirstEquipmentDraftAction } from '@/app/actions/products';
@@ -35,6 +41,7 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
   const router = useRouter();
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '');
+  const [bikeSubtype, setBikeSubtype] = useState<BikeSubtype | ''>('');
   const [variantName, setVariantName] = useState('');
   const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -52,10 +59,17 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
     }
 
     if (proposal.categorySlug.value) {
+      const proposedBikeSubtype = normalizeBikeSubtype(proposal.categorySlug.value);
+      const bikeCategory = categories.find((category) => category.slug === 'bike');
+      if (proposedBikeSubtype && bikeCategory) {
+        setCategoryId(bikeCategory.id);
+        setBikeSubtype(proposedBikeSubtype);
+      }
       const slugLower = proposal.categorySlug.value.toLowerCase();
       const matched = categories.find((c) => c.slug.toLowerCase() === slugLower);
       if (matched) {
         setCategoryId(matched.id);
+        if (matched.slug !== 'bike') setBikeSubtype('');
       }
     }
 
@@ -77,6 +91,9 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
       const formData = new FormData();
       formData.set('name', name);
       formData.set('categoryId', categoryId);
+      if (selectedCategory?.slug === 'bike' && bikeSubtype) {
+        formData.set('bikeSubtype', bikeSubtype);
+      }
       if (variantName.trim()) formData.set('variantName', variantName.trim());
       formData.set('description', description);
 
@@ -163,7 +180,10 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
                     <button
                       key={c.id}
                       type="button"
-                      onClick={() => setCategoryId(c.id)}
+                      onClick={() => {
+                        setCategoryId(c.id);
+                        if (c.slug !== 'bike') setBikeSubtype('');
+                      }}
                       className={`${styles.categoryChip} ${isSelected ? styles.categoryChipActive : ''}`}
                     >
                       <span>{pres.icon}</span>
@@ -176,7 +196,13 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
               <select
                 id="equipment-category"
                 value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
+                onChange={(e) => {
+                  const nextCategoryId = e.target.value;
+                  setCategoryId(nextCategoryId);
+                  if (categories.find((c) => c.id === nextCategoryId)?.slug !== 'bike') {
+                    setBikeSubtype('');
+                  }
+                }}
                 className={styles.input}
                 style={{ marginTop: '0.5rem' }}
                 required
@@ -189,6 +215,32 @@ export function NewBikeForm({ organizationId, categories }: NewBikeFormProps): R
                 ))}
               </select>
             </div>
+
+            {selectedCategory?.slug === 'bike' ? (
+              <div className={styles.formGroup}>
+                <label htmlFor="equipment-bike-subtype" className={styles.label}>
+                  <span>Type de vélo</span>
+                  <span className={styles.optionalTag}>Optionnel</span>
+                </label>
+                <select
+                  id="equipment-bike-subtype"
+                  value={bikeSubtype}
+                  onChange={(e) => setBikeSubtype(e.target.value as BikeSubtype | '')}
+                  className={styles.input}
+                  disabled={isLoading}
+                >
+                  <option value="">À préciser plus tard</option>
+                  {BIKE_SUBTYPE_DEFINITIONS.map((definition) => (
+                    <option key={definition.slug} value={definition.slug}>
+                      {getBikeSubtypeLabel('fr', definition.slug)}
+                    </option>
+                  ))}
+                </select>
+                <span className={styles.helpText}>
+                  Ce choix permet aux locataires de retrouver précisément ce vélo dans la recherche.
+                </span>
+              </div>
+            ) : null}
 
             {/* Nom commercial */}
             <div className={styles.formGroup}>

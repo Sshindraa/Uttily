@@ -19,6 +19,7 @@ const baseFingerprint = {
     endAt: '2026-08-08T17:00:00',
   },
   categoryId: null,
+  bikeSubtype: null,
   viewport: null,
   contractVersion: PUBLIC_SEARCH_CONTRACT_VERSION,
 };
@@ -75,6 +76,14 @@ describe('PublicSearchCursorCodec', () => {
       destinationPublicId: '11111111-1111-1111-1111-111111111111',
     };
     expect(() => codec.decode(cursor, otherFingerprint)).toThrow(PublicSearchError);
+  });
+
+  it('refuse un curseur utilisé avec un autre sous-type de vélo', () => {
+    const codec = createPublicSearchCursorCodec(SECRET);
+    const cursor = codec.encode(validTuple, { ...baseFingerprint, bikeSubtype: 'mtb' });
+    expect(() => codec.decode(cursor, { ...baseFingerprint, bikeSubtype: 'city' })).toThrow(
+      PublicSearchError,
+    );
   });
 
   it('refuse un curseur utilisé depuis un autre viewport', () => {

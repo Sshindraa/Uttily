@@ -91,6 +91,8 @@ export * from './transactional-documents';
 // Pricing Plans — G7P-B1 (flexible pricing engine, read-only quote).
 export {
   quoteFlexiblePricing,
+  FIRST_PILOT_PRICING_POLICY,
+  isPricingPlanAllowed,
   computeQuote,
   loadPricingContext,
   isWithinOpeningHours,
@@ -99,11 +101,14 @@ export {
   FlexiblePricingError,
   type QuoteFlexiblePricingInput,
   type QuoteFlexiblePricingResult,
+  type QuoteFlexiblePricingOptions,
   type QuoteLine,
   type QuoteLineHourly,
   type QuoteLineFixedDuration,
   type QuoteLineDaily,
   type FlexiblePricingIntent,
+  type PricingPlanPolicy,
+  type PricingPlanType,
   type SelectedWindow,
   type FlexiblePricingErrorCode,
   type PricingContext,

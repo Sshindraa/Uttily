@@ -26,6 +26,7 @@
 | [ADR-035](decisions/ADR-035-closed-outdoor-equipment-taxonomy.md) | Taxonomie commerciale outdoor fermée et registre serveur des familles. |
 | [ADR-036](decisions/ADR-036-pedalboat-preparation.md) | Préparation du pédalo sans activation commerciale. |
 | [ADR-037](decisions/ADR-037-pedalboat-activation.md) | Activation du pédalo sous le slug canonique `pedalboat`. |
+| [ADR-044](decisions/ADR-044-snowshoes-and-sled-activation.md) | Activation des seules familles neige `snowshoes` et `sled`. |
 
 ## Règle de maintenance
 

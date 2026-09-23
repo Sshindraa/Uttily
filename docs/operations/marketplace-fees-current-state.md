@@ -1,7 +1,14 @@
 # État canonique — frais marketplace
 
-**Dernière revue :** 2026-08-30
+**Dernière revue :** 2026-09-10
 **Statut :** implémentation technique présente ; activation LIVE bloquée par `FIN-002`
+
+Le pack finance et le `pilot-unblock-plan.md` enregistrent un sign-off humain
+du 2026-09-04 déclarant `FIN-002` approuvé. Cette évolution est bien prise en
+compte, mais elle n'est pas encore réconciliée avec cette source canonique,
+`ADR-029` et `AGENTS.md`. Le garde-fou reste donc `FIN-002 = BLOCKED` pour toute
+activation LIVE jusqu'à dépôt/référence de la preuve autorisée et alignement
+des sources ; aucun taux n'est activé par cette note documentaire seule.
 
 Ce document est le point d'entrée pour toute analyse du modèle de frais
 marketplace. Il décrit l'état du dépôt et ne constitue pas un sign-off Finance,

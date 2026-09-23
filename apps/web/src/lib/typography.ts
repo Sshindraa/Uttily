@@ -1,7 +1,7 @@
 import type { Appearance } from '@stripe/stripe-js';
 
 // Embedded providers cannot inherit the host page's CSS variables or font faces.
-export const UTTILY_FONT_FAMILY = 'Sora, system-ui, sans-serif';
+export const UTTILY_FONT_FAMILY = 'Chillax, system-ui, sans-serif';
 
 export const PAYMENT_APPEARANCE: Appearance = {
   theme: 'stripe',
@@ -50,5 +50,7 @@ export function getPaymentAppearance(): Appearance {
 export function getEmbeddedFonts(origin?: string): Array<{ cssSrc: string }> {
   const resolvedOrigin =
     origin ?? (typeof window === 'undefined' ? undefined : window.location.origin);
-  return resolvedOrigin ? [{ cssSrc: new URL('/fonts/sora/sora.css', resolvedOrigin).href }] : [];
+  return resolvedOrigin
+    ? [{ cssSrc: new URL('/fonts/chillax/chillax.css', resolvedOrigin).href }]
+    : [];
 }

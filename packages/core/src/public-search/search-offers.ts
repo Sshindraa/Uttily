@@ -77,6 +77,7 @@
  */
 
 import { eq, inArray, sql } from 'drizzle-orm';
+import { isBikeSubtype, type BikeSubtype } from '@uttily/contracts';
 import type { DatabaseClient } from '@uttily/database';
 import {
   categories,
@@ -99,6 +100,7 @@ import type {
   ResolvedWindow,
   OpeningHour,
 } from '../pricing-plans/types';
+import type { PricingPlanPolicy } from '../pricing-plans/policy';
 import { selectBestCandidate, compareCandidates } from '../pricing-plans/selector';
 import { generateCandidates } from '../pricing-plans/candidate-generator';
 import { calculateAmount } from '../pricing-plans/amount-calculator';
@@ -189,6 +191,7 @@ function buildSearchFingerprint(input: SearchPublicOffersInput): CursorFingerpri
     canonicalLocale: canonicalizeLocale(input.locale),
     canonicalIntent: input.intent,
     categoryId: input.categoryId ?? null,
+    bikeSubtype: input.bikeSubtype ?? null,
     viewport: input.viewport ? normalizePublicSearchViewport(input.viewport) : null,
     contractVersion: PUBLIC_SEARCH_CONTRACT_VERSION,
   };
@@ -213,7 +216,11 @@ function canonicalizeLocale(locale: string): string {
 export async function searchPublicOffers(
   db: DatabaseClient,
   input: SearchPublicOffersInput,
-  options: { publicationGate: PublicProductPublicationGate; cursorCodec: PublicSearchCursorCodec },
+  options: {
+    publicationGate: PublicProductPublicationGate;
+    cursorCodec: PublicSearchCursorCodec;
+    pricingPolicy?: PricingPlanPolicy;
+  },
 ): Promise<SearchPublicOffersResult> {
   if (!options?.publicationGate) {
     throw new PublicSearchError('PUBLICATION_GATE_UNAVAILABLE', 'Gating de publication manquant.');
@@ -260,7 +267,14 @@ export async function searchPublicOffers(
       candidates,
       lastScanned: batchLastScanned,
       hasMoreGroupsAfterBatch,
-    } = await loadCandidates(db, searchArea, eligibleCategoryIds, currentKeyset, scanCapacity);
+    } = await loadCandidates(
+      db,
+      searchArea,
+      eligibleCategoryIds,
+      input.bikeSubtype ?? null,
+      currentKeyset,
+      scanCapacity,
+    );
     lastScanned = batchLastScanned ?? lastScanned;
     lastHasMoreGroupsAfterBatch = hasMoreGroupsAfterBatch;
 
@@ -386,7 +400,10 @@ async function processCandidateBatch(
   input: SearchPublicOffersInput,
   destination: DestinationInfo,
   searchArea: SearchArea,
-  options: { publicationGate: PublicProductPublicationGate },
+  options: {
+    publicationGate: PublicProductPublicationGate;
+    pricingPolicy?: PricingPlanPolicy;
+  },
 ): Promise<GroupedOffer[]> {
   if (candidates.length === 0) {
     return [];
@@ -427,6 +444,7 @@ async function processCandidateBatch(
     input.intent,
     input.locale,
     timeRangeCustomerPeriods,
+    options.pricingPolicy,
   );
 
   // 3. Calculer le prix pour chaque candidate et obtenir les bornes exactes de la période.
@@ -549,6 +567,9 @@ function validateInput(input: SearchPublicOffersInput): void {
   }
   if (input.categoryId !== undefined && !UUID_RE.test(input.categoryId)) {
     throw new PublicSearchError('INVALID_INPUT', 'categoryId doit être un UUID valide.');
+  }
+  if (input.bikeSubtype !== undefined && !isBikeSubtype(input.bikeSubtype)) {
+    throw new PublicSearchError('INVALID_INPUT', 'bikeSubtype invalide.');
   }
   if (input.viewport !== undefined && !isValidPublicSearchViewport(input.viewport)) {
     throw new PublicSearchError('INVALID_INPUT', 'viewport invalide.');
@@ -849,6 +870,7 @@ async function loadCandidateGroups(
   db: DatabaseClient,
   searchArea: SearchArea,
   eligibleCategoryIds: string[] | null,
+  bikeSubtype: BikeSubtype | null,
   keyset: KeysetTuple | null,
   limit: number,
 ): Promise<CandidateGroup[]> {
@@ -859,6 +881,11 @@ async function loadCandidateGroups(
         FROM jsonb_array_elements_text(${JSON.stringify(eligibleCategoryIds)}::jsonb) AS value
       )`
       : sql``;
+
+  const bikeSubtypeCategoryCondition =
+    bikeSubtype !== null ? sql`AND category.slug = 'bike'` : sql``;
+  const bikeSubtypeVariantCondition =
+    bikeSubtype !== null ? sql`AND pv.attributes->>'subtype' = ${bikeSubtype}` : sql``;
 
   const keysetCondition =
     keyset !== null
@@ -981,6 +1008,7 @@ async function loadCandidateGroups(
       AND p.public_id IS NOT NULL
       AND category.is_active = true
       AND category.slug IN (${COMMERCIAL_CATEGORY_SLUGS_SQL})
+      ${bikeSubtypeCategoryCondition}
       AND EXISTS (
         SELECT 1
         FROM product_variants pv
@@ -993,6 +1021,7 @@ async function loadCandidateGroups(
           AND ii.status = 'ACTIVE'
           AND ii.deleted_at IS NULL
           AND ii.condition IN ('NEW', 'GOOD', 'FAIR')
+          ${bikeSubtypeVariantCondition}
       )
       ${categoryCondition}
       ${keysetCondition}
@@ -1032,6 +1061,7 @@ async function loadCandidateGroups(
 async function loadCandidateVariantRows(
   db: DatabaseClient,
   groups: CandidateGroup[],
+  bikeSubtype: BikeSubtype | null,
 ): Promise<CandidateRow[]> {
   if (groups.length === 0) {
     return [];
@@ -1103,6 +1133,7 @@ async function loadCandidateVariantRows(
     INNER JOIN products p ON p.id = g.product_id
     INNER JOIN locations l ON l.id = g.location_id
     INNER JOIN organizations o ON o.id = p.organization_id
+    INNER JOIN categories category ON category.id = p.category_id
     INNER JOIN product_variants pv ON pv.product_id = p.id
     LEFT JOIN LATERAL (
       SELECT pp.public_id
@@ -1118,6 +1149,11 @@ async function loadCandidateVariantRows(
     ) cover_photo ON true
     WHERE pv.is_active = true
       AND pv.deleted_at IS NULL
+      ${
+        bikeSubtype !== null
+          ? sql`AND category.slug = 'bike' AND pv.attributes->>'subtype' = ${bikeSubtype}`
+          : sql``
+      }
       AND EXISTS (
         SELECT 1
         FROM inventory_items ii
@@ -1183,6 +1219,7 @@ async function loadCandidates(
   db: DatabaseClient,
   searchArea: SearchArea,
   eligibleCategoryIds: string[] | null,
+  bikeSubtype: BikeSubtype | null,
   keyset: KeysetTuple | null,
   scanCapacity: number,
 ): Promise<{
@@ -1195,6 +1232,7 @@ async function loadCandidates(
     db,
     searchArea,
     eligibleCategoryIds,
+    bikeSubtype,
     keyset,
     scanCapacity + 1,
   );
@@ -1211,7 +1249,7 @@ async function loadCandidates(
   // Slice autorisé : segmente le lot SQL (lookahead), ne pagine pas les résultats finaux.
   const treatedGroups = hasMoreGroupsAfterBatch ? groups.slice(0, scanCapacity) : groups;
 
-  const candidates = await loadCandidateVariantRows(db, treatedGroups);
+  const candidates = await loadCandidateVariantRows(db, treatedGroups, bikeSubtype);
   const lastTreatedGroup = treatedGroups[treatedGroups.length - 1]!;
 
   return {
@@ -1427,6 +1465,7 @@ async function loadPricingContextsBatch(
   intent: PublicSearchIntent,
   locale: string,
   timeRangeCustomerPeriods: Map<string, { customerStartAt: Date; customerEndAt: Date }>,
+  pricingPolicy?: PricingPlanPolicy,
 ): Promise<Map<string, PricingContext>> {
   const contexts = new Map<string, PricingContext>();
 
@@ -1657,6 +1696,7 @@ async function loadPricingContextsBatch(
       variants,
       lines: locationCandidates.map((c) => ({ variantId: c.variantId, quantity: 1 })),
       locale,
+      ...(pricingPolicy ? { pricingPolicy } : {}),
     });
   }
 

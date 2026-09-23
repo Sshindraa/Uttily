@@ -9,6 +9,7 @@
  */
 
 import type { DbExecutor } from '@uttily/database';
+import type { PricingPlanPolicy } from './policy';
 import type { QuoteFlexiblePricingInput, QuoteFlexiblePricingResult } from './types';
 import { FlexiblePricingError } from './errors';
 import { loadPricingContext } from './load-pricing-context';
@@ -20,6 +21,10 @@ import { computeQuote } from './quote-engine';
  */
 const PRICING_CONTEXT_UNAVAILABLE_MESSAGE =
   'Le contexte de pricing est temporairement indisponible';
+
+export interface QuoteFlexiblePricingOptions {
+  readonly pricingPolicy?: PricingPlanPolicy;
+}
 
 /**
  * Vérifie si une erreur est une erreur PostgreSQL (possède une propriété `code`
@@ -63,6 +68,7 @@ function wrapInfrastructureError(err: unknown): FlexiblePricingError {
 export async function quoteFlexiblePricing(
   db: DbExecutor,
   input: QuoteFlexiblePricingInput,
+  options?: QuoteFlexiblePricingOptions,
 ): Promise<QuoteFlexiblePricingResult> {
   // 1. Validation de base.
   validateInput(input);
@@ -83,7 +89,10 @@ export async function quoteFlexiblePricing(
 
   // 3. Calculer le devis (pur).
   try {
-    return computeQuote(context);
+    return computeQuote({
+      ...context,
+      ...(options?.pricingPolicy ? { pricingPolicy: options.pricingPolicy } : {}),
+    });
   } catch (err) {
     // Les FlexiblePricingError explicites sont re-lancées telles quelles.
     if (err instanceof FlexiblePricingError) throw err;

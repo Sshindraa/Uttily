@@ -124,7 +124,7 @@ async function movementCount(itemIds: string[]): Promise<number> {
 describe.skipIf(shouldSkipIntegrationTests())(
   'mise à jour groupée de l’état physique — PostgreSQL',
   () => {
-    it('accepte les huit familles sans toucher au statut, au lieu ni aux mouvements', async () => {
+    it('accepte les douze familles sans toucher au statut, au lieu ni aux mouvements', async () => {
       if (!db) return;
       const { organizationId, locationId } = await createOrganization('all-families@example.com');
       const itemIds: string[] = [];

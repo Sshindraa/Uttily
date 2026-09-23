@@ -2,8 +2,8 @@
 
 **Référence de version :** document vivant ; vérifier le commit courant du dépôt
 avant utilisation. Les anciennes baselines `origin/main = ...` sont historiques.
-**Dernière revue de cohérence :** 2026-09-04  
-**Statut :** Arbitrages et sign-offs humains DPO, Juridique et Finance formellement actés le 2026-09-04. Les 31 blockers initiaux sont levés ou résolus. Seules les étapes opérationnelles de configuration LIVE (secrets, webhooks, compte connecté) restent à finaliser.
+**Dernière revue de cohérence :** 2026-09-10
+**Statut :** Arbitrages et sign-offs humains DPO, Juridique et Finance formellement actés le 2026-09-04. Les 31 blockers initiaux sont levés ou résolus ; le pilote reste `NO_GO` tant que les données partenaire, l'observabilité, la réconciliation documentaire et la configuration LIVE ne sont pas prouvées.
 
 ## Blockers pilote
 
@@ -31,15 +31,22 @@ avant utilisation. Les anciennes baselines `origin/main = ...` sont historiques.
 | `C2C-01` | Politique de confidentialité | `DPO-001`, `DPO-002` | DPO + juridique | `APPROVED` ✅ | Page `/privacy` v1 et durées annoncées formellement approuvées. | Validé le 2026-09-04. | Non |
 | `C2C-02` | Finalités | `DPO-001` | DPO | `APPROVED` ✅ | Registre des finalités contractuelles, fiscales et probatoires validé. | Validé le 2026-09-04. | Non |
 | `C2C-03` | Rétention annoncée | `DPO-002` | DPO + juridique | `APPROVED` ✅ | Durées de conservation publiques v1 validées par le DPO. | Validé le 2026-09-04. | Non |
-| `C2C-04` | Effacement / anonymisation | `DPO-003` | DPO + juridique + engineering | `ARBITRATED` ✅ | Cadrage acté (suppression Clerk, scellé 5/10 ans) ; Lot 21-P2 habilité. | Arbitré le 2026-09-04. | Non |
+| `C2C-04` | Effacement / anonymisation | `DPO-003` | DPO + juridique + engineering | `ARBITRATED` ✅ | Cadrage acté (suppression Clerk, neutralisation locale, scellé probatoire 5/10 ans) et livré dans `eraseUserAccount` / ADR-039. | Arbitré et livré le 2026-09-04. | Non |
 | `C2C-05` | Export / portabilité client | `DPO-004` | DPO + engineering | `APPROVED` ✅ | Copie Art. 15 et export Art. 20 JSON sans secrets (Lot 21-P1) validés. | Validé le 2026-09-04. | Non |
 | `C2C-06` | Accès / rectification / opposition | `DPO-003` | DPO + juridique | `APPROVED` ✅ | Formulaire `/account/privacy` et procédure cockpit Lot 21-P1A validés. | Validé le 2026-09-04. | Non |
 | `C2C-07` | Sous-traitants / DPA / transferts | `DPO-005` | DPO + juridique | `SIGNED_AND_APPROVED` ✅ | 6 sous-traitants, DPF/SCC et rétention signés formellement (21-P1C). | Signé le 2026-09-04. | Non |
-| `C2E-01` | Informations légales du partenaire Pro | `PARTNER-001` | Porteur produit + juridique | `TECHNICALLY_VERIFIED` (Lot 21-O1 livré) | Saisie des données réelles du partenaire pilote dans `/settings`. | Saisir Kbis réel pilote. | Non |
+| `C2E-01` | Informations légales du partenaire Pro | `PARTNER-001` | Porteur produit + juridique | `TECHNICALLY_VERIFIED` (Lot 21-O1 livré) | Saisie et vérification des données réelles du partenaire pilote dans `/settings`. | Saisir Kbis et données opératoires réels du pilote. | Oui |
 | `C2E-02` | Facturation partenaire & Décompte de commission | `FIN-008` | Finance + expert-comptable | `APPROVED` ✅ | Décompte officiel `/finances/statement` validé pour le pilote. | Validé le 2026-09-04. | Non |
 | `C2E-03` | Connected Account LIVE partenaire | `PARTNER-002`, `FIN-001`, `LEGAL-007` | Finance + produit + partenaire | `PROCEDURE_DOCUMENTED` (Runbook 21-OPS) | Raccorder compte Stripe LIVE loueur et vérifier charges/payoutsEnabled. | Suivre Runbook 21-OPS. | Oui |
 | `C2E-04` | Credentials Stripe LIVE | `OPS-004`, `PARTNER-002` | Engineering + porteur produit | `PROCEDURE_DOCUMENTED` (Runbook 21-OPS) | Injection des variables d'environnement LIVE dans Vercel hors dépôt. | Exécuter readiness:live. | Oui |
 | `C2E-05` | Webhooks Stripe LIVE | `OPS-004` | Engineering + porteur produit | `PROCEDURE_DOCUMENTED` (Runbook 21-OPS) | Création des webhooks Platform et Connect dans le Dashboard Stripe. | Vérifier signatures LIVE. | Oui |
+
+## Garde-fous opérationnels ajoutés au snapshot 2026-09-10
+
+| Gate | État | Référence | Blocking pilot |
+| --- | --- | --- | --- |
+| Capture centralisée des exceptions et alerting | `TO_CONFIGURE` | [`live-operator-checklist.md`](live-operator-checklist.md) ; logs JSON et métriques existent, mais aucun sink/alerting centralisé n'est prouvé. | Oui |
+| Réconciliation des sources de décision | `TO_RECONCILE` | Divergence entre les sign-offs du 2026-09-04, `decision-registry.md`, `ADR-029` et `AGENTS.md` autour de `FIN-002`. | Oui |
 
 ## État des cases préparatoires de pilot-readiness
 

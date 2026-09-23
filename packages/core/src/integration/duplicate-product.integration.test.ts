@@ -86,7 +86,7 @@ async function countForProduct(table: typeof productPhotos, productId: string): 
 }
 
 describe.skipIf(shouldSkipIntegrationTests())('Controlled product duplication — PostgreSQL', () => {
-  it('duplique les huit familles actives en ne copiant que le catalogue', async () => {
+  it('duplique les douze familles actives en ne copiant que le catalogue', async () => {
     if (!db) return;
     const { organizationId, locationId } = await createOrg('all-families@example.com');
     const categoryRows = await db.select().from(categories);

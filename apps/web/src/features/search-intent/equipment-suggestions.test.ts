@@ -4,6 +4,7 @@ import {
   equipmentFamilies,
   filterEquipmentFamilies,
   getEquipmentTerrain,
+  rankBikeSubtypeSuggestions,
   rankEquipmentSuggestions,
 } from './equipment-suggestions';
 
@@ -42,6 +43,38 @@ describe('deterministic equipment suggestions', () => {
     expect(rankEquipmentSuggestions([canoe], 'canoë', 'fr').map((c) => c.id)).toEqual(['canoe']);
   });
 
+  it('retrouve le bodyboard comme une famille eau distincte du surf', () => {
+    const bodyboard = { id: 'bodyboard', slug: 'bodyboard', name: 'Bodyboard', parentId: null };
+
+    expect(getEquipmentTerrain(bodyboard)).toBe('water');
+    expect(rankEquipmentSuggestions([bodyboard], 'body board', 'fr').map((c) => c.id)).toEqual([
+      'bodyboard',
+    ]);
+  });
+
+  it('retrouve le wingfoil avec son écriture courante sans élargir à foil seul', () => {
+    const wingfoil = { id: 'wingfoil', slug: 'wingfoil', name: 'Wingfoil', parentId: null };
+
+    expect(getEquipmentTerrain(wingfoil)).toBe('water');
+    expect(rankEquipmentSuggestions([wingfoil], 'wing foil', 'fr').map((c) => c.id)).toEqual([
+      'wingfoil',
+    ]);
+    expect(rankEquipmentSuggestions([wingfoil], 'foil', 'fr')).toEqual([]);
+  });
+
+  it('suggère les quatre sous-types de vélo sans inventer de catégories en base', () => {
+    expect(rankBikeSubtypeSuggestions('vélo', 'fr').map((item) => item.subtype)).toEqual([
+      'mtb',
+      'city',
+      'road',
+      'cargo',
+    ]);
+    expect(rankBikeSubtypeSuggestions('VTT', 'fr')[0]).toMatchObject({
+      id: 'bike-subtype:mtb',
+      subtype: 'mtb',
+    });
+  });
+
   it('expose le ski mais jamais le snowboard via l’ancien libellé de catégorie', () => {
     expect(rankEquipmentSuggestions(categories, 'ski alpin', 'fr').map((c) => c.id)).toEqual([
       'ski',
@@ -55,6 +88,19 @@ describe('deterministic equipment suggestions', () => {
     expect(filterEquipmentFamilies(categories, 'water').map((category) => category.id)).toEqual([
       'sup',
     ]);
+  });
+  it('classe uniquement les nouvelles familles raquettes et luge sur la neige', () => {
+    const snowCategories = [
+      { id: 'snowshoes', slug: 'snowshoes', name: 'Raquettes', parentId: null },
+      { id: 'sled', slug: 'sled', name: 'Luge', parentId: null },
+    ];
+
+    expect(snowCategories.map(getEquipmentTerrain)).toEqual(['snow', 'snow']);
+    expect(filterEquipmentFamilies(snowCategories, 'snow').map((c) => c.id)).toEqual([
+      'snowshoes',
+      'sled',
+    ]);
+    expect(filterEquipmentFamilies(snowCategories, 'water')).toEqual([]);
   });
   it('uses supplied parents, handles missing parents and terminates on cycles', () => {
     expect(categoryBreadcrumb(categories[2]!, categories, 'fr')).toBe(

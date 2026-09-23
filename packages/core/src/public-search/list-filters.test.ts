@@ -6,6 +6,8 @@ describe('filtrage des catégories publiques', () => {
     const rows = [
       { id: 'legacy-paddle', slug: 'paddle', name: 'Paddle' },
       { id: 'paddleboard', slug: 'paddleboard', name: 'Paddle' },
+      { id: 'bodyboard', slug: 'bodyboard', name: 'Bodyboard' },
+      { id: 'wingfoil', slug: 'wingfoil', name: 'Wingfoil' },
       { id: 'pedalboat', slug: 'pedalboat', name: 'Pédalo' },
       { id: 'equipment', slug: 'equipment', name: 'Équipement' },
       { id: 'kayak', slug: 'kayak', name: 'Kayak' },
@@ -13,6 +15,8 @@ describe('filtrage des catégories publiques', () => {
 
     expect(filterPublicSearchCategories(rows)).toEqual([
       { id: 'paddleboard', slug: 'paddleboard', name: 'Paddle' },
+      { id: 'bodyboard', slug: 'bodyboard', name: 'Bodyboard' },
+      { id: 'wingfoil', slug: 'wingfoil', name: 'Wingfoil' },
       { id: 'pedalboat', slug: 'pedalboat', name: 'Pédalo' },
       { id: 'kayak', slug: 'kayak', name: 'Kayak' },
     ]);

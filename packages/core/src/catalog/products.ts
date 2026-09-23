@@ -8,7 +8,7 @@ import {
   pricingPlans,
   inventoryItems,
 } from '@uttily/database';
-import { REQUIRED_BIKE_PHOTO_SLOTS } from '@uttily/contracts';
+import { isBikeSubtype, REQUIRED_BIKE_PHOTO_SLOTS } from '@uttily/contracts';
 import type {
   ProductRecord,
   CreateProductInput,
@@ -74,6 +74,18 @@ export async function createProduct(
       throw new CatalogError('VALIDATION', categoryFailure, { categoryId: categoryFailure });
     }
 
+    const initialVariantAttributes = input.initialVariantAttributes ?? {};
+    const requestedBikeSubtype = initialVariantAttributes.subtype;
+    if (
+      requestedBikeSubtype !== undefined &&
+      (cat?.slug !== 'bike' ||
+        typeof requestedBikeSubtype !== 'string' ||
+        !isBikeSubtype(requestedBikeSubtype))
+    ) {
+      const msg = 'Le sous-type de vélo est invalide pour cette catégorie.';
+      throw new CatalogError('VALIDATION', msg, { initialVariantAttributes: msg });
+    }
+
     // Vérifie l'unicité du slug dans l'organisation.
     const existing = await tx
       .select()
@@ -118,7 +130,7 @@ export async function createProduct(
     await tx.insert(productVariants).values({
       productId: product.id,
       name: initialVariantName,
-      attributes: {},
+      attributes: initialVariantAttributes,
       isActive: true,
     });
 

@@ -14,6 +14,7 @@ import type {
   ResolvedWindow,
   SelectedWindow,
 } from './types';
+import { isPricingPlanAllowed } from './policy';
 import {
   civilDayNumber,
   countCivilDays,
@@ -50,7 +51,10 @@ export function generateCandidates(
   context: PricingContext,
 ): Candidate[] {
   const variantPlans = context.plans.filter(
-    (p) => p.productVariantId === variantId && p.currency === context.currency,
+    (p) =>
+      p.productVariantId === variantId &&
+      p.currency === context.currency &&
+      isPricingPlanAllowed(p.planType, context.pricingPolicy),
   );
 
   const candidates: Candidate[] = [];

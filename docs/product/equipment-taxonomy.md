@@ -1,6 +1,8 @@
 # Taxonomie fermée des équipements outdoor
 
-**Statut :** contrat produit canonique — périmètre verrouillé le 2026-09-01.
+**Statut :** contrat produit canonique — périmètre initial verrouillé le
+2026-09-01, amendé pour les activations `bodyboard` le 2026-09-10 et `wingfoil`
+le 2026-09-11.
 
 ## Périmètre commercial
 
@@ -11,8 +13,8 @@ univers outdoor fermés :
 | --- | --- | --- | --- |
 | Cycle | `cycle` | `bike` | `ACTIVE` |
 | Kayak, canoë et pagaie | `paddle` | `kayak`, `canoe`, `paddleboard`, `pedalboat` | `ACTIVE` |
-| Surf et glisse nautique | `surf` | `surf` | `ACTIVE` |
-| Neige et glisse | `snow` | `ski`, `snowboard` | `ACTIVE` |
+| Surf et glisse nautique | `surf` | `surf`, `bodyboard`, `wingfoil` | `ACTIVE` |
+| Neige et glisse | `snow` | `ski`, `snowboard`, `snowshoes`, `sled` | `ACTIVE` |
 
 Le registre n'autorise pas les catégories camping, outdoor technique, sports
 généralistes, outillage, jardin, événementiel, audiovisuel ou construction.
@@ -26,22 +28,27 @@ publiable.
 La taxonomie sépare strictement :
 
 1. **Univers** : regroupement commercial fermé (`cycle`, `paddle`, `surf`,
-   `snow`).
+    `snow`).
 2. **Famille d'équipement** : slug stable du produit (`bike`, `kayak`, `canoe`,
-   `paddleboard`, `pedalboat`, `surf`, `ski`, `snowboard`).
+   `paddleboard`, `pedalboat`, `surf`, `bodyboard`, `wingfoil`, `ski`, `snowboard`,
+   `snowshoes`, `sled`).
 3. **Caractéristiques ou sous-types** : valeurs descriptives de la famille,
    jamais des catégories ni des slugs indépendants.
 
 | Famille | Sous-types ou caractéristiques canoniques |
 | --- | --- |
-| `bike` | sous-types `city`, `vtc`, `mtb`, `road`, `gravel`, `electric`, `cargo`, `child`, `tandem`, `fatbike` ; caractéristiques `size`, `autonomy` |
+| `bike` | sous-types `city`, `vtc`, `mtb`, `road`, `gravel`, `electric`, `cargo`, `child`, `tandem`, `fatbike` ; filtres publics actifs `mtb`, `city`, `road`, `cargo` ; caractéristiques `size`, `autonomy` |
 | `kayak` | `capacity` ; construction `rigid` ou `inflatable` ; pratique `sea`, `touring` ou `whitewater` |
 | `canoe` | aucun sous-type ou caractéristique spécialisé dans cette tranche |
-| `surf` | sous-types `classic`, `longboard`, `softboard`, `bodyboard`, `skimboard` |
+| `surf` | sous-types `classic`, `longboard`, `softboard`, `skimboard` |
+| `bodyboard` | aucun sous-type ou caractéristique spécialisé dans cette tranche |
+| `wingfoil` | aucun sous-type ou caractéristique spécialisé dans cette tranche |
 | `ski` | sous-types `alpine`, `touring`, `cross-country` |
 | `paddleboard` | `capacity` (`single` ou `tandem`) ; construction `rigid` ou `inflatable` |
 | `pedalboat` | `capacity` facultative via les attributs de variante existants |
 | `snowboard` | aucun sous-type ou caractéristique spécialisé dans cette tranche |
+| `snowshoes` | aucun sous-type ou caractéristique spécialisé dans cette tranche |
+| `sled` | aucun sous-type ou caractéristique spécialisé dans cette tranche |
 
 Le slug historique `paddle` reste inchangé et n'est pas promu. La famille
 `paddleboard` est active sous un seul slug canonique ; `single` correspond au
@@ -92,6 +99,16 @@ d'une autre catégorie n'est effectuée. Voir
 [`ADR-037`](../decisions/ADR-037-pedalboat-activation.md) pour le contrat
 d'activation.
 
+### Distinction publique des vélos
+
+La famille commerciale `bike` est désormais précisée dans la recherche par
+quatre filtres : VTT (`mtb`), vélo de ville (`city`), vélo de route (`road`) et
+vélo cargo (`cargo`). Ils restent des sous-types de variante et ne créent pas
+de catégories commerciales séparées. Le filtre repose sur
+`product_variants.attributes.subtype`, sans migration des catégories
+existantes. Les vélos non annotés restent disponibles via la famille générale
+« Vélos ». Voir [`ADR-047`](../decisions/ADR-047-bike-subtype-filters.md).
+
 ## Registre fermé côté serveur
 
 La source de vérité typée est
@@ -99,7 +116,8 @@ La source de vérité typée est
 Elle distingue :
 
 - `ACTIVE` : familles activées commercialement ; aujourd'hui `bike`, `kayak`,
-  `canoe`, `paddleboard`, `pedalboat`, `surf`, `ski` et `snowboard` ;
+  `canoe`, `paddleboard`, `pedalboat`, `surf`, `bodyboard`, `wingfoil`, `ski`, `snowboard`,
+  `snowshoes` et `sled` ;
 - `APPROVED_NEXT` : famille approuvée pour le prochain lot ; aucune après
   l'activation du kayak ;
 - `APPROVED_LATER` : familles approuvées mais différées ; aucune dans le
@@ -119,23 +137,75 @@ met à jour uniquement la fixture locale `kayak-dev`. Les produits historiques
 recherche, la publication et les parcours de réservation existants ; ses
 caractéristiques descriptives ne sont affichées que si elles sont présentes.
 
-L'activation surf réutilise la catégorie déjà seedée `surf`, sans migration et
-sans conversion des produits `equipment`. Elle active uniquement la famille
-et ses sous-types descriptifs `classic`, `longboard`, `softboard`, `bodyboard`
-et `skimboard`. Aucun champ dimensions, volume ou niveau, aucune règle
-spécialisée de glisse et aucun moteur d'accessoires n'est ajouté.
+L'activation surf réutilise la catégorie déjà seedée `surf`, sans conversion des
+produits `equipment`. Elle active uniquement la famille et ses sous-types
+descriptifs `classic`, `longboard`, `softboard` et `skimboard`. Aucun champ
+dimensions, volume ou niveau, aucune règle spécialisée de glisse et aucun
+moteur d'accessoires n'est ajouté. La valeur historique `bodyboard` portée par
+une variante surf n'est pas convertie automatiquement ; les nouvelles offres
+utilisent la famille commerciale `bodyboard`.
+
+### Activation bodyboard
+
+Le registre serveur définit `bodyboard` comme famille `ACTIVE` de l'univers
+`surf`. L'interface affiche « Bodyboard » en français et en anglais. Cette
+famille ne crée aucun sous-type, caractéristique obligatoire, accessoire
+autonome ou règle spécialisée : elle réutilise les parcours génériques
+Produit → Variante → Exemplaire, les trois photos valides, la tarification, la
+disponibilité, la publication, la recherche, le hold, le paiement TEST et la
+réservation.
+
+La migration idempotente 0061 ajoute ou réactive uniquement la catégorie
+canonique `bodyboard`, sans convertir les produits historiques `surf` ou
+`equipment`. La présentation et les photos restent neutres ; aucun Photo
+Coach, slot photo vélo, règle surf ou moteur de packs n'est introduit. Voir
+[`ADR-045`](../decisions/ADR-045-bodyboard-activation.md).
+
+### Activation wingfoil
+
+Le registre serveur définit `wingfoil` comme famille `ACTIVE` de l'univers
+`surf`. L'interface affiche « Wingfoil » en français et en anglais. Le terme
+« foil » seul n'est pas utilisé comme catégorie, car il est ambigu entre
+plusieurs pratiques ; les variantes contenant « wing », comme « wing foil »,
+sont réservées à la recherche.
+
+Cette famille ne crée aucun sous-type, caractéristique obligatoire, accessoire
+autonome ou règle spécialisée. Elle réutilise les parcours génériques Produit
+→ Variante → Exemplaire, les trois photos valides, la tarification, la
+disponibilité, la publication, la recherche, le hold, le paiement TEST et la
+réservation.
+
+La migration idempotente 0062 ajoute ou réactive uniquement la catégorie
+canonique `wingfoil`, sans convertir les produits historiques `surf` ou
+`equipment`. La présentation et les photos restent neutres ; les packs,
+composants et règles de niveau restent hors périmètre. Voir
+[`ADR-046`](../decisions/ADR-046-wingfoil-activation.md).
 
 L'activation ski réutilise la catégorie déjà seedée `ski`, sans migration et
 sans conversion des produits `equipment`. Elle active uniquement les sous-types
 descriptifs `alpine`, `touring` et `cross-country` du même slug `ski`. Les
 variantes existantes portent l'information lorsqu'elle est disponible ; aucun
 champ de mensuration, niveau ou longueur de bâton n'est ajouté. Le télémark,
-les raquettes, les luges, le snowscoot et les packs avalanche restent désactivés.
+le snowscoot et les packs avalanche restent désactivés.
 
 L'activation snowboard ajoute la catégorie canonique `snowboard` via la
 migration 0052, sans conversion des produits historiques `equipment`. Aucun
 sous-type, champ ou caractéristique spécialisée n'est introduit. Le parcours
 générique et les photos neutres sont réutilisés, sans règle vélo ou ski.
+
+### Activation raquettes et luge
+
+Le registre serveur définit désormais `snowshoes` et `sled` comme deux familles
+`ACTIVE` de l'univers neige. L'interface affiche « Raquettes » / « Snowshoes »
+et « Luge » / « Sled ». Ces familles n'introduisent aucun sous-type,
+caractéristique obligatoire, accessoire autonome ou règle spécialisée : elles
+réutilisent les parcours génériques Produit → Variante → Exemplaire, les photos
+neutres, la tarification, la disponibilité, la publication, la recherche, le
+hold, le paiement TEST et la réservation.
+
+La migration idempotente 0060 ajoute ou réactive uniquement les catégories
+canoniques `snowshoes` et `sled`, sans convertir `equipment` ni aucune donnée
+historique. Voir [`ADR-044`](../decisions/ADR-044-snowshoes-and-sled-activation.md).
 
 L'activation canoë ajoute la catégorie canonique `canoe` via la migration 0053,
 sans conversion des produits historiques `equipment`. Aucun sous-type, champ

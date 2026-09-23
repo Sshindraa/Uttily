@@ -20,7 +20,7 @@
   left: 50%;
   width: min(780px, calc(100vw - 48px));
   transform: translateX(-50%);
-  z-index: var(--ut-z-sticky);
+  z-index: 100;
 }
 .bar {
   display: grid;
@@ -114,7 +114,7 @@
 }
 .panel[data-field='equipment'] {
   left: 18%;
-  width: 560px;
+  width: 488px;
 }
 .panel[data-field='people'] {
   right: 0;
@@ -209,7 +209,7 @@
 }
 .suggestion small {
   display: block;
-  font-size: 11px;
+  font-size: var(--ut-text-xs);
   font-weight: var(--ut-weight-regular);
   color: var(--ut-color-ink-muted);
   margin-top: 4px;
@@ -289,16 +289,21 @@
   color: var(--ut-color-primary) !important;
 }
 .families {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+  max-width: 456px;
+  gap: 8px;
+  margin: 18px auto 0;
 }
 .familyHeading + .families {
   margin-top: 0;
 }
 .family {
-  min-height: 104px !important;
+  flex: 0 0 calc((100% - 24px) / 4);
+  min-width: 0;
+  min-height: 88px !important;
   padding: 8px !important;
   flex-direction: column;
   border: 1px solid var(--ut-color-border) !important;
@@ -410,7 +415,7 @@
   gap: 3px 0;
 }
 .weekday {
-  font-size: 11px;
+  font-size: var(--ut-text-xs);
   text-align: center;
   padding: 0 0 8px;
   color: var(--ut-color-ink-muted);
@@ -615,7 +620,7 @@
     gap: 3px !important;
   }
   .pinned .fieldLabel {
-    font-size: 10px;
+    font-size: var(--ut-text-xs);
   }
   .pinned .field:nth-child(3) {
     grid-column: 1;
@@ -645,7 +650,10 @@
     display: none;
   }
   .families {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: none;
+  }
+  .family {
+    flex-basis: calc((100% - 16px) / 3);
   }
   .flexibleMonths {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -657,7 +665,10 @@
 }
 @media (max-width: 24rem) {
   .families {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: none;
+  }
+  .family {
+    flex-basis: calc((100% - 8px) / 2);
   }
   .flexibleMonths {
     grid-template-columns: repeat(2, minmax(0, 1fr));

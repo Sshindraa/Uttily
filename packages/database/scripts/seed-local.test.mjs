@@ -64,6 +64,10 @@ describe('seed local environment guards', () => {
     expect(seedSource).toContain("VALUES ('kayak', 'Kayaks', true)");
     expect(seedSource).toContain("VALUES ('paddleboard', 'Paddle', true)");
     expect(seedSource).toContain("VALUES ('pedalboat', 'Pédalo', true)");
+    expect(seedSource).toContain("VALUES ('bodyboard', 'Bodyboard', true)");
+    expect(seedSource).toContain("VALUES ('wingfoil', 'Wingfoil', true)");
+    expect(seedSource).toContain("VALUES ('snowshoes', 'Raquettes', true)");
+    expect(seedSource).toContain("VALUES ('sled', 'Luge', true)");
     expect(seedSource).toContain("const DEMO_PRODUCT_SLUG = 'kayak-dev'");
     expect(seedSource).toContain('produit historique utilisant la catégorie equipment');
   });

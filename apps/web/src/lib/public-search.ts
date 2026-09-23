@@ -1,5 +1,6 @@
 import {
   createPublicSearchCursorCodec,
+  FIRST_PILOT_PRICING_POLICY,
   isValidPublicSearchViewport,
   PostgresPhotoPublicationGate,
   PublicSearchError,
@@ -10,6 +11,7 @@ import {
   type PublicOfferSearchItem,
   type PublicSearchViewport,
 } from '@uttily/core';
+import { isBikeSubtype, type BikeSubtype } from '@uttily/contracts';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { type DatabaseClient, productPhotos, products } from '@uttily/database';
 import { parseSearchPeople } from './search-people';
@@ -23,6 +25,7 @@ export type PublicUiLocale = 'fr' | 'en';
 export interface PublicSearchFormValues {
   destinationPublicId: string;
   categoryId: string;
+  bikeSubtype?: BikeSubtype;
   intent: 'DAY_RANGE' | 'TIME_RANGE';
   startDate: string;
   endDateExclusive: string;
@@ -96,6 +99,10 @@ export function parsePublicSearchParams(
     startAt: params.get('startAt')?.trim() ?? '',
     endAt: params.get('endAt')?.trim() ?? '',
   };
+  const rawBikeSubtype = params.get('bikeSubtype')?.trim() ?? '';
+  if (params.has('bikeSubtype') && isBikeSubtype(rawBikeSubtype)) {
+    values.bikeSubtype = rawBikeSubtype;
+  }
   const peopleCount = parseSearchPeople(params);
   if (typeof peopleCount === 'number') values.peopleCount = peopleCount;
   const packRequirements = params.get('packRequirements')?.trim();
@@ -106,6 +113,7 @@ export function parsePublicSearchParams(
     params.has('intent') ||
     params.has('pageSize') ||
     params.has('peopleCount') ||
+    params.has('bikeSubtype') ||
     VIEWPORT_QUERY_KEYS.some((key) => params.has(key));
   if (!searchRequested) return { kind: 'EMPTY', values };
 
@@ -124,6 +132,9 @@ export function parsePublicSearchParams(
   }
   if (values.categoryId && !UUID_RE.test(values.categoryId)) {
     fieldErrors.categoryId = locale === 'fr' ? 'Catégorie invalide.' : 'Invalid category.';
+  }
+  if (params.has('bikeSubtype') && !isBikeSubtype(rawBikeSubtype)) {
+    fieldErrors.bikeSubtype = locale === 'fr' ? 'Type de vélo invalide.' : 'Invalid bike type.';
   }
   const cursor = params.get('cursor');
   if (cursor !== null && (cursor.length === 0 || cursor.length > 4096)) {
@@ -198,6 +209,7 @@ export function parsePublicSearchParams(
           },
     pageSize,
     ...(values.categoryId ? { categoryId: values.categoryId } : {}),
+    ...(values.bikeSubtype ? { bikeSubtype: values.bikeSubtype } : {}),
     ...(cursor ? { cursor } : {}),
     ...(viewportResult.viewport ? { viewport: viewportResult.viewport } : {}),
   };
@@ -299,6 +311,7 @@ export async function executePublicSearch(
   const result = await searchPublicOffers(db, input, {
     publicationGate: new PostgresPhotoPublicationGate(),
     cursorCodec,
+    pricingPolicy: FIRST_PILOT_PRICING_POLICY,
   });
 
   if (result.items.length === 0) {

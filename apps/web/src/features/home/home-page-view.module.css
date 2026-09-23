@@ -1,131 +1,129 @@
 .page {
+  background: var(--ut-color-surface);
   display: flex;
   flex-direction: column;
-  gap: var(--ut-space-16);
-  padding-bottom: var(--ut-space-16);
+  gap: 0;
 }
 
-.eyebrow {
-  color: var(--ut-color-primary);
-  font-size: var(--ut-text-sm);
-  font-weight: var(--ut-weight-medium);
-  letter-spacing: var(--ut-tracking-eyebrow);
-  line-height: var(--ut-leading-ui);
-  text-transform: uppercase;
+.page + :global(footer) {
+  margin-top: 0;
 }
 
-.howItWorks,
-.valueGrid {
-  width: min(100%, 76rem);
-  padding-inline: var(--ut-space-6);
+.proofSection {
+  width: min(100%, 91.25rem);
+  padding-inline: 30px;
   margin-inline: auto;
+  position: relative;
+  z-index: 1;
 }
 
-.howItWorks {
+.proofGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--ut-color-border);
+  border-bottom: 1px solid var(--ut-color-border);
+}
+
+.proofCard {
+  align-items: center;
   display: flex;
   flex-direction: column;
-  gap: var(--ut-space-8);
-}
-
-.sectionHeader {
+  min-height: 20.25rem;
+  padding: 40px;
   text-align: center;
 }
 
-.sectionHeader h2 {
-  color: var(--ut-color-ink-strong);
-  font-size: var(--ut-text-title-lg);
-  font-weight: var(--ut-weight-semibold);
-  letter-spacing: var(--ut-tracking-heading);
-  line-height: var(--ut-leading-heading);
-  margin: var(--ut-space-2) 0 0;
+.proofCard:nth-child(odd) {
+  border-right: 1px solid var(--ut-color-border);
 }
 
-.stepsGrid {
-  display: grid;
-  gap: var(--ut-space-6);
-  grid-template-columns: repeat(3, 1fr);
+.proofCard:nth-child(n + 3) {
+  border-top: 1px solid var(--ut-color-border);
 }
 
-.stepCard {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ut-space-3);
-}
-
-.stepNumber {
-  align-items: center;
-  background: var(--ut-color-primary);
+.proofPill {
   border-radius: var(--ut-radius-pill);
-  color: var(--ut-color-ink-on-dark);
   display: inline-flex;
   font-size: var(--ut-text-sm);
-  font-weight: var(--ut-weight-bold);
-  height: 2rem;
-  justify-content: center;
-  width: 2rem;
+  font-weight: var(--ut-weight-regular);
+  line-height: 26px;
+  padding: 6px 16px;
 }
 
-.stepCard h3 {
-  color: var(--ut-color-ink-strong);
-  font-size: var(--ut-text-title-sm);
-  font-weight: var(--ut-weight-semibold);
-  letter-spacing: var(--ut-tracking-heading);
-  line-height: var(--ut-leading-heading);
-  margin: 0;
-}
-
-.stepCard p {
-  color: var(--ut-color-ink-muted);
-  font-size: var(--ut-text-md);
-  line-height: var(--ut-leading-body);
-  margin: 0;
-}
-
-.valueGrid {
-  display: grid;
-  gap: var(--ut-space-6);
-  grid-template-columns: repeat(3, 1fr);
-}
-
-.valueGrid h2 {
-  color: var(--ut-color-ink-strong);
-  font-size: var(--ut-text-title-sm);
-  font-weight: var(--ut-weight-semibold);
-  letter-spacing: var(--ut-tracking-heading);
-  line-height: var(--ut-leading-heading);
-  margin: var(--ut-space-4) 0 var(--ut-space-2);
-}
-
-.valueGrid p {
-  color: var(--ut-color-ink-muted);
-  font-size: var(--ut-text-md);
-  line-height: var(--ut-leading-body);
-  margin: 0;
-}
-
-.valueIcon {
-  align-items: center;
-  background: var(--ut-color-primary-soft);
-  border-radius: var(--ut-radius-md);
+.proofPillTeal {
+  background: color-mix(in srgb, var(--ut-color-brand-teal) 24%, var(--ut-color-surface));
   color: var(--ut-color-primary-strong);
+}
+
+.proofPillMist {
+  background: var(--ut-color-brand-mist);
+  color: var(--ut-color-primary-strong);
+}
+
+.proofPillSoft {
+  background: color-mix(in srgb, var(--ut-color-brand-teal) 14%, var(--ut-color-surface-soft));
+  color: var(--ut-color-primary-strong);
+}
+
+.proofPillMuted {
+  background: var(--ut-color-surface-muted);
+  color: var(--ut-color-primary-strong);
+}
+
+.proofIcon {
+  align-items: center;
+  color: var(--ut-color-ink-strong);
   display: inline-flex;
-  height: 2.5rem;
+  height: 3.25rem;
   justify-content: center;
-  width: 2.5rem;
+  margin: 1.5rem 0;
+  width: 3.25rem;
+}
+
+.proofCard h3 {
+  color: var(--ut-color-ink-strong);
+  font-size: clamp(1.35rem, 1.9vw, 1.75rem);
+  font-weight: var(--ut-weight-semibold);
+  letter-spacing: var(--ut-tracking-heading);
+  line-height: var(--ut-leading-heading);
+  margin: 0 0 14px;
+}
+
+.proofCard p {
+  max-width: 28rem;
+  color: var(--ut-color-ink-muted);
+  font-size: var(--ut-text-md);
+  line-height: 1.55;
+  margin: 0;
 }
 
 @media (max-width: 48rem) {
   .page {
-    gap: var(--ut-space-12);
+    gap: 0;
   }
 
-  .howItWorks,
-  .valueGrid {
+  .proofSection {
     padding-inline: var(--ut-space-4);
   }
 
-  .stepsGrid,
-  .valueGrid {
+  .proofGrid {
     grid-template-columns: 1fr;
+  }
+
+  .proofCard {
+    min-height: 0;
+    padding: 2.5rem 1.5rem 2.75rem;
+  }
+
+  .proofCard:nth-child(odd) {
+    border-right: 0;
+  }
+
+  .proofCard:nth-child(n + 2) {
+    border-top: 1px solid var(--ut-color-border);
+  }
+
+  .proofCard p {
+    font-size: var(--ut-text-sm);
   }
 }

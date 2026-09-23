@@ -40,7 +40,7 @@ Pour les frais marketplace, consulter ensuite l'[état canonique du modèle
 
 ## Stack technique de référence
 
-- Node.js >= 22 (Node.js 22 LTS de référence, active jusqu'en 2027), TypeScript strict, pnpm workspaces.
+- Node.js 24 LTS comme runtime canonique (`.nvmrc`, CI et worker Docker) ; les packages déclarent une compatibilité `>=22`. TypeScript strict, pnpm workspaces.
 - Monolithe modulaire Next.js (App Router, Server Actions, Server Components).
 - PostgreSQL 16+ avec PostGIS.
 - Drizzle ORM avec migrations SQL versionnées et testées (ADR-004).

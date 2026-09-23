@@ -1,7 +1,9 @@
 # ADR-029 — Split des frais marketplace 13/7
 
-**Statut :** implémentation technique autorisée par le produit ; sign-off
-Finance/Juridique externe requis avant activation LIVE (`FIN-002 = BLOCKED`).
+**Statut :** implémentation technique autorisée par le produit ; un sign-off
+Finance/Juridique est déclaré dans les packs du 2026-09-04, mais sa
+réconciliation avec le registre canonique et la preuve opérationnelle reste
+requise avant activation LIVE (`FIN-002 = BLOCKED`).
 
 **Date :** 2026-08-29
 

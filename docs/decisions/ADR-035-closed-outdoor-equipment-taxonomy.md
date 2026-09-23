@@ -2,7 +2,9 @@
 
 **Statut :** Accepted — familles outdoor fermées ; paddleboard et pedalboat
 activés comme familles de l'univers pagaie. L'activation du pédalo est détaillée
-dans [ADR-037](ADR-037-pedalboat-activation.md).
+dans [ADR-037](ADR-037-pedalboat-activation.md). La promotion du bodyboard en
+famille commerciale est définie par l'amendement [ADR-045](ADR-045-bodyboard-activation.md).
+L'activation du wingfoil est définie par [ADR-046](ADR-046-wingfoil-activation.md).
 
 **Date :** 2026-09-01
 
@@ -44,7 +46,7 @@ Le registre serveur fermé et typé est porté par
 
 | Statut | Familles |
 | --- | --- |
-| `ACTIVE` | `bike`, `kayak`, `canoe`, `paddleboard`, `pedalboat`, `surf`, `ski`, `snowboard` |
+| `ACTIVE` | `bike`, `kayak`, `canoe`, `paddleboard`, `pedalboat`, `surf`, `bodyboard`, `wingfoil`, `ski`, `snowboard`, `snowshoes`, `sled` |
 | `APPROVED_NEXT` | — |
 | `APPROVED_LATER` | — |
 | `INTERNAL_FALLBACK` | `equipment`, compatibilité technique seulement |
@@ -115,6 +117,21 @@ neutre : aucun Photo Coach, slot photo ou règle de sécurité vélo ou ski ne l
 est appliqué. La migration 0052 ne convertit pas les produits historiques
 `equipment`.
 
+### Amendement bodyboard — 2026-09-10
+
+Le `bodyboard` est promu de valeur descriptive historique du surf à famille
+commerciale `ACTIVE` distincte de l'univers `surf`, conformément à
+[ADR-045](ADR-045-bodyboard-activation.md). Les nouvelles offres utilisent le
+slug canonique `bodyboard` ; aucune offre historique `surf` n'est convertie.
+
+### Amendement wingfoil — 2026-09-11
+
+Le `wingfoil` est activé comme famille commerciale `ACTIVE` distincte de
+l'univers `surf`, conformément à [ADR-046](ADR-046-wingfoil-activation.md).
+Les nouvelles offres utilisent le slug canonique `wingfoil` ; aucune offre
+historique `surf` ou `equipment` n'est convertie. « Foil » reste un terme de
+recherche ambigu et n'est pas retenu comme famille.
+
 ## Compléments
 
 Le contrat prépare les modes `INCLUDED`, `MANDATORY`, `OPTIONAL_FREE`,
@@ -170,5 +187,5 @@ résolu exclusivement par le registre serveur de cette ADR.
   `equipment`.
 - Les accessoires des familles kayak, canoë, paddleboard, pédalo, surf, ski et snowboard restent des compléments non
   publiables seuls par défaut ; leur moteur de supplément n'est pas livré.
-- Les familles windsurf, wingfoil, kitesurf et foil ne sont pas activées par
-  cette décision.
+- Les familles windsurf, kitesurf et foil restent hors périmètre ; le wingfoil
+  est désormais activé par l'amendement ADR-046.

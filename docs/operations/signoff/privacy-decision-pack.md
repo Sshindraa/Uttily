@@ -2,7 +2,7 @@
 
 **Référence de version :** document vivant ; vérifier le commit courant du dépôt
 avant utilisation. Les anciennes baselines `origin/main = ...` sont historiques.
-**Dernière revue de cohérence :** 2026-09-04
+**Dernière revue de cohérence :** 2026-09-10
 **Statut du pack :** `SIGNOFF = APPROVED` ✅ (Décisions formelles DPO actées le 2026-09-04)
 **Identifiants référencés :** uniquement `DPO-*`
 **Analytics production :** `OFF`
@@ -20,9 +20,12 @@ Ce pack consigne les arbitrages formels validés par le DPO et la Direction pour
 | `DPO-005` | Sous-traitants, DPA & transferts hors-UE | DPO + juridique | `APPROVED` ✅ | 6 sous-traitants (Clerk, Stripe, Neon, Cloudflare, Resend, Vercel) formellement approuvés sous garanties DPF et SCC 2021/914 (dossier 21-P1C validé). |
 | `DPO-006` | Verrou analytics production | DPO + porteur produit | `APPROVED` ✅ | Maintien strict de `PRODUCTION ANALYTICS = OFF` (ADR-022) confirmé pour toute la durée du pilote. |
 
-## DPO decisions required
+## Périmètre documentaire et limites restantes
 
-Le DPO doit répondre explicitement, sans déduire une base juridique du code :
+Les décisions DPO du 2026-09-04 sont enregistrées dans le tableau ci-dessus.
+La cartographie ci-dessous reste un inventaire technique et doit être
+réconciliée avec les paramètres réels des fournisseurs ; elle ne transforme
+pas une capacité technique en avis juridique.
 
 ### Finalités et bases
 
@@ -51,9 +54,13 @@ ledger financier. Le DPO doit distinguer :
 - données qui doivent être conservées ;
 - journalisation de la demande et de son résultat.
 
-Aucun mécanisme d'effacement, d'anonymisation ou de portabilité client n'est
-implémenté dans 21-P0. Les futurs chantiers sont uniquement nommés dans le
-registre ; ils ne sont pas livrés par ce pack.
+L'effacement et la portabilité client sont désormais implémentés :
+`eraseUserAccount` applique le contrat ADR-039 (opération idempotente,
+neutralisation des identifiants directs, scellement probatoire 5/10 ans et
+purge de l'identité externe), tandis que les exports Art. 15 et Art. 20 sont
+fournis par `buildPersonalDataCopy` et `buildPortableData`. Les extensions non
+couvertes par ADR-039 et la rétention effective des fournisseurs restent à
+traiter séparément.
 
 ### Droits et procédures
 
@@ -69,7 +76,7 @@ garantie de conformité ni un engagement fournisseur.
 
 | Data category | System/table | Sujet concerné | Pourquoi techniquement collecté | Destinataires techniques | Rétention technique actuelle | Effaçable aujourd’hui | Anonymisable aujourd’hui | Exportable aujourd’hui | Decision IDs |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Identité, email, nom affiché, identifiant OIDC | Clerk → `users` | Client, membre loueur, équipe interne | Authentifier, retrouver le compte et synchroniser l'identité locale | Clerk, Uttily Web, PostgreSQL | `UNKNOWN` côté provider ; `users.deleted_at` existe mais aucune procédure d'effacement utilisateur | `PARTIAL` | `UNKNOWN` | `PARTIAL` pour les vues/exportes existants, pas pour un export client complet | `DPO-001`, `DPO-002`, `DPO-003`, `DPO-004`, `DPO-005` |
+| Identité, email, nom affiché, identifiant OIDC | Clerk → `users` | Client, membre loueur, équipe interne | Authentifier, retrouver le compte et synchroniser l'identité locale | Clerk, Uttily Web, PostgreSQL | `UNKNOWN` côté provider ; `users.deleted_at` et le scellement local sont gérés par ADR-039 | `YES` côté procédure Uttily, sous réserve de la purge provider vérifiée | `YES` pour les identifiants directs neutralisés par ADR-039 | `YES` pour les exports client prévus | `DPO-001`, `DPO-002`, `DPO-003`, `DPO-004`, `DPO-005` |
 | Organisation, membership, invitation et rôle | PostgreSQL : `organizations`, `organization_memberships`, `organization_invitations` | Loueur professionnel, membres et invités | Autoriser le multi-tenant, l'onboarding, les invitations et les permissions serveur | Uttily Web, support interne autorisé, PostgreSQL | `UNKNOWN`; timestamps et quelques soft-delete existent | `PARTIAL` | `UNKNOWN` | `PARTIAL` pour le dashboard autorisé, pas un export personne complet | `DPO-001`, `DPO-002`, `DPO-003`, `DPO-004` |
 | Adresse, horaires, téléphone public, géopoint | PostgreSQL : `locations`, PostGIS | Loueur, établissement, visiteurs publics | Afficher un point de retrait, filtrer les destinations et appliquer le fuseau/horaires | Uttily Web, PostGIS, support interne autorisé | `UNKNOWN`; `deleted_at` existe pour l'établissement | `PARTIAL` | `UNKNOWN` | `PARTIAL` pour l'organisation, aucun export personne | `DPO-001`, `DPO-002`, `DPO-003`, `DPO-004` |
 | Catalogue, catégories, tailles, prix et disponibilités | PostgreSQL : `products`, `product_variants`, pricing, `inventory_items`, `inventory_blocks` | Loueur, opérateur et indirectement client réservant | Rechercher une offre, calculer un prix et allouer un exemplaire physique | Uttily Web, Core, PostgreSQL, support interne autorisé | `UNKNOWN`; certaines entités ont états/archive/soft-delete | `PARTIAL` | `UNKNOWN` | `PARTIAL` pour le loueur, pas un export client | `DPO-001`, `DPO-002`, `DPO-003`, `DPO-004` |
@@ -119,7 +126,8 @@ n'est incluse dans 21-P0.
 
 ## Règle de suite technique
 
-Après décision DPO seulement, ouvrir si nécessaire :
+Après le sign-off DPO, ouvrir uniquement si nécessaire pour une extension du
+périmètre :
 
 - `PRIVACY-ERASURE` pour effacement/anonymisation ;
 - `PRIVACY-EXPORT` pour export/portabilité ;
@@ -127,4 +135,5 @@ Après décision DPO seulement, ouvrir si nécessaire :
 - `PRIVACY-PURPOSES-REGISTRY` pour un registre versionné ;
 - `PRIVACY-ANALYTICS-PRODUCTION` pour une éventuelle activation distincte.
 
-Aucun de ces chantiers n'est implémenté ou activé dans ce pack.
+`PRIVACY-ERASURE` et `PRIVACY-EXPORT` sont déjà livrés pour le périmètre
+ADR-039/21-P1 ; aucune activation de l'analytics PRODUCTION n'est permise.

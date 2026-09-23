@@ -251,9 +251,11 @@ Le périmètre initial ne couvrait pas encore les opérations groupées ; cette
 limite reste valable pour les lots suivants, sans ajouter de règle métier
 spécifique à une catégorie.
 
-**Cadrage livré le 2026-09-01 :** ADR-035 et le registre Core ferment le
-périmètre commercial aux quatre univers Cycle, Kayak/canoë/pagaie, Surf/glisse
-nautique et Neige/glisse. `bike`, `kayak`, `canoe`, `paddleboard`, `pedalboat`, `surf`, `ski` et `snowboard` sont `ACTIVE`,
+**Cadrage livré le 2026-09-01, complété par ADR-044, ADR-045 et ADR-046 les
+2026-09-10 et 2026-09-11 :** ADR-035, ADR-044, ADR-045, ADR-046 et le registre Core ferment le périmètre commercial aux quatre univers
+Cycle, Kayak/canoë/pagaie, Surf/glisse nautique et Neige/glisse. `bike`,
+`kayak`, `canoe`, `paddleboard`, `pedalboat`, `surf`, `bodyboard`, `wingfoil`, `ski`, `snowboard`,
+`snowshoes` et `sled` sont `ACTIVE`,
 `equipment` reste un fallback interne et
 les valeurs inconnues sont `UNSUPPORTED`. Aucune catégorie camping, outdoor
 technique, sport généraliste, outillage, jardin, événementiel, audiovisuel ou
@@ -299,8 +301,8 @@ loueur et publics réutilisent Produit → Variante → Exemplaire, la tarificat
 la disponibilité, les photos neutres, la publication, la recherche, le hold,
 le paiement TEST et la confirmation. Les surfaces internes et publiques
 présentent `ski` et filtrent l'ancien libellé `Ski & Snowboard`; aucune règle
-Photo Coach, slot ou sécurité vélo n'est appliquée. Snowboard, télémark,
-raquettes, luges, snowscoot et packs avalanche restent inactifs.
+Photo Coach, slot ou sécurité vélo n'est appliquée. Télémark, snowscoot et
+packs avalanche restent inactifs.
 
 **Hardening ski livré le 2026-09-01 :** l'audit a corrigé une régression de
 présentation dans la création et l'édition : les sélecteurs affichaient encore
@@ -319,6 +321,15 @@ invariants génériques Produit → Variante → Exemplaire, le tarif, la
 disponibilité, les photos neutres, la publication, la recherche, le hold, le
 paiement TEST et la confirmation. Aucun Photo Coach, slot photo vélo, règle ski,
 pack ou moteur de supplément n'est activé.
+
+**Activation raquettes et luge livrée le 2026-09-10 :** les familles
+`snowshoes` et `sled` sont désormais `ACTIVE` dans le registre fermé. La
+migration idempotente 0060 ajoute ou réactive uniquement leurs catégories
+canoniques, avec les libellés « Raquettes » / « Snowshoes » et « Luge » /
+« Sled ». Les parcours loueur/public, photos neutres, tarification,
+disponibilité, publication, recherche, hold, paiement TEST et réservation sont
+génériques ; aucun sous-type, accessoire, pack ou règle spécialisée n'est
+introduit. Les produits historiques ne sont pas convertis. Voir ADR-044.
 
 **Activation canoë livrée le 2026-09-01 :** la famille `canoe` est désormais
 `ACTIVE` sous un seul slug. La migration 0053 ajoute sa catégorie canonique
@@ -343,7 +354,8 @@ remplacée par son activation dans le lot suivant.
 
 **Taxonomy enforcement livré le 2026-09-01 :** le registre fermé serveur est
 désormais l'autorité commerciale des familles `bike`, `kayak`, `canoe`,
-`paddleboard`, `surf`, `ski` et `snowboard`. Les mutations de création,
+`paddleboard`, `surf`, `bodyboard`, `wingfoil`, `pedalboat`, `ski`, `snowboard`, `snowshoes`
+et `sled`. Les mutations de création,
 changement de catégorie, publication et restauration refusent `equipment`,
 l'ancien `paddle`, les catégories personnalisées, inconnues, inactives ou
 seulement approuvées. Les sélecteurs loueur, les filtres et les read models
@@ -373,10 +385,28 @@ slot vélo, règle kayak/paddle, pack, supplément ou autre catégorie n'est act
 La PR #56 est fusionnée dans `9fabdad` après une CI complète verte, Browser
 Clerk TEST compris.
 
+**Activation bodyboard livrée le 2026-09-10 :** `bodyboard` est désormais
+`ACTIVE` comme famille distincte de l'univers surf. La migration idempotente
+0061 ajoute ou réactive uniquement la catégorie canonique et ne convertit
+aucune offre historique `surf` ou `equipment`. Les libellés FR/EN, la
+présentation, les photos neutres, la tarification, la disponibilité, la
+publication, la recherche, le hold, le paiement TEST et la réservation
+réutilisent le parcours générique. La valeur historique `bodyboard` d'une
+variante surf n'est pas réinterprétée automatiquement. Voir ADR-045.
+
+**Activation wingfoil livrée le 2026-09-11 :** `wingfoil` est désormais
+`ACTIVE` comme famille distincte de l'univers surf. La migration idempotente
+0062 ajoute ou réactive uniquement la catégorie canonique et ne convertit
+aucune offre historique `surf` ou `equipment`. L'interface et la recherche
+utilisent « Wingfoil » ; « foil » seul reste volontairement ambigu. Les
+parcours loueur/public, photos neutres, tarification, disponibilité,
+publication, hold, paiement TEST et réservation réutilisent le parcours
+générique. Voir ADR-046.
+
 **Onboarding autonome — premier équipement livré le 2026-09-02 :** la route
 historique `/dashboard/:orgId/bikes/new` propose désormais le parcours unique
 catégorie → produit → variante → exemplaire → lieu → tarif → photos →
-disponibilité → publication pour les huit familles `ACTIVE` du registre
+disponibilité → publication pour les douze familles `ACTIVE` du registre
 serveur. La création et la publication restent autorisées côté serveur ; le
 parcours affiche les libellés et caractéristiques du registre, conserve le
 Photo Coach et les slots uniquement pour `bike`, et utilise des photos neutres
@@ -389,7 +419,7 @@ Les accessoires autonomes, packs et opérations groupées restent hors périmèt
 
 **Duplication contrôlée d'un équipement livrée le 2026-09-02 :** depuis la liste
 générique « Mes équipements », un loueur autorisé peut dupliquer une offre de
-l'une des huit familles `ACTIVE`. Le serveur verrouille l'organisation,
+l'une des douze familles `ACTIVE`. Le serveur verrouille l'organisation,
 réserve la clé d'idempotence et crée un nouveau produit `DRAFT` avec un slug
 unique ; seuls le nom, la description, la catégorie et les variantes avec leurs
 attributs descriptifs sont copiés. Aucun exemplaire, tarif ou snapshot actif,
@@ -421,7 +451,7 @@ rejeu ne produit aucun effet secondaire ; une sélection introuvable, supprimée
 hors tenant ou un statut inconnu est refusé sans écriture partielle. Seul le
 statut de gestion du parc est modifié : conditions, mouvements, réservations,
 maintenances et disponibilités restent inchangés. La confirmation et le retour
-accessible sont communs aux huit familles, sans logique vélo.
+accessible sont communs aux douze familles, sans logique vélo.
 
 **Mise à jour groupée de l'état physique livrée le 2026-09-02 :** la PR #62,
 fusionnée en squash dans `450f896`, réutilise la sélection générique et
@@ -806,8 +836,8 @@ Chaque catégorie définit avant activation :
 - documents ;
 - critères de publication.
 
-Ordre d'activation encadré par ADR-035 et ADR-037 : `bike`, `kayak`, `canoe`,
-`paddleboard`, `pedalboat`, `surf`, `ski` et `snowboard` actifs ; les autres familles pagaie, les familles neige
+Ordre d'activation encadré par ADR-035, ADR-037 et ADR-044 : `bike`, `kayak`, `canoe`,
+`paddleboard`, `pedalboat`, `surf`, `ski`, `snowboard`, `snowshoes` et `sled` actifs ; les autres familles pagaie, les familles neige
 non activées et les familles hors taxonomie fermée sont exclues.
 
 ### 13.2 Kit d'activation pays

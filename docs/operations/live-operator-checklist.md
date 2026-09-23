@@ -2,7 +2,7 @@
 
 **Référence de version :** document vivant ; vérifier le commit courant du dépôt
 avant exécution. Les anciennes baselines `origin/main = ...` sont historiques.
-**Dernière revue de cohérence :** 2026-08-30
+**Dernière revue de cohérence :** 2026-09-10
 **Statut :** `READY_FOR_CONFIGURATION`
 **Secrets :** jamais inscrits dans ce document, les logs ou un commit
 **Analytics production :** `OFF`
@@ -16,14 +16,15 @@ autorisé.
 
 1. [x] **Legal / Finance / DPO blockers approved** — décisions formelles actées et signées le 2026-09-04 (`legal-decision-pack.md`, `finance-decision-pack.md`, `privacy-decision-pack.md`, `21-p1c-subprocessors-dpo-005.md`).
 2. [x] **Applicable documents produced** — documents client/loueur v1 publiés (`/terms`, `/rental-terms`, `/pro-terms`, `/privacy`, reçus et décomptes Lot 21-F1). Preuve de consentement `terms_acceptance_snapshot` active au checkout.
-3. [ ] **Production secrets** — configurer les variables de production dans le gestionnaire autorisé, sans les copier dans le dépôt, un ticket, un log ou une capture ; vérifier présence/format sans afficher les valeurs.
-4. [ ] **Stripe LIVE platform** — configurer l'environnement Stripe LIVE et le garde-fou d'activation (voir [`21-ops-stripe-live-activation.md`](../runbooks/21-ops-stripe-live-activation.md)) ; ne jamais réutiliser un secret TEST.
-5. [ ] **Platform LIVE webhook** — créer/configurer l'endpoint Platform, fournir son secret hors dépôt et vérifier une signature/route dans l'environnement autorisé.
-6. [ ] **Connect LIVE webhook** — créer/configurer l'endpoint Connect, fournir son secret hors dépôt et vérifier la projection des événements signés.
-7. [ ] **Partner Connected Account LIVE** — rattacher le bon compte à l'organisation partenaire, terminer l'onboarding autorisé et vérifier côté serveur `charges_enabled`, `payouts_enabled` et l'état de transfert.
-8. [ ] **Real `pnpm readiness:live`** — exécuter la commande existante `pnpm readiness:live` dans le projet/environnement autorisé ; conserver le résultat borné et non sensible.
-9. [ ] **Safe smoke tests** — exécuter uniquement les scénarios autorisés (tests ping webhooks décrits dans le runbook) ; ne pas confirmer une réservation commerciale avant tous les sign-offs.
-10. [ ] **Operator validation** — l'opérateur et le porteur produit signent la preuve de configuration, les contacts, le recovery et les résultats des smoke tests.
+3. [ ] **Exception capture and alerting** — configurer un sink centralisé autorisé pour les exceptions applicatives et worker, définir la rétention/les alertes, puis valider un événement synthétique sans donnée sensible.
+4. [ ] **Production secrets** — configurer les variables de production dans le gestionnaire autorisé, sans les copier dans le dépôt, un ticket, un log ou une capture ; vérifier présence/format sans afficher les valeurs.
+5. [ ] **Stripe LIVE platform** — configurer l'environnement Stripe LIVE et le garde-fou d'activation (voir [`21-ops-stripe-live-activation.md`](../runbooks/21-ops-stripe-live-activation.md)) ; ne jamais réutiliser un secret TEST.
+6. [ ] **Platform LIVE webhook** — créer/configurer l'endpoint Platform, fournir son secret hors dépôt et vérifier une signature/route dans l'environnement autorisé.
+7. [ ] **Connect LIVE webhook** — créer/configurer l'endpoint Connect, fournir son secret hors dépôt et vérifier la projection des événements signés.
+8. [ ] **Partner Connected Account LIVE** — rattacher le bon compte à l'organisation partenaire, terminer l'onboarding autorisé et vérifier côté serveur `charges_enabled`, `payouts_enabled` et l'état de transfert.
+9. [ ] **Real `pnpm readiness:live`** — exécuter la commande existante `pnpm readiness:live` dans le projet/environnement autorisé ; conserver le résultat borné et non sensible.
+10. [ ] **Safe smoke tests** — exécuter uniquement les scénarios autorisés (tests ping webhooks décrits dans le runbook) ; ne pas confirmer une réservation commerciale avant tous les sign-offs.
+11. [ ] **Operator validation** — l'opérateur et le porteur produit signent la preuve de configuration, les contacts, le recovery et les résultats des smoke tests.
 
 ## Garde-fous
 

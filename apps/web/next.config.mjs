@@ -10,6 +10,13 @@ const nextConfig = {
     return [
       {
         // Public font assets must also load inside Stripe's cross-origin frames.
+        source: '/fonts/chillax/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Cache-Control', value: 'public, max-age=86400' },
+        ],
+      },
+      {
         source: '/fonts/sora/:path*',
         headers: [
           { key: 'Access-Control-Allow-Origin', value: '*' },

@@ -3,6 +3,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import type { PublicSearchFilterOptions } from '@uttily/core';
+import { getBikeSubtypeLabel, type BikeSubtype } from '@uttily/contracts';
 import { Button, Icon, LinkButton } from '@uttily/ui';
 import { loadHomeSearchOptions } from '@/app/actions/home-search-options';
 import type { PublicSearchFormValues } from '@/lib/public-search';
@@ -191,6 +192,16 @@ export function SearchIntentBar({
     setError(null);
   }
 
+  function changeEquipment(categoryId: string, bikeSubtype?: BikeSubtype): void {
+    setSelection((previous) => {
+      const next = { ...previous, categoryId };
+      if (bikeSubtype) next.bikeSubtype = bikeSubtype;
+      else delete next.bikeSubtype;
+      return next;
+    });
+    setError(null);
+  }
+
   async function handleApplyAiProposal(proposal: IntentProposal): Promise<void> {
     const availableOptions = options ?? (await loadHomeSearchOptions(locale));
     if (!options && availableOptions) setOptions(availableOptions);
@@ -260,11 +271,13 @@ export function SearchIntentBar({
       key: 'equipment',
       label: fr ? 'Équipement' : 'Equipment',
       value: category
-        ? getPublicCategoryLabel(locale, category)
+        ? selection.bikeSubtype
+          ? getBikeSubtypeLabel(locale, selection.bikeSubtype)
+          : getPublicCategoryLabel(locale, category)
         : fr
           ? 'Ski, vélo, surf, paddle…'
           : 'Ski, bike, surf, paddleboard…',
-      selected: !!category,
+      selected: !!category || !!selection.bikeSubtype,
     },
     {
       key: 'dates',
@@ -313,6 +326,7 @@ export function SearchIntentBar({
       ref={anchor}
       className={[styles.anchor, pinned ? styles.anchorPinned : ''].filter(Boolean).join(' ')}
       data-panel-open={field ? '' : undefined}
+      data-pinned={pinned ? 'true' : undefined}
       style={
         {
           '--search-bar-height': `${barHeight}px`,
@@ -326,6 +340,7 @@ export function SearchIntentBar({
       <div
         ref={shell}
         className={[styles.shell, pinned ? styles.pinned : ''].join(' ')}
+        data-pinned={pinned ? 'true' : undefined}
         onBlur={(event) => {
           if (
             event.relatedTarget instanceof Node &&
@@ -469,7 +484,16 @@ export function SearchIntentBar({
                 categories={options.categories}
                 locale={locale}
                 onChoose={(id) => {
-                  change({ categoryId: id });
+                  changeEquipment(id);
+                  if (!selection.startDate) setField('dates');
+                  else closePanel();
+                }}
+                onChooseBikeSubtype={(subtype: BikeSubtype) => {
+                  const bikeCategory = options.categories.find(
+                    (categoryOption) => categoryOption.slug === 'bike',
+                  );
+                  if (!bikeCategory) return;
+                  changeEquipment(bikeCategory.id, subtype);
                   if (!selection.startDate) setField('dates');
                   else closePanel();
                 }}
