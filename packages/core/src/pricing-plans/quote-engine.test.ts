@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeQuote } from './quote-engine';
 import { FlexiblePricingError } from './errors';
+import { FIRST_PILOT_PRICING_POLICY } from './policy';
 import type {
   PricingContext,
   ResolvedPlan,
@@ -147,6 +148,62 @@ describe('computeQuote — moteur pur', () => {
     expect(result.totalAmountMinor).toBe(2000);
     expect(result.algorithmVersion).toBe('flexible-pricing-v1');
     expect(result.roundingRuleVersion).toBe('half-up-v1');
+  });
+
+  it('1bis. le périmètre du premier pilote exclut un plan HOURLY', () => {
+    const hourly = makePlan({
+      id: 'plan-hourly',
+      planType: 'HOURLY',
+      minDurationMinutes: 60,
+      maxDurationMinutes: 480,
+      billingIncrementMinutes: 30,
+    });
+    const ctx = makeContext({
+      intent: TWO_HOURS,
+      plans: [hourly],
+      translations: [frTranslation('plan-hourly', 'Heure')],
+      pricingPolicy: FIRST_PILOT_PRICING_POLICY,
+    });
+
+    expect(() => computeQuote(ctx)).toThrowError(FlexiblePricingError);
+    try {
+      computeQuote(ctx);
+    } catch (error) {
+      expect((error as FlexiblePricingError).code).toBe('NO_ELIGIBLE_PLAN');
+    }
+  });
+
+  it('1ter. le périmètre du premier pilote conserve le forfait compatible', () => {
+    const hourly = makePlan({
+      id: 'plan-hourly',
+      planType: 'HOURLY',
+      priceAmountMinor: 500,
+      minDurationMinutes: 60,
+      maxDurationMinutes: 480,
+      billingIncrementMinutes: 30,
+    });
+    const fixed = makePlan({
+      id: 'plan-fixed-4h',
+      planType: 'FIXED_DURATION',
+      priceAmountMinor: 3000,
+      includedDurationMinutes: 240,
+      minDurationMinutes: null,
+      maxDurationMinutes: null,
+      billingIncrementMinutes: null,
+    });
+    const ctx = makeContext({
+      intent: FOUR_HOURS,
+      plans: [hourly, fixed],
+      translations: [
+        frTranslation('plan-hourly', 'Heure'),
+        frTranslation('plan-fixed-4h', 'Forfait 4h'),
+      ],
+      pricingPolicy: FIRST_PILOT_PRICING_POLICY,
+    });
+
+    const result = computeQuote(ctx);
+    expect(result.lines[0]?.planType).toBe('FIXED_DURATION');
+    expect(result.lines[0]?.pricingPlanId).toBe('plan-fixed-4h');
   });
 
   // 2. 4h TIME_RANGE: HOURLY + FIXED_DURATION 4h → FIXED selected if cheaper

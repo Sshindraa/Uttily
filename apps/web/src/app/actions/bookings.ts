@@ -3,6 +3,7 @@
 import type { ActionErrorCode, ActionResult } from '@uttily/contracts';
 import {
   createBookingDraftWithHold,
+  FIRST_PILOT_PRICING_POLICY,
   PostgresPhotoPublicationGate,
   resolvePublicBookingAuthority,
   type FlexibleCreateBookingDraftInput,
@@ -301,7 +302,9 @@ export async function createBookingDraftAction(
   };
 
   try {
-    const result = await createBookingDraftWithHold(db, draftInput);
+    const result = await createBookingDraftWithHold(db, draftInput, undefined, {
+      pricingPolicy: FIRST_PILOT_PRICING_POLICY,
+    });
 
     if (result.kind === 'SUCCESS') {
       return {

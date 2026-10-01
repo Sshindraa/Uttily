@@ -87,6 +87,8 @@ export interface CreateProductInput {
   description?: string;
   /** Nom facultatif de la première variante créée avec le produit. */
   initialVariantName?: string;
+  /** Attributs de la première variante, notamment le sous-type de vélo. */
+  initialVariantAttributes?: Record<string, unknown>;
 }
 
 export interface UpdateProductInput {

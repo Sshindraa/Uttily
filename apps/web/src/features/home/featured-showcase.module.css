@@ -1,0 +1,739 @@
+@font-face {
+  font-family: 'Boska';
+  src: url('/fonts/boska/boska-medium-italic.woff2') format('woff2');
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Chillax';
+  src: url('/fonts/chillax/chillax-regular.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Chillax';
+  src: url('/fonts/chillax/chillax-medium.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Chillax';
+  src: url('/fonts/chillax/chillax-variable.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 200 700;
+  font-display: swap;
+}
+
+.section {
+  font-family: 'Chillax', var(--ut-font-sans), sans-serif;
+  background: #05080a;
+  color: #ffffff;
+  padding: clamp(2.5rem, 4.5vw, 4.5rem) 1.5rem clamp(5rem, 8vw, 9rem);
+  position: relative;
+  overflow: hidden;
+}
+
+.container {
+  width: min(100%, 82rem);
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* En-tête de section */
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+  margin-inline: auto;
+  margin-bottom: clamp(2rem, 4vw, 3.5rem);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  padding: 0.35rem 1.15rem 0.35rem 0.45rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.01em;
+  margin-bottom: 1.5rem;
+  margin-inline: auto;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.badgeIconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.title {
+  text-wrap: unset !important;
+  font-family: 'Chillax', var(--ut-font-sans), sans-serif;
+  font-size: clamp(1.75rem, 2.8vw + 0.5rem, 2.625rem);
+  line-height: 1.18;
+  letter-spacing: -0.92px;
+  color: #ffffff;
+  margin: 0 auto;
+  text-align: center;
+  max-width: 76rem;
+  width: 100%;
+}
+
+.titleSolid {
+  display: block;
+  text-align: center;
+  width: 100%;
+  margin-inline: auto;
+  font-size: 0.88em;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.serifItalic {
+  display: block;
+  text-align: center;
+  width: 100%;
+  margin-inline: auto;
+  font-family: 'Boska', Georgia, serif;
+  font-weight: 400;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.95);
+  white-space: nowrap;
+}
+
+@media (max-width: 48rem) {
+  .titleSolid,
+  .serifItalic {
+    white-space: normal;
+  }
+}
+
+/* ==========================================================================
+   SLIDER & MASK (Défilement horizontal complet style Orbix Studio)
+   ========================================================================== */
+.sliderWrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.sliderMask {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  cursor: grab;
+  user-select: none;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+}
+
+.sliderMask:active {
+  cursor: grabbing;
+}
+
+.sliderMask * {
+  -webkit-user-drag: none;
+}
+
+.sliderTrack {
+  display: flex;
+  width: 100%;
+  will-change: transform;
+}
+
+.slide {
+  width: 100%;
+  min-width: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ==========================================================================
+   CARTE PRINCIPALE DE SHOWCASE (Scène visuelle autonome)
+   ========================================================================== */
+.showcaseCard {
+  position: relative;
+  width: 100%;
+  background: radial-gradient(ellipse at 50% -20%, #d8eff7 0%, #edf8fa 46%, #d5eef5 100%);
+  border-radius: clamp(2rem, 3.5vw, 3rem);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 30px 80px -20px rgba(0, 0, 0, 0.5),
+    0 0 120px -30px rgba(140, 182, 191, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+  padding: clamp(3.5rem, 5.5vw, 5.5rem) 1.5rem clamp(4rem, 6vw, 6rem);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Texture de grille subtile style Orbix */
+.cardMesh {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(140, 182, 191, 0.09) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(140, 182, 191, 0.09) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at 50% 40%, #000 20%, transparent 85%);
+  pointer-events: none;
+}
+
+/* Scène centrale pour les 3 téléphones */
+.phoneStage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 68rem;
+  height: clamp(34rem, 48vw, 44rem);
+  z-index: 2;
+}
+
+/* ==========================================================================
+   MOCKUP IPHONE 16 PRO HAUTE FIDÉLITÉ
+   ========================================================================== */
+.phoneMockup {
+  position: relative;
+  width: clamp(16rem, 23vw, 20.5rem);
+  height: clamp(32rem, 46vw, 41.5rem);
+  border-radius: clamp(2.6rem, 3.6vw, 3.4rem);
+  background: #111417;
+  padding: 0.35rem; /* Bordure ultra fine 5.5px */
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+    0 0 0 2px #262c33,
+    0 0 0 4.5px #090c0e;
+  flex-shrink: 0;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s ease;
+  user-select: none;
+}
+
+/* Téléphone gauche étagé en retrait */
+.phoneLeft {
+  transform: translateY(2.25rem) scale(0.9);
+  margin-right: -2.5rem;
+  z-index: 1;
+  opacity: 0.95;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 0 0 2px #262c33,
+    0 0 0 4.5px #090c0e,
+    0 25px 60px -15px rgba(10, 32, 44, 0.3);
+}
+
+/* Téléphone central héro au premier plan */
+.phoneCenter {
+  transform: translateY(-0.5rem) scale(1);
+  z-index: 3;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.3),
+    0 0 0 2.5px #38424d,
+    0 0 0 5px #090c0e,
+    0 45px 95px -20px rgba(8, 28, 42, 0.45),
+    0 15px 35px -10px rgba(0, 0, 0, 0.25);
+}
+
+/* Téléphone droit étagé en retrait */
+.phoneRight {
+  transform: translateY(2.25rem) scale(0.9);
+  margin-left: -2.5rem;
+  z-index: 1;
+  opacity: 0.95;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 0 0 2px #262c33,
+    0 0 0 4.5px #090c0e,
+    0 25px 60px -15px rgba(10, 32, 44, 0.3);
+}
+
+/* Écran intérieur du téléphone */
+.phoneScreen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: clamp(2.3rem, 3.3vw, 3.1rem);
+  background: linear-gradient(180deg, #fcfefe 0%, #f0f7f9 50%, #e1f0f5 100%);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Reflet de vitre diagonale Apple */
+.screenGlare {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0.1) 28%, rgba(255, 255, 255, 0) 48%);
+  pointer-events: none;
+  z-index: 25;
+}
+
+/* Dynamic Island */
+.dynamicIsland {
+  position: absolute;
+  top: 0.85rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 6.2rem;
+  height: 1.65rem;
+  background: #000000;
+  border-radius: 9999px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 0.65rem;
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.sensorHole {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #1a2a3a 0%, #06090c 75%);
+  box-shadow: inset 0 0 1px 1px rgba(255, 255, 255, 0.18);
+}
+
+/* Barre d'état iOS */
+.phoneStatusBar {
+  position: absolute;
+  top: 0.95rem;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-inline: 1.85rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #161c20;
+  z-index: 20;
+  pointer-events: none;
+  letter-spacing: -0.01em;
+}
+
+.statusIcons {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Canvas intérieur vide (prêt pour vos futurs écrans) */
+.phoneCanvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 4rem 1.25rem 2.5rem;
+  z-index: 10;
+}
+
+/* Carte intérieure frosted minimaliste */
+.canvasCard {
+  width: 100%;
+  height: 100%;
+  border-radius: 1.75rem;
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow:
+    0 10px 30px rgba(140, 182, 191, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.75rem 1.25rem 1.5rem;
+  text-align: center;
+}
+
+.canvasTop {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #627f85;
+}
+
+.canvasDot {
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 50%;
+  background: #247a4b;
+  box-shadow: 0 0 6px rgba(36, 122, 75, 0.6);
+}
+
+.canvasCenter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.canvasIconRing {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 1.15rem;
+  background: linear-gradient(135deg, rgba(140, 182, 191, 0.22) 0%, rgba(140, 182, 191, 0.08) 100%);
+  border: 1px solid rgba(140, 182, 191, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #38484c;
+  box-shadow: 0 6px 18px rgba(140, 182, 191, 0.15);
+}
+
+.canvasTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1c2426;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.canvasSubtitle {
+  font-size: 0.75rem;
+  color: #546d72;
+  margin: 0;
+  line-height: 1.4;
+  max-width: 11rem;
+}
+
+.canvasBottom {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  background: rgba(140, 182, 191, 0.14);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #465b5f;
+  letter-spacing: 0.04em;
+}
+.sliderRevealWrapper {
+  width: 100%;
+}
+
+
+/* Home indicator en bas de l'iPhone */
+.homeIndicator {
+  position: absolute;
+  bottom: 0.55rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 8rem;
+  height: 0.28rem;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 9999px;
+  z-index: 25;
+}
+
+/* Flèches de navigation circulaires (Orbix exact) */
+.arrowBtn {
+  position: absolute;
+  top: clamp(20.5rem, 27.5vw, 27rem);
+  transform: translateY(-50%);
+  width: 4.25rem;
+  height: 4.25rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #161c20;
+  cursor: pointer;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.14),
+    0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 30;
+}
+
+.arrowBtn:hover {
+  background: #ffffff;
+  transform: translateY(-50%) scale(1.08);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.22),
+    0 2px 6px rgba(0, 0, 0, 0.08);
+  color: #000000;
+}
+
+.arrowBtn:active {
+  transform: translateY(-50%) scale(0.96);
+}
+
+.arrowLeft {
+  left: clamp(1rem, 2.5vw, 2.5rem);
+}
+
+.arrowRight {
+  right: clamp(1rem, 2.5vw, 2.5rem);
+}
+
+/* ==========================================================================
+   BLOC D'INFORMATION INFÉRIEUR (Disposition exacte Orbix Studio)
+   ========================================================================== */
+.infoCard {
+  width: 100%;
+  background: #14171a;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: clamp(1.25rem, 2vw, 1.75rem);
+  padding: clamp(1.5rem, 2.4vw, 2.25rem) clamp(1.75rem, 3vw, 2.75rem);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1.125rem, 1.8vw, 1.625rem);
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.65);
+  position: relative;
+  overflow: hidden;
+}
+
+.infoTopRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
+}
+
+.infoTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 54rem;
+}
+
+.tagWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.tagPipe {
+  display: inline-block;
+  width: 2.5px;
+  height: 0.95rem;
+  border-radius: 9999px;
+  background: #ef4444;
+}
+
+.tagText {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.01em;
+}
+
+.infoTitle {
+  font-family: 'Chillax', var(--ut-font-sans), sans-serif;
+  font-size: clamp(1.5rem, 2.3vw, 2.25rem);
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.statBlock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.statNumber {
+  font-family: 'Boska', Georgia, serif;
+  font-size: clamp(2.75rem, 4vw, 3.85rem);
+  font-style: italic;
+  font-weight: 500;
+  line-height: 0.92;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.statLabel {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 0.35rem;
+  font-weight: 400;
+  line-height: 1.3;
+  max-width: 13rem;
+}
+
+.infoBottomRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 2rem;
+}
+
+.infoDescription {
+  font-size: clamp(0.9375rem, 1.05vw, 1.05rem);
+  line-height: 1.55;
+  color: rgba(255, 255, 255, 0.68);
+  margin: 0;
+  max-width: 42rem;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: #ffffff;
+  color: #0c1013;
+  padding: 0.75rem 1.65rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+
+.actionBtn:hover {
+  background: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+  color: #0c1013;
+}
+
+.actionBtn svg {
+  transition: transform 0.25s ease;
+}
+
+.actionBtn:hover svg {
+  transform: translateX(4px);
+}
+
+/* ==========================================================================
+   INDICATEURS DE PAGINATION ORBIX STUDIO
+   ========================================================================== */
+.paginationDots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  margin-top: 0.5rem;
+  z-index: 10;
+}
+
+.dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.25);
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dot:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.dotActive {
+  width: 2.25rem;
+  background: #ffffff;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.45);
+}
+
+/* ==========================================================================
+   RESPONSIVE
+   ========================================================================== */
+@media (max-width: 58rem) {
+  .phoneLeft,
+  .phoneRight {
+    display: none;
+  }
+
+  .phoneMockup {
+    width: 18.5rem;
+    height: 37rem;
+  }
+
+  .phoneCenter {
+    transform: none;
+  }
+
+  .arrowBtn {
+    width: 3.25rem;
+    height: 3.25rem;
+    top: clamp(16rem, 28vw, 22rem);
+  }
+
+  .arrowLeft {
+    left: 0.75rem;
+  }
+
+  .arrowRight {
+    right: 0.75rem;
+  }
+}
+
+@media (max-width: 48rem) {
+  .infoTopRow {
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .statBlock {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .infoBottomRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+  }
+
+  .arrowBtn {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}

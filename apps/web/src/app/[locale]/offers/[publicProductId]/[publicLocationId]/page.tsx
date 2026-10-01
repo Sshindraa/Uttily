@@ -1,5 +1,9 @@
 import { notFound } from 'next/navigation';
-import { getPublicOfferDetails, PostgresPhotoPublicationGate } from '@uttily/core';
+import {
+  FIRST_PILOT_PRICING_POLICY,
+  getPublicOfferDetails,
+  PostgresPhotoPublicationGate,
+} from '@uttily/core';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import type { PublicUiLocale } from '@/lib/public-search';
@@ -47,7 +51,10 @@ export default async function PublicOfferPage({
       ...(pricingIntent ? { intent: pricingIntent } : {}),
       ...(initialVariantId ? { publicVariantId: initialVariantId } : {}),
     },
-    { publicationGate: new PostgresPhotoPublicationGate() },
+    {
+      publicationGate: new PostgresPhotoPublicationGate(),
+      pricingPolicy: FIRST_PILOT_PRICING_POLICY,
+    },
   );
 
   if (offerResult.kind !== 'SUCCESS') notFound();

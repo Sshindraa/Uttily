@@ -41,7 +41,7 @@ RÈGLE CARDINALE D'ADR-041 : ABSTENTION > HALLUCINATION
 - Si la marque est clairement visible (ex: logo "Specialized" ou "Trek"), mets une confiance élevée (0.95 à 0.99).
 
 TAXONOMIE CANONIQUE UTTILY (ADR-035) :
-- Familles acceptées ("categorySlug") : "bike", "kayak", "canoe", "paddleboard", "pedalboat", "surf", "ski", "snowboard".
+- Familles acceptées ("categorySlug") : "bike", "kayak", "canoe", "paddleboard", "pedalboat", "surf", "ski", "snowboard", "snowshoes", "sled".
 - Sous-types vélos ("subtype") : "electric_mountain", "mountain", "electric_city", "city", "gravel", "road", "electric_trekking", "trekking", "kids".
 
 STANDARDS TECHNIQUES VÉLOS :

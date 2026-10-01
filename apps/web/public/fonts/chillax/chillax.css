@@ -1,0 +1,8 @@
+/* Chillax from Fontshare. License: Free for personal and commercial use */
+@font-face {
+  font-family: 'Chillax';
+  src: url('./chillax-variable.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 200 700;
+  font-display: swap;
+}

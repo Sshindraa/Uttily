@@ -36,6 +36,7 @@ import { PricingError } from '../pricing/errors';
 import type { PricingLineInput, VariantPricingSnapshot } from '../pricing/types';
 import { calculateMarketplaceFeeSnapshotFromPricing } from '../marketplace-fees';
 import { quoteFlexiblePricing } from '../pricing-plans/quote-flexible-pricing';
+import type { PricingPlanPolicy } from '../pricing-plans/policy';
 import { isWithinOpeningHours } from '../pricing-plans/opening-hours';
 import { FlexiblePricingError } from '../pricing-plans/errors';
 import {
@@ -91,6 +92,11 @@ const CANCELLATION_POLICY_SNAPSHOT_VERSION = 'v1';
 
 /** Durée du hold en minutes (ADR-009). */
 const HOLD_DURATION_MINUTES = 10;
+
+/** Options de politique serveur, distinctes des données fournies par le client. */
+export interface CreateBookingDraftOptions {
+  readonly pricingPolicy?: PricingPlanPolicy;
+}
 
 /**
  * Ligne agrégée canonique (variantId → quantité totale).
@@ -326,6 +332,7 @@ export async function createBookingDraftWithHold(
   db: DatabaseClient,
   input: CreateBookingDraftInput,
   analyticsEnvironment?: ResolvedAnalyticsEnvironment,
+  options?: CreateBookingDraftOptions,
 ): Promise<CreateBookingDraftResult> {
   const resolvedEnv = analyticsEnvironment ?? resolveAnalyticsEnvironmentFromProcessEnv();
   // G7P-B2-B Round 2 — Defect 6 & Chantier 15.2 : dispatch fermé, aucun fallback silencieux.
@@ -333,7 +340,7 @@ export async function createBookingDraftWithHold(
   // La validation a lieu AVANT reserveKey — aucune mutation DB, aucun
   // enregistrement d'idempotence pour un mode invalide ou omis.
   if (input.pricingMode === 'FLEXIBLE') {
-    return executeFlexiblePath(db, input, resolvedEnv);
+    return executeFlexiblePath(db, input, resolvedEnv, options);
   }
   if (input.pricingMode === 'LEGACY') {
     return executeLegacyPath(db, input, resolvedEnv);
@@ -516,6 +523,7 @@ async function executeFlexiblePath(
   db: DatabaseClient,
   input: FlexibleCreateBookingDraftInput,
   analyticsEnvironment: ResolvedAnalyticsEnvironment,
+  options?: CreateBookingDraftOptions,
 ): Promise<CreateBookingDraftResult> {
   // ── Étape A — Validation initiale (avant la base) ──────────────────────
   validateFlexibleInput(input);
@@ -584,7 +592,7 @@ async function executeFlexiblePath(
     let businessResult: CreateBookingDraftSuccess;
     try {
       businessResult = await tx.transaction(async (sp) => {
-        return await executeFlexibleBusinessLogic(sp, input, aggregatedLines);
+        return await executeFlexibleBusinessLogic(sp, input, aggregatedLines, options);
       });
     } catch (error) {
       const bookingDraftError = normalizeBusinessError(error);
@@ -1263,6 +1271,7 @@ async function executeFlexibleBusinessLogic(
   tx: DatabaseTransaction,
   input: FlexibleCreateBookingDraftInput,
   aggregatedLines: AggregatedLine[],
+  options?: CreateBookingDraftOptions,
 ): Promise<CreateBookingDraftSuccess> {
   // 1. Charger et valider l'organisation.
   const org = await tx
@@ -1305,13 +1314,17 @@ async function executeFlexibleBusinessLogic(
   }
 
   // 4. Appeler le moteur de pricing flexible.
-  const quoteResult = await quoteFlexiblePricing(tx as unknown as DatabaseClient, {
-    organizationId: input.organizationId,
-    locationId: input.locationId,
-    locale: input.locale,
-    intent: input.intent,
-    lines: aggregatedLines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
-  });
+  const quoteResult = await quoteFlexiblePricing(
+    tx as unknown as DatabaseClient,
+    {
+      organizationId: input.organizationId,
+      locationId: input.locationId,
+      locale: input.locale,
+      intent: input.intent,
+      lines: aggregatedLines.map((l) => ({ variantId: l.variantId, quantity: l.quantity })),
+    },
+    options,
+  );
   const marketplaceFeeSnapshot = calculateMarketplaceFeeSnapshotFromPricing({
     subtotalAmountMinor: quoteResult.subtotalAmountMinor,
     mandatoryFeesAmountMinor: 0,

@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest';
 const tokens = readFileSync(new URL('./tokens.css', import.meta.url), 'utf8');
 
 describe('@uttily/ui design tokens', () => {
-  it('uses locally served Sora variable with shared role-based typography', () => {
-    expect(tokens).toContain("font-family: 'Sora'");
-    expect(tokens).toContain("url('/fonts/sora/sora-variable.woff2')");
-    expect(tokens).toContain('font-weight: 100 800');
+  it('uses locally served Chillax variable with shared role-based typography', () => {
+    expect(tokens).toContain("font-family: 'Chillax'");
+    expect(tokens).toContain("url('/fonts/chillax/chillax-variable.woff2')");
+    expect(tokens).toContain('font-weight: 200 700');
     expect(tokens).toContain('font-display: swap');
     expect(tokens).not.toContain('Switzer');
     expect(tokens).not.toContain('@import');

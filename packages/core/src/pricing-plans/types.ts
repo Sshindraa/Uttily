@@ -1,3 +1,5 @@
+import type { PricingPlanPolicy } from './policy';
+
 /**
  * @uttily/core — Module Pricing Plans (G7P-B1).
  *
@@ -252,6 +254,8 @@ export interface PricingContext {
   variants: Map<string, { productId: string; organizationId: string }>;
   lines: Array<{ variantId: string; quantity: number }>;
   locale: string;
+  /** Politique de périmètre optionnelle appliquée avant la sélection du plan. */
+  pricingPolicy?: PricingPlanPolicy;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

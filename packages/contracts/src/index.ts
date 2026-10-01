@@ -17,3 +17,4 @@ export * from './refund-requested-event';
 export * from './photo-slots';
 export * from './mobile-api';
 export * from './inventory';
+export * from './bike-subtypes';

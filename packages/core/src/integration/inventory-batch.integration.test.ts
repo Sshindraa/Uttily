@@ -112,7 +112,7 @@ async function countItems(organizationId: string): Promise<number> {
 describe.skipIf(shouldSkipIntegrationTests())(
   'création en série des exemplaires — PostgreSQL',
   () => {
-    it('accepte les huit familles actives et produit des SKU déterministes', async () => {
+    it('accepte les douze familles actives et produit des SKU déterministes', async () => {
       if (!db) return;
       const { organizationId, locationId } = await createOrg('all-families@example.com');
 

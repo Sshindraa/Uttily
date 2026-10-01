@@ -12,12 +12,13 @@
  */
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { isBikeSubtype, type BikeSubtype } from '@uttily/contracts';
 import type { PublicSearchIntent, KeysetTuple, PublicSearchViewport } from './types';
 import { PublicSearchError } from './errors';
 import { isValidPublicSearchViewport, normalizePublicSearchViewport } from './geo';
 
 /** Version courante du contrat de recherche publique. */
-export const PUBLIC_SEARCH_CONTRACT_VERSION = 3;
+export const PUBLIC_SEARCH_CONTRACT_VERSION = 4;
 
 /** Version du format de curseur. */
 const CURSOR_PAYLOAD_VERSION = 2;
@@ -34,6 +35,8 @@ export interface CursorFingerprint {
   canonicalLocale: string;
   canonicalIntent: PublicSearchIntent;
   categoryId: string | null;
+  /** Sous-type de la famille `bike`, ou `null` quand aucun n'est demandé. */
+  bikeSubtype: BikeSubtype | null;
   /** `null` is the explicit sentinel for the canonical destination bbox. */
   viewport: PublicSearchViewport | null;
   contractVersion: number;
@@ -127,6 +130,7 @@ function buildPayload(tuple: KeysetTuple, fingerprint: CursorFingerprint): strin
       l: fingerprint.canonicalLocale,
       i: canonicalIntent(fingerprint.canonicalIntent),
       c: fingerprint.categoryId,
+      b: fingerprint.bikeSubtype,
       a: canonicalArea(fingerprint.viewport),
       cv: fingerprint.contractVersion,
     },
@@ -136,7 +140,7 @@ function buildPayload(tuple: KeysetTuple, fingerprint: CursorFingerprint): strin
 
 const PAYLOAD_TOP_KEYS = ['v', 'k', 'f'] as const;
 const PAYLOAD_TUPLE_KEYS = ['rawDistanceMeters', 'publicProductId', 'publicLocationId'] as const;
-const PAYLOAD_FINGERPRINT_KEYS = ['a', 'c', 'cv', 'd', 'i', 'l'] as const;
+const PAYLOAD_FINGERPRINT_KEYS = ['a', 'b', 'c', 'cv', 'd', 'i', 'l'] as const;
 
 function assertExactKeys(value: Record<string, unknown>, allowed: readonly string[]): void {
   const actual = Object.keys(value).sort();
@@ -197,6 +201,7 @@ function parsePayload(payload: string): { tuple: KeysetTuple; fingerprint: Curso
     canonicalLocale: String(fp.l ?? ''),
     canonicalIntent: parsedIntent,
     categoryId: fp.c === null ? null : String(fp.c ?? ''),
+    bikeSubtype: fp.b === null ? null : (String(fp.b ?? '') as BikeSubtype),
     viewport: parseCanonicalArea(fp.a),
     contractVersion: Number(fp.cv ?? 0),
   };
@@ -277,6 +282,7 @@ function fingerprintMatches(a: CursorFingerprint, b: CursorFingerprint): boolean
   if (a.destinationPublicId !== b.destinationPublicId) return false;
   if (a.canonicalLocale !== b.canonicalLocale) return false;
   if (a.categoryId !== b.categoryId) return false;
+  if (a.bikeSubtype !== b.bikeSubtype) return false;
   if (a.contractVersion !== b.contractVersion) return false;
   if (!sameViewport(a.viewport, b.viewport)) return false;
   if (a.canonicalIntent.kind !== b.canonicalIntent.kind) return false;
@@ -329,6 +335,9 @@ function validateFingerprint(fp: CursorFingerprint): void {
   }
   if (fp.categoryId !== null && !UUID_RE.test(fp.categoryId)) {
     throw new PublicSearchError('INVALID_CURSOR', 'categoryId invalide.');
+  }
+  if (fp.bikeSubtype !== null && !isBikeSubtype(fp.bikeSubtype)) {
+    throw new PublicSearchError('INVALID_CURSOR', 'bikeSubtype invalide.');
   }
   if (fp.viewport !== null && !isValidPublicSearchViewport(fp.viewport)) {
     throw new PublicSearchError('INVALID_CURSOR', 'viewport invalide.');

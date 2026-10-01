@@ -32,8 +32,12 @@ const ACTIVE_COMMERCIAL_CATEGORY_SLUGS = [
   'paddleboard',
   'pedalboat',
   'surf',
+  'bodyboard',
+  'wingfoil',
   'ski',
   'snowboard',
+  'snowshoes',
+  'sled',
 ] as const;
 
 function isPaddleCategorySlug(slug: string | null | undefined): boolean {
@@ -142,6 +146,24 @@ const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
     primaryActionLabel: 'Gérer l’équipement',
     setupActionLabel: 'Continuer la configuration',
   },
+  bodyboard: {
+    singularLabel: 'bodyboard',
+    pluralLabel: 'bodyboards',
+    icon: '🌊',
+    characteristics: [],
+    specificSections: [],
+    primaryActionLabel: 'Gérer l’équipement',
+    setupActionLabel: 'Continuer la configuration',
+  },
+  wingfoil: {
+    singularLabel: 'wingfoil',
+    pluralLabel: 'wingfoils',
+    icon: '🪁',
+    characteristics: [],
+    specificSections: [],
+    primaryActionLabel: 'Gérer l’équipement',
+    setupActionLabel: 'Continuer la configuration',
+  },
   ski: {
     singularLabel: 'ski',
     pluralLabel: 'skis',
@@ -161,6 +183,24 @@ const CATEGORY_PRESENTATIONS: Readonly<Record<string, CategoryPresentation>> = {
     singularLabel: 'snowboard',
     pluralLabel: 'snowboards',
     icon: '🏂',
+    characteristics: [],
+    specificSections: [],
+    primaryActionLabel: 'Gérer l’équipement',
+    setupActionLabel: 'Continuer la configuration',
+  },
+  snowshoes: {
+    singularLabel: 'raquette',
+    pluralLabel: 'raquettes',
+    icon: '🥾',
+    characteristics: [],
+    specificSections: [],
+    primaryActionLabel: 'Gérer l’équipement',
+    setupActionLabel: 'Continuer la configuration',
+  },
+  sled: {
+    singularLabel: 'luge',
+    pluralLabel: 'luges',
+    icon: '🛷',
     characteristics: [],
     specificSections: [],
     primaryActionLabel: 'Gérer l’équipement',
@@ -235,6 +275,10 @@ export function getCategoryDisplayLabel(
     categorySlug === 'kayak' ||
     categorySlug === 'canoe' ||
     categorySlug === 'pedalboat' ||
+    categorySlug === 'bodyboard' ||
+    categorySlug === 'wingfoil' ||
+    categorySlug === 'snowshoes' ||
+    categorySlug === 'sled' ||
     isPaddleCategorySlug(categorySlug)
   ) {
     return getCategoryPresentation(categorySlug).singularLabel;

@@ -1,5 +1,9 @@
-import { Card, Icon } from '@uttily/ui';
+import { Icon } from '@uttily/ui';
+import { ScrollReveal } from '@/components/scroll-reveal';
+import { FeaturedShowcase } from './featured-showcase';
 import { HomeHero } from './home-hero';
+import { HowItWorksKeynote } from './how-it-works-keynote';
+import { OutdoorBentoGrid } from './outdoor-bento-grid';
 import styles from './home-page-view.module.css';
 
 export function HomePageView({ locale }: { locale: 'fr' | 'en' }): React.ReactElement {
@@ -9,82 +13,80 @@ export function HomePageView({ locale }: { locale: 'fr' | 'en' }): React.ReactEl
     <main className={styles.page} lang={locale}>
       <HomeHero locale={locale} />
 
-      <section className={styles.howItWorks} aria-labelledby="how-it-works-heading">
-        <div className={styles.sectionHeader}>
-          <p className={styles.eyebrow}>
-            {fr ? 'Simple et transparent' : 'Simple and transparent'}
-          </p>
-          <h2 id="how-it-works-heading">{fr ? 'Comment fonctionne Uttily' : 'How Uttily works'}</h2>
-        </div>
-        <div className={styles.stepsGrid}>
-          <Card className={styles.stepCard}>
-            <div className={styles.stepNumber}>1</div>
-            <h3>{fr ? 'Choisissez votre équipement' : 'Choose your equipment'}</h3>
+      <section
+        className={styles.proofSection}
+        aria-label={fr ? 'Pourquoi choisir Uttily' : 'Why choose Uttily'}
+      >
+        <div className={styles.proofGrid}>
+          <ScrollReveal as="article" className={styles.proofCard} delay={0} offset={16}>
+            <span className={`${styles.proofPill} ${styles.proofPillTeal}`}>
+              {fr ? 'Disponibilité réelle' : 'Real availability'}
+            </span>
+            <span className={styles.proofIcon}>
+              <Icon name="check" size={52} />
+            </span>
+            <h3>
+              {fr ? 'Ce que vous réservez vous attend.' : 'What you book is waiting for you.'}
+            </h3>
             <p>
               {fr
-                ? 'Indiquez votre destination et vos dates pour accéder aux équipements réellement disponibles.'
-                : 'Enter your destination and dates to find equipment that is actually available.'}
+                ? 'Votre réservation porte sur un exemplaire physique disponible pour vos dates chez le loueur choisi.'
+                : 'Your booking is for a physical item available for your dates from the rental partner you choose.'}
             </p>
-          </Card>
-          <Card className={styles.stepCard}>
-            <div className={styles.stepNumber}>2</div>
-            <h3>{fr ? 'Réservez en ligne' : 'Book online'}</h3>
+          </ScrollReveal>
+
+          <ScrollReveal as="article" className={styles.proofCard} delay={90} offset={16}>
+            <span className={`${styles.proofPill} ${styles.proofPillMist}`}>
+              {fr ? 'Loueurs professionnels' : 'Professional rental partners'}
+            </span>
+            <span className={styles.proofIcon}>
+              <Icon name="users" size={52} />
+            </span>
+            <h3>{fr ? 'Du matériel préparé par des pros.' : 'Equipment prepared by pros.'}</h3>
             <p>
               {fr
-                ? 'Votre équipement est bloqué lors de votre commande. Le règlement en ligne confirme votre créneau.'
-                : 'Your equipment is held while you book. Online payment confirms your rental slot.'}
+                ? 'Retirez votre équipement auprès d’un loueur professionnel local, prêt à vous accueillir.'
+                : 'Pick up your equipment from a local professional rental partner, ready to welcome you.'}
             </p>
-          </Card>
-          <Card className={styles.stepCard}>
-            <div className={styles.stepNumber}>3</div>
-            <h3>{fr ? 'Retirez sur place' : 'Pick up locally'}</h3>
+          </ScrollReveal>
+
+          <ScrollReveal as="article" className={styles.proofCard} delay={180} offset={16}>
+            <span className={`${styles.proofPill} ${styles.proofPillSoft}`}>
+              {fr ? 'Location à destination' : 'Rental at your destination'}
+            </span>
+            <span className={styles.proofIcon}>
+              <Icon name="pin" size={52} />
+            </span>
+            <h3>{fr ? 'Louez là où vous allez pratiquer.' : 'Rent where you’ll practice.'}</h3>
             <p>
               {fr
-                ? 'Rendez-vous chez le loueur professionnel partenaire aux horaires choisis pour récupérer votre matériel préparé.'
-                : 'Visit your professional rental partner at the agreed time to collect your prepared equipment.'}
+                ? 'Choisissez votre destination, réservez à proximité et récupérez votre matériel sur place.'
+                : 'Choose your destination, book nearby and pick up your equipment on site.'}
             </p>
-          </Card>
+          </ScrollReveal>
+
+          <ScrollReveal as="article" className={styles.proofCard} delay={270} offset={16}>
+            <span className={`${styles.proofPill} ${styles.proofPillMuted}`}>
+              {fr ? 'Prix transparents' : 'Transparent pricing'}
+            </span>
+            <span className={styles.proofIcon}>
+              <Icon name="wallet" size={52} />
+            </span>
+            <h3>{fr ? 'Le prix avant la décision.' : 'The price before you decide.'}</h3>
+            <p>
+              {fr
+                ? 'Durée, tarif et conditions sont présentés avant que vous confirmiez votre location.'
+                : 'Duration, price and terms are shown before you confirm your rental.'}
+            </p>
+          </ScrollReveal>
         </div>
       </section>
 
-      <section
-        className={styles.valueGrid}
-        aria-label={fr ? 'Pourquoi choisir Uttily' : 'Why choose Uttily'}
-      >
-        <Card>
-          <span className={styles.valueIcon}>
-            <Icon name="check" size={19} />
-          </span>
-          <h2>{fr ? 'Disponibilité confirmée' : 'Confirmed availability'}</h2>
-          <p>
-            {fr
-              ? 'Le matériel sélectionné est alloué à votre réservation pour la période choisie.'
-              : 'Your selected equipment is allocated to your booking for the chosen period.'}
-          </p>
-        </Card>
-        <Card>
-          <span className={styles.valueIcon}>
-            <Icon name="pin" size={19} />
-          </span>
-          <h2>{fr ? 'Loueurs professionnels' : 'Professional rental partners'}</h2>
-          <p>
-            {fr
-              ? 'Des magasins spécialisés et des ateliers partenaires locaux assurant un accueil et un service de qualité.'
-              : 'Specialist shops and local partner workshops providing a warm welcome and quality service.'}
-          </p>
-        </Card>
-        <Card>
-          <span className={styles.valueIcon}>
-            <Icon name="calendar" size={19} />
-          </span>
-          <h2>{fr ? 'Tarifs clairs et détaillés' : 'Clear, detailed pricing'}</h2>
-          <p>
-            {fr
-              ? 'Tarifs nets, conditions d’annulation et récapitulatif présentés avant tout règlement.'
-              : 'Prices, cancellation terms and a booking summary are shown before you pay.'}
-          </p>
-        </Card>
-      </section>
+      <OutdoorBentoGrid locale={locale} />
+
+      <HowItWorksKeynote locale={locale} />
+
+      <FeaturedShowcase locale={locale} />
     </main>
   );
 }

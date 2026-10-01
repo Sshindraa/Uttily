@@ -42,6 +42,7 @@ export default async function BikeSetupPage({
     categoryName: bike.product.categoryName,
     variantId: bike.variant.id,
     variantName: bike.variant.name,
+    variantAttributes: bike.variant.attributes,
     photos: bike.photos.items.map((p) => ({
       id: p.id,
       publicId: p.publicId,

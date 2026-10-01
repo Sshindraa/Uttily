@@ -19,7 +19,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 describe('Uttily homepage navigation', () => {
-  it('keeps the Uttily wordmark in Sora Regular', () => {
+  it('keeps the Uttily wordmark in Regular weight', () => {
     const css = readFileSync(new URL('./home-navigation.module.css', import.meta.url), 'utf8');
     const brand = css.match(/\.brand\s*\{([^}]+)\}/)?.[1];
     expect(brand).toContain('font-weight: var(--ut-weight-regular)');

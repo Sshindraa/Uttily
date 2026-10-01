@@ -96,7 +96,7 @@ afterAll(async () => {
 });
 
 describe.skipIf(shouldSkipIntegrationTests())('runMigrations — base vierge via Drizzle Kit', () => {
-  it('applique les migrations et crée __drizzle_migrations (59 entrées)', async () => {
+  it('applique les migrations et crée __drizzle_migrations (62 entrées)', async () => {
     if (!testUrl) {
       // Garde de sécurité : ne devrait plus être atteint car describe.skipIf
       // (shouldSkipIntegrationTests) skipe toute la suite quand la base est absente
@@ -109,11 +109,11 @@ describe.skipIf(shouldSkipIntegrationTests())('runMigrations — base vierge via
     // Vérifie la table de suivi Drizzle (et non l'ancienne __migrations).
     // Drizzle Kit crée __drizzle_migrations dans le schéma "drizzle".
     const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-    expect(rows.length).toBe(59);
+    expect(rows.length).toBe(62);
 
     // Vérifie le seed de catégories.
     const cats = await sql`SELECT count(*)::int as n FROM categories`;
-    expect(cats[0]!.n).toBe(14);
+    expect(cats[0]!.n).toBe(18);
     const kayak = await sql`SELECT slug, name, is_active FROM categories WHERE slug = 'kayak'`;
     expect(kayak).toEqual([{ slug: 'kayak', name: 'Kayaks', is_active: true }]);
     const canoe = await sql`SELECT slug, name, is_active FROM categories WHERE slug = 'canoe'`;
@@ -127,6 +127,17 @@ describe.skipIf(shouldSkipIntegrationTests())('runMigrations — base vierge via
     const pedalboat =
       await sql`SELECT slug, name, is_active FROM categories WHERE slug = 'pedalboat'`;
     expect(pedalboat).toEqual([{ slug: 'pedalboat', name: 'Pédalo', is_active: true }]);
+    const bodyboard =
+      await sql`SELECT slug, name, is_active FROM categories WHERE slug = 'bodyboard'`;
+    expect(bodyboard).toEqual([{ slug: 'bodyboard', name: 'Bodyboard', is_active: true }]);
+    const wingfoil =
+      await sql`SELECT slug, name, is_active FROM categories WHERE slug = 'wingfoil'`;
+    expect(wingfoil).toEqual([{ slug: 'wingfoil', name: 'Wingfoil', is_active: true }]);
+    const snowshoes =
+      await sql`SELECT slug, name, is_active FROM categories WHERE slug = 'snowshoes'`;
+    expect(snowshoes).toEqual([{ slug: 'snowshoes', name: 'Raquettes', is_active: true }]);
+    const sled = await sql`SELECT slug, name, is_active FROM categories WHERE slug = 'sled'`;
+    expect(sled).toEqual([{ slug: 'sled', name: 'Luge', is_active: true }]);
 
     // Vérifie les extensions.
     const exts =
@@ -203,7 +214,7 @@ describe.skipIf(shouldSkipIntegrationTests())('runMigrations — base vierge via
     await runMigrations(testUrl);
     const sql = postgres(testUrl, { max: 1 });
     const rows = await sql`SELECT hash FROM drizzle.__drizzle_migrations ORDER BY created_at`;
-    expect(rows.length).toBe(59);
+    expect(rows.length).toBe(62);
     await sql.end();
   });
 });

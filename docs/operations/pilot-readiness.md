@@ -1,12 +1,12 @@
 # Pilot Readiness — Matrice unique de clôture avant pilote réel
 
 **Chantier :** 21-P0 — External Decision Preparation (matrice héritée du Chantier 20-C)
-**Branche :** `chantier/21-p0-external-decisions`
+**Branche de référence :** `staging` (vérifiée au checkout courant)
 **Référence de version :** document vivant ; vérifier le commit courant du dépôt
 avant utilisation. Les anciennes baselines `origin/main = ...` sont historiques.
-**Dernière revue de cohérence :** 2026-08-30
+**Dernière revue de cohérence :** 2026-09-10
 **Date d'établissement :** 2026-08-28
-**Mise à jour 21-P0 :** 2026-08-29
+**Mise à jour 21-P0 :** 2026-09-10
 
 ## Statut de ce document
 
@@ -33,30 +33,32 @@ jamais une validation.
 | `BLOCKED` | Capacité absente ou incohérence majeure : un chantier de construction ou une décision préalable est requis avant toute évaluation. |
 | `NOT_APPLICABLE` | Hors périmètre du premier pilote, sans risque résiduel identifié à ce stade. |
 
-## Résumé de clôture
+## Résumé de clôture — snapshot du 2026-09-10
 
-**39 sujets** sont inventoriés, chacun portant deux états : l'état technique et
-l'état documentaire.
+Les packs juridique, finance et DPO ainsi que le `pilot-unblock-plan.md`
+enregistrent des arbitrages humains formellement actés le 2026-09-04. Cette
+évolution est prise en compte ici. Elle ne constitue toutefois pas, à elle
+seule, une preuve de configuration LIVE et elle n'est pas encore répercutée de
+façon cohérente dans le registre canonique et les ADR financières.
 
-| État | État technique | État documentaire |
-| --- | --- | --- |
-| `APPROVED` | **0** | **0** |
-| `TECHNICALLY_VERIFIED` | 31 | 0 |
-| `HUMAN_SIGNOFF_REQUIRED` | 0 | 31 |
-| `BLOCKED` | 2 | 5 |
-| `NOT_APPLICABLE` | 6 | 3 |
+| Gate | État courant | Preuve / limite | Bloque le pilote |
+| --- | --- | --- | --- |
+| Décisions humaines du 2026-09-04 | `APPROVED` / `ARBITRATED` **rapporté** | [`pilot-unblock-plan.md`](pilot-unblock-plan.md) et les trois packs signoff ; les éléments de preuve externes restent à conserver dans le dossier autorisé. | Oui tant que la réconciliation documentaire n'est pas terminée |
+| Périmètre tarifaire horaire | `TECHNICALLY_VERIFIED` | [`ADR-043`](../decisions/ADR-043-first-pilot-pricing-scope.md) et politique serveur appliquée à la recherche, au détail et au hold. | Non |
+| Données réelles du partenaire | `BLOCKED` | [`pilot-partner-readiness.md`](pilot-partner-readiness.md) reste `NOT_PROVIDED`. | Oui |
+| Connected Account, secrets et webhooks LIVE | `BLOCKED` | Procédure documentée, aucune configuration réelle prouvée dans le dépôt. | Oui |
+| Capture centralisée des exceptions et alerting | `BLOCKED` | Logs JSON et métriques existent ; aucun sink/alerting centralisé n'est configuré ou prouvé. | Oui |
+| Réconciliation des sources de décision | `BLOCKED` | `decision-registry.md`, `ADR-029` et `AGENTS.md` conservent encore `FIN-002` bloqué alors que les packs du 2026-09-04 le déclarent approuvé. | Oui |
 
-Un sujet n'est clos que lorsque **ses deux états** valent `APPROVED`.
+**Verdict : `PILOT_READY = NO_GO`.** Le sign-off documenté du 2026-09-04 est
+pris en compte comme dernière décision déclarée, mais il ne doit pas être
+transformé en autorisation LIVE tant que les contradictions documentaires et
+les preuves opératoires ci-dessus ne sont pas levées.
 
-**Aucun sujet n'est `APPROVED`, dans aucune des deux colonnes.** Aucune preuve
-de validation humaine écrite (juridique, comptable, DPO) n'existe dans le dépôt.
-
-**Verdict : le premier pilote réel reste bloqué par les décisions humaines.**
-Sur le plan technique, la quasi-totalité des mécanismes a été livrée et
-démontrée (`TECHNICALLY_VERIFIED = 31`). Seules l'annulation horaire 30 min et
-l'anonymisation automatisée restent bloquées côté code. Les blocages restants
-pour le pilote relèvent des décisions humaines externes (juridique, finance, DPO)
-et de la configuration de production.
+La matrice détaillée ci-dessous contient des états hérités du chantier
+21-P0/20-C. Jusqu'à leur réconciliation avec le snapshot courant, ils ne
+doivent pas être lus comme une nouvelle décision et le tableau ci-dessus fait
+foi pour le go/no-go.
 
 ## Préparation des décisions externes — Chantier 21-P0
 
@@ -67,8 +69,8 @@ approuvée par cette matrice :
 | --- | --- | --- |
 | `TECHNICAL_READY` | `PASS` (31 blockers techniques levés) | [`mvp-pilot-readiness.md`](../implementation/mvp-pilot-readiness.md) |
 | `EXTERNAL_DECISION_READY` | `PASS` | [`decision-registry.md`](decision-registry.md), [`pilot-unblock-plan.md`](pilot-unblock-plan.md) |
-| `EXTERNAL_SIGNOFF_READY` | `PASS` ✅ | Décisions DPO, Juridique et Finance formellement actées le 2026-09-04 |
-| `PILOT_READY` | `CONFIG_READY` 🚀 | Décisions clôturées ; configuration LIVE (secrets, webhooks, compte connecté) requise hors dépôt |
+| `EXTERNAL_SIGNOFF_RECORDED` | `PASS` ✅ | Décisions DPO, Juridique et Finance formellement actées le 2026-09-04 dans les packs référencés |
+| `PILOT_READY` | `NO_GO` | Données partenaire, configuration LIVE, observabilité et réconciliation du registre restent à prouver |
 
 Packs de décision : [`legal-decision-pack.md`](signoff/legal-decision-pack.md),
 [`finance-decision-pack.md`](signoff/finance-decision-pack.md),
@@ -84,7 +86,7 @@ et le drill local ne valent pas une approbation humaine ou commerciale.
 
 ---
 
-## C2.A — Contractuel / client
+## C2.A — Contractuel / client (matrice détaillée héritée, à resynchroniser)
 
 | Sujet | État technique | État documentaire | Owner du sign-off | Preuve / lien | Bloque pilote |
 | --- | --- | --- | --- | --- | --- |
@@ -94,7 +96,7 @@ et le drill local ne valent pas une approbation humaine ou commerciale.
 | Conditions Pro (contrat loueur) | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique + Porteur produit | Contrat loueur bilingue publié sur `/pro-terms` (version `v1` canonique) ; case d'acceptation obligatoire dans l'onboarding organisation (`OrganizationOnboardingView`) et enregistrement immuable dans `audit_log` (`ORGANIZATION_PRO_TERMS_ACCEPTED`). Prêt pour sign-off humain (`LEGAL-002`). | **Oui** |
 | Annulation — politiques | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique | Implémentation conforme aux tableaux Lot 4 : `FLEXIBLE` / `MODERATE` / `FIRM` dans `packages/core/src/cancellations/preview-booking-cancellation.ts:139-178`, fenêtre de grâce `GRACE_WINDOW_24H` (≥ 7 j d'avance, ≤ 24 h après confirmation) lignes 134-138, fuseau IANA du lieu de retrait. Document de validation `docs/product/lot4-legal-validation.md` — statut « en attente de validation juridique ». | **Oui** |
 | Remboursement — base de calcul | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique + Finance | Le legacy conserve l'option A historique (total TTC). Pour le split 13/7, le calcul de delta par composant (`calculateSplitCancellationRefund`) est implémenté conformément à `ADR-030` : preview débloqué, persistance du delta d'annulation et exécution 100 % / routage manuel partiel. Soumis au sign-off Finance/Juridique (`FIN-002`, `LEGAL-005`). | **Oui** |
-| Annulation — fenêtre horaire 30 min | `BLOCKED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique + Produit | Non implémentée. Question ouverte G7B-R3 : « Règles juridiques exactes des annulations horaires (30 min) — Ouvert — bloque activation production ». `docs/implementation/open-questions.md`. | **Oui** (location horaire) |
+| Annulation — fenêtre horaire 30 min | `NOT_APPLICABLE` | `APPROVED` | Juridique + Produit | Offres de location horaire de 30 minutes exclues du premier pilote par arbitrage du 2026-09-04 ; le périmètre serveur est verrouillé par [`ADR-043`](../decisions/ADR-043-first-pilot-pricing-scope.md). | Non (hors périmètre pilote) |
 | Dommages / dégâts matériels | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique | Table `damageReports` et `maintenanceCases` exposées dans le back-office (ADR-028 §3). Aucune règle contractuelle de responsabilité ni barème documenté. | **Oui** |
 | Pickup / return (retrait / restitution) | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | Juridique + Produit | Machine à états de fulfillment (ADR-011, ADR-012) : `READY_FOR_PICKUP` → retrait → restitution/clôture. Aucune clause contractuelle sur les retards, l'état des lieux ou la contestation. | **Oui** |
 | Responsabilité | `NOT_APPLICABLE` | `HUMAN_SIGNOFF_REQUIRED` | Juridique | Aucun mécanisme technique de limitation ou de transfert de responsabilité. Relevant intégralement du contrat à produire. | **Oui** |
@@ -121,7 +123,7 @@ et le drill local ne valent pas une approbation humaine ou commerciale.
 | Politique de confidentialité | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | DPO + Juridique | Page publique publiée (`/privacy`, alias `/politique-de-confidentialite`), version `v1`, responsable de traitement, contact DPO (`privacy@uttily.com`), droits des personnes et registre des sous-traitants (Stripe, Clerk, Neon, Cloudflare R2, Resend, Vercel). Prête pour revue DPO. | **Oui** |
 | Finalités | `NOT_APPLICABLE` | `BLOCKED` | DPO | Aucun registre des finalités. Non déductible du code : le code dit *ce qui est fait*, jamais *pour quelle finalité déclarée*. | **Oui** |
 | Rétention — annonce aux personnes | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | DPO | Rétention analytics techniquement implémentée (90 j raw / 24 mois agrégats, ADR-022) et durées contractuelles désormais annoncées dans la politique de confidentialité publiée `/[locale]/privacy` (v1). En attente de validation DPO (`DPO-002`). | **Oui** |
-| Suppression / effacement | `REQUEST_INTAKE_ONLY (Lot 21-P1)` | `BLOCKED` | DPO + Juridique + Engineering | Table `privacy_requests` (migration 0058), formulaire client bilingue `/[locale]/account/privacy` et runbook opérateur livrés. L'effacement/anonymisation effectif et la purge automatisée sont différés au Lot 21-P2 sous condition de l'arbitrage préalable `DPO-003` sur les obligations de conservation légale. | **Oui** |
+| Suppression / effacement | `TECHNICALLY_VERIFIED` | `APPROVED` | DPO + Juridique + Engineering | `eraseUserAccount` applique l'effacement idempotent, la neutralisation des identifiants directs, le scellement probatoire 5/10 ans et la suppression de l'identité externe selon [`ADR-039`](../decisions/ADR-039-gdpr-erasure-and-probatory-seal.md). | Non (sous réserve des garde-fous métier) |
 | Export des données personnelles (portabilité) | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | DPO + Engineering | Endpoint authentifié `/api/account/privacy/export` scindé en copie intégrale Art. 15 (`buildPersonalDataCopy`, sans IDs Stripe ni URLs de stockage) et dataset portable Art. 20 (`buildPortableData`) (Lot 21-P1). Prêt pour validation de périmètre par le DPO (`DPO-004`). | Non (technique levé) |
 | Droits utilisateurs (accès, rectification, opposition) | `TECHNICALLY_VERIFIED` | `HUMAN_SIGNOFF_REQUIRED` | DPO | Page client bilingue `/[locale]/account/privacy`, suivi des demandes avec calcul d'échéance légale (+1 mois calendaire), journalisation audit minimale ADR-016 et runbook d'instruction opérateur livrés (Lot 21-P1). | Non (technique levé) |
 | Sous-traitants (registre & DPA) | `TECHNICALLY_VERIFIED` | `DECISION_PACK_READY_FOR_DPO_SIGNOFF` | DPO + Juridique | Dossier complet [`21-p1c-subprocessors-dpo-005.md`](./21-p1c-subprocessors-dpo-005.md) et inventaire [`subprocessors-inventory.md`](./signoff/subprocessors-inventory.md) livrés : 6 sous-traitants instruits (Clerk, Stripe, Neon, Cloudflare, Resend, Vercel), bases DPF et SCC 2021/914, DPA officiels référencés et formulaires d'arbitrage prêts pour signature DPO. | **Oui** |
@@ -174,7 +176,7 @@ avec la mention de version `v1` avant le bouton d'action et de paiement. Le snap
 `terms_acceptance_snapshot` (`{ termsVersion: 'v1', userId, acceptedAt }`) fait donc
 référence à des documents opposables existants, prêts pour revue juridique (`LEGAL-001`).
 
-### C3-F2 — Règle de remboursement à distinguer legacy/split (gravité : haute)
+### C3-F2 — Règle de remboursement à distinguer legacy/split (gravité : haute — sign-off enregistré)
 
 Le comportement de remboursement n'est pas identique pour les deux générations
 de réservation :
@@ -182,11 +184,11 @@ de réservation :
 - **legacy** : `packages/core/src/cancellations/preview-booking-cancellation.ts`
   utilise `booking.totalAmountMinor` comme montant payé et applique le
   pourcentage de remboursement historique ;
-- **split 13/7** : le parcours est bloqué avant toute création ou soumission de
-  refund avec `SPLIT_REFUND_UNRESOLVED`. La politique proposée (delta entre
-  états effectifs, calcul par composant, frais Stripe séparés et escalade
-  manuelle) est formalisée dans `ADR-030`, mais n'est pas encore approuvée ni
-  exécutable par le provider.
+- **split 13/7** : le parcours reste fail-closed avant toute création ou
+  soumission de refund non supporté par le provider avec
+  `SPLIT_REFUND_UNRESOLVED`. La politique par delta entre états effectifs et
+  composant par composant est déclarée approuvée dans le pack finance/juridique
+  du 2026-09-04 et reste encadrée par `ADR-030`.
 
 La base legacy reste donc techniquement assimilable à l'option A « total TTC »,
 mais cette observation ne vaut pas validation juridique ou financière. Pour le
@@ -194,11 +196,11 @@ split, le traitement des composants est proposé par ADR-030 ; les frais Stripe,
 le reverse transfer, le règlement hors plateforme et le message client restent
 à valider.
 
-**Décision requise :** juridique + finance. Ne pas modifier le code avant cette
-décision ; toute évolution split devra conserver un snapshot versionné et des
-tests d'invariance.
+**Décision enregistrée :** juridique + finance, 2026-09-04. La capacité
+provider et la preuve d'exploitation LIVE restent à vérifier ; toute évolution
+split doit conserver un snapshot versionné et des tests d'invariance.
 
-### C3-F3 — Émetteur de facture et statut fiscal incohérents avec Lot 5 (gravité : haute)
+### C3-F3 — Émetteur de facture et statut fiscal (gravité : haute — sign-off enregistré)
 
 `apps/web/src/lib/payment-config.ts` (`loadFinancialTermsConfig`) durcit :
 
@@ -212,18 +214,19 @@ tax: {
 },
 ```
 
-Or `docs/product/lot5-finance-legal-validation.md` §4 « Décision attendue C —
-termes fiscaux » demande au validateur de préciser « si la taxe est `APPLIED` ou
-`NOT_APPLICABLE` » et « qui émet la facture ou le reçu de location ». Le code
-répond donc à une question ouverte par une valeur figée, non validée, et cette
-valeur est ensuite propagée dans le snapshot fiscal immuable de chaque paiement
+Le pack finance du 2026-09-04 déclare `NOT_APPLICABLE` (article 293 B du CGI)
+et `invoiceIssuer: 'Uttily'` approuvés pour le premier pilote. Ces valeurs sont
+ensuite propagées dans le snapshot fiscal immuable de chaque paiement
 (`TaxRuleSnapshot`) puis dans les documents transactionnels.
 
 Le mécanisme lui-même est sain : aucune substitution silencieuse par zéro, le
 résolveur échoue en `FINANCIAL_TERMS_UNRESOLVED` si la configuration est
 absente. Seules les **valeurs** posent problème.
 
-**Décision requise :** expert-comptable + juridique. Ne pas modifier le code.
+**Décision enregistrée :** expert-comptable + juridique, 2026-09-04. Toute
+évolution fiscale ou de l'émetteur doit être versionnée avant un nouveau
+paiement ; le code courant n'est pas réécrit dans le cadre de cette
+réconciliation documentaire.
 
 ### C3-F4 — Rétention annoncée ≠ rétention documentée (gravité : moyenne — corrigée)
 
@@ -312,20 +315,23 @@ personnelles pour les utilisateurs authentifiés :
 3. **Endpoint sécurisé :** `/api/account/privacy/export` accessible uniquement à
    l'utilisateur authentifié pour ses propres données.
 
-La validation humaine formelle du périmètre et du format par le DPO (`DPO-004`)
-reste requise pour le sign-off documentaire.
+Le périmètre et le format sont déclarés approuvés par le DPO (`DPO-004`) le
+2026-09-04. La preuve de fonctionnement et les limites de rétention fournisseur
+restent à conserver séparément.
 
 ---
 
 ## AVANT LE PREMIER PILOTE RÉEL
 
-Aucune case n'est cochée : aucune preuve de validation humaine écrite n'existe
-dans le dépôt.
+Les décisions humaines du 2026-09-04 sont désormais enregistrées dans les
+packs signoff. Les cases opérationnelles restent ouvertes tant que leur preuve
+réelle n'est pas conservée dans le dossier autorisé.
 
-- [ ] Validation juridique CGU/CGV
-- [ ] Validation annulation/remboursement
-- [ ] Validation privacy/rétention/analytics
-- [ ] Validation finance/TVA/commission/invoice issuer
+- [x] Validation juridique CGU/CGV — sign-off enregistré le 2026-09-04
+- [x] Validation annulation/remboursement — sign-off enregistré le 2026-09-04 ; horaire 30 min exclu du pilote
+- [x] Validation privacy/rétention/analytics — sign-off enregistré le 2026-09-04 ; analytics production maintenu OFF
+- [x] Validation finance/TVA/commission/invoice issuer — sign-off enregistré le 2026-09-04 ; activation FIN-002 à réconcilier avant LIVE
+- [ ] Capture centralisée des exceptions et alerting configurés et testés
 - [ ] Stripe LIVE credentials configurés
 - [ ] Stripe LIVE webhooks configurés
 - [ ] Connected Account LIVE partenaire pilote ready
@@ -335,7 +341,9 @@ dans le dépôt.
 
 **Règle de cochage :** une case ne peut être cochée que si la preuve
 correspondante est présente dans ce document ou dans un document référencé. Une
-case non prouvée reste non cochée. Une case non cochée bloque le pilote.
+case non prouvée reste non cochée. Une case opérationnelle non cochée bloque le
+pilote. Une case de sign-off cochée reflète le dernier enregistrement
+documentaire connu ; elle ne remplace pas une preuve provider ou un go produit.
 
 ### Séparation des drills et preuves d'exploitation
 
@@ -363,19 +371,18 @@ chantier.
 Le pilote réel est **bloqué**. Les dépendances critiques, par ordre de
 déblocage :
 
-1. **Validation juridique des textes publiés** (CGU/CGV, conditions Pro, politique de
-   confidentialité V1 publiées) — décision `LEGAL-001`, `LEGAL-002`, `DPO-002`.
-2. **Décision C de Lot 5** (statut fiscal, émetteur de facture) — décision `FIN-003`, `FIN-004`.
-3. **Décision A/B/D/E de Lot 5** (settlement merchant, règle de commission `FIN-002`,
-   contrat client, compensation des paiements tardifs).
-4. **Validation Lot 4** (conformité des trois politiques, base de remboursement,
-   preuve de consentement).
-5. **Arbitrage DPO** sur le périmètre d'effacement/anonymisation (`DPO-003`) pour ouvrir le Lot 21-P2.
-6. **Collecte des données réelles du partenaire Pro pilote** (SIRET, TVA, Kbis, RIB) —
+1. **Réconcilier les décisions du 2026-09-04** dans `decision-registry.md`,
+   `ADR-029` et les documents d'instructions afin de supprimer la divergence
+   actuelle autour de `FIN-002`.
+2. **Collecter et vérifier les données réelles du partenaire Pro pilote**
+   (SIRET, TVA, Kbis, établissement, catalogue, horaires, prix, contacts) —
    dossier `pilot-partner-readiness.md`.
-7. **Configuration LIVE** (credentials, webhooks, compte connecté) — technique,
-   mais subordonnée aux points 1 à 6.
-8. **Backup/restore drill provider, contacts d'incident, go produit.**
+3. **Configurer et prouver l'observabilité de production** : capture centralisée
+   des exceptions, alerting et rétention, avec un test synthétique non sensible.
+4. **Configurer LIVE** (credentials, webhooks et compte connecté) puis exécuter
+   `pnpm readiness:live` dans l'environnement autorisé.
+5. **Vérifier le recovery provider, les contacts d'incident et le go produit**
+   après les étapes précédentes.
 
 ## Références
 

@@ -137,7 +137,10 @@ describe('PublicOfferPage & OfferBookingForm — SSR et Idempotence', () => {
       expect.objectContaining({
         intent: { kind: 'DAY_RANGE', startDate: '2026-09-01', endDateExclusive: '2026-09-03' },
       }),
-      expect.anything(),
+      {
+        publicationGate: expect.anything(),
+        pricingPolicy: core.FIRST_PILOT_PRICING_POLICY,
+      },
     );
   });
 

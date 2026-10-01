@@ -414,6 +414,27 @@
       "when": 1788107362009,
       "tag": "0059_privacy_probatory_seals",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1788107362010,
+      "tag": "0060_activate_snowshoes_and_sled_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1788107362011,
+      "tag": "0061_activate_bodyboard_category",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1788107362012,
+      "tag": "0062_activate_wingfoil_category",
+      "breakpoints": true
     }
   ]
 }

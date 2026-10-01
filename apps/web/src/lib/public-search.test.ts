@@ -48,6 +48,39 @@ describe('parsePublicSearchParams', () => {
     });
   });
 
+  it('conserve le sous-type de vélo comme filtre précis', () => {
+    const result = parsePublicSearchParams(
+      new URLSearchParams({
+        destinationPublicId: DESTINATION_ID,
+        intent: 'DAY_RANGE',
+        startDate: '2026-08-10',
+        endDateExclusive: '2026-08-13',
+        bikeSubtype: 'cargo',
+      }),
+      'fr',
+    );
+    expect(result.kind).toBe('VALID');
+    if (result.kind !== 'VALID') throw new Error('VALID attendu');
+    expect(result.values.bikeSubtype).toBe('cargo');
+    expect(result.input.bikeSubtype).toBe('cargo');
+  });
+
+  it('rejette un sous-type de vélo hors registre', () => {
+    const result = parsePublicSearchParams(
+      new URLSearchParams({
+        destinationPublicId: DESTINATION_ID,
+        intent: 'DAY_RANGE',
+        startDate: '2026-08-10',
+        endDateExclusive: '2026-08-13',
+        bikeSubtype: 'gravel',
+      }),
+      'fr',
+    );
+    expect(result.kind).toBe('INVALID');
+    if (result.kind !== 'INVALID') throw new Error('INVALID attendu');
+    expect(result.fieldErrors.bikeSubtype).toBeDefined();
+  });
+
   it('rejette les dates civiles impossibles et les périodes inversées', () => {
     const result = parsePublicSearchParams(
       new URLSearchParams({

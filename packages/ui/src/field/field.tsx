@@ -45,7 +45,12 @@ export function Field({
       {help && (
         <p
           id={helpId}
-          style={{ color: 'var(--ut-color-ink-muted)', fontSize: 'var(--ut-text-sm)', margin: 0 }}
+          style={{
+            color: 'var(--ut-color-ink-muted)',
+            fontSize: 'var(--ut-text-xs)',
+            lineHeight: 1.4,
+            margin: 0,
+          }}
         >
           {help}
         </p>
@@ -54,7 +59,13 @@ export function Field({
         <p
           id={errorId}
           role="alert"
-          style={{ color: 'var(--ut-color-danger)', fontSize: 'var(--ut-text-sm)', margin: 0 }}
+          style={{
+            color: 'var(--ut-color-danger)',
+            fontSize: 'var(--ut-text-xs)',
+            fontWeight: 'var(--ut-weight-medium)',
+            lineHeight: 1.4,
+            margin: 0,
+          }}
         >
           {error}
         </p>

@@ -30,8 +30,12 @@ const CATEGORY_NAMES_FR: Record<string, string> = {
   kayak: 'Kayak',
   ski: 'Ski',
   surf: 'Surf',
+  bodyboard: 'Bodyboard',
+  wingfoil: 'Wingfoil',
   paddle: 'Paddle',
   pedalboat: 'Pédalo',
+  snowshoes: 'Raquettes',
+  sled: 'Luge',
 };
 
 const CATEGORY_NAMES_EN: Record<string, string> = {
@@ -39,8 +43,12 @@ const CATEGORY_NAMES_EN: Record<string, string> = {
   kayak: 'Kayak',
   ski: 'Ski',
   surf: 'Surf',
+  bodyboard: 'Bodyboard',
+  wingfoil: 'Wingfoil',
   paddle: 'Paddleboard',
   pedalboat: 'Pedal boat',
+  snowshoes: 'Snowshoes',
+  sled: 'Sled',
 };
 
 function getCategoryEmoji(slug?: string): string {
@@ -48,7 +56,11 @@ function getCategoryEmoji(slug?: string): string {
   const lower = slug.toLowerCase();
   if (lower.includes('bike') || lower.includes('velo') || lower.includes('vtt')) return '🚲';
   if (lower.includes('ski') || lower.includes('snowboard')) return '⛷️';
+  if (lower.includes('snowshoe') || lower.includes('raquette')) return '🥾';
+  if (lower.includes('sled') || lower.includes('luge')) return '🛷';
   if (lower.includes('kayak') || lower.includes('canoe')) return '🛶';
+  if (lower.includes('bodyboard')) return '🌊';
+  if (lower.includes('wingfoil')) return '🪁';
   if (lower.includes('paddle')) return '🏄';
   if (lower.includes('surf')) return '🏄';
   if (lower.includes('trailer') || lower.includes('remorque')) return '🛞';

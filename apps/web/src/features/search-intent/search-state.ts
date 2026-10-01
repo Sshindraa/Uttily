@@ -1,4 +1,5 @@
 import type { PublicSearchFilterOptions } from '@uttily/core';
+import { isBikeSubtype, type BikeSubtype } from '@uttily/contracts';
 import type { CompiledPartyRequirement } from '@uttily/intelligence';
 import type { PublicSearchFormValues } from '@/lib/public-search';
 import { MAX_SEARCH_PEOPLE } from '@/lib/search-people';
@@ -9,6 +10,7 @@ type DestinationOption = PublicSearchFilterOptions['destinations'][number];
 export interface SearchSelection {
   destinationPublicId: string;
   categoryId: string;
+  bikeSubtype?: BikeSubtype;
   startDate: string;
   endDate: string;
   withTimes: boolean;
@@ -84,6 +86,7 @@ export function initialSelection(values?: PublicSearchFormValues): SearchSelecti
   return {
     destinationPublicId: values?.destinationPublicId ?? '',
     categoryId: values?.categoryId ?? '',
+    ...(values?.bikeSubtype ? { bikeSubtype: values.bikeSubtype } : {}),
     startDate:
       values?.intent === 'TIME_RANGE' ? values.startAt.slice(0, 10) : (values?.startDate ?? ''),
     endDate:
@@ -151,6 +154,17 @@ export function buildSearchQuery(
       message: fr ? 'Choisissez un équipement proposé.' : 'Choose an available equipment category.',
     };
   }
+  const selectedCategory = options.categories.find((c) => c.id === selection.categoryId);
+  if (
+    selection.bikeSubtype &&
+    (!selectedCategory || selectedCategory.slug !== 'bike' || !isBikeSubtype(selection.bikeSubtype))
+  ) {
+    return {
+      ok: false,
+      field: 'equipment',
+      message: fr ? 'Choisissez un type de vélo valide.' : 'Choose a valid bike type.',
+    };
+  }
   const dateError = dateSelectionError(selection, locale);
   if (dateError) return { ok: false, field: 'dates', message: dateError };
   if (
@@ -170,6 +184,7 @@ export function buildSearchQuery(
     intent: selection.withTimes ? 'TIME_RANGE' : 'DAY_RANGE',
   });
   if (selection.categoryId) params.set('categoryId', selection.categoryId);
+  if (selection.bikeSubtype) params.set('bikeSubtype', selection.bikeSubtype);
   params.set('peopleCount', String(selection.people));
   if (selection.requirements && selection.requirements.length > 0) {
     params.set('packRequirements', JSON.stringify(selection.requirements));

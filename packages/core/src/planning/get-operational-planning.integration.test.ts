@@ -211,7 +211,7 @@ describe.skipIf(shouldSkipIntegrationTests())('Planning — visibilité des bloc
     expect(afterRelease.stats.totalManualBlocks).toBe(0);
   });
 
-  it('expose les blocages actifs pour les huit familles commerciales sans modifier les compteurs existants', async () => {
+  it('expose les blocages actifs pour les douze familles commerciales sans modifier les compteurs existants', async () => {
     if (!db) return;
     const setup = await createOrganizationWithLocation(
       'planning-eight-families@example.com',

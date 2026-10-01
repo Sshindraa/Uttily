@@ -29,6 +29,8 @@ import {
 } from '../marketplace-fees';
 import { FlexiblePricingError } from '../pricing-plans/errors';
 import { quoteFlexiblePricing } from '../pricing-plans/quote-flexible-pricing';
+import { isPricingPlanAllowed } from '../pricing-plans/policy';
+import type { PricingPlanPolicy } from '../pricing-plans/policy';
 import { getProfessionalVerification } from '../professional-verification';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -54,6 +56,7 @@ export async function getPublicOfferDetails(
   input: GetPublicOfferDetailsInput,
   options?: {
     publicationGate?: PublicProductPublicationGate;
+    pricingPolicy?: PricingPlanPolicy;
   },
 ): Promise<GetPublicOfferDetailsResult> {
   if (
@@ -199,8 +202,8 @@ export async function getPublicOfferDetails(
   // l'aperçu. Sans intention (accès direct), on présente le plan actif le moins
   // cher applicable au lieu, puis l’ancien champ comme compatibilité.
   const price = input.intent
-    ? await getIntentPrice(db, r.orgId, r.locationId, input, variantRows)
-    : await getIndicativePrice(db, r.locationId, variantRows, input.locale);
+    ? await getIntentPrice(db, r.orgId, r.locationId, input, variantRows, options?.pricingPolicy)
+    : await getIndicativePrice(db, r.locationId, variantRows, input.locale, options?.pricingPolicy);
 
   const openingHours: PublicOfferOpeningHour[] = openingHourRows.map((h) => ({
     weekday: h.weekday,
@@ -284,6 +287,7 @@ async function getIntentPrice(
   locationId: string,
   input: GetPublicOfferDetailsInput,
   variantRows: OfferVariantRow[],
+  pricingPolicy?: PricingPlanPolicy,
 ): Promise<PublicOfferDetails['price']> {
   const selectedVariant = input.publicVariantId
     ? variantRows.find((variant) => variant.publicVariantId === input.publicVariantId)
@@ -292,13 +296,17 @@ async function getIntentPrice(
   if (variantsToQuote.length === 0 || !input.intent) return undefined;
 
   try {
-    const quote = await quoteFlexiblePricing(db, {
-      organizationId,
-      locationId,
-      locale: input.locale?.trim() || 'fr',
-      intent: input.intent,
-      lines: variantsToQuote.map((variant) => ({ variantId: variant.variantId, quantity: 1 })),
-    });
+    const quote = await quoteFlexiblePricing(
+      db,
+      {
+        organizationId,
+        locationId,
+        locale: input.locale?.trim() || 'fr',
+        intent: input.intent,
+        lines: variantsToQuote.map((variant) => ({ variantId: variant.variantId, quantity: 1 })),
+      },
+      pricingPolicy ? { pricingPolicy } : undefined,
+    );
 
     const quoteLines = quote.lines.filter((line) =>
       variantsToQuote.some((variant) => variant.variantId === line.variantId),
@@ -344,6 +352,7 @@ async function getIndicativePrice(
   locationId: string,
   variantRows: OfferVariantRow[],
   locale: string | undefined,
+  pricingPolicy?: PricingPlanPolicy,
 ): Promise<PublicOfferDetails['price']> {
   const activePlans = await db
     .select({
@@ -368,8 +377,11 @@ async function getIndicativePrice(
       ),
     );
 
+  const allowedActivePlans = activePlans.filter((plan) =>
+    isPricingPlanAllowed(plan.planType, pricingPolicy),
+  );
   const effectivePlans = variantRows.flatMap((variant) => {
-    const plans = activePlans.filter((plan) => plan.productVariantId === variant.variantId);
+    const plans = allowedActivePlans.filter((plan) => plan.productVariantId === variant.variantId);
     const localPlans = plans.filter((plan) => plan.locationId === locationId);
     return plans.filter(
       (plan) =>
@@ -381,6 +393,9 @@ async function getIndicativePrice(
         ),
     );
   });
+  if (pricingPolicy && activePlans.length > 0 && allowedActivePlans.length === 0) {
+    return undefined;
+  }
   const bestActivePlan = [...effectivePlans]
     .filter(
       (plan) =>

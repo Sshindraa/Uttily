@@ -56,6 +56,19 @@ describe('search intent to existing availability contract', () => {
     expect(parsed.input).not.toHaveProperty('quantity');
     expect(initialSelection(parsed.values)).toEqual(selection);
   });
+
+  it('encode le sous-type de vélo sans changer la catégorie commerciale', () => {
+    const result = buildSearchQuery({ ...selection, bikeSubtype: 'mtb' }, options, 'fr');
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw Error('Expected a query');
+    const params = new URLSearchParams(result.query);
+    expect(params.get('categoryId')).toBe(categoryId);
+    expect(params.get('bikeSubtype')).toBe('mtb');
+    const parsed = parsePublicSearchParams(params, 'fr');
+    expect(parsed.kind).toBe('VALID');
+    if (parsed.kind !== 'VALID') throw Error('Expected valid server input');
+    expect(parsed.input.bikeSubtype).toBe('mtb');
+  });
   it('supports one day, year boundaries and leap days with calendar arithmetic', () => {
     expect(shiftDate('2026-12-31', 1)).toBe('2027-01-01');
     expect(shiftDate('2028-02-28', 1)).toBe('2028-02-29');

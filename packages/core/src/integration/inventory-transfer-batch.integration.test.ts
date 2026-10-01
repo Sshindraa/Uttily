@@ -128,7 +128,7 @@ async function movementCount(itemIds: string[]): Promise<number> {
 }
 
 describe.skipIf(shouldSkipIntegrationTests())('transfert groupé d’exemplaires — PostgreSQL', () => {
-  it('transfère les exemplaires des huit familles actives', async () => {
+  it('transfère les exemplaires des douze familles actives', async () => {
     if (!db) return;
     const { organizationId, sourceLocationId, destinationLocationId } = await createOrganization(
       'all-families@example.com',

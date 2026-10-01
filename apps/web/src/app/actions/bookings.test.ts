@@ -159,6 +159,8 @@ describe('createBookingDraftAction — tests unitaires', () => {
         customerUserId: mockUser.id,
         lines: [{ variantId: mockResolvedAuthority.variantId, quantity: 1 }],
       }),
+      undefined,
+      { pricingPolicy: core.FIRST_PILOT_PRICING_POLICY },
     );
   });
 
